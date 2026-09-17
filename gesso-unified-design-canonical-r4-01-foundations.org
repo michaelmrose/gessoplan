@@ -1,0 +1,2057 @@
+#+title: Gesso Unified Design
+#+subtitle: Canonical architecture, assurance model, and reference application
+#+date: 2026-09-16
+#+startup: nofold
+#+options: toc:3 num:nil
+#+property: canonical-revision r4-draft
+#+property: supersedes gesso-unified-design-canonical-r3
+
+* Part I — Foundations
+:PROPERTIES:
+:CUSTOM_ID: part-01-foundations
+:END:
+
+** Canonical document identity and provenance
+
+This document specifies the intended canonical r4 Gesso unified design. It is
+an end-state specification of the required architecture and behavior, not a
+claim that the current implementation already satisfies those requirements.
+
+R4 is assembled from twelve ordered parts. The complete reviewed assembly
+supersedes canonical r3. During sectional delivery, an individual part specifies
+only its stated scope; it must not be presented as a complete replacement for
+the entire r3 specification. The revision remains marked =r4-draft= until all
+parts and their cross-references have been reconciled.
+
+Historical source plans remain provenance. They do not carry independent
+normative revision identities inside this specification.
+
+The principal source lineage is:
+
+| Source | Revision / role |
+|--------+-----------------|
+| Gesso Choreography Design | v4.5; foundational choreography semantics |
+| Gesso Provable Hardening Plan | v7.376; compositional rejection and proof direction |
+| Gesso/HumanHelp Biff 2 Migration Plan | native Biff 2 substrate and lifecycle integration |
+| Gesso/HumanHelp Preflight Recovery Plan | v662; no-silent-downgrade and production-path closure |
+| Gesso Unified Design | canonical r2; prior consolidation |
+| Gesso Unified Design | canonical r3; direct textual predecessor |
+| Gesso Unified Design Revision and Validation Plan | plan revision 2; r3 review discipline |
+
+Canonical r4 preserves those commitments except where this document explicitly
+clarifies, reconciles, or supersedes wording.  A change in implementation does
+not by itself change the requirement.
+
+*** Revision scope
+
+R4 preserves the semantic commitments of r3 while making their construction,
+runtime, acceptance, and assurance boundaries more uniform. Its requirements
+remain owned by the sections that define them; this summary is a navigation aid.
+
+The revision emphasizes:
+
+- owner-relative admission for asynchronous events, including shared events;
+- scope-preserving acquisition requirements and precisely stated resource bounds;
+- independent required-capability acceptance alongside assembly closure and
+  production-path enforcement;
+- participant-relative command uncertainty after local retirement or lost delivery;
+- explicit HumanHelp adoption policy and testable product outcomes;
+- production/formal correspondence classified by the evidence actually supplied;
+- a single normative home for each obligation, with examples that preserve it;
+- connected reference realizations and controlled defects on production paths.
+
+Unresolved product choices remain explicit. A completion claim that depends on
+one of those choices is unavailable until the choice and its acceptance
+conditions are specified. Generic Gesso semantics do not silently choose
+HumanHelp business policy.
+
+*** Document organization and sectional assembly
+
+The document has the following logical parts. The two-digit delivery order is
+also the concatenation order.
+
+| Order | Part | Scope |
+|-------+------+-------|
+| 01 | I — Foundations | Purpose, ownership direction, normative interpretation, correctness scopes, assurance, evidence vocabulary, construction principles |
+| 02 | II — Semantic model | Identity, time, resource instances, trust, knowledge, provenance, observation evidence, agreement |
+| 03 | III — Choreography language and projection | Choreography, operation types, Malli, branch knowledge, projection, long logical workflows |
+| 04 | IV — Authoritative operations and progression | Model integration, FX, atomic transitions, delivery debt, XTDB basis and scoped progression, command/execution identity |
+| 05 | V — Provisional state and executable presentation | Optimism, continuity, views, portable execution, ExecutablePlan and diagnostic sidecars |
+| 06 | VI — Browser realization and recovery | Adapter refinement, owner-relative event admission, acquisition coordination, stale plans, managed effects, absence, failure and convergence |
+| 07 | VII — Whole-application construction | ApplicationAssembly, closure, artifacts, routes, capabilities, settlement/acquisition, static and dynamic preflight, Biff lifecycle, diagnostics |
+| 08 | VIII — HumanHelp proving application | Production model ownership, example integration, lifecycle, creation, adoption, board behavior, product decisions and independent acceptance |
+| 09 | IX — Compositional certification | Semantic interfaces, typed rules, certificate hierarchy, dependency identity, kernel, mutation corpus, HumanHelp proof pilot |
+| 10 | X — Formal correspondence and system boundaries | Assurance targets, theorem families, formalization, production correspondence, TCB, validation, multi-node semantics |
+| 11 | XI — Release and completion | Incremental builds, release evidence, non-goals, progress measures and the four completion scopes |
+| 12 | XII — Implementation order and final invariants | Ordered stages, dependency relationships, cross-stage acceptance and final unified principle |
+
+Only Part I carries the document-wide Org title, date, options, and revision
+metadata. Subsequent parts begin with their own top-level part heading and use
+subordinate headings within that part. Concatenation introduces no additional
+document headers, include directives, or independent normative documents.
+
+Internal links may refer forward to sections in later parts. Such references
+are resolved against the complete assembly. Every referenced anchor must occur
+exactly once in that assembly. Historical Part references are replaced by the
+corresponding r4 section links or current part names during revision.
+
+#+LATEX: \newpage
+
+*** Cross-cutting requirement references
+
+The following links are a navigation aid, not a second semantic registry.  The
+linked sections are the authoritative homes of the corresponding requirements.
+
+| Requirement / decision | Authoritative section |
+|------------------------+-----------------------|
+| Assurance classification | [[#req-assurance-classification][Assurance model]] |
+| Semantic category and admission | [[#req-semantic-admission][Semantic category, representation, and admission]] |
+| Trusted-code boundary | [[#req-trust-boundary][Trusted application code and accidental misuse]] |
+| Observation evidence | [[#req-observation-evidence][Observation claims, receipts, and authority]] |
+| Progression scope | [[#req-progression-scope][Progression requirements are scoped]] |
+| Advisory discharge | [[#req-advisory-discharge][Advisory obligations and authoritative acquisition]] |
+| Participant-relative command uncertainty | [[#req-command-participant-uncertainty][Participant-relative command uncertainty]] |
+| Provisional resolution | [[#req-provisional-resolution][Provisional resolution and local retirement]] |
+| Scoped authoritative installation | [[#req-runtime-scoped-authoritative-installation][Scoped authoritative installation]] |
+| Application assurance claims | [[#req-application-assurance-claims][Three separate application assurance claims]] |
+| Assembly construction phases | [[#req-assembly-construction-phases][Assembly construction and admitted generations]] |
+| Production-path enforcement | [[#req-production-path-enforcement][Production-path enforcement evidence]] |
+| HumanHelp selective adoption | [[#req-humanhelp-selective-adoption][Selective board adoption]] |
+| HumanHelp Refresh coverage | [[#req-humanhelp-refresh-coverage][Refresh coverage and concurrent activity]] |
+| HumanHelp remote lifecycle policy | [[#decision-humanhelp-remote-lifecycle-adoption][Remote lifecycle changes]] |
+
+** Purpose
+
+This document specifies the intended end-state design of Gesso choreography,
+proof, execution, application assembly, and its use by HumanHelp.
+
+The goal is not merely to provide a convenient syntax for distributed state
+machines.  Gesso should provide a useful correctness boundary for distributed
+application operations.  It should make coherent programs straightforward to
+express, malformed programs difficult to assemble, and contradictions visible
+as early and as locally as the available information permits.
+
+The central design target is:
+
+#+begin_quote
+A Gesso application may still express a coherent but domain-wrong business
+rule, but it should be difficult to assemble a structurally contradictory
+distributed program that appears to work.
+#+end_quote
+
+Gesso therefore distinguishes two very different failure classes.
+
+A *well-formed but domain-wrong* program may express the wrong policy while
+remaining internally coherent.  For example, an application may validly encode
+a rule that an Organization chose incorrectly.  Gesso cannot infer product
+intent merely from syntax.
+
+A *malformed* program contradicts its own declared semantic structure.  Examples
+include:
+
+- a role consuming a fact it cannot know;
+- a browser affordance naming an operation that has no projected realization;
+- an operation requiring authority that no trusted server path can establish;
+- a provisional trajectory with no permitted resolution or recovery path;
+- a projected plan whose required semantic dependency no longer matches the
+  certified dependency used to produce it;
+- a lifecycle operation silently degrading to a weaker ordinary request because
+  required semantic metadata is absent;
+- a proof or diagnostic artifact being accepted as runtime authority;
+- a stale callback mutating a newer execution merely because both refer to the
+  same logical DOM target.
+
+Those are framework-recognizable contradictions and should be rejected as
+early and descriptively as feasible.
+
+The choreography system should provide the following broad properties:
+
+- one global choreography describes an allowed distributed interaction;
+- the global choreography is verified before execution;
+- the choreography is projected into actor-local machines;
+- local machines execute independently in Clojure and ClojureScript;
+- actors acquire justified knowledge through declared provenance paths such as
+  inputs, communication, authoritative observation, deterministic derivation,
+  and explicit trusted assertion;
+- authoritative model transitions remain atomic at their model transaction
+  boundaries;
+- clients may hold explicit provisional state without confusing it with
+  authoritative state;
+- actors may temporarily observe different frontiers of an evolving world;
+- where convergence is required, the protocol provides a path toward justified
+  knowledge of the relevant authoritative facts;
+- durable application facts normally rendezvous through model authority rather
+  than requiring direct client-to-client delivery;
+- browser-local concerns such as continuity remain implementation concerns
+  rather than becoming distributed truth;
+- sleeping, reconnecting, stale, or incompatible browser projections have a
+  defined recovery path rather than being assumed compatible forever;
+- browser actors are treated as adversarial participants that may replace or
+  modify every byte of client JavaScript and protocol state;
+- authoritative security never depends on an honest browser projection;
+- portable choreography and browser-adapter semantics are explicit transition
+  systems suitable for machine-checked reasoning;
+- the production browser adapter uses the same semantic transition model that
+  is checked or proved rather than independently reimplementing a paper model;
+- HTMX remains responsible for the ordinary declarative browser lifecycle it
+  already owns;
+- Gesso-owned browser effects remain behind a narrow explicit boundary;
+- verification and projection produce one canonical executable artifact plus
+  separate optional proof and diagnostic artifacts;
+- proof or diagnostic artifacts cannot participate in runtime semantic
+  decisions;
+- whole-application assembly checks the correspondence between the semantic
+  operation, projected plan, browser artifact, transport, trusted server
+  capability, authoritative operation, settlement/progression, and permitted
+  authoritative reacquisition;
+- claimed safety properties are backed by machine-checked derivations,
+  exhaustive semantic checking over justified abstractions, or refinement
+  arguments rather than by test coverage alone;
+- tests remain essential for trusted assumptions, implementation
+  correspondence, real browsers, external libraries, operational behavior, and
+  application policy.
+
+The design should make downstream application code easier to reason about even
+when Gesso itself becomes substantially more sophisticated.
+
+Correctness, explicit boundaries, debuggability, strong guarantees, and clear
+repair paths are more important than minimizing implementation size.
+
+#+LATEX: \newpage
+
+** Design priority and dependency direction
+
+Gesso is organized around a strict distinction between semantic truth,
+distributed coordination, physical realization, and evidence about that
+realization.
+
+At the highest level:
+
+#+begin_example
+domain truth
+    |
+    v
+public authoritative model operations
+    |
+    v
+global choreography
+    |
+    v
+verified role projections
+    |
+    v
+canonical executable plans
+    |
+    v
+runtime adapters / transport / browser realization
+#+end_example
+
+Evidence flows alongside this path:
+
+#+begin_example
+semantic declaration
+    |
+    v
+normalized semantic interface
+    |
+    v
+checked obligations / derivations
+    |
+    v
+certificate / proof sidecar / application explanation
+#+end_example
+
+Evidence may justify acceptance of an executable artifact, but evidence does not
+become an executable authority channel.
+
+That distinction separates *admission evidence* from *runtime authority*.
+
+A certificate, derivation, proof sidecar, exact artifact digest, preflight
+report, or other assurance artifact may establish that an =ExecutablePlan= was
+constructed from the declared semantics, depends on the expected semantic
+interfaces, satisfies the checks claimed for it, and is therefore eligible to
+run.  Once admitted, however, that evidence does not grant the running program
+new principals, permissions, authoritative facts, capabilities, branch
+discriminators, or current authorization.
+
+For example, a certificate may establish:
+
+#+begin_quote
+This Claim plan can reach the production Request claim operation only through a
+path that requires the declared claim-authority premise.
+#+end_quote
+
+The certificate does not establish:
+
+#+begin_quote
+This particular HTTP request is currently made by principal P and P is currently
+authorized to claim Request R.
+#+end_quote
+
+Those concrete premises still come from trusted authentication, current model
+state, runtime authorization, and other declared runtime boundaries.
+
+#+LATEX: \newpage
+
+Therefore:
+
+#+begin_example
+proof / certificate / preflight evidence
+        |
+        v
+artifact admitted for execution
+
+artifact executes
+        |
+        v
+runtime semantics + current trusted premises
+        |
+        v
+concrete authority decision
+#+end_example
+
+must not collapse into:
+
+#+begin_example
+certificate says "valid"
+        |
+        v
+grant authority / accept fact / choose branch
+#+end_example
+
+This applies more broadly than authorization.  Assurance evidence must not
+secretly decide which role the current user has, which principal is
+authenticated, whether a current authoritative fact is true, whether a stale
+basis is acceptable, which settlement is canonical, or what transaction should
+commit.
+
+A separately declared runtime credential, observation receipt, or other evidence
+protocol may supply a runtime premise only through its own trusted validation
+contract, with its subject, scope, applicability, and authorization meaning made
+explicit. That is a distinct runtime input category. It does not turn a proof
+sidecar, build report, or matching artifact hash into authority.
+
+Proof and diagnostic sidecars are therefore runtime-nonsemantic.  Running the
+same =ExecutablePlan= with or without a matching read-only sidecar must produce
+the same semantic transitions and abstract effects, modulo diagnostics.
+Evidence explains or justifies why an executable was accepted; it does not
+become a bearer capability or an alternate semantic control path.
+
+The dependency direction is intentional:
+
+- application business meaning belongs in application models;
+- choreography coordinates use of public model semantics;
+- projection derives local behavior from the global choreography;
+- runtime code executes projected behavior;
+- proof/checking artifacts explain why construction was accepted;
+- physical browser, network, database, and process mechanisms realize declared
+  effects under explicit assumptions.
+
+A lower layer must not acquire higher-level meaning merely because doing so
+would make an implementation convenient.
+
+For example:
+
+- a DOM node does not become a semantic Request merely because it has an id;
+- a web node does not become Request authority merely because it handles the
+  request;
+- a browser-supplied principal id does not become authenticated identity because
+  it has the expected shape;
+- a map with =:verified? true= does not become a verified choreography;
+- a matching hash does not establish the truth of the proposition represented
+  by the hashed artifact;
+- a Live invalidation does not establish the changed authoritative fact;
+- a rendered button does not confer authorization to execute its operation.
+
+#+LATEX: \newpage
+
+** Normative language
+
+This design uses the following terms deliberately.
+
+- *MUST* or *must* identifies a correctness requirement of the intended design.
+- *MUST NOT* or *must not* identifies behavior that would violate the intended
+  correctness boundary.
+- *SHOULD* or *should* identifies the ordinary design path.  Deviations require
+  a concrete reason and must preserve the relevant invariants.
+- *MAY* or *may* identifies an implementation freedom that does not change the
+  semantic contract.
+- *proved* is reserved for mechanically established properties under named
+  assumptions.
+- *verified* may also describe a mechanically checked closed construction whose
+  result is not claimed as a theorem over an explicitly formalized semantic
+  relation.  The result classification must remain precise.
+- *trusted* does not mean "probably correct."  It means the proposition is
+  outside the proof currently being claimed and is accepted as an explicit
+  assumption.
+
+A green test suite never silently upgrades a tested property into a proved
+property.
+
+A successful schema validation never silently upgrades a value into trusted
+authority.
+
+A valid certificate identity never silently upgrades the certificate's claims
+into truth unless an appropriate checker has accepted the certificate under the
+premises and evidence classification attached to those claims.
+
+*** Interpretation of examples and implementation freedom
+
+Examples illustrate the enclosing contract. Their concrete syntax is
+illustrative unless the owning section explicitly defines it as the required
+public or wire representation. Their stated required behavior must still obey
+the normative invariants.
+
+An abbreviated diagram does not waive an authorization, admission, scope,
+ownership, or outcome-attribution condition merely because the diagram omits
+that step. Worked examples must identify consequential policy choices instead
+of silently selecting behavior that the specification leaves open.
+
+The implementation may choose a representation or mechanism where the design
+allows alternatives. It must state which supported contract was chosen and
+provide evidence appropriate to the resulting claim. Implementation freedom
+does not permit silent weakening of a required capability or assurance class.
+
+A contradiction between normative passages is a specification defect to be
+reconciled at the owning section. It is not permission to select whichever
+passage makes an implementation easier to accept.
+
+A declared recovery path establishes available modeled behavior. It does not
+by itself establish that the environment will cause that path to execute or
+that every execution terminates. Liveness claims retain their named premises.
+
+
+** Correctness scopes
+
+The system intentionally combines several correctness scopes.  No one scope
+subsumes the others.
+
+*** Domain correctness
+
+Application models define domain meaning.
+
+Examples include:
+
+- whether a Request may be claimed;
+- whether a Membership is active;
+- whether an Organization permits an operation;
+- what a "reconciled" claim outcome means;
+- which facts must be protected atomically at commit time.
+
+Gesso may check that a rule expression is well typed, that a declared operation
+contract composes with its dependencies, and that the distributed execution
+respects that contract.  Gesso does not infer whether the Organization chose
+the right business policy.
+
+*** Choreographic correctness
+
+Choreo defines and checks distributed coordination around public semantic
+operations.
+
+It reasons about:
+
+- participating roles;
+- principal and authority requirements;
+- knowledge;
+- provenance;
+- communication;
+- authoritative observation;
+- branch discriminators;
+- provisional state;
+- command and execution identity;
+- settlement;
+- resource ownership;
+- convergence;
+- failure and recovery;
+- projection into role-local behavior.
+
+*** Runtime correctness
+
+Runtime code realizes the checked semantics.
+
+It must preserve:
+
+- semantic identities;
+- execution/generation ownership;
+- stale-work rejection;
+- correlation;
+- progression requirements;
+- resource lifetimes;
+- provisional-versus-authoritative distinctions;
+- permitted machine transitions;
+- transport and server realization.
+
+*** Whole-application closure
+
+Individually valid components can still form an impossible application.
+
+The assembled application therefore has its own closure boundary.  A rendered
+semantic affordance must have a coherent path through the entire application:
+
+#+begin_example
+rendered affordance
+    |
+    v
+semantic operation
+    |
+    v
+valid choreography trajectory
+    |
+    v
+projected local plan
+    |
+    v
+exact current browser artifact
+    |
+    v
+declared transport
+    |
+    v
+trusted server capability
+    |
+    v
+public authoritative model operation
+    |
+    v
+typed settlement / authoritative progression
+    |
+    v
+permitted authoritative reacquisition
+    |
+    v
+renderable authoritative successor
+#+end_example
+
+Later parts of this design specify that closure in detail.  Its inclusion here
+establishes an important foundational rule: local correctness does not imply
+whole-application correctness.
+
+*** Three distinct application assurance claims
+:PROPERTIES:
+:CUSTOM_ID: req-application-assurance-claims
+:END:
+
+Whole-application assurance separates three claims that are related but not
+interchangeable.
+
+| Claim | What it establishes | What it does not establish |
+|-------+---------------------+----------------------------|
+| Declared closure | Required relationships among the application elements within the declared assembly scope are checked | That every intended product capability was declared |
+| Production enforcement | Actual supported execution passes through the boundaries that make the declared checks effective | That every possible host-language escape hatch is impossible |
+| Behavioral completeness | Required user capabilities and authoritative outcomes are present and usable | That their internal assembly is structurally closed unless closure is checked separately |
+
+A self-consistent assembly can omit intended functionality.  Conversely, a
+behaviorally successful path can exist while bypassing a checker that the design
+claims is mandatory.  The three claims therefore reinforce one another without
+collapsing into one another.
+
+Assembly closure is always relative to declared scope.  Gesso cannot infer an
+application author's missing business intention merely because the remaining
+graph is closed.  Required product behavior therefore needs an acceptance basis
+independent of the assembly's own declaration set.  That acceptance basis should
+state user capabilities and authoritative outcomes rather than duplicate route
+strings, operation registries, projected-plan identities, or other realization
+metadata already owned by the assembly.
+
+Production enforcement is a separate obligation.  A checker that correctly
+rejects an isolated malformed fixture provides no application guarantee when the
+real application path can bypass that checker.  Strong claims about an assembled
+application must therefore identify the production boundary that makes the
+relevant check effective.
+
+Inside trusted host-language code, deliberate escape hatches may remain possible.
+For example, trusted application code that intentionally obtains a lower-level
+transaction capability may bypass the model/Gesso path.  The ordinary assurance
+goal inside that trusted boundary is misuse prevention: supported application
+construction should make accidental semantic bypass difficult, explicit, and
+diagnosable.  A deliberate departure from that supported path exits the
+corresponding assurance claim unless separately checked.
+
+These distinctions are foundational for later HumanHelp acceptance:
+
+#+begin_example
+assembly closed
+    !=
+production path demonstrably enforced
+    !=
+all required HumanHelp capabilities present
+#+end_example
+
+*** Operational correctness
+
+Formal semantics do not eliminate operational concerns.
+
+Real-browser tests, fault injection, property tests, load tests, lifecycle
+tests, and application acceptance remain necessary for:
+
+- browser primitive assumptions;
+- HTMX and EventSource/SSE behavior;
+- compiler/runtime implementation correspondence;
+- scheduler and timer behavior;
+- memory and CPU characteristics;
+- dependency outages and reconnect behavior;
+- application-specific semantics;
+- human-visible interaction behavior.
+
+*** Required capabilities are independent of exposed capabilities
+
+A milestone's behavioral acceptance must name the required user capabilities
+and authoritative outcomes independently of the set currently exposed by the
+implementation. Tests derived only from existing affordances cannot establish
+that an intended affordance was not omitted.
+
+For each required capability, acceptance must establish an eligible scenario in
+which the intended interaction is usable and reaches its required outcome.
+Relevant ineligible scenarios must establish the specified unavailability,
+rejection, or recovery behavior. Marking every occurrence unavailable does not
+satisfy a requirement to provide a usable capability.
+
+An explicitly narrower milestone may defer a capability. Its scope must say so;
+its completion must not be reported as completion of a broader milestone that
+requires that capability. This specification distinguishes such deferral from
+unavailability caused by current production model policy.
+
+The independent acceptance basis owns user capabilities and outcomes. It must
+not become a second registry of route strings, generated plan identities,
+transport metadata, or model implementation already owned by the assembly.
+
+#+LATEX: \newpage
+
+
+** Assurance model
+:PROPERTIES:
+:CUSTOM_ID: req-assurance-classification
+:END:
+
+Gesso uses several kinds of evidence, and the design must not collapse them
+under a single word such as =verified=, =safe=, or =proved=.
+
+The governing question for every assurance claim is:
+
+#+begin_quote
+What proposition is being claimed, over what object, under what assumptions,
+and what evidence justifies accepting it?
+#+end_quote
+
+The assurance model distinguishes:
+
+1. properties established mechanically from explicit semantics or checked
+   derivations;
+2. premises enforced dynamically when a concrete execution meets the external
+   world;
+3. assumptions that remain outside the mechanically discharged core;
+4. whole-application closure properties checked over assembled artifacts;
+5. liveness claims whose validity depends on named environmental assumptions;
+6. test evidence over trusted implementation boundaries and concrete systems.
+
+These classifications are related, but they are not interchangeable.
+
+For example:
+
+#+begin_example
+proved semantic property
+!=
+exact finite-state check
+!=
+closed application assembly
+!=
+runtime-enforced premise
+!=
+trusted assumption
+!=
+green integration test
+#+end_example
+
+A complete assurance argument may require several of them simultaneously.
+
+The classification belongs to the *claim and its evidence*, not merely to the
+source file, namespace, subsystem, or tool that produced it.  A single
+component may therefore participate in several assurance classes.
+
+For example, the browser adapter may have:
+
+- machine-checked transition invariants;
+- runtime-enforced event normalization and plan-identity checks;
+- trusted assumptions about DOM/browser primitives;
+- Chromium integration tests providing tested evidence of implementation
+  correspondence;
+- conditional liveness claims requiring eventual event delivery.
+
+The root assurance report must preserve these distinctions rather than reducing
+them to a single boolean such as =verified?=.
+
+Nominal or otherwise admitted semantic categories participate in this model but
+do not add a new assurance class by themselves.  For example, an admitted
+=VerifiedChoreography= value may be the product emitted after verification, but
+its assurance comes from the verifier/checker and its stated premises, not from
+the runtime type name.  Likewise, an =AuthoritativeObservation= representation
+is authoritative only when the trusted acquisition path establishes that
+provenance.
+
+This distinction prevents the implementation convenience of nominal typing from
+being mistaken for proof:
+
+#+begin_example
+schema / representation validation
+    -> representation has permitted shape
+
+semantic-category admission
+    -> supported code may treat value as category C
+
+checked judgment / certificate
+    -> stated semantic proposition follows under named premises
+#+end_example
+
+Those stages may be represented by different types, by checked constructors, or
+by other existing mechanisms.  Their assurance meaning remains distinct even
+if an implementation combines some of the physical representations.
+
+*** Machine-checked semantic properties
+
+A machine-checked semantic property is established mechanically from an
+explicit semantic model, checked derivation, exhaustive semantic state space,
+proof kernel, model checker, theorem prover, or another precisely identified
+formal mechanism.
+
+The important requirement is not the name of the tool.  The important
+requirement is that the claimed proposition and the relationship between the
+checked object and the production semantic object are explicit.
+
+Candidate framework properties include:
+
+- well-typed checked rule expressions;
+- knowledge entailment;
+- provenance entailment;
+- authority derivation and non-escalation;
+- message payload closure and knowledge-transfer constraints;
+- behavior-sensitive branch knowledge;
+- projection preservation for the supported language subset;
+- declared resource invariants;
+- progression algebra invariants;
+- browser-adapter transition invariants;
+- stale-generation isolation;
+- semantic dependency compatibility;
+- executable-plan provenance;
+- certificate dependency consistency.
+
+The individual phrases above name different judgments rather than one generic
+notion of "verification":
+
+- *Well-typed checked rule expressions.*  A rule expression is checked against
+  the closed semantic rule language.  Referenced fields must exist on the
+  declared semantic type; operators must be applied to compatible operand
+  types; enum values must belong to the declared variant set; optional values
+  must be refined before operations requiring presence; relationship
+  predicates must use valid endpoint types; and closed case analysis must be
+  exhaustive where required.  This establishes semantic well-formedness of the
+  rule.  It does not establish that the product organization chose the desired
+  rule.  A coherent but undesirable policy remains representable.
+
+- *Knowledge entailment.*  The checker asks whether a role is justified in
+  knowing a semantic fact at the point where that fact is consumed.  Relevant
+  sources include declared entry knowledge, communication, authoritative
+  observation, checked deterministic derivation, and explicit trusted
+  assertion.  Knowledge does not arise merely because a value happens to exist
+  in a host-language map, another role knows the fact, the browser physically
+  received related data, or an undeclared field survived serialization.
+
+- *Provenance entailment.*  The checker asks whether the claimed source or
+  epistemic strength of a fact follows from the path through which the fact was
+  obtained.  A browser-supplied value is not an authoritative observation
+  merely because it has the same shape or value.  A fact learned by
+  communication does not automatically become an independent authoritative
+  observation.  Any strengthening of provenance must be an explicit semantic
+  rule rather than an inference from physical message origin.
+
+- *Authority derivation and non-escalation.*  Every authority or capability
+  consumed by a semantic step must arise from an explicit trusted/runtime
+  premise or an allowed checked derivation.  Untrusted input, mere knowledge,
+  provenance labels supplied by the browser, possession of a rendered
+  affordance, possession of a URL, or successful schema validation cannot
+  silently manufacture stronger authority.  Principal, resource, scope,
+  operation, and authority identity remain part of the judgment, so authority
+  over one resource cannot be reused for another merely because their
+  representations have the same shape.
+
+  The framework-level claim is not "Alice is currently authorized to claim
+  Request R."  That concrete fact normally depends on runtime authentication
+  and current model state.  The machine-checkable claim is closer to:
+
+  #+begin_quote
+  No admitted semantic execution may consume claim authority unless the
+  required authority premise is present through a declared trusted/runtime
+  source or permitted derivation, and no weaker or untrusted fact can silently
+  manufacture stronger authority.
+  #+end_quote
+
+#+LATEX: \newpage
+
+  Conceptually:
+
+  #+begin_example
+  browser says:
+      role = helper
+          |
+          X
+          |
+          v
+      helper authority
+  #+end_example
+
+  is invalid, while a chain such as:
+
+  #+begin_example
+  trusted authentication
+      establishes principal P
+          |
+  authoritative Membership observation
+      establishes active helper relationship
+          |
+  authoritative Request / Organization facts
+      +
+  model policy
+          |
+          v
+  claim operation is currently admissible for P over R
+  #+end_example
+
+  may be valid when every edge is declared and discharged at the appropriate
+  assurance boundary.
+
+- *Message payload closure and knowledge-transfer constraints.*  A semantic
+  message defines the information flow permitted by one choreography
+  communication boundary.  By default its semantic payload is closed: only
+  fields declared by the message contract participate in the semantic message.
+  Physical transport metadata may accompany the message, but it does not
+  silently become choreography knowledge.
+
+  The checker should establish that every semantic payload field is declared,
+  the sender has justified knowledge of every semantic fact it communicates,
+  receipt introduces only the semantic facts declared by the message contract,
+  provenance introduced by receipt follows the declared communication rule,
+  and undeclared transport or implementation fields cannot become branch
+  discriminators, authority premises, or arbitrary additions to choreography
+  context.
+
+  Conceptually:
+
+  #+begin_example
+  receiver knowledge after receive
+      =
+  receiver knowledge before receive
+      +
+  declared semantic consequences of message
+  #+end_example
+
+  rather than:
+
+  #+begin_example
+  receiver knowledge after receive
+      =
+  receiver context merged with arbitrary incoming map
+  #+end_example
+
+  An explicitly extensible payload may be supported where required, but the
+  semantic status of extension data must remain explicit.  For example,
+  extension data may be transported opaquely without automatically creating
+  first-class choreography facts.  Payload closure is therefore distinct from
+  ordinary Malli shape validation: Malli may establish that a value has the
+  expected structure, while choreography checking establishes which
+  information that communication is semantically allowed to transfer.
+
+- *Behavior-sensitive branch knowledge.*  A role must know enough to
+  distinguish branches before its observable behavior diverges between those
+  branches.  If a role behaves identically in both alternatives, it need not
+  learn a choice solely because the condition occurs in the global
+  choreography.  If its behavior differs, the verifier must justify knowledge
+  of the discriminator through an allowed path.  This prevents both
+  under-checking and needless communication introduced only to mirror global
+  syntax.
+
+- *Projection preservation.*  Projection relates the accepted global
+  choreography to generated role-local machines.  Executions of those
+  projected machines must remain within behavior admitted by the global
+  choreography for the supported language subset.  Projection must not invent
+  knowledge or authority, erase communication required for justified behavior,
+  lose required resource constraints, admit forbidden branch behavior, change
+  terminal/failure meaning, or introduce executions absent from the accepted
+  global semantics.  The exact preservation/refinement theorem must state the
+  supported language subset and observable behavior relation.
+
+- *Declared resource invariants.*  Where choreography semantics include
+  resources, the checker may establish that a resource is used only after
+  acquisition, exclusive ownership is not duplicated, transfers occur only
+  through declared rules, release occurs according to the declared lifecycle,
+  terminal paths do not retain resources that must be released, and stale or
+  retired executions cannot retain semantic ownership.  Physical cleanup debt
+  does not confer continuing semantic ownership.
+
+- *Progression algebra invariants.*  Progression requirements form a semantic
+  consistency algebra rather than an arbitrary collection of tokens.
+  Canonicalization should be deterministic; composition must preserve every
+  required authoritative constraint; weaker frontiers must not masquerade as
+  satisfying stronger requirements; unrelated requirements must compose
+  without destructive interference; contradictory or malformed requirements
+  must be rejected; and normalization must not silently discard semantically
+  relevant coordinates.  Concrete XTDB tokens remain runtime values even when
+  the algebra governing their requirements is checked independently.
+
+- *Browser-adapter transition invariants.*  The browser adapter is modeled as
+  an explicit transition relation such as:
+
+  #+begin_example
+  AdapterStep
+    (ExecutablePlan,
+     AdapterState,
+     NormalizedEvent)
+        ->
+    (AdapterState',
+     AbstractEffects)
+  #+end_example
+
+  Candidate invariants include current-generation isolation, resource ownership,
+  authoritative-install monotonicity within the applicable observation scope,
+  separation of provisional and authoritative state, immediate semantic
+  retirement of obsolete work, scope-preserving acquisition requirements for
+  queued refreshes, and terminal ownership/cleanup conditions.  The proof applies to the abstract
+  transition semantics; separate implementation-correspondence evidence is
+  required for the browser shell that normalizes concrete events and performs
+  abstract effects.
+
+- *Stale-generation isolation.*  Once generation G is semantically retired, no
+  callback, timer, network result, settlement, continuation event, or delayed
+  browser effect owned by G may change semantic state belonging to a newer
+  generation.  Physical cleanup may occur later.  Semantic power ends at
+  retirement, and new logical ownership must not wait for every obsolete
+  physical operation to disappear.
+
+- *Semantic dependency compatibility.*  A certified downstream artifact may
+  depend only on upstream semantic interfaces whose guarantees satisfy the
+  assumptions recorded when the downstream artifact was checked.  A
+  same-shaped value, namespace, or source path is insufficient.  A relevant
+  upstream semantic change must invalidate stale downstream certification
+  rather than silently compose.
+
+- *Executable-plan provenance.*  An accepted =ExecutablePlan= must remain
+  traceable to the semantic inputs from which it was produced, including the
+  accepted choreography, relevant semantic dependencies, projection target,
+  and exact executable representation identity.  Executable identity is not
+  itself a proof; it binds the executable object to the checking history and
+  semantic inputs that produced it.
+
+- *Certificate dependency consistency.*  A certificate may claim only
+  guarantees justified by its checked derivation, certified dependencies,
+  explicit assumptions/assertions, and the checker/kernel rules applicable to
+  its certificate class.  Certificates may not self-certify, depend on
+  undeclared semantic inputs, silently accept stale dependencies, form
+  unsupported circular justification, or claim stronger conclusions than
+  their derivations establish.
+
+"Machine checked" is deliberately broader than "formally proved."  Useful
+result classifications include:
+
+- *Kernel-checked or theorem-proved:* a proposition is accepted by a proof
+  kernel or theorem prover from explicit premises and checked derivations.
+
+- *Exact finite-state checked:* a finite semantic state space is exhaustively
+  explored and the property holds for every state/transition in that exact
+  model.  This is stronger than sampled testing but is not automatically a
+  theorem about an unbounded concrete system.
+
+- *Abstraction-based machine proof:* an unbounded concrete claim may be
+  justified through a finite or symbolic abstraction only when a stated
+  abstraction/refinement argument shows that every semantically relevant
+  concrete behavior is represented soundly by the abstraction.
+
+- *Proof-producing elaboration:* a richer compiler or elaborator constructs
+  derivations that are accepted by a smaller checker/kernel.  The elaborator
+  does not become trusted merely because it emits proof-looking data; a buggy
+  elaborator must be unable to convince the checker of an invalid conclusion.
+
+Where the design calls a property *proved*, the proof claim must identify:
+
+- the exact proposition;
+- the formal or executable semantic model over which it is established;
+- the assumptions/premises;
+- the supported language subset;
+- the observable/refinement relation where one is involved;
+- any abstraction used to reduce an unbounded concrete domain;
+- why that abstraction is sound for the claimed property;
+- whether the result is bounded or unbounded;
+- the checker, kernel, model checker, theorem prover, or proof mechanism;
+- the identity/version of the checked semantic object where relevant;
+- the relationship between the checked object and the production object;
+- any implementation-correspondence assumption remaining outside the proof.
+
+Passing generated examples is not by itself a proof.
+
+Property-based testing is not by itself a proof.
+
+Exhaustively checking a finite concrete truncation is not by itself an
+unbounded proof.
+
+A proof over an abstraction may support an unbounded claim only when the
+abstraction/refinement argument justifies mapping all semantically relevant
+concrete cases into that abstraction.
+
+Bounding a count of requests, executions, or queue slots does not by itself
+bound the information retained inside them or establish a finite semantic state
+space. The claim must identify the state dimensions being bounded, the retained
+data that remains unbounded if any, and the abstraction used for the property.
+
+Conformance vectors generated from a formal model retain their actual evidence
+class. Executing every generated vector is not proof that those vectors cover
+all production inputs or derivations. Rule coverage alone is not a general
+production/formal correspondence theorem. A stronger claim requires a stated
+exhaustiveness or sound correspondence argument for its claimed domain.
+
+The unqualified word =proved= must never be used merely to mean:
+
+- unit tested;
+- property tested;
+- preflight accepted;
+- schema valid;
+- assembly closed;
+- observed to work in Chromium.
+
+Those may all be important evidence.  They are different evidence.
+
+#+LATEX: \newpage
+
+*** Runtime-enforced premises
+
+Some semantic or proof premises can be discharged only when a particular
+execution meets concrete external state.
+
+Examples include:
+
+- Malli value shape at external boundaries;
+- authenticated principal binding;
+- operation-registry lookup;
+- route and capability correspondence;
+- execution and generation identity;
+- command/correlation identity;
+- projected-plan compatibility;
+- browser-artifact identity;
+- progression token/header decoding;
+- current server-side authorization;
+- authoritative basis interpretation;
+- protected read/subscription authorization;
+- concrete effect results;
+- transaction outcomes;
+- current model/entity existence;
+- current membership or relationship state.
+
+A runtime-enforced premise is best understood as:
+
+#+begin_example
+static semantic result:
+    if premise P holds,
+    transition T is admissible
+
+concrete runtime:
+    check P for this execution
+
+if P succeeds:
+    execute within proved/checked boundary
+
+if P fails:
+    reject or follow declared recovery semantics
+#+end_example
+
+Runtime enforcement therefore does not weaken the static result.  It connects
+that result to the concrete execution.
+
+For example, a static semantic result may establish:
+
+#+begin_quote
+=:request/claim= may execute only with an authenticated principal possessing a
+currently valid claim-authority premise.
+#+end_quote
+
+The runtime system must still establish which principal this HTTP request
+actually represents and whether the model currently authorizes that principal
+to perform the operation.
+
+These are not second-class guarantees.  They are explicit dynamic boundaries
+whose successful enforcement keeps concrete execution inside the premises of
+the semantic result.
+
+If a runtime premise fails, execution must reject, reacquire authority, restart
+under a current plan, reauthorize, or follow another explicitly declared
+semantic recovery path.  It must not silently weaken the operation.
+
+In particular:
+
+#+begin_example
+required Choreo premise fails
+    X
+    |
+    +--> silently perform ordinary weaker HTMX action
+#+end_example
+
+is forbidden.
+
+#+LATEX: \newpage
+
+
+*** Trusted assumptions
+
+Some propositions remain outside the currently mechanically discharged core.
+
+Examples include:
+
+- authentication middleware establishes the named principal correctly;
+- XTDB supplies the documented transaction and consistency semantics on which
+  Gesso relies;
+- an application model operation satisfies a semantic contract not yet
+  discharged by a stronger model certificate;
+- HTMX follows the documented lifecycle subset Gesso depends on;
+- browser primitives implement the operations assumed by the browser effect
+  shell;
+- Clojure, ClojureScript, JavaScript, JVM, and compiler/runtime behavior
+  preserve the implementation semantics assumed by the checker;
+- cryptographic/hash primitives used for artifact identity or authenticated
+  evidence satisfy their required engineering assumptions;
+- operating-system/network primitives behave according to the explicitly
+  assumed contract.
+
+A trusted assumption is part of the trusted computing base for every
+proposition that depends upon it.
+
+An assumption is not a failure.
+
+An invisible assumption is a failure of the assurance boundary.
+
+Assumptions must therefore be named, classified, attached to the claims that
+rely on them, visible in explanation/root assurance output, and narrowed or
+discharged when stronger evidence becomes available.
+
+Useful classifications include:
+
+- =:authentication=;
+- =:trusted-model-contract=;
+- =:runtime-primitive=;
+- =:external-library=;
+- =:external-system=;
+- =:compiler-runtime=;
+- =:environment-liveness=.
+
+*** Application assertions
+
+Application assertions remain distinct from framework/trusted implementation
+assumptions.
+
+An application may need to state semantic facts that Gesso cannot derive.  For
+example:
+
+#+begin_example
+"this external identity provider is the authority for employee status"
+
+"this role mapping is organizational policy"
+
+"this third-party callback means payment has been accepted"
+#+end_example
+
+Such statements may be necessary premises.  They must not be represented as
+though Gesso proved them.
+
+An =:application-asserted= proposition therefore remains an explicit leaf in
+the assurance graph until a stronger certificate or runtime enforcement
+discharges it.
+
+This distinction is useful because:
+
+#+begin_example
+framework trusts browser primitive X
+!=
+application asserts business fact Y
+#+end_example
+
+Both are assumptions, but they have different owners and repair paths.
+
+*** Assembly-verified properties
+
+Some important propositions concern whether a finite collection of individually
+valid artifacts forms one closed executable application.  These are naturally
+checked as graph/assembly properties.
+
+Examples include:
+
+- every rendered semantic affordance names a declared semantic operation;
+- every rendered semantic operation has a projected executable plan;
+- every plan has a corresponding current browser artifact;
+- every semantic command has a declared physical transport;
+- every transport resolves to a trusted server route/capability;
+- every trusted capability resolves to the declared authoritative operation;
+- required execution capabilities are supplied;
+- settlement/progression obligations have declared realization paths;
+- every managed fragment has initial authoritative content or an allowed
+  acquisition path;
+- every operation successor can be reacquired through an authorized
+  authoritative path;
+- no ordinary anonymous transport occupies a route reserved for a semantic
+  operation;
+- generated browser artifacts correspond exactly to the current assembly;
+- startup lifecycle ordering makes required preflight unavoidable.
+
+Assembly verification is mechanical, but it is useful to classify the result
+separately from a semantic theorem.  It establishes closure over a concrete
+application graph.
+
+For example:
+
+#+begin_example
+choreography theorem:
+    projected Claim respects knowledge requirements
+
+assembly verification:
+    this application's Claim button actually resolves to that plan,
+    current browser artifact,
+    route,
+    server operation,
+    settlement,
+    and reacquisition path
+#+end_example
+
+Both can be true or false independently.
+
+Assembly checks should therefore be classified with precise language such as:
+
+- =:assembly-verified=;
+- =:preflight-closed=;
+- =:artifact-current=;
+
+rather than being upgraded automatically to =proved=.
+
+A future proof system may discharge some assembly propositions more formally.
+Until then, the distinction remains explicit.
+
+#+LATEX: \newpage
+
+*** Conditional liveness
+
+Liveness is not an independent evidence mechanism.  It is a qualification on
+propositions whose truth depends on future behavior of the environment.
+
+A statement such as:
+
+#+begin_quote
+Every provisional claim eventually reaches a resolving outcome.
+#+end_quote
+
+is meaningful only relative to premises such as:
+
+- required events are eventually delivered;
+- authoritative dependencies remain reachable;
+- required authoritative rereads eventually complete;
+- participants continue executing;
+- relevant clocks/timers eventually fire;
+- retry policy continues where required;
+- the application can recover from an incompatible stale projection;
+- application-defined conflicts do not remain permanently unresolved;
+- required external systems eventually respond where the claim depends upon
+  them.
+
+The claim should therefore have a form conceptually like:
+
+#+begin_example
+assuming:
+    eventual event delivery
+    eventual authoritative availability
+    continued participant execution
+
+prove/check:
+    every admitted provisional state eventually reaches
+    a resolving semantic state
+#+end_example
+
+The assumptions are part of the proposition.  Removing them changes the
+proposition.
+
+The design must distinguish:
+
+- *reachability:* there exists a path to a terminal/resolving state;
+- *deadlock freedom:* no admitted nonterminal state is permanently stuck under
+  the modeled transition relation;
+- *fairness-dependent progress:* enabled progress eventually occurs under a
+  fairness assumption;
+- *environment-dependent convergence:* the system converges if specified
+  external events eventually occur;
+- *unconditional termination:* every execution terminates without such
+  assumptions.
+
+These are materially different claims.
+
+The design must not call "there exists a path to terminal state" an
+unconditional termination proof, nor hide network recovery, browser resumption,
+user action, or external-system availability inside the word =eventually=.
+
+*** Tested evidence
+
+Tests remain a required assurance layer even where stronger semantic checking
+exists.
+
+Testing is particularly important for:
+
+- implementation correspondence between semantic core and runtime shell;
+- real JVM/Node/Chromium execution;
+- HTMX/SSE lifecycle behavior;
+- XTDB integration;
+- browser primitive assumptions;
+- HTTP/session/authentication integration;
+- generated-artifact loading;
+- fault injection;
+- race schedules;
+- reconnect behavior;
+- load/resource behavior;
+- multi-client HumanHelp behavior;
+- multi-node realization once it exists.
+
+Useful test classes include unit tests, property/generated tests, differential
+tests, mutation tests, integration tests, adversarial tests, browser acceptance
+tests, and load/fault tests.
+
+Tests may provide very strong practical evidence.  They must nevertheless
+remain classified as =tested= unless the particular procedure genuinely
+exhausts the explicitly claimed semantic domain and is classified more
+precisely, for example =exact-finite-checked=.
+
+Thus:
+
+#+begin_example
+100,000 generated executions passed
+#+end_example
+
+does not mean:
+
+#+begin_example
+all executions satisfy the theorem
+#+end_example
+
+unless a separate argument establishes that the tested set is exhaustive for
+the claimed semantic domain.
+
+#+LATEX: \newpage
+
+*** Composition of assurance claims
+
+The most important property of the assurance model is that evidence composes
+without losing its classification.
+
+A downstream artifact should be able to say conceptually:
+
+#+begin_example
+Claim ExecutablePlan
+
+depends on:
+
+    rule well-typed
+        evidence: kernel-checked
+
+    helper knows request-id
+        evidence: machine-checked derivation
+
+    claim authority available
+        evidence:
+            semantic requirement machine-checked
+            concrete current authorization runtime-enforced
+
+    Request claim model contract
+        evidence: trusted-model-contract
+
+    projection preserves supported semantics
+        evidence: exact-finite-checked under abstraction A
+
+    browser realization complete
+        evidence: assembly-verified
+
+    browser shell follows adapter contract
+        evidence:
+            trusted runtime primitives
+            Chromium integration tested
+#+end_example
+
+The resulting assurance claim must not erase those differences and simply say
+"Claim is verified."
+
+A stronger downstream result cannot silently upgrade a weaker premise.
+
+For example:
+
+#+begin_example
+trusted model contract
+    +
+proved choreography rule
+#+end_example
+
+does not become:
+
+#+begin_example
+proved model implementation
+#+end_example
+
+The conclusion remains conditional on the trusted model contract.
+
+Likewise:
+
+#+begin_example
+assembly verified
+    +
+browser test green
+#+end_example
+
+does not establish a projection theorem.
+
+Each evidence class retains its identity through composition.
+
+The root report should therefore expose what was proved, kernel-checked,
+exact-finite checked, assembly-verified, runtime-enforced, trusted,
+application-asserted, conditional on liveness assumptions, and supported by
+testing.
+
+#+LATEX: \newpage
+
+*** Failure and repair interpretation
+
+The assurance classification should tell the developer where repair belongs.
+
+Typical relationships include:
+
+#+begin_example
+rule typing failure
+    -> repair rule/domain declaration
+
+knowledge entailment failure
+    -> add justified information path or change behavior
+
+authority derivation failure
+    -> repair authority premise/policy boundary
+
+message payload closure failure
+    -> repair message contract or remove undeclared semantic transfer
+
+projection-preservation failure
+    -> repair choreography/projector/semantics
+
+assembly closure failure
+    -> repair application wiring
+
+runtime authorization failure
+    -> current concrete operation is not admissible
+
+trusted assumption violated
+    -> trusted boundary or assumption definition is wrong
+
+Chromium integration failure with semantic theorem still valid
+    -> implementation-correspondence/trusted shell defect
+
+liveness premise absent
+    -> liveness conclusion is not currently available
+#+end_example
+
+This is why precise assurance terminology is not cosmetic.  It makes a failed
+claim point toward the layer that owns the repair.
+
+*** Assurance-model invariant
+
+The governing invariant is:
+
+#+begin_quote
+Every meaningful Gesso guarantee identifies the proposition being claimed, the
+evidence supporting it, the premises on which it depends, and the boundary
+between mechanically discharged facts and facts that remain runtime-enforced,
+trusted, asserted, conditional, or tested.
+
+No stronger assurance classification may be inferred merely because several
+weaker forms of evidence happen to agree.
+#+end_quote
+
+The intended result is not that every statement becomes a formal theorem.
+
+The intended result is that Gesso can state, mechanically and honestly, *why*
+each accepted artifact or application is believed to be valid, what remains
+outside that claim, and exactly where construction or execution must stop when
+one of its premises fails.
+
+#+LATEX: \newpage
+
+** Semantic evidence vocabulary
+
+The following vocabulary is shared by the later compositional hardening and
+whole-application proof architecture.
+
+It is defined here so later layers do not need to redefine what their evidence
+means.
+
+*** Raw declaration
+
+A *raw declaration* is user, application, or framework data that has not yet
+crossed the semantic checker appropriate to its role.
+
+Examples include:
+
+- a raw Malli or domain schema;
+- a raw business-rule expression;
+- a raw operation contract;
+- a raw choreography;
+- a raw authority declaration;
+- a raw derivation;
+- a raw dependency reference;
+- a raw application assembly declaration.
+
+Raw data is permitted at construction boundaries.
+
+Raw data must not masquerade as a certified semantic artifact merely because it
+has the same map shape as one.
+
+*** Admitted semantic value
+
+An *admitted semantic value* is a value that has crossed the construction,
+verification, authoritative-acquisition, or other checking boundary required
+for the semantic category in which downstream code will consume it.
+
+Admission answers a question such as:
+
+#+begin_quote
+May this value be treated by the supported program as an instance of semantic
+category C at this boundary?
+#+end_quote
+
+Admission does not automatically answer every stronger question about the
+value.  In particular:
+
+- admission into a nominal category is not automatically a proof of every
+  proposition named by that category;
+- admission does not create current authorization unless authorization is the
+  proposition established by the trusted runtime boundary;
+- admission does not make a client-carried value authoritative merely because
+  it was once authoritative before serialization;
+- an admitted artifact identity binds the relevant object to its construction
+  history but does not establish semantic truth by identity alone.
+
+A nominal type, opaque wrapper, private constructor, checked constructor, or
+registry-resolved object may help represent admission.  The requirement is that
+unsupported construction or same-shaped raw data cannot silently receive the
+stronger semantic treatment through the normal API.
+
+*** Semantic interface
+
+A *semantic interface* is the normalized meaning exported by one checked
+component to its dependents.
+
+It contains only propositions downstream reasoning is permitted to rely on.
+
+Depending on the component, this may include:
+
+- declared value types;
+- variants;
+- cardinality;
+- optionality/refinement rules;
+- relationships;
+- operation input/output facts;
+- preconditions;
+- postconditions;
+- authority requirements;
+- provenance requirements;
+- effects and resources;
+- named assumptions;
+- named guarantees;
+- compatibility constraints.
+
+Implementation details irrelevant to downstream reasoning should not become
+semantic commitments merely because they are convenient to serialize.
+
+*** Assumption
+
+An *assumption* is a named proposition accepted from outside the proof currently
+being established.
+
+Assumptions are explicit leaves in the proof or explanation graph.
+
+They are not inferred from trust in a namespace name, source location, familiar
+implementation, passing test, or matching hash.
+
+*** Guarantee
+
+A *guarantee* is a proposition established by the current checked component
+relative to its certified dependencies and named assumptions.
+
+*** Obligation
+
+An *obligation* is a proposition that must be established before a particular
+checked result or certificate may be issued.
+
+An unresolved obligation must remain visible.
+
+It must not be replaced by a default success value or silently omitted from the
+result.
+
+*** Derivation
+
+A *derivation* is machine-readable evidence describing how a guarantee follows
+from certified premises and inference rules.
+
+Derivations are useful for:
+
+- mechanical checking;
+- diagnostics;
+- explanation;
+- repair;
+- trusted-computing-base reduction when an independent checker is introduced.
+
+A derivation is evidence, not runtime authority.
+
+*** Certificate
+
+A *certificate* is a closed evidence artifact stating enough information for an
+appropriate checker to decide the claims it represents.
+
+A certificate may include:
+
+- the semantic object checked;
+- its semantic identity;
+- certified dependency identities;
+- assumptions;
+- guarantees;
+- proof obligations;
+- derivations or checked references to derivations;
+- checker or kernel version;
+- result classification.
+
+A certificate is not a boolean.
+
+A certificate is not accepted because an ordinary Clojure map contains a key
+such as =:verified? true=.
+
+A certificate is accepted only through the checker boundary appropriate to that
+certificate class.
+
+*** Semantic identity
+
+A *semantic identity* is a deterministic identity of normalized semantic
+meaning.
+
+It is deliberately distinct from:
+
+- source-file checksum;
+- file path;
+- namespace name;
+- build timestamp;
+- runtime locator;
+- physical artifact location.
+
+Whitespace, comments, local helper names, and semantically irrelevant
+implementation refactors should not necessarily invalidate downstream evidence.
+
+Changes to relied-upon semantic commitments must.
+
+Examples include changes to:
+
+- value types;
+- rule contracts;
+- authority contracts;
+- operation postconditions;
+- provenance requirements;
+- compatibility rules;
+- resource semantics.
+
+Semantic identity identifies normalized semantic material under the declared
+normalization and identity contract. A matching untrusted identifier is not
+self-authenticating evidence that the corresponding material was checked.
+
+Semantic identity by itself does not prove the truth of that material. Evidence
+about a particular generated artifact or implementation must also remain bound
+to the concrete object to which that evidence applies. Semantic equivalence
+does not automatically transfer test results or physical artifact correspondence
+from an earlier build to a different one.
+
+*** Proof DAG
+
+A *proof DAG* is the dependency graph from a root checked artifact through all
+certified semantic dependencies and named assumptions.
+
+A realistic root may eventually depend on:
+
+#+begin_example
+schema certificates
+    |
+domain certificates
+    |
+relationship certificates
+    |
+business-rule certificates
+    |
+model-operation certificates
+    |
+choreography certificate
+    |
+projection certificate
+    |
+executable-plan certificate
+    |
+whole-application closure evidence
+#+end_example
+
+A later stage may rely only on propositions actually exported by its certified
+dependencies or named as assumptions.
+
+No stage receives credit for a predecessor's intended meaning when that meaning
+was never certified.
+
+The certificate dependency DAG must be acyclic. Recursive or fixed-point
+semantics may be supported only through a deliberately formalized rule with
+checked premises; a dependency cycle does not supply that justification.
+
+A namespace cycle does not become valid logical recursion merely because the
+language runtime can load around it.
+
+#+LATEX: \newpage
+
+** Construction principles
+
+The following principles apply throughout the design.
+
+They are not implementation-history advice.  They are properties of the
+intended finished system.
+
+*** State semantic intent once
+
+The ordinary coherent formulation should state semantic intent in one
+canonical place.
+
+If Gesso already knows:
+
+- operation identity;
+- participating role;
+- projected browser plan;
+- command schema;
+- transport requirement;
+- expected settlement;
+- progression requirement;
+
+then views, routes, browser registries, and server handlers should not all
+independently restate those facts unless an independent physical choice
+genuinely exists.
+
+Prefer:
+
+#+begin_example
+one semantic declaration
+    |
+    +--> derived browser metadata
+    |
+    +--> derived or checked transport binding
+    |
+    +--> derived diagnostics
+    |
+    +--> checked application closure edges
+#+end_example
+
+over:
+
+#+begin_example
+operation declaration
++ unrelated button declaration
++ unrelated plan-name declaration
++ unrelated transport declaration
++ route operation string
++ bootstrap registry entry
+#+end_example
+
+When independently authored values must agree, correspondence must be checked
+explicitly.
+
+*** Derive rather than synchronize
+
+Duplication creates programs whose pieces are individually plausible but
+mutually contradictory.
+
+Whenever a fact can be derived safely from a stronger semantic source, derive
+it.
+
+Do not create a second source of truth merely to make one layer easier to
+implement.
+#+LATEX: \newpage
+*** Fail at the earliest legitimate boundary
+
+A contradiction should fail at the earliest layer that possesses enough
+information to establish it.
+
+Examples of definition/construction-time failures include:
+
+- malformed choreography;
+- unknown role;
+- impossible local transition;
+- invalid message declaration;
+- inconsistent operation metadata;
+- invalid certified dependency reference.
+
+Examples of build/application-preflight failures include:
+
+- rendered semantic affordance with no projected executable plan;
+- stale generated artifact;
+- missing transport;
+- missing trusted route/capability;
+- missing server execution capability;
+- managed fragment with no permitted initial acquisition;
+- authoritative successor with no permitted reacquisition path.
+
+*** Runtime-only conditions and required recovery
+
+Some facts relevant to an execution can be established only at runtime. Examples
+include:
+
+- the current authenticated principal is not authorized for a concrete Request;
+- the Request changed after it was rendered;
+- a transaction guard fails;
+- an external provider is unavailable;
+- a browser or another required participant disconnects;
+- an expected environment event has not occurred within an application-relevant
+  lease, deadline, or interval.
+
+Do not attempt to statically prove genuinely dynamic domain facts merely to
+increase preflight coverage.
+
+Runtime-only establishment does not place these conditions outside the
+application's correctness model. The distinction is between knowing before
+execution whether a condition will occur and knowing before execution that the
+application has a coherent response if it does occur.
+
+Where a declared operation or workflow can encounter a runtime condition that
+invalidates its premises, removes a participant required for progress, or would
+otherwise strand the workflow, the application must define a permitted path
+forward. Depending on the application, that path may involve rejection,
+authoritative reacquisition, retry, compensation, timeout, retirement,
+reassignment, cancellation, explicit degradation, or another declared successor
+state.
+
+Static checking may therefore establish a conditional property such as:
+
+#+begin_example
+if runtime condition F is established,
+the admitted application has a declared path
+from F to a valid recovery, successor,
+or terminal state
+#+end_example
+
+without claiming to establish statically whether F will occur in a particular
+execution.
+
+A Request changing after rendering is one example. Gesso cannot establish
+beforehand that the Request will remain unchanged until the user acts. It can
+require that an operation whose rendered premises have become stale is checked
+against current authority and model state and that failure of those premises
+leads through declared rejection, reacquisition, or recovery semantics rather
+than allowing execution to proceed from obsolete state.
+
+Loss of a participant is another example. A physical network disconnect does
+not necessarily establish that the participant is semantically unavailable;
+temporary network failure, browser suspension, or reconnect may be ordinary
+execution conditions. The application therefore owns the policy that determines
+when loss of participation becomes semantically relevant. That policy may use a
+lease, heartbeat, deadline, authoritative presence state, explicit withdrawal,
+or another declared mechanism.
+
+Once a participant is established to be unavailable, however, a workflow whose
+progress depends on that participant must not simply remain indefinitely
+dependent on an actor that can no longer satisfy its role. HumanHelp may decide
+that the affected Request becomes stale, becomes reassignable, returns to an
+available pool, remains assigned for a bounded lease, is cancelled, or follows
+another coherent application-defined path. Gesso does not choose among those
+policies, but absence of any declared handling is not itself an acceptable
+policy when the condition can leave the admitted workflow permanently
+non-serviceable.
+
+The same distinction applies to transaction conflicts and external dependencies.
+A transaction guard may fail only at commit time, and an external service may
+become unavailable only during execution. Those facts need not be statically
+knowable. Their possible effect on an admitted workflow still requires declared
+semantics whenever failure can invalidate the current trajectory or prevent
+required progress.
+
+Some workflows may deliberately rely on an environmental event eventually
+occurring rather than define a timeout or alternate path. In that case the
+corresponding liveness claim is explicitly conditional on that environmental
+assumption. Omitting the failure or non-participation path must not silently
+transform a conditional progress claim into an unconditional completion
+guarantee.
+
+When a required premise is known not to hold, the dependent liveness conclusion
+is unavailable. A conditional eventual-recovery assumption must not be used to
+claim progress for a participant already established to be permanently unable
+to satisfy the required role. Safety obligations continue to apply while
+progress is unavailable.
+
+Local timeout, retirement, cancellation of a browser resource, and physical
+disconnect must not invent an authoritative command outcome. The command's
+status remains participant-relative until the required outcome evidence is
+available. Application recovery and current authoritative eligibility remain
+model-owned even if a retired or disconnected browser later resumes.
+
+The governing rule is:
+
+#+begin_quote
+Dynamic facts need not be statically knowable, but dynamically possible
+conditions that materially affect correctness must have declared semantics
+sufficient to preserve the application's stated safety and liveness claims.
+#+end_quote
+
+
+*** Fail closed rather than silently downgrade semantics
+
+A semantically managed operation must never become an ordinary weaker operation
+merely because required semantic metadata is absent.
+
+Forbidden examples include:
+
+#+begin_example
+missing authoritative basis
+    -> emit naked semantic hx-post anyway
+
+missing browser plan
+    -> guess a route and send anyway
+
+unknown browser-artifact correspondence
+    -> start runtime anyway
+
+missing optimistic command
+    -> perform ordinary mutation anyway
+#+end_example
+
+If a semantically managed realization cannot be constructed, the correct
+behavior is a precise failure or an explicitly modeled unavailable operation.
+The unavailable state must preserve operation identity and the reason its
+realization is unavailable. It does not satisfy a milestone that independently
+requires the operation to be usable in an eligible scenario.
+
+This rule does not make ordinary HTMX illegal.  Ordinary non-semantic HTMX
+remains valid where the application intentionally requested an ordinary HTMX
+interaction.
+
+The prohibition is against silent loss of previously declared semantics.
+
+*** Production boundaries carry the promised checks
+
+A construction check contributes to an application's assurance only when the
+supported production path actually invokes it before the corresponding action
+becomes possible. An isolated checker test does not establish that relationship.
+
+For a claimed production-enforced obligation, evidence must identify the
+boundary that admits the relevant object or action and demonstrate rejection
+of a representative controlled defect through that boundary. The corresponding
+valid fixture must remain usable, so a checker that rejects everything cannot
+satisfy the requirement.
+
+The detailed startup, handler, generated-artifact, and rendered-surface
+boundaries belong to the whole-application construction part. Their assurance
+classification follows the [[#req-application-assurance-claims][three application assurance claims]].
+
+*** Keep authoring vocabulary small and canonical
+
+The ordinary path should have one obvious representation.
+
+If five public APIs express the same semantic operation binding, humans and
+LLMs gain four extra ways to build inconsistent applications.
+
+Prefer:
+
+#+begin_example
+explicit data
++ strong derivation
++ strong validation
++ strong explanation
+#+end_example
+
+over:
+
+#+begin_example
+implicit magic
++ duplicated configuration
++ weak runtime discovery
+#+end_example
+
+Escape hatches may exist for unusual requirements, but they must be explicit
+and must not weaken unrelated invariants.
+
+The same principle applies to semantic-category distinctions.  Stronger
+internal admission should reduce downstream ambiguity rather than impose a
+manual wrapping tax.  Where Gesso can mechanically derive or construct an
+admitted value from declarations it already owns, ordinary application authors
+should not be required to construct nominal wrappers, certificate maps,
+transitive proof objects, or authority tokens by hand.
+
+The desirable developer experience is therefore asymmetric:
+
+#+begin_example
+correct ordinary path
+    -> little additional ceremony
+
+semantic-category mistake
+    -> early precise diagnostic
+
+manual crossing of a strong semantic boundary
+    -> deliberate, explicit API
+#+end_example
+
+*** Errors are part of the public correctness surface
+
+Important failures should have stable structured representations.
+
+A useful error should answer, where applicable:
+
+1. What failed?
+2. Which semantic object or operation was involved?
+3. Where was the obligation introduced?
+4. Which semantic/proof/application edge failed?
+5. What was required?
+6. What was actually available?
+7. Which known alternatives are legal?
+8. Which assurance class was expected?
+9. Which assumption, if any, would be required to proceed?
+
+Fuzzy suggestions may help diagnostics but must not silently alter
+security-sensitive execution.
+
+*** Proof/check state is inspectable
+
+A developer or LLM should not need to reconstruct application closure by
+mentally executing dozens of namespaces.
+
+The finished system should be able to expose stable summaries of:
+
+- semantic operation registry;
+- role and authority declarations;
+- projected plans;
+- executable artifact identity;
+- view affordances;
+- transport bindings;
+- trusted server capabilities;
+- settlement/progression bindings;
+- authoritative acquisition paths;
+- open obligations;
+- named assumptions;
+- result classification for each guarantee.
+
+Inspection is diagnostic.
+
+Inspection does not create a new semantic input to runtime.
+
+*** Stronger proof machinery must pay for itself
+
+Every increase in proof complexity should answer:
+
+#+begin_quote
+Which concrete malformed application, unsafe behavior, or required application
+behavior becomes impossible or immediately recognizable because of this
+addition?
+#+end_quote
+
+If the answer is only theoretical elegance, the default is to defer the added
+formal machinery.
+
+The proved language should grow vertically from real correctness requirements
+rather than horizontally toward maximal expressiveness.
+
+#+LATEX: \newpage
+

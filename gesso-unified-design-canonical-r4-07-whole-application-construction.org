@@ -1,0 +1,2775 @@
+* Part VII — Whole-application construction
+:PROPERTIES:
+:CUSTOM_ID: part-07-whole-application-construction
+:END:
+
+This part defines the canonical application assembly and the production
+boundaries that enforce its closure. It connects the semantic and runtime
+contracts of Parts I–VI to generated artifacts, actual routes, prepared server
+operations, acquisition paths, rendering, and lifecycle. Structural closure,
+production enforcement, and independent product completeness retain their
+distinct evidence and scope.
+
+** Whole-application realization and preflight closure
+:PROPERTIES:
+:CUSTOM_ID: req-whole-application-closure
+:END:
+
+A verified choreography, a correct model operation, a valid browser projection,
+and a working HTTP route do not by themselves constitute a correct application.
+
+The complete application has another structural correctness boundary:
+
+#+begin_quote
+Every semantic operation that the application exposes must have one coherent,
+checked path from authored affordance through executable browser/server
+realization to authoritative mutation or observation and back to a renderable
+authoritative result.
+#+end_quote
+
+This boundary is called *whole-application closure*.
+
+Whole-application closure exists because individually valid components can be
+assembled into a system that is structurally impossible.
+
+Examples include:
+
+- a view exposes a valid semantic operation for which no browser plan is shipped;
+- a browser plan exists but the generated browser artifact is stale;
+- a plan emits a command transport for which no trusted route exists;
+- a trusted route exists but does not resolve the declared semantic operation;
+- a server operation exists but its execution environment cannot supply the
+  required clock, transaction, principal, basis, or other capability;
+- a model operation commits correctly but no declared settlement/progression
+  path can reacquire the successor authoritative state;
+- a Live fragment subscribes to invalidation but has no initial authoritative
+  knowledge and no permitted acquisition route;
+- a view silently degrades a Choreo-managed optimistic action into an ordinary
+  HTMX request when a required basis is absent;
+- tests construct a shadow registry that is internally coherent while the
+  production application uses a different incompatible assembly.
+
+None of those failures is necessarily visible inside the individual component
+that is locally correct.
+
+The unified design therefore treats the assembled application as a first-class
+semantic object that can itself be checked.
+
+*** Whole-application closure is not a second choreography
+
+The application assembly does not replace the global choreography.
+
+The layers remain distinct:
+
+#+begin_example
+global choreography
+    establishes allowed distributed semantic behavior
+
+projection
+    derives role-local executable semantics
+
+application assembly
+    establishes that concrete application realization actually supplies
+    every required physical/trusted edge for those semantics
+#+end_example
+
+A choreography answers:
+
+#+begin_quote
+What distributed behavior is semantically allowed?
+#+end_quote
+
+Application closure answers:
+
+#+begin_quote
+Has this application actually assembled a complete realization of that
+behavior?
+#+end_quote
+
+A route being present does not make an invalid choreography valid.
+
+A valid choreography does not make a missing route appear.
+
+Both layers are required.
+
+*** Assurance terminology remains precise
+
+Whole-application closure must not inflate its terminology.
+
+Mechanically proved properties of explicit formal semantics may be called
+=proved= under the assurance rules established in Part I.
+
+Closed graph/assembly checks should be described as, for example:
+
+- =preflight-closed=;
+- =assembly-verified=;
+- =verified application assembly=.
+
+A Chromium test is behavioral evidence.
+
+A startup check is runtime enforcement.
+
+A trusted route or authentication binding may remain a trusted/runtime premise.
+
+These classifications may coexist in one application report.
+
+For example:
+
+#+begin_example
+operation :request/claim
+
+semantic choreography:
+    proved / mechanically checked for supported properties
+
+browser artifact correspondence:
+    assembly-verified
+
+server capability closure:
+    assembly-verified
+
+authenticated principal value:
+    runtime-enforced
+
+current Request authorization:
+    runtime/model-enforced
+
+authentication middleware correctness:
+    trusted assumption
+
+real HTMX/browser lifecycle:
+    tested external assumption
+#+end_example
+
+A useful application explanation preserves those distinctions instead of
+collapsing them into one green =:verified?= boolean.
+
+*** Three distinct application assurance claims
+
+The authoritative definition of declared closure, production enforcement, and
+behavioral completeness is [[#req-application-assurance-claims][in Part I]]. This
+part supplies the construction and enforcement contracts for the first two.
+Independent user-capability acceptance remains necessary for the third.
+
+An application report must retain the scope of each claim. An unused operation
+need not have a user affordance unless required by the declared realization or
+product milestone; omitting a required user capability nevertheless fails that
+milestone even if the remaining graph is closed.
+
+** ApplicationAssembly
+:PROPERTIES:
+:CUSTOM_ID: req-application-assembly
+:END:
+
+The application has one canonical source-owned value or constructor that
+describes the realization facts needed for whole-application closure.
+
+This conceptual object is called =ApplicationAssembly=.
+
+The exact Clojure API is intentionally not fixed by this design document.
+
+The semantic requirements are fixed.
+
+An =ApplicationAssembly= contains or deterministically derives enough
+information to describe at least:
+
+- semantic operations exposed by the application;
+- global/verified choreography references required by those operations;
+- role-local projected browser plans;
+- browser plan registry identity;
+- generated browser artifact correspondence;
+- rendered affordance declarations or the rules by which they are checked;
+- physical command transports;
+- trusted HTTP/server entrypoints;
+- server-side semantic operation registry;
+- authoritative model-operation correspondences;
+- required and supplied execution capabilities;
+- settlement/outcome declarations;
+- progression requirements;
+- Live/authoritative acquisition paths;
+- source/ownership locations used for diagnostics.
+
+The assembly is not merely a bag of registries.
+
+It is a graph whose edges are semantic obligations.
+
+*** One canonical source-owned assembly
+
+An application must not have separate independently authored assemblies for:
+
+- browser build;
+- application preflight;
+- startup;
+- runtime rendered-surface checking;
+- tests.
+
+Those consumers may derive different views of one assembly, but they must share
+one source of semantic identity.
+
+Conceptually:
+
+#+begin_example
+application source declarations
+        |
+        v
+canonical ApplicationAssembly
+        |
+        +--> browser build manifest
+        |
+        +--> browser artifact currentness check
+        |
+        +--> static application preflight
+        |
+        +--> runtime rendered-surface preflight
+        |
+        +--> application explanation
+        |
+        +--> tests
+#+end_example
+
+Tests must consume the production assembly.
+
+A test-only reconstruction is not evidence that the production application is
+closed. Tests may instantiate the canonical constructor with declared fixture
+configuration and may deliberately introduce controlled defects. They must
+identify the configuration differences relevant to the claim; fixture-specific
+providers or routes cannot stand in for an unexamined production binding.
+
+*** Source ownership is explicit
+
+Every independently authored application realization fact should have an
+obvious owner.
+
+Examples:
+
+#+begin_example
+semantic operation/choreography
+    model or flow choreography namespace
+
+physical routes
+    route namespace
+
+Live fragment/acquisition declarations
+    Live integration namespace
+
+trusted server operation realization
+    server/optimistic integration namespace
+
+browser plan declaration
+    Choreo/browser assembly source
+
+view affordance
+    view/component source
+#+end_example
+
+The =ApplicationAssembly= composes those facts.
+
+It should not become a second namespace that manually recopies all of them.
+
+The preferred direction is:
+
+#+begin_example
+source owner
+    -> exported normalized declaration
+    -> assembly composition
+#+end_example
+
+not:
+
+#+begin_example
+source owner says X
+application_preflight.clj manually says X again
+test manually says X a third time
+#+end_example
+
+*** Assembly identity
+
+The normalized application assembly has a deterministic semantic identity.
+
+That identity should change when a realization fact relevant to closure changes.
+
+Examples include:
+
+- operation registry membership;
+- browser plan semantic identity;
+- transport correspondence;
+- route method/template;
+- server operation correspondence;
+- execution capability requirements;
+- acquisition/progression binding;
+- required browser plan set and manifest input contract.
+
+It should not change merely because of irrelevant source formatting or comments.
+
+The exact normalization/fingerprinting mechanism belongs to the later
+compositional-proof/hardening layer where appropriate.
+
+The application layer nevertheless requires a stable normalized identity now so
+that build, startup, diagnostics, and artifact currentness can compare the same
+assembly.
+
+Normalized declaration identity, generated artifact identity, and admitted
+generation identity may identify different objects. They must not be collapsed
+into a self-referential hash. The identity recipe must specify which object and
+dependencies each identifier binds, following the construction phases below.
+Source provenance or concrete realization identity may additionally be needed
+to bind test evidence to the implementation actually exercised; a stable public
+contract name does not transfer that evidence to a changed handler body.
+
+*** Assembly construction phases and admitted generation
+:PROPERTIES:
+:CUSTOM_ID: req-assembly-construction-phases
+:END:
+
+One canonical source owner does not require every construction product to exist
+at the same instant.  The design distinguishes three phases conceptually:
+
+1. source-owned declarations and normalized semantic inputs;
+2. generated executable artifacts plus the evidence that binds them to those
+   inputs;
+3. a validated assembly generation admitted for serving.
+
+These are phases and products of one ownership model, not three independently
+maintained semantic registries.  Existing Gesso representations should express
+these phases where they already suffice; this specification does not require a
+new public runtime type merely because the phases are semantically distinct.
+
+The construction dependency graph must be acyclic.  In particular, an artifact
+stamp embedded in generated bytes must not require the hash of the final bytes
+that themselves contain that stamp unless an explicit construction defines how
+the cycle is broken.  A detached build/artifact receipt is one possible
+realization, not a universal requirement.
+
+Each identity used by the assembly must make clear:
+
+- which semantic or physical object it identifies;
+- which normalized inputs determine it;
+- which compiler/checker/protocol versions contribute where semantically
+  relevant;
+- whether diagnostic-only material is excluded;
+- whether the identity denotes normalized semantic meaning or exact generated
+  bytes;
+- when the identity becomes fixed;
+- which changes invalidate dependent evidence.
+
+An admitted assembly generation is immutable for the scope of the claims made
+about it.  Source, semantic, compiler, manifest, route, or generated-artifact
+changes that invalidate those claims require construction and validation of a
+new generation or another explicitly checked transition.  Development reload
+may automate that process, but it must not mutate an already admitted generation
+in place while retaining stale evidence.
+
+Concrete use of an admitted generation must remain coherent. Routes, handler
+wrapping, prepared operations, capability providers, rendering rules, and
+artifact bindings consumed by one admitted request must resolve to that
+generation or to an explicitly checked compatibility transition. Capturing an
+assembly map is insufficient if an unchecked mutable registry or redefined var
+can change its realized behavior while the old report still claims validity.
+The supported implementation must freeze relevant bindings, resolve through
+generation-owned references, or invalidate and re-admit affected use.
+
+Evidence produced during construction determines whether an artifact is
+eligible to execute.  It does not become runtime authority.  Semantic hashes,
+artifact receipts, certificates, sidecars, and assembly reports must not grant a
+running execution a principal, authoritative fact, current authorization, branch
+decision, or operation capability that the runtime semantics require from
+trusted current premises.
+
+*** Assembly construction may derive facts
+
+The obvious coherent formulation should be the shortest formulation.
+
+If the semantic operation declaration already establishes:
+
+- operation identity;
+- browser participant;
+- command schema;
+- required progression;
+- expected settlement;
+- projected plan identity;
+
+then the assembly should derive or validate those values rather than require
+each downstream layer to type them again.
+
+The design favors:
+
+#+begin_example
+one semantic declaration
+    -> derived browser metadata
+    -> derived required transport
+    -> derived expected server operation
+    -> derived diagnostics
+#+end_example
+
+over:
+
+#+begin_example
+operation declaration
++ button operation name
++ browser-plan name
++ protocol name
++ route operation string
++ server registry operation string
++ test operation string
+#+end_example
+
+Where two independent physical choices really do exist, they remain separate
+and the assembly checks their correspondence.
+
+*** Assembly construction is closed-world for declared registries
+
+Where the application claims a registry is closed, unknown members are errors.
+
+Examples include:
+
+- unknown semantic operation referenced by a view;
+- browser plan key not present in the current plan registry;
+- route declaration referring to an unknown trusted server operation;
+- acquisition path referring to an unknown fragment/projection;
+- server realization referring to an unknown model operation contract.
+
+The application should not discover these facts lazily on first use if the
+complete registry is already available during construction or preflight.
+
+** Whole-application closure graph
+
+The application checker operates over explicit nodes and edges.
+
+It should not grow into a bag of unrelated boolean predicates.
+
+A graph representation provides:
+
+- a place to attach source ownership;
+- a place to attach identities;
+- a place to record obligations;
+- a place to explain which edge failed;
+- a place to inspect the complete application;
+- a basis for later proof-DAG integration.
+
+*** Semantic nodes
+
+At minimum the semantic side includes concepts equivalent to:
+
+- global choreography;
+- semantic operation;
+- projected participant/role;
+- authoritative model operation;
+- typed semantic outcome/settlement;
+- authoritative progression requirement;
+- authoritative acquisition/projection requirement.
+
+Depending on the operation, it may also include:
+
+- provisional projection;
+- command schema;
+- model operation contract;
+- authority requirement;
+- resource/effect contract.
+
+*** Application realization nodes
+
+At minimum the physical/application side includes concepts equivalent to:
+
+- rendered affordance declaration;
+- browser executable plan;
+- browser assembly manifest;
+- generated browser artifact/stamp;
+- physical transport binding;
+- route/server entrypoint;
+- trusted server semantic operation registry;
+- server execution capability provider;
+- Live fragment/acquisition declaration;
+- authoritative reread endpoint/projection;
+- application lifecycle/startup module.
+
+
+#+LATEX: \newpage
+*** Important closure edges
+
+The basic path is:
+
+#+begin_example
+rendered affordance
+        |
+        v
+semantic operation
+        |
+        v
+valid trajectory in global choreography
+        |
+        v
+projected browser executable plan
+        |
+        v
+exact generated browser artifact
+        |
+        v
+declared physical command transport
+        |
+        v
+trusted route / server entrypoint
+        |
+        v
+trusted server semantic operation
+        |
+        v
+authoritative model operation
+        |
+        v
+typed settlement / progression
+        |
+        v
+permitted authoritative acquisition path
+        |
+        v
+renderable authoritative projection
+#+end_example
+
+Not every application operation requires every node.
+
+For example, a server-only choreography has no browser plan.
+
+An ordinary authoritative read may have no optimistic provisional projection.
+
+The assembly representation should express operation-specific requirements
+rather than inventing fake nodes solely to satisfy one universal pipeline.
+
+Where two realization values have the same ordinary Clojure representation but
+different semantic status, shape alone is not evidence that they are
+interchangeable.  A raw declaration, admitted executable plan, current artifact
+stamp, trusted server realization, or checked certificate may all be represented
+with ordinary immutable data while belonging to different semantic categories.
+The supported construction path must preserve those distinctions strongly enough
+that accidental substitution is rejected at the earliest legitimate boundary.
+
+Nominal records/types, opaque wrappers, smart constructors, checked constructors,
+or existing admitted representations are permitted implementation techniques.
+No particular technique is required here.  The requirement is semantic: code
+must not gain stronger admission, provenance, authority, or certification merely
+by constructing a same-shaped map or discriminator key.
+
+*** Every edge has evidence
+
+Each assembly edge should be inspectable as something conceptually equivalent
+to:
+
+#+begin_src clojure
+{:edge/id ...
+ :edge/kind :operation->browser-plan
+ :edge/source ...
+ :edge/from ...
+ :edge/to ...
+ :edge/expected ...
+ :edge/evidence ...
+ :edge/status :assembly-verified}
+#+end_src
+
+Exact fields are tentative.
+
+The required semantics are:
+
+- which relation is being checked;
+- which source introduced the obligation;
+- which source supplies the candidate fulfillment;
+- what identities are compared;
+- how failure is classified;
+- what diagnostic evidence is available;
+- which premises remain trusted or runtime-enforced rather than mechanically
+  established by that edge check.
+
+An edge's own =:edge/status :assembly-verified= field is not its admission rule.
+The checker must derive acceptance from the appropriate identities, contracts,
+and admitted dependencies. Raw or stale reports cannot certify themselves.
+An arbitrary handler annotated with an operation name does not thereby prove
+that its body implements that operation. The supported constructor/dispatch
+binding supplies structural correspondence; remaining implementation behavior
+is trusted or tested unless stronger evidence actually discharges it.
+
+An edge should not disappear after successful checking if retaining its
+explanation is useful for application inspection.
+
+*** No orphan realization nodes
+
+An application should detect realization artifacts that are supposed to serve a
+semantic role but are unconnected.
+
+Examples:
+
+- generated browser plan with no semantic operation;
+- route marked semantic but absent from operation registry;
+- Live acquisition declaration for no managed fragment;
+- server operation registry entry that claims a semantic operation no current
+  authoritative model contract supplies.
+
+Some unused declarations may be legal.
+
+They must be explicitly classified as unused/available rather than silently
+confused with realized application behavior.
+
+*** No unresolved required edge in a closed application
+
+A preflight-closed application has no unresolved structural obligations.
+
+Dynamic runtime premises may remain.
+
+For example:
+
+#+begin_example
+"structurally, authenticated principal will be supplied here"
+    may be closed at assembly time
+
+"the actual principal is authorized for Request R right now"
+    is runtime/model state
+#+end_example
+
+The first can be an assembly requirement.
+
+The second should not be mislabeled as an open preflight obligation.
+
+** Semantic identity is monotonic through realization
+
+Once source code declares that a rendered action means a semantic operation,
+that identity may accumulate physical realization details but may not silently
+disappear.
+
+The intended monotonic path is:
+
+#+begin_example
+semantic operation
+    |
+    + operation arguments/subject
+    |
+    + browser plan
+    |
+    + render binding
+    |
+    + physical transport
+    |
+    + trusted route
+    |
+    + trusted execution
+    |
+    + settlement/publication/acquisition
+#+end_example
+
+Failure to realize a required edge of an enabled action causes rejection.
+An explicitly unavailable rendering may be admitted under its own contract,
+with no active weaker transport and without counting as a usable capability.
+Neither case erases the earlier semantic declaration.
+
+*** No implicit fallback realization
+
+Suppose =:request/claim= has an optimistic Choreo realization that requires:
+
+- authoritative observation basis;
+- protocol command;
+- projected browser plan;
+- settlement/progression contract.
+
+If the current render cannot supply the required basis, the following is
+forbidden:
+
+#+begin_example
+cannot realize optimistic :request/claim
+    |
+    v
+omit :choreo/op
+    |
+    v
+emit ordinary hx-post /claim
+#+end_example
+
+That turns a known semantic operation into a weaker anonymous transport request.
+
+The correct possibilities are:
+
+- realize the declared semantic operation completely;
+- render it explicitly unavailable/disabled if the UI contract permits that;
+- choose another realization that was independently declared and preflighted for
+  the same semantic operation;
+- reject the malformed render/application.
+
+*** Explicit alternate realization is legal
+
+The no-fallback rule does not mean one semantic operation can have only one
+physical realization forever.
+
+An operation may deliberately support, for example:
+
+#+begin_example
+optimistic browser realization
+non-optimistic semantic realization
+server-only realization
+#+end_example
+
+if those alternatives are:
+
+- explicitly declared;
+- semantically related to the same operation;
+- individually checked;
+- selected by a rule the application understands;
+- visible to diagnostics.
+
+What is forbidden is inventing the weaker realization because the stronger one
+was missing required data.
+
+*** Operation identity survives unavailable realization
+
+A missing basis means:
+
+#+begin_quote
+this realization is unavailable
+#+end_quote
+
+not:
+
+#+begin_quote
+this control no longer means :request/claim
+#+end_quote
+
+This distinction is central to fail-closed rendering.
+
+** Ordinary HTMX and semantic-operation routes
+
+Ordinary HTMX remains a supported mechanism.
+
+Gesso does not require every:
+
+- form;
+- link;
+- refresh;
+- filter;
+- search interaction;
+- local UI control;
+
+to become a choreographic operation.
+
+The application must instead distinguish ordinary interactions from semantic
+operation realizations.
+
+*** Ordinary HTMX remains legal
+
+An ordinary HTMX interaction may use a route that is not assembled as a
+semantic-operation route.
+
+For example:
+
+#+begin_example
+ordinary filter UI
+ordinary search fragment
+ordinary non-semantic preference update
+#+end_example
+
+may use ordinary HTMX according to application design.
+
+The framework must not reject ordinary HTMX merely because Choreo exists.
+
+*** Anonymous use of an assembled semantic route is rejected
+
+If method/path correspondence identifies a physical route as a realization of a
+semantic operation, an ordinary anonymous action must not occupy that route while
+omitting the semantic identity required by the assembly.
+
+Conceptually:
+
+#+begin_example
+assembly:
+    POST /app/requests/:request-id/claim
+        realizes :request/claim
+
+rendered:
+    hx-post="/app/requests/123/claim"
+    no semantic operation identity
+
+result:
+    REJECT
+#+end_example
+
+This rule is a backstop against semantic identity erasure.
+
+*** Method and route-template identity matter
+
+The collision check must use the application's actual route semantics, including
+the relevant base path, decoding/normalization, route precedence, and method
+dispatch of the supported router. An independently guessed string-matching
+approximation is insufficient where it disagrees with actual dispatch.
+
+The supported constructor should derive checking and dispatch from the same
+normalized route declarations or establish their correspondence explicitly.
+Unsupported dynamic routing must be identified as such rather than accepted
+as closed merely because a checker cannot analyze it.
+
+It should distinguish, as appropriate:
+
+- HTTP method;
+- route template;
+- concrete path parameters;
+- query-string normalization where semantically relevant;
+- optional/alternate physical realizations.
+
+For example:
+
+#+begin_example
+POST /requests/:id/claim
+#+end_example
+
+must match a concrete:
+
+#+begin_example
+POST /requests/550e8400-e29b-41d4-a716-446655440000/claim
+#+end_example
+
+for collision purposes.
+
+A GET to the same path should not automatically collide with the POST operation
+unless the application declared it as another semantic realization.
+
+*** Parameterization cannot bypass semantic-route identity
+
+Route-template matching must not be defeated by ordinary parameter values.
+
+A semantic route does not cease to be semantic merely because a concrete UUID,
+slug, or other path value was substituted.
+
+Likewise, query parameters should not accidentally create a second anonymous
+realization when the router regards the request as the same semantic endpoint.
+
+*** Forms and inherited attributes are part of the effective rendered action
+
+The rendered-surface checker must reason about the effective action, not only a
+particular button attribute.
+
+Potential semantic transport can arise from:
+
+- a form's action/method;
+- an =hx-post= on the form;
+- a child control inheriting HTMX behavior;
+- nested/inherited HTMX attributes;
+- component helpers that generate the action indirectly.
+
+The exact HTML/HTMX analysis should stay within the supported contract subset.
+It must include any supported submitter override, inherited target or action,
+and generated attribute that changes effective dispatch. Conflicting authored
+transport attributes and derived semantic bindings must be rejected or resolved
+by an explicit checked rule; silent last-write-wins merging is not closure.
+
+Arbitrary client-side JavaScript can change DOM after delivery. Structured
+render checking does not prove that such mutation never occurs, and the server
+must still reject malformed or unauthorized protocol use independently.
+
+The principle is that a helper cannot bypass semantic-route checking simply by
+moving the physical action one level up the DOM.
+
+*** Multiple realizations must be explicit, not ambiguous
+
+If one semantic operation has multiple physical routes, the assembly records
+that relationship.
+
+If one physical route can dispatch several semantic operations, the route must
+have a trusted discriminator/registry relationship that preflight can inspect.
+
+Ambiguity is not resolved by guessing from:
+
+- parameter names;
+- button text;
+- source namespace;
+- nearby plan names.
+
+** Browser assembly manifest
+:PROPERTIES:
+:CUSTOM_ID: req-browser-assembly-manifest
+:END:
+
+The browser plan set used by application closure is normalized into an explicit
+build manifest.
+
+This conceptual artifact is called =BrowserAssemblyManifest=.
+
+The exact format is tentative.
+
+Its semantic role is not.
+
+The manifest identifies the executable browser plans that the current
+application assembly requires.
+
+It should include enough stable identity to answer:
+
+- which plans are required;
+- which compatibility/protocol generation they target;
+- which semantic operations they realize;
+- the build contract that binds the required plan set to the generated artifact.
+
+The pre-build manifest need not contain a digest of bytes that do not yet exist.
+A generated receipt or another acyclic construction may bind the manifest to
+the completed artifact. Its relationship must be explicit under
+[[#req-assembly-construction-phases][the assembly construction phases]].
+
+*** Browser build consumes the canonical assembly
+
+The supported browser build must derive its required plan set from the same
+source-owned application assembly used by preflight.
+
+Forbidden architecture:
+
+#+begin_example
+production preflight registry A
+
+browser build registry B
+
+tests registry C
+#+end_example
+
+even if A, B, and C happen to match today.
+
+The preferred architecture is:
+
+#+begin_example
+canonical ApplicationAssembly
+    |
+    v
+BrowserAssemblyManifest
+    |
+    v
+browser build
+#+end_example
+
+*** Generated artifact has exact currentness identity
+
+The generated runtime artifact carries or is accompanied by an exact identity
+corresponding to the manifest from which it was built.
+
+This conceptual fact is called =BrowserArtifactStamp=.
+
+A successful currentness report requires:
+
+- the current manifest identity is valid;
+- the generated artifact stamp is valid;
+- the identities correspond exactly according to the defined artifact
+  currentness relation.
+
+A boolean =:valid? true= supplied independently of the compared identities is
+not sufficient evidence. Nor is a copied manifest stamp sufficient to establish
+that an arbitrary file contains the intended runtime. The supported build and
+admission path must bind the expected manifest, executable plan payloads, and
+actual emitted artifact under the declared identity recipe.
+
+Where exact bytes are claimed, the checker must establish correspondence to
+those bytes through the checked build receipt, content digest, or another
+declared mechanism. A stamp's presence in a filename, comment, or metadata map
+does not independently establish that relationship. The assumptions of any
+trusted build/receipt mechanism remain visible.
+
+*** Exact artifact currentness is stricter than plan compatibility
+
+A stale generated file may still contain a plan whose protocol is broadly
+compatible.
+
+That does not make it the current application artifact.
+
+The build/startup check asks:
+
+#+begin_quote
+Was this artifact generated from the current required browser assembly?
+#+end_quote
+
+This is an exact correspondence question.
+
+The stale-plan runtime compatibility question from Part VI asks:
+
+#+begin_quote
+Can a browser already executing an older plan safely recover or continue?
+#+end_quote
+
+Those checks serve different purposes.
+
+*** Stale artifact fails before serving
+
+If the current application requires manifest M2 but the generated browser
+artifact corresponds to M1:
+
+#+begin_example
+current manifest M2
+generated artifact stamp M1
+M1 != M2
+
+=> startup/build rejection
+#+end_example
+
+The application must not start normally and hope the missing browser behavior is
+not exercised.
+
+The artifact checked during admission must be the artifact served or loaded by
+the corresponding generation. Mutable asset paths, cached responses, or later
+replacement of generated files must not silently sever that binding. The
+supported realization must preserve exact serving correspondence or detect
+and reject the mismatch before relying on it.
+
+This does not require an already-running browser to have the newest artifact at
+every moment. Such a browser follows the separately declared stale-plan
+compatibility and recovery contract. Exact current serving identity and allowed
+continuation of an older client are distinct claims.
+
+*** Rebuild makes the artifact current
+
+The supported development/build workflow should make browser generation an
+ordinary reproducible step.
+
+The design target is:
+
+#+begin_example
+source changes plan set
+    |
+currentness check becomes red
+    |
+supported browser build
+    |
+artifact stamp matches current manifest
+    |
+startup may proceed
+#+end_example
+
+A manually remembered side command whose omission merely causes subtle browser
+failure is not an adequate final workflow.
+
+*** No test-only artifact surrogate
+
+Tests that verify application startup/currentness must use the same manifest and
+artifact correspondence mechanism as the running application.
+
+A fake stamped artifact may be useful in a narrow unit test of the checker.
+
+It must not replace the real artifact path in the top-level application
+acceptance/startup test.
+
+** Rendered affordance closure
+
+A rendered semantic affordance introduces a concrete whole-application
+obligation.
+
+A view declaration such as:
+
+#+begin_src clojure
+{:choreo/op :request/claim
+ :subject request-id}
+#+end_src
+
+means more than:
+
+#+begin_quote
+put some metadata on a button
+#+end_quote
+
+It means:
+
+#+begin_quote
+the assembled application claims that this visible action can be realized as
+the declared semantic operation.
+#+end_quote
+
+*** Views should state minimal semantic intent
+
+The ordinary view/component should not normally have to repeat:
+
+- projected plan registry internals;
+- browser bootstrap registry internals;
+- protocol envelope encoding;
+- browser artifact digest;
+- trusted server operation implementation;
+- authority identity;
+- exact progression header/wire representation.
+
+Those values are derived or checked by the assembled application.
+
+The view owns:
+
+- which semantic operation the affordance represents;
+- subject/arguments not already bound;
+- presentation;
+- explicit UI availability state where needed.
+
+*** Rendered capability is not authorization
+
+The view may render an operation because trusted server-side preparation says it
+is presently sensible to expose.
+
+Execution still re-establishes:
+
+- authenticated principal;
+- current domain state;
+- model authorization;
+- commit-time guards.
+
+Preflight checks structural availability.
+
+It does not turn the rendered affordance into durable permission.
+
+*** Rendered enabled action must have a complete realization
+
+If a semantic action is rendered as executable, the application must be able to
+trace its closure path.
+
+Conceptually:
+
+#+begin_example
+view source
+    |
+operation
+    |
+browser plan
+    |
+artifact
+    |
+transport
+    |
+route
+    |
+trusted server op
+    |
+model op
+    |
+settlement/progression
+    |
+acquisition
+#+end_example
+
+An enabled visible action with a missing edge is a malformed assembled
+application.
+
+*** Unavailable semantic operation remains semantically named
+
+An application may deliberately render an operation unavailable.
+
+For example:
+
+#+begin_example
+Claim
+    disabled
+    reason: no authoritative basis yet
+#+end_example
+
+That may be a valid UI state if the product design permits it.
+
+The important point is that the operation identity remains known.
+
+The UI must not replace it with an anonymous ordinary POST merely to keep the
+control clickable. Unavailability must suppress the effective executable path,
+including inherited or form-level transport. Styling a control as disabled
+while leaving an active semantic bypass does not satisfy this contract.
+
+Required-capability acceptance remains independent: a permanently unavailable
+required action does not count as operational completion merely because its
+disabled rendering is structurally valid.
+
+** Transport and route closure
+
+A browser-visible semantic operation must have a complete trusted transport
+path.
+
+The transport layer is physical realization.
+
+It does not establish semantic authority.
+
+*** Transport declaration
+
+A projected operation may require a transport contract containing facts such as:
+
+- transport kind;
+- HTTP method/path template where relevant;
+- command envelope/protocol version;
+- correlation requirements;
+- operation discriminator requirements;
+- progression/basis propagation;
+- expected settlement channel.
+
+The exact schema should remain small and grow from concrete Gesso requirements.
+
+*** Physical transport maps to trusted route
+
+The application assembly checks that the required transport has a corresponding
+trusted server entrypoint.
+
+Conceptually:
+
+#+begin_example
+browser plan says:
+    operation :request/claim
+    transport T
+
+routes say:
+    T accepted by route R
+
+server says:
+    R dispatches through trusted semantic operation registry
+#+end_example
+
+A matching URL string alone is not enough when method, protocol, or operation
+discriminator differs.
+
+*** Route declares what it accepts
+
+A trusted semantic route should make its accepted contract inspectable enough
+for application closure to determine:
+
+- supported transport/protocol;
+- semantic operation(s);
+- path parameter mapping;
+- required command envelope;
+- authenticated-context requirements;
+- server execution entrypoint.
+
+This does not mean route code contains business policy.
+
+It means route realization is explicit rather than discovered by arbitrary
+handler introspection at runtime.
+
+*** Browser cannot grant trusted state through transport
+
+The browser may send:
+
+- requested semantic operation;
+- command ID;
+- operation arguments;
+- observed basis/progression context;
+- correlation metadata.
+
+The browser may not grant itself:
+
+- authenticated principal;
+- authority role;
+- trusted server machine state;
+- model permission;
+- authoritative provenance.
+
+The trusted route/server boundary reconstructs or validates those facts from
+trusted context.
+
+*** Route selection and operation identity are checked together
+
+If a route parameter selects a Request ID and the command envelope also names a
+Request ID, trusted server integration must ensure they correspond where the
+contract requires correspondence.
+
+Likewise, if the route selects the semantic operation physically while the
+protocol envelope contains an operation identifier, mismatches are rejected.
+
+The system must not accept contradictory independent selectors and let one
+silently override the other. The trusted route validates the supported envelope
+and required selectors before invoking the authoritative model. This enforcement
+does not depend on the request originating from checked rendered HTML.
+
+*** Transport closure is not authorization closure
+
+Application preflight may establish:
+
+#+begin_example
+there exists a trusted route capable of receiving :request/claim
+#+end_example
+
+It cannot establish:
+
+#+begin_example
+user U may claim Request R at 14:03:17
+#+end_example
+
+The latter depends on runtime authoritative state.
+
+The diagnostic system must classify these failures differently.
+
+** Trusted server operation closure
+
+After transport reaches trusted server code, the application must resolve the
+semantic operation through a trusted registry or equivalent closed dispatch
+mechanism.
+
+The server must not execute arbitrary browser-supplied machine state.
+
+*** Trusted operation registry
+
+The server-side registry maps semantic operation identity to the trusted
+prepared execution realization.
+
+Conceptually:
+
+#+begin_src clojure
+{:request/claim
+ {:operation ...
+  :prepared-server ...
+  :model-operation ...
+  :requires #{...}}}
+#+end_src
+
+Exact representation is tentative.
+
+The registry must be derived from or checked against the same semantic operation
+sources used by Choreo/application assembly.
+
+*** Server realization delegates to public model operation
+
+The trusted semantic operation eventually invokes the authoritative public model
+operation that owns the domain transition.
+
+For Request claim:
+
+#+begin_example
+trusted :request/claim server projection
+        |
+        v
+public Request model claim operation
+        |
+        v
+authoritative transaction
+#+end_example
+
+The server realization must not reproduce a second copy of Request business
+policy.
+
+It may perform protocol work such as:
+
+- trusted principal binding;
+- command decode/validation;
+- role/operation correspondence;
+- progression context setup;
+- execution capability binding;
+- calling the public model operation;
+- normalizing semantic settlement.
+
+*** Exact prepared-server correspondence
+
+Where a projected browser plan expects a particular trusted server projection or
+prepared operation contract, application closure must compare the actual server
+realization against that expectation.
+
+A server function with a convenient name is not enough evidence.
+
+The application needs stable identity or normalized contract information
+sufficient to establish correspondence.
+
+The checked route must dispatch through the admitted prepared realization, not
+an unrelated function carrying equivalent-looking metadata. The report must
+distinguish structural binding to that realization from proof of its arbitrary
+host-language implementation. Contract-level identity, concrete generation
+binding, and implementation evidence serve different purposes.
+
+This requirement prevents:
+
+#+begin_example
+browser plan generated for server semantics S1
+running route dispatches to server semantics S2
+#+end_example
+
+from being accepted merely because both are called =claim=.
+
+*** No duplicate hidden operation truth
+
+The server registry should not become an independently maintained list of
+operation semantics.
+
+Its semantic operation identities and contracts should derive from or be checked
+against model/Choreo declarations.
+
+The registry owns trusted execution dispatch.
+
+It does not own the meaning of the business operation.
+
+** Server execution capability closure
+
+A structurally valid server operation may still be unrealizable because its
+execution environment lacks a required resource.
+
+The application assembly therefore represents required and supplied execution
+capabilities.
+
+*** Required capabilities
+
+Concrete operations may require capabilities such as:
+
+- authenticated principal;
+- transaction execution;
+- authoritative database access;
+- authoritative basis/progression context;
+- clock/current time;
+- random seed / deterministic UUID source;
+- publication/notification facility;
+- other trusted runtime services.
+
+The set must grow from concrete operation needs.
+
+Gesso should not invent a universal abstract effect system merely to make the
+capability list theoretically complete.
+
+*** Supplied capabilities
+
+A trusted server boundary declares the capability classes it can provide.
+
+Conceptually:
+
+#+begin_example
+operation requires
+    #{:authenticated-principal
+      :transaction
+      :authoritative-basis
+      :clock
+      :random-seed}
+
+server boundary supplies
+    #{:authenticated-principal
+      :transaction
+      :authoritative-basis
+      :clock
+      :random-seed
+      :live-publication}
+
+initial structural condition:
+    required capability classes are supplied
+
+complete structural condition:
+    each requirement resolves to an admitted compatible provider contract
+#+end_example
+
+The actual values remain runtime values.
+
+Preflight checks structural supply. Set inclusion over names is a useful first
+check, not a complete provider contract when stronger properties matter. Each
+required capability must resolve to a compatible provider with the declared
+input/output shape, trusted origin, invocation scope, and lifecycle dependency.
+For example, a function yielding sampled time and an already-sampled timestamp
+are not interchangeable merely because both are labeled =:clock=.
+
+Provider composition must reject missing, ambiguous, or incompatible supply
+where statically knowable. A provider can remain unavailable at runtime, and
+the operation must retain its declared failure or recovery behavior. Provider
+annotations alone do not prove arbitrary implementation correctness.
+
+*** Capability is not authority
+
+A server having:
+
+#+begin_example
+:transaction
+:clock
+:random-seed
+#+end_example
+
+does not authorize an operation.
+
+Capabilities answer:
+
+#+begin_quote
+Can this trusted execution environment provide the resource/input required by
+the operation?
+#+end_quote
+
+Authority answers:
+
+#+begin_quote
+May this authenticated principal perform this semantic operation against the
+current authoritative world?
+#+end_quote
+
+Those are separate checks.
+
+*** Capability provenance matters
+
+Some capabilities are meaningful only when supplied by a trusted boundary.
+
+A browser-supplied:
+
+#+begin_example
+{:clock ...}
+#+end_example
+
+does not satisfy the requirement for trusted current time merely because the
+value shape matches.
+
+Likewise a client-supplied principal ID does not satisfy
+=:authenticated-principal=.
+
+The application assembly can verify the source class.
+
+Runtime validates or supplies the concrete value.
+
+*** Missing capability is an assembly error when statically knowable
+
+If the operation declares =:clock= and the trusted server environment declares
+no clock provider, the application should fail before the first invocation.
+
+Waiting for a runtime =missing :biff.fx/now= exception throws away information
+already available at assembly time.
+
+*** Dynamic capability failure remains possible
+
+A structurally supplied external capability may fail at runtime.
+
+For example:
+
+- remote provider unavailable;
+- database connection failed;
+- clock function threw;
+- publication system unavailable.
+
+Preflight establishes the path exists.
+
+It cannot promise external runtime availability unless a stronger premise is
+actually justified. A declared recovery path also does not prove eventual
+recovery without its named environmental and scheduling assumptions.
+
+** Authoritative settlement and progression closure
+
+A successful authoritative operation does not complete whole-application
+closure merely by committing.
+
+The application must also know how the initiating and other relevant actors can
+learn the authoritative result.
+
+*** Typed semantic outcome
+
+The authoritative server/model path produces a declared semantic outcome.
+
+Examples may include:
+
+- confirmed;
+- reconciled;
+- rejected;
+- already incorporated;
+- superseded;
+- application-specific outcomes.
+
+The outcome schema/contract belongs to the semantic operation.
+
+Transport-specific response shapes realize that outcome.
+
+*** Settlement closure
+
+Where the initiating browser expects direct settlement, the assembly checks that
+the server realization can produce a settlement compatible with the projected
+browser plan.
+
+This may include:
+
+- command correlation;
+- execution correlation where required;
+- typed outcome;
+- progression requirement;
+- authoritative/provisional resolution information.
+
+A route that merely returns HTTP 200 is not necessarily a valid semantic
+settlement.
+
+*** Post-commit settlement loss does not undo authority
+
+Application closure describes a path for settlement.
+
+It does not assume settlement delivery is guaranteed.
+
+[[#req-atomic-authoritative-transition][Part IV]] established:
+
+#+begin_example
+authoritative commit succeeded
+settlement lost
+
+=> authoritative mutation remains true
+#+end_example
+
+[[#req-provisional-resolution][Part V]] established that a later authoritative
+reread can supersede provisional presentation while command attribution may
+remain unknown. Assembly closure must not confuse a current-state read with
+command-specific outcome evidence.
+
+Whole-application closure must therefore ensure there is some valid recovery or
+authoritative acquisition path, not merely one optimistic happy-path response.
+
+*** Progression propagation closes the visibility relation
+
+When a mutation establishes authoritative progression P, any downstream
+authoritative refresh caused by that mutation must be able to require a read
+consistent with the appropriate progression relation.
+
+The application assembly records enough correspondence among:
+
+- authoritative model operation;
+- publication/invalidation;
+- progression requirement;
+- refresh/acquisition route;
+- authoritative projection;
+
+to ensure these pieces are not independently incompatible.
+
+*** Publication declaration
+
+If an operation requires Live invalidation or another publication to provide the
+application's convergence path, that publication is part of application closure.
+
+An operation that commits but never emits the declared advisory event may still
+be model-correct while leaving the application realization incomplete.
+
+The assembly should therefore know which publication mechanism is expected.
+
+Runtime/browser testing verifies that it actually fires in the real system and
+that the selected [[#req-post-commit-recovery][publication recovery contract]] holds
+for the failures in scope. A declared publication function proves neither
+delivery nor recovery after a crash between commit and publication. The report
+must state whether convergence depends on durable publication, reconnect,
+explicit Refresh, or another implemented path.
+
+** Live initial acquisition and authoritative reread closure
+
+Live invalidation is advisory.
+
+A managed fragment must have an authoritative knowledge path.
+
+*** Initial authoritative knowledge
+
+A managed fragment may begin with authoritative content rendered in the initial
+page.
+
+If so, the assembly should be able to identify:
+
+- authoritative projection/read;
+- progression/basis provenance where relevant;
+- logical fragment owner;
+- browser fragment identity.
+
+*** Explicit acquisition path
+
+Alternatively, the fragment may begin without content if it has an explicit
+permitted acquisition path.
+
+Conceptually:
+
+#+begin_example
+fragment F
+    |
+    + initial source: none
+    |
+    + acquisition:
+        GET /...
+        trusted authorized read
+        projection P
+        progression semantics Q
+#+end_example
+
+The absence of both initial content and acquisition is a structural error.
+
+*** Invalidation scope
+
+A Live declaration identifies what authoritative changes may invalidate the
+fragment's adopted projection.
+
+The invalidation does not carry trusted domain content merely because it arrives
+through a server-originated channel.
+
+It establishes advisory knowledge such as:
+
+#+begin_quote
+relevant authority may be newer
+#+end_quote
+
+*** Authoritative reread path
+
+The fragment declaration identifies how the browser may obtain the current
+authorized authoritative representation.
+
+The reread path must itself:
+
+- bind trusted authentication;
+- authorize protected data;
+- satisfy progression requirements;
+- return a projection compatible with the fragment;
+- represent authoritative absence where appropriate.
+
+*** Advisory frontier and adopted frontier may differ
+
+An application may deliberately maintain:
+
+- scoped advisory requirements indicating newer authority may need acquisition;
+- adopted authoritative observations representing what the current UI has
+  incorporated.
+
+These need not be scalar frontiers or one common snapshot. Closure checks the
+supported scope and [[#req-progression-combination][requirement-combination contract]]
+rather than treating token shape or one maximum value as sufficient evidence.
+
+This is not automatically a bug.
+
+It supports HumanHelp's refresh model and other applications where remote changes
+should be announced before visible adoption.
+
+The assembly must nevertheless provide a valid path from advisory knowledge to
+new authoritative adoption where required.
+
+*** Stable owner versus replaceable fragment
+
+Where Live/continuity semantics distinguish a stable logical owner from a
+replaceable physical fragment, the assembly should preserve that relation.
+
+Physical DOM replacement must not create a new semantic subscription owner
+accidentally.
+
+The details of browser ownership, resource instances, and continuity remain
+governed by Parts V and VI. The assembly must identify the acquisition trigger
+and adoption policy used by the [[#req-fragment-coordinator][fragment coordinator]];
+an advisory subscription does not itself authorize automatic acquisition or
+visible adoption.
+
+** Static application preflight
+
+The complete normalized =ApplicationAssembly= is checked before ordinary
+application service begins.
+
+This build/startup check is called application preflight.
+
+*** Preflight is mandatory compilation/startup work
+
+Application preflight is not an optional debugging command.
+
+The supported Gesso application startup path invokes it automatically.
+
+An application author should not need to remember:
+
+#+begin_example
+run server
+but first maybe remember to call require-application-assembly!
+#+end_example
+
+The supported abstraction should make the checked path the ordinary path.
+
+*** Preflight consumes the production assembly
+
+The preflight function receives or derives the canonical production
+=ApplicationAssembly=.
+
+It does not reconstruct:
+
+- a test registry;
+- a simplified browser plan set;
+- a mocked route graph;
+- a second "preflight-only" Live graph.
+
+A production source declaration removed or changed must affect preflight.
+
+*** Structural obligations fail closed
+
+Preflight rejects when a required structural edge cannot be established.
+
+Representative failures include:
+
+- unknown semantic operation;
+- exposed operation with no browser plan;
+- mismatched operation/plan identity;
+- stale generated browser artifact;
+- missing transport;
+- missing trusted route;
+- route accepting wrong protocol;
+- missing trusted server operation;
+- server/model operation mismatch;
+- missing execution capability;
+- undeclared required publication;
+- missing Live initial knowledge;
+- missing authoritative acquisition path;
+- incompatible progression/acquisition declaration;
+- ambiguous physical realization;
+- duplicate incompatible semantic identity.
+
+The application does not "try anyway" in normal supported startup.
+
+*** Preflight does not predict dynamic domain state
+
+Application preflight should succeed for a structurally valid Request Claim even
+when the particular current user is not authorized for a particular Request at
+runtime.
+
+Dynamic examples include:
+
+- another helper claimed the Request after render;
+- Membership became inactive;
+- Organization closed;
+- transaction guard fails due a race;
+- external provider is unavailable.
+
+These remain trusted runtime/model outcomes.
+
+Trying to encode all current database facts into startup preflight would make
+the checker both unsound and unusable.
+
+*** Earliest legitimate failure layer
+
+The design follows:
+
+#+begin_quote
+Fail at the earliest layer that possesses enough information.
+#+end_quote
+
+Thus:
+
+#+begin_example
+definition/construction
+    malformed choreography
+    unknown role
+    impossible local transition
+    inconsistent operation metadata
+
+application preflight
+    missing browser plan
+    stale artifact
+    missing route
+    missing server capability
+    missing acquisition path
+
+runtime
+    current authorization changed
+    transaction guard failed
+    network disappeared
+#+end_example
+
+This partition is part of the diagnostic contract.
+
+** Dynamic rendered-surface preflight
+
+Static assembly cannot know every dynamically rendered Hiccup tree.
+
+The running application therefore also enforces semantic rendered-surface
+invariants at the canonical structured response boundary.
+
+This is not a second independent preflight system.
+
+It is runtime enforcement of assembly rules against concrete rendered output.
+
+*** Check before serialization
+
+The preferred Gesso response path preserves structured render data long enough
+for the application-preflight handler boundary to inspect it before final HTML
+serialization.
+
+Conceptually:
+
+#+begin_example
+application handler
+    |
+structured Gesso/Hiccup response
+    |
+dynamic rendered-surface preflight
+    |
+serialize HTML
+    |
+Ring response
+#+end_example
+
+A malformed semantic affordance should be rejected before its anonymous/weakened
+HTML reaches the browser.
+
+*** Canonical Gesso response constructors participate automatically
+
+Applications using the supported Gesso HTML response path should receive the
+dynamic check through the installed application handler boundary.
+
+They should not manually invoke a checker at every render call.
+
+The boundary exists precisely to make runtime enforcement systemic.
+
+*** Already-serialized HTML requires an explicit assurance boundary
+
+If application code manually constructs an already-serialized HTML response
+before Gesso's structured guard can inspect semantic metadata, the ordinary
+rendered-surface proof cannot apply.
+
+Such paths must be:
+
+- avoided in the canonical semantic application path;
+- explicitly documented as escape hatches;
+- separately audited/tested if they remain necessary.
+
+The framework must not pretend it inspected semantic Hiccup that no longer
+exists. Naming an escape hatch does not make its output covered by the
+structured-render claim. A report must identify the excluded surface or the
+separate checked realization that covers it. An alternate complete realization
+may be admitted only through its own explicit contract and evidence.
+
+The same principle applies to streaming output, cached fragments, redirects to
+alternate render paths, and error handlers where they can emit managed
+affordances. The supported surface must identify the last boundary before
+delivery at which its semantic obligations can be enforced. An unchecked path
+must not inherit a blanket claim that every emitted semantic affordance was
+validated.
+
+*** Render checking uses the production assembly
+
+The dynamic guard compares concrete rendered affordances against the same
+production assembly used by build/startup preflight.
+
+It must not have a different route registry or operation list. The response
+must be checked against the admitted generation whose bindings will realize
+its operations, rather than whichever mutable registry happens to be current
+when serialization begins.
+
+*** Forged rendered metadata is not trusted authority
+
+Rendered metadata is browser-bound output and can later be modified by the
+client.
+
+The dynamic guard uses it only to verify that trusted server rendering produced
+a coherent semantic affordance.
+
+The trusted execution path still re-authenticates and re-authorizes the command.
+
+*** Semantic-route collision is enforced dynamically
+
+A concrete rendered ordinary HTMX action that maps to an assembled semantic
+route while omitting the required semantic operation identity is rejected.
+
+This rule applies even when:
+
+- the path contains concrete parameters;
+- a form owns the HTMX action;
+- a component helper generated the action;
+- rendering conditions caused semantic metadata to disappear.
+
+The concrete render is where some of these contradictions first become visible.
+
+*** Render rejection does not undo an earlier authoritative effect
+
+Dynamic render checking must run before prohibited output is delivered. It
+does not automatically precede an authoritative model operation performed
+earlier in request handling and cannot roll back a transaction already committed.
+
+Command/protocol admission and model guards must reject invalid invocation
+before the protected action. If a valid mutation commits but constructing its
+response reveals a malformed affordance, rendering fails without reclassifying
+the mutation as rejected. The response/recovery path must preserve the known
+commit outcome or participant-relative uncertainty and permit the declared
+settlement or reacquisition recovery.
+
+Integration tests must distinguish "no malformed output was delivered" from
+"no mutation occurred." They are different claims with different enforcement
+boundaries.
+
+*** Production-path enforcement evidence
+:PROPERTIES:
+:CUSTOM_ID: req-production-path-enforcement
+:END:
+
+Checker correctness and integration enforcement are separate acceptance levels.
+
+A checker-correctness test establishes that a malformed structure is rejected
+when presented to the checker.  An integration-enforcement test establishes that
+the actual supported application path routes the corresponding malformed
+structure through that checker before the prohibited output or effect occurs.
+Claims that depend on production enforcement require both forms of evidence where
+the distinction is relevant. A corresponding valid fixture must remain usable;
+rejecting every request or preventing all startup is not successful enforcement
+of a usable application contract.
+
+Representative controlled defects include:
+
+- an exposed semantic operation missing a basis or other required realization
+  premise;
+- an operation whose declared physical route no longer corresponds to its
+  assembly binding;
+- a generated browser artifact that is stale relative to the current required
+  manifest;
+- removal of the structured-rendering guard so a managed affordance would
+  otherwise serialize unchecked.
+
+For each controlled defect, acceptance must identify:
+
+- the deliberate defect;
+- the real production entrypoint exercised;
+- the earliest boundary at which enough information exists to reject it;
+- the stable diagnostic category;
+- the prohibited mutation, unchecked fragment, or externally visible action that
+  must not occur;
+- the supported recovery or explicit-unavailability behavior where one exists.
+
+Not every defect belongs at startup.  Some information exists only during
+rendering or concrete request handling.  The requirement is rejection at the
+earliest legitimate production boundary, not artificial promotion of every
+dynamic check into static preflight.
+
+A validator cannot reject a fragment it never receives.  Therefore the supported
+application construction path must make checked structured rendering systemic,
+or an alternate path must be explicitly classified as an escape hatch outside
+the corresponding assurance scope.  Integration acceptance should become red if
+that enforcement connection is removed.
+
+Controlled defects must be introduced through isolated test construction or
+fixtures using the supported production path. The acceptance evidence identifies
+the checked generation, entrypoint, expected diagnostic, and observed absence
+of the prohibited effect/output. It must not depend only on an exception thrown
+by a test-only wrapper before the production boundary is reached.
+
+Top-level browser acceptance must operate the application's actual rendered
+controls.  It must not repair a malformed control by manufacturing the semantic
+protocol command that the control failed to produce.  Lower-level protocol tests
+may still construct valid commands when their stated scope is the trusted
+protocol/server boundary itself.
+
+** Biff 2 lifecycle architecture
+:PROPERTIES:
+:CUSTOM_ID: req-application-lifecycle
+:END:
+
+Application preflight is integrated into native Biff 2 lifecycle semantics.
+
+The final architecture does not preserve the preview-era model of arbitrary
+component functions accumulating stop callbacks.
+
+Lifecycle-bearing modules use stable explicit identities and native start/stop
+contracts.
+
+Conceptually:
+
+#+begin_src clojure
+{:biff.core/id    :gesso.live.application-preflight/handler
+ :biff.core/start ...
+ :biff.core/stop  ...}
+#+end_src
+
+Exact IDs and namespace names remain implementation choices. The example is
+schematic; the concrete integration must use the official contract of its
+selected final Biff 2 release and record that dependency. Requirements here
+describe behavior Gesso's supported assembly/startup must enforce, not a claim
+that every check is performed automatically by an unspecified Biff version.
+
+*** Stable lifecycle identity
+
+Every lifecycle-bearing module that participates in application startup has a
+stable qualified identity.
+
+Examples conceptually include:
+
+- Biff configuration;
+- Biff XTDB;
+- Gesso application preflight;
+- Gesso Live;
+- application/Aleph server.
+
+Lifecycle ordering is stated in terms of identities rather than anonymous
+function position.
+
+This makes the startup graph inspectable and rejectable.
+
+*** Duplicate and unknown lifecycle IDs are invalid
+
+The supported lifecycle assembly rejects:
+
+- unknown IDs requested in startup ordering;
+- duplicate module IDs;
+- required module IDs that cannot be resolved;
+- contradictory lifecycle assembly, including a required dependency cycle.
+
+An application must not silently run whichever duplicate happened to appear
+last.
+
+*** Preflight is a lifecycle dependency of serving
+
+The critical partial order is:
+
+#+begin_example
+whatever trusted/config/build state preflight requires
+        |
+        v
+application preflight succeeds
+        |
+        v
+network server may begin accepting application requests
+#+end_example
+
+The design does not require one universal total order among config, XTDB, Live,
+and every application module.
+
+It requires that Aleph or any equivalent externally serving application boundary
+cannot expose the application before closure has succeeded and the admitted
+handler generation is ready. Any separately scoped health or administrative
+endpoint must be identified as such and cannot expose unchecked application
+operations under that exception.
+
+*** Supported Gesso startup inserts/enforces preflight
+
+A caller using the supported Gesso application-start abstraction must not need to
+manually remember the preflight lifecycle ID.
+
+Gesso's wrapper/assembly layer inserts or enforces the required module and
+ordering itself.
+
+The unsafe shape:
+
+#+begin_src clojure
+(biff/start system modules
+  ;; caller forgot preflight
+  [:config :xtdb :aleph])
+#+end_src
+
+must not be the ordinary Gesso path.
+
+The supported shape is conceptually:
+
+#+begin_example
+start Gesso application with ApplicationAssembly
+    |
+Gesso constructs/enforces lifecycle requirements
+    |
+preflight mandatory
+    |
+server permitted only after success
+#+end_example
+
+*** Native lifecycle modules are preferred over compatibility shims
+
+Gesso-owned and application-owned lifecycle integration should use the official
+Biff 2 module contract directly.
+
+Compatibility shims that preserve older component semantics enlarge the
+conceptual surface and make lifecycle identity less explicit.
+
+They are not the target architecture.
+
+*** Stop semantics are module-owned
+
+Each lifecycle module owns cleanup of the resources it starts.
+
+The final architecture does not use an application-wide convention in which
+arbitrary components append stop functions into a shared vector.
+
+This aligns shutdown ownership with startup identity.
+
+If startup fails after earlier modules acquired resources, the supported
+lifecycle must stop or otherwise account for those successfully started resources
+according to their dependency and cleanup contracts. It preserves the primary
+startup failure while reporting cleanup failures separately. A failed preflight
+must not leave a background application listener serving unchecked routes.
+Stopping an old generation must also respect any explicitly shared resources
+still owned by an admitted replacement generation.
+
+*** Failed preflight means server never becomes externally available
+
+A deliberately malformed application must fail before normal network service.
+
+The requirement is stronger than:
+
+#+begin_example
+first request returns a nice preflight error
+#+end_example
+
+The supported startup path should not expose an application that is already
+known to be structurally invalid.
+
+*** Lifecycle preflight and dynamic render checking complement each other
+
+Startup preflight checks the closed static assembly.
+
+Dynamic render checking checks concrete rendered surfaces whose exact shape
+depends on runtime data.
+
+Therefore:
+
+#+begin_example
+startup preflight
+    verifies application graph and artifact closure
+
+dynamic rendered-surface preflight
+    verifies concrete semantic affordances against that graph
+#+end_example
+
+Neither makes the other redundant.
+
+** Supported application startup boundary
+
+The end-state Gesso application has one supported checked startup path.
+
+That path binds:
+
+- canonical =ApplicationAssembly=;
+- browser artifact currentness;
+- static application preflight;
+- checked/render-aware application handler;
+- lifecycle module graph;
+- Live/runtime integration;
+- network server startup.
+
+*** No accidental second unchecked entrypoint
+
+The application should not simultaneously expose:
+
+#+begin_example
+checked dev startup
+unchecked production startup
+#+end_example
+
+or:
+
+#+begin_example
+checked test handler
+unchecked real Aleph handler
+#+end_example
+
+unless an unchecked path is deliberately named as an unsupported escape hatch
+and excluded from the corresponding assurance claim. Merely documenting such a
+path does not satisfy a milestone requiring the real application entrypoint to
+be checked.
+
+The ordinary path used for real development and deployment must be the checked
+one.
+
+*** Handler wrapping is observable in actual runtime
+
+It is not sufficient that a unit test can construct the checked handler.
+
+The handler ultimately invoked by Aleph must pass through the Gesso
+application-preflight boundary.
+
+This should be testable by deliberately rendering a malformed concrete semantic
+affordance and observing rejection before serialization/browser delivery.
+
+*** Preflight state is immutable for an assembly generation
+
+Once startup accepts an assembly/artifact generation, the runtime may cache the
+normalized closure result.
+
+If application realization declarations change, a new assembly generation must
+be built/preflighted.
+
+The system must not mutate a previously verified closure report in place to
+accommodate changed source declarations.
+
+*** Runtime reload/development mode must retain closure semantics
+
+Development convenience may support rebuilding/reloading.
+
+The invariant remains:
+
+#+begin_example
+new source/assembly
+    |
+new manifest/artifact if required
+    |
+new preflight
+    |
+new serving generation
+#+end_example
+
+Hot reload must not silently pair a new server assembly with an old browser
+artifact merely because the process stayed alive.
+
+The supported reload path constructs and validates the candidate generation
+before activating it. Activation must not expose a mixture of old routes, new
+prepared operations, stale artifact bindings, and unrelated rendering rules.
+An in-flight request remains bound to its admitted generation or follows an
+explicitly checked transition. Long-lived streams and browser continuations
+follow the compatibility and retirement contracts rather than an implicit
+generation switch.
+
+If candidate construction fails, the system may retain a still-valid previously
+admitted generation or suspend serving the affected application. It must not
+partially activate the failed candidate. The implementation must state how
+generation references, activation, and retirement enforce these conditions;
+this design does not mandate one hot-reload mechanism.
+
+** Application explanation
+
+A closed application should be inspectable.
+
+Tooling should be able to explain the complete realization of an operation
+without forcing a human or LLM to reconstruct it from dozens of namespaces.
+
+Conceptually useful queries include:
+
+#+begin_src clojure
+(choreo/explain-application application)
+(choreo/explain-operation application :request/claim)
+(choreo/open-obligations application)
+#+end_src
+
+These names are illustrative only.
+
+The capability is normative.
+
+*** Explain exposed operations
+
+For each exposed semantic operation, explanation should identify at least:
+
+- semantic operation identity;
+- source declaration;
+- participating role/projection;
+- views/components exposing it;
+- browser executable plan where applicable;
+- exact browser artifact identity;
+- transport binding;
+- trusted route;
+- trusted server operation;
+- authoritative model operation;
+- required server capabilities;
+- settlement/progression contract;
+- authoritative acquisition path;
+- current assembly status.
+
+*** Explain source ownership
+
+The report should distinguish:
+
+#+begin_example
+operation comes from:
+    request.choreo
+
+route comes from:
+    application routes
+
+server prepared execution comes from:
+    trusted server integration
+
+acquisition comes from:
+    Live fragment declaration
+#+end_example
+
+This makes contradictory declarations repairable locally.
+
+*** Explain assurance classification
+
+The report should identify whether each statement is:
+
+- mechanically proved under named assumptions;
+- kernel-checked or exact-finite checked within its stated scope;
+- assembly-verified;
+- runtime-enforced;
+- trusted or application-asserted;
+- supported by tests.
+
+Liveness premises qualify the corresponding claim; they are not a separate
+evidence mechanism. Explanation must preserve the classifications from
+[[#req-assurance-classification][Part I]] rather than compress them into a single
+confidence label.
+
+This prevents "verified" from becoming an ambiguous prestige label.
+
+*** Open obligations are explicit
+
+An incomplete assembly should be able to enumerate unresolved structural
+obligations.
+
+For example:
+
+#+begin_example
+operation :request/claim
+
+OPEN:
+    browser-plan -> generated-artifact
+        current manifest: M17
+        generated artifact: M16
+
+OPEN:
+    server-operation -> required-capability :clock
+        supplied capabilities do not include :clock
+#+end_example
+
+Once structural closure succeeds, open structural obligations are zero.
+
+Dynamic runtime premises remain classified separately rather than pretending to
+be unresolved compile-time obligations.
+
+*** Explanation is read-only
+
+Application explanation is diagnostic.
+
+It may inspect the assembly/check result.
+
+It must not repair missing edges automatically or choose a fuzzy near match for
+execution.
+
+The source declaration is corrected and the assembly is checked again.
+
+** Structured diagnostics are part of the application contract
+
+Important application-closure failures use stable structured diagnostic data.
+
+Human-readable strings are rendered from that data.
+
+The framework should not make application authors or LLMs parse arbitrary prose
+to determine what broke.
+
+A conceptual diagnostic shape is:
+
+#+begin_src clojure
+{:error/type :gesso.choreo/application-error
+ :error/kind :missing-server-capability
+ :operation :request/claim
+ :source {:namespace 'net.example.views
+          :semantic-location :request-card/claim}
+ :assembly-id ...
+ :closure-edge [:transport :server-capability]
+ :expected {:capability :clock}
+ :actual nil
+ :available #{:transaction
+              :authenticated-principal
+              :authoritative-basis}
+ :suggestions [...]}
+#+end_src
+
+Exact keys remain a design decision.
+
+The information requirements do not.
+
+*** Minimum diagnostic questions
+
+A useful closure failure answers:
+
+1. What failed?
+2. Which semantic operation/trajectory/fragment was involved?
+3. Where was the obligation introduced?
+4. Which edge of whole-application closure failed?
+5. What was required?
+6. What was actually available?
+7. What source owns the missing or conflicting declaration?
+8. What known legal alternatives exist, if mechanically enumerable?
+9. Which assurance layer detected the problem?
+10. Which admitted generation and relevant semantic/artifact identities were used?
+
+Diagnostics must describe only evidence actually available. They must not invent
+the provenance of an unknown value or present a declared provider as a proved
+implementation. Sensitive principal, request, token, or model information must
+follow the disclosure policy of the diagnostic surface; useful internal repair
+evidence need not be exposed verbatim to an unauthorized client.
+
+*** Stable error kinds
+
+Important classes should have stable machine-readable identity.
+
+Candidate classes include concepts equivalent to:
+
+- =:unknown-operation=;
+- =:missing-browser-plan=;
+- =:stale-browser-artifact=;
+- =:missing-transport=;
+- =:incompatible-transport=;
+- =:missing-route=;
+- =:ambiguous-route=;
+- =:missing-server-operation=;
+- =:server-operation-mismatch=;
+- =:missing-server-capability=;
+- =:missing-initial-acquisition=;
+- =:missing-authoritative-reread=;
+- =:progression-acquisition-mismatch=;
+- =:anonymous-semantic-route=;
+- =:implicit-semantic-downgrade=;
+- =:duplicate-semantic-identity=;
+- =:lifecycle-preflight-missing=;
+- =:artifact-content-mismatch=;
+- =:incompatible-capability-provider=;
+- =:assembly-generation-mismatch=;
+- =:unchecked-semantic-surface=. 
+
+Exact keyword namespace/names may differ.
+
+The semantic categories should remain stable once public.
+
+*** Unknown operation diagnostic
+
+Given a rendered affordance referencing an unknown operation:
+
+- fail before browser startup/delivery;
+- identify the view/source;
+- identify the unknown operation;
+- list known operation IDs when cheap;
+- suggest nearby names diagnostically;
+- never auto-correct the identifier for execution.
+
+*** Missing browser plan diagnostic
+
+Given a valid semantic operation exposed to a browser but absent from the
+required projected plan set:
+
+- identify the operation;
+- identify the exposing source;
+- state that semantic verification succeeded far enough to know the operation;
+- identify browser realization as the missing edge;
+- list available compatible plan keys when useful.
+
+*** Stale generated artifact diagnostic
+
+Given:
+
+#+begin_example
+current BrowserAssemblyManifest != BrowserArtifactStamp
+#+end_example
+
+the error should report:
+
+- current assembly/manifest identity;
+- generated artifact identity;
+- relevant mismatching plan set if available;
+- the supported rebuild action conceptually required.
+
+It must not guess currentness from timestamps or filenames.
+
+*** Missing transport/route diagnostic
+
+A missing physical route should identify:
+
+- semantic operation;
+- required transport contract;
+- expected method/template/protocol;
+- available candidate routes;
+- whether the problem is absence or incompatibility.
+
+A route that exists with the wrong method/protocol is not "missing" in the same
+sense as no route at all.
+
+*** Anonymous semantic-route diagnostic
+
+When a concrete rendered ordinary HTMX action occupies a semantic route without
+the required semantic identity, the diagnostic should identify:
+
+- concrete method/path;
+- matched semantic route template;
+- semantic operation associated with that route;
+- rendered source;
+- missing semantic identity;
+- why ordinary HTMX would be a downgrade here.
+
+This is much more useful than:
+
+#+begin_example
+invalid button
+#+end_example
+
+*** Missing server capability diagnostic
+
+The diagnostic should identify:
+
+- operation(s) introducing the capability requirement;
+- missing capability;
+- trusted server boundary expected to supply it;
+- capabilities that boundary declares;
+- source declaration of the requirement where available.
+
+This turns a late runtime "missing now" exception into an early local repair.
+
+*** Missing acquisition diagnostic
+
+A managed fragment with neither initial authoritative knowledge nor a permitted
+acquisition path should report:
+
+- fragment/logical owner;
+- expected authoritative projection;
+- progression requirement;
+- available routes/acquisition declarations;
+- source responsible for the fragment.
+
+The system should not allow a blank technically-running UI to masquerade as a
+closed application.
+
+*** Dynamic authorization is not an assembly error
+
+If preflight is structurally closed but the current authenticated principal is
+not authorized for one current Request, the error/outcome should be classified
+as runtime/domain authorization.
+
+The diagnostic should not claim:
+
+#+begin_example
+application assembly corrupted
+#+end_example
+
+merely because current business state denied the action.
+
+This anti-goal is important.
+
+Over-eager static checking is as misleading as under-checking.
+
+*** Near matches expose search space but never execute automatically
+
+For a closed registry:
+
+#+begin_example
+unknown :request/claime
+nearby :request/claim
+#+end_example
+
+is useful diagnostic information.
+
+The source still must be corrected.
+
+Security-sensitive operation dispatch must not silently apply fuzzy correction.
+
+*** Diagnostics retain exact artifact correspondence
+
+If an error references a browser runtime locator or generated plan coordinate,
+diagnostic tooling must first verify exact artifact/sidecar correspondence as
+specified in Part V.
+
+Application diagnostics must not use stale semantic metadata to explain a new
+artifact by best effort.
+
+** Preflight and browser acceptance are complementary
+
+Whole-application closure is powerful precisely because it rejects impossible
+applications before browser execution.
+
+It does not prove every physical integration assumption.
+
+The final system therefore requires structural and concrete runtime evidence,
+alongside the independent behavioral-completeness evidence defined in Part I.
+The following distinction does not collapse production enforcement into a
+standalone checker test.
+
+*** Structural/pre-browser evidence
+
+Application closure should reject before normal browser execution:
+
+- semantic route rendered anonymously;
+- missing browser plan;
+- mismatched plan/operation;
+- stale browser artifact;
+- missing physical route;
+- incompatible transport;
+- wrong/missing trusted server correspondence;
+- missing server execution capability;
+- undeclared required publication;
+- broken authoritative acquisition path;
+- malformed rendered semantic affordance;
+- unavailable semantic realization silently downgraded to ordinary HTMX.
+
+These are assembly contradictions.
+
+*** Runtime/browser evidence
+
+Real browser acceptance verifies that:
+
+- the actual generated runtime loads;
+- actual view controls activate the browser runtime;
+- real HTMX lifecycle integration matches the supported contract;
+- the expected protocol command is emitted;
+- the real physical route receives it;
+- trusted server execution reaches the production model;
+- authoritative mutation really commits;
+- settlement/Live/acquisition really reaches the DOM;
+- reload confirms authoritative truth;
+- multi-client advisory/adoption behavior works;
+- unexpected console/page/request failures do not reveal mismatches in trusted
+  external integration;
+- deliberately injected network or rendering faults produce the declared
+  diagnostics and recovery without inventing success or rejection.
+
+Expected fault evidence must be asserted precisely rather than suppressed by a
+broad "ignore console errors" rule. A fault test need not pretend the browser
+emits no diagnostic when the intended scenario deliberately breaks a request.
+
+These are concrete implementation/assumption checks.
+
+Neither class substitutes for the other.
+
+A third acceptance class remains application behavioral completeness.  Structural
+closure and production-path enforcement can both succeed for an application that
+simply omitted a required user capability from its declarations.  Application
+acceptance must therefore remain independently sensitive to removal of promised
+capabilities even when the reduced assembly is internally coherent.  Later
+HumanHelp acceptance expresses those requirements as user-visible capabilities
+and authoritative outcomes without maintaining a second route/operation
+registry.
+
+*** Acceptance tests must not manufacture the missing browser edge
+
+A lower-level route test may deliberately construct a valid protocol command to
+test:
+
+#+begin_example
+valid protocol command
+    -> trusted server/model path
+#+end_example
+
+A top-level browser acceptance test must not inject the command manually.
+
+It must test:
+
+#+begin_example
+rendered semantic control
+    -> real browser runtime
+    -> real protocol command
+    -> real trusted route
+#+end_example
+
+Otherwise the test skips the exact closure edge the application is supposed to
+prove in use.
+
+** Whole-application security boundary
+
+Whole-application closure must not accidentally move security authority into
+browser metadata or preflight artifacts.
+
+*** Preflight establishes structure, not current permission
+
+A closed assembly may establish:
+
+#+begin_example
+there exists a trusted route for :request/claim
+the route binds authenticated principal from trusted context
+the route invokes the public Request claim operation
+#+end_example
+
+It does not establish:
+
+#+begin_example
+browser-supplied user-id is authentic
+current user may claim current Request forever
+#+end_example
+
+Those remain runtime trusted/model checks.
+
+*** ApplicationAssembly is not a browser capability
+
+The browser may learn some derived realization metadata.
+
+Possessing or forging an assembly-like object cannot authorize server execution.
+
+The server uses its own trusted assembly/registry and authenticated context.
+
+*** Artifact stamps are correspondence evidence, not authorization tokens
+
+An admitted current =BrowserArtifactStamp= supports only the defined artifact
+correspondence under its checked binding and trusted build assumptions. A raw
+stamp value proves neither content identity nor semantic validity by itself.
+
+It does not prove:
+
+- authenticated identity;
+- operation permission;
+- authoritative provenance;
+- command freshness;
+- model transition legality.
+
+Identity evidence must not be promoted into authority.
+
+*** Preflight result is not runtime authority
+
+A successful application-preflight report means the structure was closed for the
+checked assembly generation.
+
+It is not a token the browser sends to skip server checks.
+
+The trusted server continues to validate every dynamic premise.
+
+** Whole-application construction invariant
+
+At the end of the whole-application realization layer, the unified design
+requires:
+
+#+begin_quote
+Every Choreo-managed affordance exposed by the application retains its semantic
+identity monotonically through browser plan, exact generated artifact, physical
+transport, trusted route, trusted server operation, authoritative model
+operation, settlement/progression, and authoritative reacquisition.  Missing
+edges reject rather than silently downgrade.  One canonical source-owned
+ApplicationAssembly feeds browser build, static preflight, runtime rendered-
+surface checking, startup, explanation, and tests while permitting distinct
+construction products and immutable admitted generations.  Browser artifacts
+must correspond exactly to the current required manifest.  Server execution
+capabilities are checked structurally without being confused with domain
+authority.  Live invalidation remains advisory and every managed authoritative
+projection has an initial or permitted acquisition path.  Native Biff 2
+lifecycle identity makes application preflight a mandatory predecessor of
+external service, so Aleph cannot begin serving a structurally invalid
+application.  Diagnostics identify the exact broken closure edge, while dynamic
+authorization and other genuinely current-world facts remain runtime/model
+responsibilities.  Declared closure, production enforcement, and behavioral
+completeness are separate claims with separate evidence; none is promoted into
+the others merely because the same application satisfies all three.  Preflight,
+production-path rejection tests, application acceptance, and real-browser
+acceptance provide complementary, not interchangeable, evidence.
+#+end_quote
+

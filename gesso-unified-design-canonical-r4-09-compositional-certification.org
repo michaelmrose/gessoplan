@@ -1,0 +1,2576 @@
+* Part IX — Compositional certification
+:PROPERTIES:
+:CUSTOM_ID: part-09-compositional-certification
+:END:
+
+This part defines the stronger certification layer over the semantic and
+application contracts of Parts I–VIII. It specifies what certified interfaces
+export, how assumptions and evidence compose, and how checking binds claims to
+the program and realization being admitted. These are end-state requirements;
+this specification is not evidence that the implementation already meets them.
+The operational, compositional, external-formal, and multi-node milestones retain
+their separate completion scopes.
+
+** Compositional proof and certified semantic interfaces
+:PROPERTIES:
+:CUSTOM_ID: req-compositional-certification
+:END:
+
+The stronger Gesso assurance architecture is compositional.
+
+Its central rule is:
+
+#+begin_quote
+A downstream semantic artifact may rely only on guarantees actually established
+by checked upstream semantic interfaces, plus assumptions that are explicitly
+named at the boundary where they enter.
+#+end_quote
+
+This rule replaces *proof by reputation*.
+
+A namespace, value, artifact, or cached file is not trusted merely because:
+
+- it has a familiar name;
+- it was produced by Gesso code;
+- its source has not moved;
+- a prior test suite passed;
+- a map says =:verified? true=;
+- a digest matches;
+- its shape validates against Malli.
+
+Those facts may be useful evidence about identity, construction history, or
+runtime shape.
+
+They are not substitutes for the proposition the downstream stage needs.
+
+*** Purpose
+
+Parts I through VIII define:
+
+- the semantic ontology;
+- choreography and projection;
+- authoritative model boundaries;
+- browser execution;
+- whole-application closure;
+- HumanHelp as the proving application.
+
+Part IX strengthens the way those layers depend on one another.
+
+The target is not:
+
+#+begin_example
+good-looking namespace
+    |
+    v
+downstream code assumes what it probably means
+#+end_example
+
+The target is:
+
+#+begin_example
+raw declaration
+    |
+normalize / elaborate
+    |
+check obligations
+    |
+certified semantic interface
+    |
+compose with certified dependencies
+    |
+derive next certified artifact
+#+end_example
+
+A mismatch stops construction at the first layer that can know the mismatch.
+
+The malformed program does not continue toward a runnable browser merely because
+later layers could discover another symptom.
+
+*** Relation to runtime semantics
+
+Certification does not create a second executable meaning.
+
+The semantic/runtime path remains:
+
+#+begin_example
+domain/schema/rules
+        |
+        v
+public authoritative operation contracts
+        |
+        v
+global choreography
+        |
+        v
+verified projection
+        |
+        v
+ExecutablePlan
+        |
+        v
+ApplicationAssembly / whole-application realization
+        |
+        v
+runtime execution
+#+end_example
+
+The proof/certificate path runs alongside it:
+
+#+begin_example
+semantic interface
+        |
+assumptions + guarantees
+        |
+obligations + derivations
+        |
+certificate
+        |
+dependency DAG
+        |
+root assurance report
+#+end_example
+
+Certificates participate in deciding whether construction is accepted under the
+selected certification profile. Each artifact class must define its required
+judgments and admissible assumption classes. The stronger compositional
+milestone requires the corresponding certificates; it must not be conflated
+with the earlier operational milestone's structural and runtime evidence.
+An unsupported proof feature cannot silently downgrade a build requesting that
+stronger profile into an ordinary operational build.
+
+They do not alter runtime transitions after an executable artifact has been
+accepted.
+
+A proof sidecar, derivation tree, semantic fingerprint, root report, or external
+formal proof is never a browser/server authorization capability.
+
+*** One proof DAG, several assurance classes
+
+The root application assurance graph may contain evidence of different kinds.
+
+For example:
+
+#+begin_example
+schema typing
+    machine/kernel checked
+
+operation implementation conformance
+    trusted or separately checked
+
+choreography knowledge obligation
+    machine checked
+
+projection preservation
+    mechanically checked/proved for supported subset
+
+browser artifact correspondence
+    assembly verified
+
+rendered affordance closure
+    runtime enforced against assembly
+
+authenticated principal
+    runtime enforced by trusted authentication boundary
+
+HTMX/browser primitive behavior
+    trusted + real-browser tested
+#+end_example
+
+The fact that all of these appear in one root report does not flatten them into
+one assurance class.
+
+The report must preserve exactly what kind of evidence supports each claim,
+using [[#req-assurance-classification][Part I's assurance classifications]].
+Evidence attaches to individual propositions and their dependencies, not merely
+to the containing artifact's name. A certificate can contain a kernel-checked
+conditional proposition and a trusted implementation premise without claiming
+that the implementation itself has been proved.
+
+*** Certification is declaration-first
+
+Application developers should primarily declare:
+
+- schemas/domain types;
+- relationships;
+- business-rule expressions;
+- authoritative operation contracts;
+- choreography;
+- application realization facts.
+
+Gesso should perform the proof bookkeeping:
+
+- normalization;
+- semantic identity;
+- dependency tracking;
+- type/refinement checking;
+- knowledge/provenance checking;
+- authority/capability checking;
+- derivation construction;
+- kernel checking;
+- certificate issuance;
+- projection;
+- executable-plan construction;
+- application closure;
+- diagnostics.
+
+Where only the application can know a proposition, the application supplies an
+explicit assertion or assumption.
+
+Gesso must not disguise such application truth as a derived theorem.
+
+*** The governing dependency invariant
+
+For every semantic layer L:
+
+#+begin_quote
+Every guarantee exported by L has a checked justification appropriate to its
+assurance class and retains the dependencies and assumptions under which it
+holds. A proposition supplied without such a derivation is an explicit
+assumption or assertion, not an unconditional derived guarantee.
+#+end_quote
+
+No stage gets credit for the intended meaning of a predecessor that the
+predecessor did not actually establish.
+
+** Vocabulary and assurance classes
+
+The compositional architecture uses a small explicit vocabulary.
+
+*** Raw declaration
+
+User/application/framework data that has not yet crossed the relevant semantic
+checker.
+
+Examples:
+
+- raw Malli/domain schema;
+- raw business-rule expression;
+- raw operation contract;
+- raw choreography;
+- raw authority declaration;
+- raw derivation;
+- raw dependency reference.
+
+Raw data is permitted at construction boundaries but may not masquerade as a
+certified semantic artifact.
+
+*** Semantic category and admitted value
+
+A representation may satisfy the shape of a semantic object without yet being
+admitted as that kind of semantic object.
+
+The design therefore distinguishes at least:
+
+#+begin_example
+representation shape
+    !=
+semantic category
+    !=
+admission through the required checker/trusted boundary
+    !=
+proof of the propositions associated with that category
+#+end_example
+
+For example, an ordinary Clojure map may carry the same fields as a checked
+certificate, a verified choreography, an authoritative basis, or an executable
+plan.  Shape equality, a discriminator key, or a familiar constructor name is
+not sufficient evidence that the stronger semantic category has been admitted.
+
+An *admitted semantic value* is a value the supported construction path permits
+later stages to consume as a particular semantic category because the required
+construction, checking, trusted acquisition, or validation boundary has been
+crossed.
+
+Admission is deliberately weaker than proof.  A value may be admitted as an
+=:authoritative-observation= because a trusted acquisition path produced it,
+while claims about the correctness of the underlying model may still depend on
+runtime enforcement or trusted assumptions.  Likewise, a nominal value named
+=VerifiedChoreography= does not prove choreography validity merely by possessing
+that runtime type; its trustworthy construction remains tied to the verifier or
+certificate-checking boundary.
+
+Nominal types, private records, opaque wrappers, checked constructors, validated
+handles, tagged internal representations, and equivalent mechanisms are
+permitted ways to make semantic categories difficult to confuse accidentally.
+No one representation technique is required merely because two semantic values
+must remain distinct.
+
+The ordinary downstream application author should not need to wrap routine
+business values manually simply to satisfy framework ceremony.  Stronger
+category boundaries should preferentially be introduced behind elaboration,
+verification, authoritative acquisition, model operations, and other framework
+boundaries that can construct the admitted value themselves.
+
+*** Semantic interface
+
+The normalized meaning exported by one checked component to its dependents.
+
+It should include only facts that downstream proofs are allowed to rely on.
+
+Examples:
+
+- declared value types;
+- enumerated variants;
+- cardinality;
+- optionality/refinement rules;
+- relationships;
+- operation input/output facts;
+- preconditions;
+- postconditions;
+- authority requirements;
+- provenance requirements;
+- effects/resources;
+- named assumptions;
+- named guarantees.
+
+Implementation details not relevant to downstream reasoning should not become
+part of the semantic interface merely because they are convenient to serialize.
+
+*** Assumption
+
+A proposition accepted from outside the current proof.
+
+Assumptions must be named and classified.
+
+Useful assumption classes include:
+
+- =:application-asserted=;
+- =:trusted-model-contract=;
+- =:authentication=;
+- =:external-system=;
+- =:runtime-primitive=;
+- =:environment-liveness=.
+
+An assumption is not a failure. An invisible assumption is.
+
+*** Guarantee
+
+A proposition established by the current certified component relative to its
+dependencies and assumptions.
+
+*** Obligation
+
+A proposition that must be established before a certificate may be issued.
+
+*** Derivation
+
+Machine-readable evidence describing how a guarantee follows from certified
+premises and inference rules.
+
+*** Certificate
+
+A closed artifact stating:
+
+- what semantic object was checked;
+- its semantic identity;
+- certified dependency identities;
+- assumptions;
+- guarantees;
+- proof obligations;
+- derivations or references to checked derivations;
+- checker/kernel version;
+- result classification.
+
+A certificate is evidence accepted by the checker, not a boolean. Serialized
+certificate data is a candidate until admitted by the applicable checking
+boundary. Its result classification cannot determine its own acceptance.
+A certificate may legitimately establish a conditional theorem; its admission
+must still reject unresolved obligations that its artifact class requires to be
+discharged rather than assumed.
+
+*** Semantic identity
+
+A deterministic identity of a normalized semantic interface.
+
+This is deliberately not the same as a source-file checksum.
+
+Whitespace, comments, local helper names, and non-semantic implementation
+refactors should not necessarily invalidate downstream proofs.
+
+A change to a relied-upon type, rule contract, authority contract, operation
+postcondition, or other semantic commitment must.
+
+*** Proof DAG
+
+The complete dependency graph from a root verified application artifact through
+all certified semantic dependencies and named assumptions.
+
+The unified design preserves explicit distinctions among mechanically established claims, runtime-enforced premises, and trusted assumptions.
+
+*** Machine-checked framework properties
+
+Properties justified mechanically from explicit semantics and derivations.
+
+Examples:
+
+- rule expression type safety;
+- knowledge entailment;
+- provenance entailment;
+- authority derivation and non-escalation constraints;
+- message payload closure and knowledge-transfer constraints;
+- projection preservation for the supported subset;
+- resource invariants;
+- progression algebra invariants;
+- browser-adapter transition invariants;
+- semantic dependency compatibility.
+
+*** Runtime-enforced premises
+
+Properties whose concrete values must be checked when static proof meets the
+world.
+
+Examples:
+
+- Malli value shape;
+- authenticated principal binding;
+- operation registry lookup;
+- execution/generation identity;
+- correlation identity;
+- plan compatibility;
+- progression header decoding;
+- server-side authorization;
+- consistency basis interpretation;
+- protected read/subscription authorization.
+
+*** Trusted assumptions
+
+Properties outside the proved core.
+
+Examples:
+
+- correctness of authentication middleware;
+- declared model operation contract until the model layer itself becomes
+  certified strongly enough to discharge it;
+- XTDB's documented transaction and consistency behavior;
+- HTMX lifecycle contracts;
+- DOM/EventSource/browser primitive behavior;
+- network and scheduler liveness premises where liveness is claimed.
+
+Tests remain important evidence that trusted assumptions and implementation
+bindings behave as expected. They do not change classification from "trusted"
+to "proved."
+
+** Non-negotiable architectural invariants
+
+*** No accidental raw-to-certified substitution after certification begins
+
+Once a stage has crossed into certified construction, downstream semantic APIs
+must not accept arbitrary same-shaped data as though it had crossed that
+boundary.
+
+Bad:
+
+#+begin_src clojure
+(project
+ {:verified? true
+  :states ...})
+#+end_src
+
+The supported path should instead consume a value whose admission status was
+established by the corresponding checker boundary, conceptually:
+
+#+begin_src clojure
+(project verified-choreography)
+#+end_src
+
+This requirement is behavioral rather than a mandate that every stage use a
+specific Clojure nominal type.  A private record, opaque wrapper, checked handle,
+validated certificate reference, or another representation may satisfy the
+boundary if ordinary cooperating code cannot accidentally substitute a raw map
+for the admitted value.
+
+Clojure cannot make deliberate forgery or host-language bypass metaphysically
+impossible.  Inside the trusted application boundary the purpose of these
+construction barriers is primarily to prevent accidental semantic substitution,
+make unsupported bypass conspicuous, and preserve precise diagnostics.  Code
+that deliberately obtains lower-level authority and bypasses the supported
+boundary is outside the corresponding assurance claim.
+
+*** No self-certification
+
+A component may not establish an obligation solely by restating its own claimed
+guarantee.
+
+The checker must distinguish:
+
+#+begin_example
+claim
+evidence
+inference rule
+checked conclusion
+#+end_example
+
+*** No circular semantic dependency without an explicit fixed-point rule
+
+The certificate dependency DAG remains acyclic. A deliberately formalized
+recursive/fixed-point construction may occur inside a checked component using
+its own induction, guardedness, termination, or coinduction rule as appropriate.
+It does not permit certificates to discharge each other's premises through an
+unsupported dependency cycle.
+
+Accidental namespace cycles do not become logical recursion merely because
+Clojure can load around them.
+
+*** Proof artifacts never affect runtime meaning
+
+A =DiagnosticProofSidecar=, proof trace, explanation, or external theorem file
+may help determine whether build-time certification succeeds.
+
+Once an =ExecutablePlan= has been emitted, optional proof/diagnostic artifacts
+cannot alter its runtime transitions.
+
+*** Executable plans must retain certified provenance
+
+The production plan should retain enough immutable identity to establish:
+
+- which verified choreography generated it;
+- which semantic dependency set it was generated against;
+- which plan/protocol version it uses;
+- whether the runtime accepts that compatibility class.
+
+The production browser does not need the full proof DAG.
+
+*** Semantic identity is not proof
+
+A fingerprint provides identity evidence under the specified canonicalization,
+encoding, and digest assumptions. It does not prove the semantic claim
+represented by those bytes. Exact equality claims must state whether they
+compare canonical terms directly or rely on a collision-resistance assumption.
+
+*** Assertions remain visible
+
+=:asserted= or application-trusted premises remain legitimate escape hatches
+where Gesso cannot establish domain truth.
+
+They must not be silently promoted to =:derived= or =:authoritative=.
+
+*** No theorem from finite examples
+
+Property tests, generated traces, and Chromium scenarios provide scoped test
+evidence. Exhaustive checking of an exact finite state space establishes the
+property over that model and has the stronger =exact-finite-checked= class.
+Neither class automatically establishes a property of an unbounded production
+system. Extending the claim requires the sound abstraction or correspondence
+argument specified in Part I.
+
+** Certified construction pipeline
+
+Certified construction is a sequence of semantic boundaries rather than a flag
+added to arbitrary data.
+
+*** Raw declaration
+
+A raw declaration is ordinary application/framework input before the relevant
+semantic checker has accepted it.
+
+Examples include:
+
+- raw schema;
+- raw relationship declaration;
+- raw rule term;
+- raw operation contract;
+- raw choreography;
+- raw projection request;
+- raw application assembly.
+
+Raw declarations remain useful, inspectable data.
+
+They simply cannot be consumed by APIs that require the corresponding certified
+artifact.
+
+*** Normalization
+
+Normalization resolves representation choices that should not affect semantic
+identity.
+
+Depending on artifact class, normalization may include:
+
+- canonical ordering of closed declarations;
+- resolved semantic field IDs;
+- resolved nominal types;
+- canonical operator terms;
+- explicit default values;
+- normalized assumption/guarantee forms;
+- canonical dependency references.
+
+Normalization must not silently erase semantically meaningful differences.
+Its contract identifies the source subset, semantic equivalences used, canonical
+encoding, and normalization version. It must preserve distinctions such as
+ordered versus unordered collections, absent versus explicit nil, nominally
+distinct identifiers, and closed versus extensible variants when they matter.
+
+A certificate over normalized terms establishes a claim about those terms.
+If preservation from author syntax to those terms is not independently checked,
+that translation remains an explicit trusted premise. Normalization is not
+outside the assurance boundary merely because it runs before hashing.
+
+*** Elaboration
+
+Elaboration turns pleasant author syntax into explicit semantic data.
+
+For example:
+
+#+begin_example
+author DSL
+    |
+    v
+closed rule AST
+    |
+    v
+typed/resolved rule term + obligations
+#+end_example
+
+or:
+
+#+begin_example
+choreography authoring syntax
+    |
+    v
+normalized global transition representation
+    |
+    v
+knowledge / provenance / authority obligations
+#+end_example
+
+Elaboration may be sophisticated.
+
+It is not trusted to prove its own output.
+
+*** Obligation generation
+
+The artifact-class checking specification defines the propositions that must
+hold before the artifact may be certified. The elaborator may propose these
+obligations, but the accepting checker must establish that the required set is
+complete for the normalized subject and requested guarantee. Checking only the
+obligations volunteered by an elaborator cannot detect an omitted obligation.
+
+Examples include:
+
+- a field exists;
+- a rule operator is defined for the operand types;
+- an optional value has been refined before access;
+- a role knows a branch discriminator;
+- stronger provenance is justified;
+- a required authority/capability exists;
+- a dependency exports a required guarantee;
+- a projection preserves required behavior;
+- a closed registry contains the referenced member.
+
+*** Derivation checking
+
+Where an obligation is machine-derived, the system constructs evidence in the
+proof vocabulary.
+
+The proof kernel or the appropriate dedicated checker validates that evidence.
+
+A compiler/elaborator saying:
+
+#+begin_example
+{:valid? true}
+#+end_example
+
+is not itself the derivation.
+
+*** Certificate issuance
+
+Only after all required obligations for the artifact class are discharged may
+the checker produce the corresponding certified value.
+
+Conceptually:
+
+#+begin_example
+RawRuleSet
+    |
+check
+    v
+VerifiedRuleSet
+
+RawChoreography
+    |
+check using certified dependencies
+    v
+VerifiedChoreography
+
+RawApplicationAssembly
+    |
+closure checks using certified semantic dependencies
+    v
+VerifiedApplicationAssembly / assembly-verified root
+#+end_example
+
+*** Downstream composition
+
+Downstream construction consumes the certified artifact, not a same-shaped raw
+map.
+
+For semantic reasoning, a downstream stage may rely only on the semantic
+interface that the upstream certificate exports. Diagnostic inspection of
+separate source/proof metadata is permitted under the sidecar boundary; it
+cannot introduce undeclared semantic premises.
+
+It may not rely on private implementation detail merely because the value happens
+to contain it.
+
+*** Certified construction is fail closed
+
+If certification fails, the certified value does not exist.
+
+The next stage therefore cannot proceed through the ordinary public API.
+
+This gives the architecture a useful structural property:
+
+#+begin_example
+failed upstream obligation
+    |
+no certified upstream artifact
+    |
+no legal downstream composition
+#+end_example
+
+The system should not construct a partial "mostly verified" value and hope a
+later stage interprets the missing guarantee conservatively unless that partial
+artifact is itself an explicitly different artifact class.
+
+*** Checked construction remains usable from Clojure
+
+The architecture does not require a new host language.
+
+Clojure remains the implementation and authoring host.
+
+The stronger boundary may be represented through a combination of:
+
+- checked constructors;
+- opaque/private or nominal certified values where they materially prevent
+  category confusion;
+- predicates/accessors;
+- explicit certificate data;
+- semantic IDs;
+- validated handles or registry references where those are already part of the
+  design;
+- public APIs that require admitted inputs.
+
+These are realization choices, not a requirement to nominalize every domain
+value.  A distinction deserves stronger representation when confusing two
+same-shaped values would violate a semantic invariant, cross a trust/admission
+boundary, or invalidate an assurance claim.
+
+Clojure cannot make forgery metaphysically impossible.
+
+The target is that ordinary correct use cannot accidentally bypass certification
+and that any deliberate bypass is unmistakably outside the supported interface.
+Routine downstream code should encounter less ceremony than the internal proof
+machinery: Gesso should construct admitted values mechanically whenever their
+status can be derived from declarations and trusted boundaries.
+
+** Typed business-rule language and distributed admissibility
+:PROPERTIES:
+:CUSTOM_ID: req-certified-rule-language
+:END:
+
+A core requirement of this architecture is to reject malformed expressions of business
+rules without pretending Gesso knows whether the business chose the correct
+policy.
+
+The distinction is:
+
+#+begin_example
+well-formed but wrong policy
+  (= request.status :open)
+when the organization actually wanted some other policy
+
+Gesso may accept this.
+
+malformed policy expression
+  (< request.status 10)
+
+Gesso should reject this if request.status is an enum.
+#+end_example
+
+*** Required rule capabilities
+
+The certified rule language should support only the smallest useful closed subset
+needed by real Gesso/HumanHelp code.
+
+Candidate primitives:
+
+- literals;
+- typed field/reference access;
+- equality/inequality where types support them;
+- ordered comparison where the type declares order;
+- boolean connectives;
+- presence checks and presence refinements;
+- membership over declared set/collection types;
+- enum/variant predicates;
+- declared deterministic derivations;
+- relationship predicates;
+- capability/role predicates supplied through certified model interfaces;
+- explicit match/case over closed variants.
+
+Do not expose arbitrary host-language execution inside the proved rule language.
+A host predicate or derivation used through an explicitly trusted extension must
+be named, typed, and classified as such. Declaring it deterministic does not
+prove purity, termination, or conformance. The proved subset and an extension
+that relies on asserted semantics are different assurance scopes.
+
+*** Rule evaluation and refinement contract
+
+The supported closed subset must have explicit evaluation semantics as well as
+typing rules. The contract states evaluation order and short-circuit behavior,
+absence/nil semantics, nominal equality, supported ordering, collection
+membership, and each declared primitive's failure behavior. It must not
+implicitly inherit incompatible host-language coercions or truthiness.
+
+For every admitted primitive, either evaluation is total over its certified
+input domain or its typed failure/partiality is represented explicitly. Effects,
+time, randomness, database reads, and ambient authorization cannot enter a pure
+rule through an untracked helper. Required external facts enter as declared
+inputs with appropriate provenance and scope.
+
+Refinements are path-sensitive and bound to the same subject, value observation,
+and environment on which they were established. A presence test for one
+Request cannot justify dereferencing another, nor can a check against an old
+observation justify a field in an unrelated replacement value. Branch joins
+retain only refinements established for every admitted incoming path, unless
+a stronger checked rule establishes the conclusion.
+
+The smallest supported language may omit recursion and general quantification.
+Unsupported syntax receives an explicit diagnostic; it is not evaluated as
+arbitrary Clojure and then labeled certified. The supported subset must be
+sufficient for the real Claim pilot, rather than expanded speculatively.
+
+
+*** Rule type checking
+
+The checker should reject at least:
+
+- unknown fields;
+- unknown enum variants;
+- operands of incompatible types;
+- ordered comparison over unordered types;
+- collection operations over scalar values;
+- invalid cardinality assumptions;
+- dereference of optional values without a proven presence refinement;
+- branches that are non-exhaustive when exhaustiveness is claimed;
+- impossible refinement combinations where the domain proves them impossible;
+- invalid relationship endpoints;
+- use of an operation result field not produced by that operation.
+
+*** Choreographic admissibility of a valid rule
+
+A rule can be intrinsically well formed but invalid at a particular distributed
+program point.
+
+For example:
+
+#+begin_example
+rule:
+  (= request.private-review :approved)
+
+intrinsic type:
+  Boolean
+  VALID
+
+browser use before browser knows request.private-review:
+  INVALID AT THIS PROGRAM POINT
+#+end_example
+
+Rule use should therefore add obligations for:
+
+- knowledge;
+- provenance where relevant;
+- authority/trust where relevant;
+- optionality/refinement state;
+- basis/progression constraints where the rule relies on authoritative
+  observation.
+
+*** Rule syntax
+
+The internal proof representation should be a closed data AST.
+
+Application syntax may be a macro/DSL that elaborates into that AST.
+
+Conceptual surface syntax:
+
+#+begin_src clojure
+(rule claimable?
+  (and
+   (has-role? current-user :helper)
+   (= request.status :open)
+   (= request.organization-id
+      current-user.organization-id)))
+#+end_src
+
+Conceptual normalized term:
+
+#+begin_src clojure
+[:and
+ [:has-role?
+  [:principal :current]
+  [:role :helper]]
+ [:= [:field :request/status]
+     [:enum :request.status/open]]
+ [:= [:field :request/organization-id]
+     [:field :current-user/organization-id]]]
+#+end_src
+
+The exact syntax is intentionally deferred until the proof vocabulary is small
+and explicit.
+
+** Semantic interfaces and certificate hierarchy
+
+The proof hierarchy follows semantic ownership.
+
+It is not simply a mirror of the filesystem.
+
+A namespace participates only when it establishes or consumes semantic
+commitments relevant to downstream reasoning.
+
+The goal is not to force every Clojure namespace into the proof system.
+
+Namespaces that establish or consume semantic commitments should have an
+explicit certified interface.
+
+The HumanHelp semantic dependency progression is conceptually:
+
+#+begin_example
+schema
+  |
+  v
+domain
+  |
+  +-------------------+
+  |                   |
+  v                   v
+graph/relationships   rules
+  |                   |
+  +---------+---------+
+            |
+            v
+            fx
+            |
+            v
+            core operation contracts
+            |
+            v
+            choreo
+#+end_example
+
+HumanHelp source ownership remains governed by the production model boundaries
+defined earlier; this diagram describes semantic dependency, not necessarily
+source-file load order.
+
+*** Schema certificate
+
+May establish:
+
+- nominal semantic type names;
+- Malli/value representation;
+- fields;
+- required/optional status;
+- enum variants;
+- cardinality;
+- normalized compatibility identity.
+
+It must not establish business authority merely because a value validates.
+A declaration that a field is required or has a particular type is a schema
+contract; it does not establish that every existing database record satisfies
+it. Concrete data must enter through the corresponding validated or explicitly
+trusted acquisition boundary.
+
+*** Domain certificate
+
+May establish:
+
+- domain refinements;
+- legal state variants;
+- relationships among domain concepts;
+- deterministic pure derivations;
+- state invariants that can actually be checked from the declared domain;
+- application assumptions that cannot be derived.
+
+*** Relationship/graph certificate
+
+May establish:
+
+- valid relationship endpoints;
+- cardinality constraints;
+- cross-model references;
+- path typing;
+- derived relationship facts.
+
+It must not silently infer authorization from graph reachability. A declared
+cardinality is not proof that stored relationships currently obey it. A graph
+certificate must distinguish path typing, assumptions about model invariants,
+and facts actually obtained from an admitted observation.
+
+*** Rule-set certificate
+
+May establish:
+
+- each rule is intrinsically well typed;
+- each referenced semantic field exists;
+- each refinement is coherent;
+- each declared derivation is valid under its inputs;
+- named assumptions are explicit.
+
+*** FX/operation certificate
+
+May establish:
+
+- required typed inputs;
+- produced typed outputs;
+- declared effects/resources;
+- atomic model boundary ownership;
+- preconditions;
+- postconditions;
+- expected domain outcomes;
+- failure classes;
+- authority requirements.
+
+A certificate may initially rely on a trusted assertion that the ordinary
+Clojure implementation satisfies the contract. Stronger implementation-conformance checking can reduce that trusted surface
+where useful. The assumption must identify the implementation realization or
+binding whose conformance is trusted. A contract's unchanged semantic identity
+does not transfer implementation evidence to a changed function body.
+
+*** Core certificate
+
+May establish that public semantic operations:
+
+- refer to certified operation contracts;
+- preserve model ownership boundaries;
+- expose only declared outcomes;
+- do not advertise stronger guarantees than underlying FX/model contracts.
+
+*** Choreo certificate
+
+Consumes only certified semantic interfaces and establishes distributed
+properties such as:
+
+- entry knowledge;
+- communication knowledge transfer;
+- authoritative observation;
+- deterministic derivation;
+- branch distinguishability;
+- provenance;
+- authority flow;
+- resource discipline;
+- typed continuations;
+- terminal behavior.
+
+*** Projection certificate
+
+Establishes the stated projection property for the supported global/local
+semantics under an explicit theorem or checked property. The claim identifies
+observable events, permitted internal steps, communication/queue assumptions,
+branch knowledge, and safety or progress scope. An individual local simulation
+must not be described as correctness of the composed participant system unless
+the corresponding composition obligation has also been established.
+
+*** Executable-plan certificate
+
+Establishes the declared correspondence between the certified projection and
+lowered runtime data under the named format/protocol version and dependency
+identities. The claim must distinguish checked lowering correctness from
+trusted compiler conformance. Merely recording the input certificate's identity
+on the output plan proves no preservation property.
+
+*** Whole-application realization belongs in the same dependency story
+
+The hierarchy does not stop at =ExecutablePlan=.
+
+Part VII established that an application can have individually valid semantic
+pieces and still be impossible as an assembled program.
+
+Therefore the root assurance graph extends through application realization.
+
+The certificate hierarchy extends beyond the original model/choreography chain
+to the whole-application realization introduced in Part VII.
+
+This extension must preserve the distinction between semantic proof and assembly
+verification.
+
+*** Application-assembly certificate
+
+An application-assembly certificate may establish that a normalized
+=ApplicationAssembly= is structurally closed relative to its certified semantic
+dependencies and declared realization facts.
+
+It may record guarantees such as:
+
+- every exposed semantic operation resolves to a known certified operation;
+- every browser-exposed operation has a compatible certified projection;
+- every required browser plan is represented in the current browser manifest;
+- browser artifact identity corresponds exactly to the required manifest;
+- required transport bindings exist;
+- trusted routes correspond to declared semantic operations;
+- trusted server realizations correspond to certified operation contracts;
+- required server capabilities resolve to compatible admitted provider contracts,
+  including the declared origin, value shape, scope, and lifecycle dependencies;
+- required settlement/progression relationships are represented;
+- every managed authoritative fragment has initial knowledge or a permitted
+  acquisition path;
+- semantic-route collisions cannot silently erase operation identity.
+
+These guarantees retain their actual evidence class, commonly
+=:assembly-verified=. They may be called proved only when the corresponding
+proposition and derivation justify that stronger classification. Classification
+is not automatically upgraded when the implementation reaches a later stage.
+
+The root must also retain independent production-enforcement and required user-capability evidence under [[#req-application-assurance-claims]]. Neither the
+certificate hierarchy nor an internally closed assembly establishes that the
+production entrypoint uses it or that HumanHelp includes all promised actions.
+
+*** Browser-artifact correspondence certificate
+
+A browser-artifact correspondence artifact may establish:
+
+- current browser manifest semantic identity;
+- exact generated artifact stamp/digest;
+- set of required executable plans;
+- exact correspondence between required plans and generated artifact.
+
+It establishes only the defined build correspondence under the checked build
+binding and named trust assumptions. The manifest, emitted payload, and actual
+artifact bytes must be related by the acyclic construction and serving contracts
+of [[#req-browser-assembly-manifest]]. A copied stamp is insufficient.
+
+It does not establish:
+
+- runtime authorization;
+- correctness of HTMX/browser primitives;
+- current server compatibility of a suspended browser;
+- truth of domain facts.
+
+*** Rendered-surface verification evidence
+
+Dynamic rendered-surface checking may produce structured verification evidence
+for a concrete render.
+
+That evidence may establish:
+
+- every semantic affordance retains its operation identity;
+- every effective semantic transport corresponds to the assembly;
+- no anonymous ordinary HTMX action occupies a semantic route;
+- unavailable realizations are not silently downgraded;
+- concrete subjects/route parameters satisfy declared structural constraints.
+
+Because the exact render depends on runtime data, this evidence is normally
+runtime-enforced/assembly verification rather than a static certificate over all
+possible renders. Evidence binds the concrete checked render and admitted
+assembly generation; it cannot be reused as a certificate for later renders
+with different data or bindings. Excluded serialized/streamed paths retain
+explicit assurance boundaries. A valid render is not a substitute for server
+protocol admission or current model authorization.
+
+*** Root application proof report
+
+The root application report should be able to traverse:
+
+- certified model/schema dependencies;
+- rule and relationship certificates;
+- operation contracts;
+- choreography certificate;
+- projection certificate;
+- executable-plan certificate;
+- application-assembly certificate/report;
+- browser artifact correspondence;
+- runtime-enforced premises;
+- trusted assumptions.
+
+Conceptually:
+
+#+begin_example
+ROOT APPLICATION REPORT
+
+semantic proof chain:
+    schema/domain/rules
+      -> operation
+      -> choreo
+      -> projection
+      -> ExecutablePlan
+
+application realization chain:
+    affordance
+      -> plan
+      -> artifact
+      -> transport
+      -> route
+      -> trusted server
+      -> model operation
+      -> settlement/progression
+      -> acquisition
+
+runtime premises:
+    authenticated principal binding
+    concrete schema checks
+    generation/correlation
+    dynamic authorization
+    plan compatibility
+
+trusted assumptions:
+    XTDB
+    browser primitives
+    HTMX lifecycle
+    authentication implementation
+#+end_example
+
+The root report is an explanation of assurance. It identifies the root subject,
+admitted generation, selected certification profile, dependency closure, and
+the actual evidence status of each required claim. Missing, unsupported, or
+unresolved evidence must remain distinguishable from accepted conditional
+claims and from tested behavior.
+
+It is not one undifferentiated theorem.
+
+*** Certificate representation
+
+A certificate records the checked semantic boundary.
+
+A conceptual certificate shape:
+
+#+begin_src clojure
+{:gesso.proof/type :verified-rule-set
+ :gesso.proof/version 1
+
+ :semantic-id "..."
+ :certification-profile :rule-set/closed-typed
+ :semantics-id "..."
+
+ :subject
+ {:kind :rule-set
+  :id :humanhelp.request/claim-rules}
+
+ :dependencies
+ [{:kind :schema
+   :id :humanhelp.request/schema
+   :semantic-id "..."}
+  {:kind :schema
+   :id :humanhelp.user/schema
+   :semantic-id "..."}]
+
+ :assumptions
+ [{:id :humanhelp/request-claim-policy
+   :class :application-asserted
+   :proposition ...}]
+
+ :guarantees
+ [...]
+
+ :obligations
+ [...]
+
+ :derivations
+ [...]
+
+ :checker
+ {:kernel-version 1
+  :rule-set-id "..."
+  :elaborator-version 1}}
+#+end_src
+
+This shape is conceptual. Final keys and namespaces should follow the canonical
+Gesso artifact vocabulary in the implementation while preserving the semantics
+specified here. Each guarantee must resolve to its proposition, assurance class,
+justification, and open assumptions; an artifact-wide status cannot replace
+those bindings. Any bounded result also records its model/exploration scope.
+The checker establishes these relationships rather than trusting the fields.
+
+** Certified values and public API discipline
+
+The certificate is evidence.
+
+The public Clojure API must also prevent ordinary downstream construction from
+treating arbitrary data as certified merely because it has the same shape.
+
+Clojure does not provide Rust's nominal compile-time privacy guarantees, and the
+design does not depend on pretending that it does.
+
+The requirement is that ordinary correct use is strongly guided and accidental
+category substitution is difficult through the supported API.
+
+Permitted techniques include:
+
+- private implementation records/types where appropriate;
+- constructors that perform checking and return opaque or nominal admitted
+  values;
+- public predicates/accessors rather than map-shape conventions;
+- sealed-ish protocol ownership inside Gesso namespaces;
+- validated handles or references to checker-owned admitted artifacts;
+- no public =map->VerifiedThing= style escape hatch where it would allow a raw
+  representation to impersonate an admitted value;
+- structural validation and the required semantic/derivation rechecking at
+  certificate deserialization boundaries;
+- semantic fingerprint validation before composition;
+- proof-kernel checking before accepting externally stored/cached certificates.
+
+The implementation should choose the smallest mechanism that preserves the
+semantic distinction.  A nominal type is especially useful where two values can
+have the same representation but materially different provenance, authority,
+lifecycle, or assurance status.  It is unnecessary when ordinary structural data
+already carries all semantics required by the consumer.
+
+Do not claim that an opaque or nominal Clojure value is itself a proof.
+
+The proof is the checked derivation and dependency chain represented by it; an
+admitted runtime category records that the required construction boundary was
+crossed.
+
+The public API must make checked construction the path of least resistance.
+
+*** Certified values are not map conventions
+
+A value does not become certified because it contains:
+
+#+begin_src clojure
+{:valid? true
+ :semantic-id "..."}
+#+end_src
+
+Certified downstream APIs consume values created by checker-controlled
+constructors or validated deserialization boundaries.
+
+The semantic identity is evidence of which normalized interface was checked.
+
+The derivation/certificate establishes why guarantees may be relied upon.
+
+*** Raw and certified values are different products
+
+The API should make a visible distinction between:
+
+#+begin_example
+RawRuleSet
+VerifiedRuleSet
+
+RawChoreography
+VerifiedChoreography
+
+RawProjection
+VerifiedProjection
+
+RawApplicationAssembly
+VerifiedApplicationAssembly
+#+end_example
+
+The exact Clojure representation may use private records, protocols, opaque
+handles, or another mechanism.
+
+The key requirement is behavioral:
+
+#+begin_quote
+Ordinary public downstream construction cannot bypass checking merely by
+assembling a map with the right keys.
+#+end_quote
+
+This distinction should impose little routine ceremony on downstream web code.
+Application authors should normally write the source declarations, rules,
+operations, and choreography.  Elaboration, verification, authoritative
+acquisition, and model boundaries should construct the stronger admitted values.
+Manual wrappers are appropriate mainly when application code intentionally
+crosses one of those semantic boundaries itself.
+
+A useful API acceptance criterion is:
+
+#+begin_quote
+Where two same-shaped values have materially different semantic meanings,
+accidental substitution through the supported API is either structurally
+unavailable or rejected immediately with a diagnostic naming the expected
+semantic category, the supplied category, and the missing admission or
+derivation step.
+#+end_quote
+
+*** Deserialization rechecks trust boundaries
+
+Cached or persisted certificates re-enter through a validation boundary.
+
+The system must validate at least:
+
+- certificate structure;
+- checker/kernel version compatibility;
+- semantic identity;
+- dependency identities;
+- derivation validity where required;
+- signatures or transport integrity if the declared storage trust boundary
+  requires them;
+- the normalized subject and proposition identities actually bound by the
+  certificate, not only supplied identifier strings;
+- all required transitive dependencies and assumption scopes.
+
+A signature authenticates an issuer or bytes under its key trust contract; it
+is not a derivation of the signed proposition. Likewise, unsigned locally
+cached data may be accepted after complete required rechecking. Do not require
+a signing infrastructure when rechecking supplies the necessary trust boundary.
+Unknown rule tags, unsupported semantic/checker profiles, malformed references,
+or unavailable required evidence fail admission rather than falling back to
+=:valid?= or a previous successful report.
+
+A stored certificate is not trusted merely because it came from yesterday's
+build directory.
+
+Likewise, crossing an untrusted serialization boundary does not preserve a
+purely in-process nominal or opaque admission claim.  Encoded bytes re-enter as
+transport data and regain stronger semantic status only through the verification,
+authentication, authoritative acquisition, or certificate-checking boundary
+appropriate to that category.
+
+*** Checker-controlled constructors do not imply proof of implementation bodies
+
+A certified operation contract may initially state:
+
+#+begin_example
+trusted assumption:
+    production Clojure function satisfies this operation contract
+#+end_example
+
+That is legitimate when explicit.
+
+The fact that the contract object is certified does not prove arbitrary Clojure
+implementation conformance.
+
+Stronger implementation-conformance work may shrink that trusted boundary.
+
+Until then, diagnostics and root reports keep it visible.
+
+*** Certified interfaces should be minimal
+
+A semantic interface should export only commitments downstream reasoning is
+allowed to depend on.
+
+Over-exporting implementation details has two costs:
+
+- it creates unnecessary proof dependencies;
+- it invalidates downstream artifacts on irrelevant implementation changes.
+
+The target is a normalized semantic contract, not a serialized source namespace.
+
+*** Compatibility starts strict
+
+The default safe rule is exact semantic dependency identity.
+
+Compatibility/subtyping may be introduced only when a concrete evolution problem
+justifies it and the compatibility relation itself is checked.
+
+This avoids an early system in which vague "compatible enough" logic silently
+recreates the same proof-by-reputation problem the certificate architecture was
+introduced to remove.
+
+** Composition, semantic identity, and stale-dependency rejection
+:PROPERTIES:
+:CUSTOM_ID: req-certificate-composition
+:END:
+
+Composition is where independent certified artifacts become one larger trusted
+semantic construction.
+
+The default rule is strict:
+
+#+begin_quote
+A dependent stage accepts only dependencies whose certified semantic interfaces
+satisfy the exact assumptions and identity requirements of the dependent
+construction.
+#+end_quote
+
+A dependent stage must reject immediately if:
+
+- a required semantic dependency is missing;
+- a supplied dependency has the wrong certificate kind;
+- semantic identities do not match the dependency named in the certificate;
+- the checker/kernel version is unsupported;
+- an upstream guarantee needed by the dependent stage is absent;
+- an assumption is supplied with an incompatible proposition/type;
+- two dependencies export incompatible definitions of the same semantic
+  identity;
+- a proof obligation remains unresolved;
+- a supposedly closed rule/message/variant set contains an undeclared member;
+- a dependency graph contains an unsupported cycle;
+- a stale certificate is paired with a changed semantic interface;
+- a certificate claims a theorem not derivable under its recorded premises.
+
+A failure at =request.rules= means no =VerifiedRequestRules= exists.
+
+Therefore:
+
+#+begin_example
+no VerifiedRequestRules
+  -> no VerifiedRequestOperationRegistry
+  -> no VerifiedRequestChoreography
+  -> no VerifiedProjection
+  -> no certified ExecutablePlan
+#+end_example
+
+A production build should not "try anyway."
+
+*** Goals
+
+Semantic identity must allow:
+
+- stale proof detection;
+- deterministic caching;
+- dependency mismatch rejection;
+- reproducible build diagnostics;
+- proof DAG inspection.
+
+It must avoid invalidating the world for irrelevant source edits.
+
+*** Normalize before fingerprinting
+
+Fingerprint normalized semantic terms, not source text.
+
+For example, a rule's semantic identity may include:
+
+- normalized operator tree;
+- resolved nominal types;
+- resolved semantic field ids;
+- declared assumptions;
+- declared guarantees.
+
+It should exclude:
+
+- whitespace;
+- comments;
+- local source formatting;
+- unrelated helper implementation;
+- diagnostic-only source spans.
+
+Source locations remain attached separately for diagnostics.
+
+*** Dependency identities are transitive evidence, not transitive hashes alone
+
+A certificate records direct certified dependency identities.
+
+The root proof DAG can reconstruct the transitive dependency closure.
+
+Do not mistake a Merkle-like dependency hash for proof validity. The checker
+still validates certificate structure and derivations.
+
+*** Compatibility rather than equality where justified
+
+Not every downstream dependency requires byte-identical semantics.
+
+Some certified interfaces may admit an explicit compatibility relation such as:
+
+#+begin_example
+new interface provides every guarantee required by old dependent
+and does not invalidate a relied-upon closed-world assumption
+#+end_example
+
+Do not implement semantic subtyping/compatibility speculatively. Begin with exact
+semantic identity where correctness is clearer, then generalize only for a
+concrete evolution problem.
+
+*** Identity evidence is not proof evidence
+
+Semantic identity answers:
+
+#+begin_quote
+Is this the normalized semantic interface whose identity the dependent artifact
+records?
+#+end_quote
+
+It does not answer:
+
+#+begin_quote
+Was that interface correctly certified?
+#+end_quote
+
+Both checks matter.
+
+A copied semantic ID on a forged raw value is not a certificate.
+
+A valid certificate for the wrong semantic dependency is not compatible merely
+because the artifact class matches.
+
+*** Staleness propagates through dependency edges
+
+Suppose:
+
+#+begin_example
+organization.domain O1
+    |
+claim-rules R1 depends on O1
+    |
+claim-operation C1 depends on R1
+    |
+claim-choreo H1 depends on C1
+    |
+projection P1 depends on H1
+#+end_example
+
+If the semantic interface becomes O2 and R1 relied on changed meaning, R1 no
+longer composes.
+
+The ordinary dependency chain stops there.
+
+Later stages do not receive permission to keep using C1/H1/P1 simply because
+their own serialized bytes have not changed.
+
+*** Compatibility must be earned
+
+Exact semantic identity is the safe initial rule.
+
+An explicit compatibility relation may admit evolution such as:
+
+#+begin_example
+new interface
+    provides every guarantee required by old dependent
+    preserves all closed-world assumptions that dependent relied upon
+#+end_example
+
+but that compatibility relation is itself semantic machinery requiring checks.
+
+"Looks backwards compatible" is not a supported proof rule.
+
+*** Assumption propagation and discharge
+:PROPERTIES:
+:CUSTOM_ID: req-certificate-assumption-propagation
+:END:
+
+Assumptions are scoped propositions, not just names. Their identity includes the
+relevant subject, parameters, semantic context, and dependencies. Two equal
+labels with different propositions cannot be merged. The report must make the
+assumptions of each exported guarantee inspectable through the dependency DAG;
+flattening a root list must not lose which claims depend on which premise.
+
+A downstream derivation may discharge an assumption only by supplying an
+accepted proof of the required proposition under a checked substitution and
+compatible scope. Its replacement proof's own assumptions remain dependencies.
+The original unresolved premise may disappear from the open-assumption list,
+but the discharge evidence remains reconstructible. Renaming or copying the
+premise into another certificate is not discharge.
+
+Runtime authorization and authenticated-principal premises require the actual
+invocation boundary; a static certificate that names a principal or capability
+does not satisfy them for future requests. Environmental liveness premises
+remain attached to the claims that use them. No certificate supplies fairness,
+network recovery, or a user's eventual Refresh action simply by requiring it.
+
+An artifact class must state which assumptions it permits and which obligations
+must be checked rather than asserted. Unsupported syntax, missing dependencies,
+and invalid proof rules cannot be excused by automatically converting failure
+into an application assumption. An explicitly weaker artifact/profile is a
+different result and cannot satisfy a stronger requested milestone.
+
+The checker rejects detectable contradictions within its supported logic and
+incompatible definitions of the same scoped proposition. It need not decide
+arbitrary consistency of application policy or opaque trusted predicates.
+A conditional theorem under externally inconsistent assumptions does not prove
+a realizable usable application. Positive HumanHelp scenarios and independent
+behavioral acceptance remain necessary to prevent vacuous completion claims.
+
+*** Semantic reuse and implementation evidence
+
+Exact semantic identity permits reuse only for claims that depend on that
+semantic interface. Evidence about a concrete implementation, provider binding,
+compiler, generated artifact, or browser integration must remain attached to
+the corresponding implementation/generation identities and environment scope.
+An implementation change can preserve all downstream contract-level derivations
+while requiring renewed implementation conformance or test evidence.
+
+Caching must key admission on the normalized subject, dependencies, rule set,
+checker semantics/version, certification profile, and relevant assumptions.
+Source spans may change without semantic invalidation, but diagnostics must
+still identify the source associated with the current construction. An old
+accepted result cannot override an explicitly unsupported or withdrawn checker
+profile in the current admission policy.
+
+Admission of one immutable dependency closure must not race mutable lookups
+that later substitute a different dependency. Construction either retains the
+admitted closure or detects changes and rechecks before use. This follows
+Part VII's generation binding; it does not require one global lock or storage
+implementation.
+
+
+** Proof kernel and proof-producing elaboration
+:PROPERTIES:
+:CUSTOM_ID: req-proof-kernel-boundary
+:END:
+
+The logical trusted base should remain much smaller than the compiler that
+constructs semantic artifacts.
+
+The end state should have a deliberately small trusted logical kernel.
+
+The large compiler/elaborator is allowed to be complicated.
+
+The kernel is not.
+
+Conceptually:
+
+#+begin_example
+raw application syntax
+        |
+        v
+large elaborator/compiler
+        |
+        | proposes terms + derivations
+        v
+small proof kernel
+        |
+        | accepts/rejects derivation
+        v
+certificate
+#+end_example
+
+A compiler bug that generates an invalid derivation must therefore fail at the
+kernel boundary. This guarantee alone does not cover omitted obligations,
+incorrect source normalization, or incorrect executable lowering. Those require
+their own checked correspondence or explicit trusted premises.
+
+*** Candidate kernel responsibilities
+
+Keep the kernel small enough to audit.
+
+Possible responsibilities:
+
+- nominal type equality;
+- closed enum/variant membership;
+- rule-expression typing;
+- presence/refinement entailment;
+- knowledge entailment;
+- provenance entailment;
+- authority/capability entailment;
+- conjunction/disjunction of propositions;
+- declared deterministic derivation application;
+- message contract matching;
+- transition precondition/postcondition compatibility;
+- certificate dependency matching;
+- selected resource linearity/ownership rules;
+- selected properties of the declared progression requirement-combination
+  contract, without assuming every implementation supplies a universal join;
+- selected projection proof obligations.
+
+Some properties may remain separate model checkers at first if forcing them into
+one kernel would obscure rather than reduce the trusted base.
+
+*** Kernel non-responsibilities
+
+Do not put these in the logical kernel:
+
+- arbitrary Clojure evaluation;
+- DOM behavior;
+- HTMX implementation;
+- network scheduling;
+- XTDB internals;
+- arbitrary arithmetic theorem proving;
+- general higher-order logic;
+- arbitrary user predicates;
+- automatic proof search over an unbounded domain;
+- full dependent typing.
+
+Existing verifier code should progressively move from:
+
+#+begin_src clojure
+{:valid? true}
+#+end_src
+
+toward producing explicit evidence.
+
+For example:
+
+#+begin_example
+static goal:
+  after admitted observation O of Request R at program point q,
+  browser knows O's request.status value for R
+
+required premises:
+  trusted acquisition contract produces an observation of R
+  O's scope includes R and its status field
+  projection includes that field under the relevant branch
+  browser receives and admits O through the declared event boundary
+  provenance and any required basis/compatibility obligations hold
+
+checked conclusion:
+  Knows(browser, status-of(R, O), after(q))
+
+not concluded:
+  the browser has already received a future observation
+  every Request or the whole board is current at O's basis
+  observation alone authorizes a later mutation
+#+end_example
+
+The exact proof-term representation should remain ordinary immutable data.
+
+The diagnostic renderer and external formalization bridge should be able to consume the same
+proof vocabulary. The static derivation establishes a conditional transition
+property. Concrete observation admission remains a runtime boundary under
+[[#req-authoritative-observation]]; a proof sidecar cannot manufacture O.
+
+*** Obligation coverage and executable correspondence
+
+The accepting checker must validate a complete judgment for its artifact class,
+not merely accept a bag of individually valid derivations. It must bind every
+exported conclusion to the normalized subject and verify the required coverage:
+for example, every relevant rule term, reachable transition, branch,
+communication contract, and terminal/resource case in the claimed subset.
+Unreachable-case exclusion itself needs the justification required by that
+subset. Removing a troublesome branch from the proposed obligation list cannot
+make the original choreography certifiable.
+
+A checker can accomplish this by deriving required obligations itself, checking
+a syntax-directed derivation covering the subject, or another explicit complete
+coverage mechanism. The mechanism and any trusted generator remain named in
+the assurance report; this document does not require one implementation.
+
+There are distinct correspondence boundaries from author syntax to normalized
+subject, from that subject to certified projection, and from projection to the
+actual executable plan consumed by production. An accepted proof about a
+silently changed subject is not proof about the author's original declaration.
+Tests provide evidence for these bindings; only a stated checked preservation
+argument permits a stronger correspondence claim.
+
+The logical trusted base includes inference-rule semantics, checker code,
+primitive semantics, and the representation/parser assumptions used in checking.
+A small kernel reduces that surface; it does not prove its own implementation
+sound merely by being small. Dedicated checkers add their own stated trusted
+surface or supply evidence accepted by a smaller checker.
+
+Checking failure, resource exhaustion, timeout, missing evidence, and unsupported
+features yield distinct non-admitted results where relevant. They never mean
+that an obligation was proved false, nor that it passed. Resource limits must
+not turn incomplete search or exploration into successful certification.
+
+*** Kernel/elaborator separation is a fault-containment boundary
+
+The elaborator may contain bugs.
+
+The architecture is useful only if an elaborator bug that proposes an invalid
+derivation can be rejected by the smaller checker.
+
+Therefore mutation tests should deliberately construct:
+
+- missing premises;
+- wrong dependency references;
+- invalid type conclusions;
+- unjustified provenance strengthening;
+- bogus authority entailment;
+- malformed refinement derivations;
+- fake rule tags;
+- stale dependency identities;
+- omitted obligations for a retained branch or term;
+- a valid derivation for the wrong subject or program point;
+- an unjustified assumption discharge or changed scoped proposition;
+- a semantically different normalized term paired with the original declaration;
+- an executable plan altered after valid projection certification.
+
+The appropriate checker or correspondence boundary must reject each defect;
+a purely logical kernel is not credited with checking an external binding it
+does not inspect.
+
+The kernel accepts or rejects the proof term independently of the elaborator's
+claim that the term is valid.
+
+*** Dedicated checkers may coexist with the kernel
+
+Not every property must immediately be forced into one universal logic.
+
+A small exact transition-system checker may remain the right tool for:
+
+- bounded fragment coordination;
+- adapter ownership invariants;
+- particular finite-state properties.
+
+Such a result can still participate in the root assurance report with an honest
+classification. A finite checker must record the modeled state dimensions,
+initial states, transitions, property, and exploration scope. One active request
+and one queued slot do not make retained metadata or physical retired requests
+finite. A claim about the concrete coordinator requires the relevant sound
+abstraction/refinement relation to [[#req-fragment-coordinator]].
+
+The report distinguishes completed exact exploration, a discovered
+counterexample, and incomplete exploration. It cannot equate running every
+currently generated trace with exploring every behavior of the claimed model.
+
+The goal is a smaller trusted story, not maximal unification for its own sake.
+
+** Malformedness boundary and policy correctness
+
+The proof architecture deliberately distinguishes malformed semantic
+expressions from coherent but product-wrong policies.
+
+Every negative downstream test should classify the defect.
+
+Categories include:
+
+- =:syntax=;
+- =:unknown-semantic-reference=;
+- =:type-mismatch=;
+- =:invalid-cardinality=;
+- =:missing-refinement=;
+- =:closed-world-violation=;
+- =:knowledge-not-established=;
+- =:provenance-not-established=;
+- =:authority-not-established=;
+- =:capability-not-established=;
+- =:relationship-mismatch=;
+- =:operation-contract-mismatch=;
+- =:continuation-mismatch=;
+- =:message-contract-mismatch=;
+- =:projection-obligation-failed=;
+- =:resource-obligation-failed=;
+- =:semantic-dependency-mismatch=;
+- =:stale-certificate=;
+- =:unsupported-certificate-version=;
+- =:proof-invalid=;
+- =:unresolved-obligation=.
+
+A stable taxonomy is useful both for developer diagnostics and for proof/mutation
+coverage accounting.
+
+This architecture must preserve this boundary rigorously.
+
+Accepted but potentially wrong business policy:
+
+#+begin_src clojure
+(rule adult?
+  (> user.age 18))
+#+end_src
+
+where =user.age= is an integer.
+
+Gesso cannot know whether the business intended “older than 18” or “at least
+18.” The product owns that choice.
+
+Rejected malformed rule:
+
+#+begin_src clojure
+(rule adult?
+  (> user.email 18))
+#+end_src
+
+where =user.email= is an email/string-like nominal type.
+
+Rejected valid rule at an invalid choreography point:
+
+#+begin_src clojure
+(rule approved?
+  (= request.private-review :approved))
+#+end_src
+
+if the browser tries to branch on =approved?= before it has justified knowledge
+of =request.private-review=.
+
+The proof system checks coherence and admissibility, not product intent.
+
+*** Distributed admissibility remains a second check
+
+A rule may be intrinsically well typed yet unusable by a role at a particular
+point.
+
+Therefore the full judgment is conceptually:
+
+#+begin_example
+rule intrinsically valid?
+        |
+        v
+required facts known here?
+        |
+required provenance available?
+        |
+required authority/trust justified?
+        |
+required optional refinements established?
+        |
+required authoritative basis/progression available?
+        |
+        v
+rule admissible at this distributed program point
+#+end_example
+
+This separation prevents ordinary type correctness from being mistaken for
+distributed knowledge correctness.
+
+** Diagnostics as proof and repair output
+
+A rejected composition is only useful if the system preserves enough semantic
+context to explain the first failed obligation.
+
+A failed proof composition should explain why the proof cannot be constructed.
+
+Example:
+
+#+begin_example
+Gesso proof error: :type-mismatch
+
+Rule:
+  humanhelp.request/claimable?
+
+Expression:
+  (< request.status 10)
+
+Operator:
+  <
+
+Required:
+  Ordered<A> x Ordered<A> -> Boolean
+
+Resolved operands:
+  request.status : RequestStatus
+  10             : Integer
+
+RequestStatus has no declared ordering.
+
+Primary source:
+  request/domain/rules.clj:...
+
+Proof chain stopped at:
+  VerifiedRequestRules
+
+Downstream artifacts not constructed:
+  VerifiedRequestOperationRegistry
+  VerifiedRequestChoreography
+  VerifiedRequestProjection
+  ExecutablePlan
+#+end_example
+
+Another:
+
+#+begin_example
+Gesso proof error: :semantic-dependency-mismatch
+
+request.rules was certified against:
+  request.schema semantic-id S17
+
+current request.schema:
+  semantic-id S18
+
+Relevant semantic change:
+  RequestStatus removed :claimed
+  RequestStatus added :assigned
+
+No stale request.rules certificate may be composed.
+#+end_example
+
+Another:
+
+#+begin_example
+Gesso proof error: :knowledge-not-established
+
+Role:
+  :helper-browser
+
+Behavior diverges on:
+  request.private-review
+
+Rule itself:
+  VERIFIED
+
+Use at this choreography state:
+  REJECTED
+
+Available provenance:
+  none
+
+Required:
+  knowledge of this field for this subject at this program point,
+  with the provenance required by the branch's contract
+
+Candidate establishment path (subject to authorization and scope):
+  authoritative request projection at state ...
+#+end_example
+
+** Systematic downstream mutation corpus
+:PROPERTIES:
+:CUSTOM_ID: req-certification-mutation-corpus
+:END:
+
+The mutation corpus is the adversarial executable specification of what malformed
+downstream construction must not cross a certified boundary.
+
+This should become a major acceptance suite.
+
+Begin with several known-good certified programs.
+
+Generate or hand-author semantic mutations one at a time and require classified
+rejection at the first applicable boundary. A structurally valid browser request
+containing an untrusted principal assertion may require runtime rejection rather
+than construction-time rejection; acceptance names the actual enforcing boundary.
+
+Each case records its valid baseline, the isolated change, affected proposition,
+expected result, first enforcing boundary, stable diagnostic category, and
+whether the prohibited artifact/effect was prevented. Re-run the positive
+baseline through that same path: a checker that rejects every program does not
+satisfy the acceptance contract.
+
+*** Schema/domain mutations
+
+- remove a referenced field;
+- change a field's nominal type;
+- change required to optional;
+- change optional to required;
+- remove an enum variant;
+- add a closed-world variant where exhaustiveness matters;
+- change relationship cardinality;
+- change relationship endpoint type.
+
+*** Rule mutations
+
+- compare incompatible types;
+- order an unordered type;
+- access optional value without refinement;
+- use unknown field;
+- use unknown variant;
+- omit a match branch;
+- use a relationship predicate on the wrong model;
+- reference an undeclared operation output.
+
+*** Knowledge/provenance mutations
+
+- remove communication;
+- remove authoritative observation;
+- give entry knowledge to the wrong role;
+- use optional communicated data as definite knowledge;
+- turn authoritative provenance into asserted provenance where stronger
+  provenance is required;
+- derive from an input the actor does not know;
+- branch before discriminator knowledge exists.
+
+*** Authority/security mutations
+
+- browser supplies role;
+- browser supplies principal;
+- browser supplies authoritative provenance;
+- browser supplies capability;
+- browser requests undeclared operation;
+- browser asks for protected observation/subscription without server
+  authorization;
+- operation contract requires authority absent from the actor projection.
+
+*** Choreography/projection mutations
+
+- make remote behavior depend on an unobservable branch;
+- remove required correlation;
+- overlap receive contracts;
+- change continuation type;
+- omit terminal path;
+- leak resource on one branch;
+- reuse a retired generation;
+- pair a projection with the wrong verified choreography identity.
+
+*** Certificate mutations
+
+- alter semantic-id;
+- alter dependency id;
+- alter guarantee without changing derivation;
+- drop a premise;
+- inject a fake proof rule;
+- change checker version;
+- compose certificate against stale dependency;
+- create dependency cycle;
+- replace certified value with same-shaped raw map;
+- omit a required obligation while retaining its subject transition;
+- keep a guarantee but alter its assumption scope;
+- substitute an implementation or served artifact while retaining its old report;
+- return a partial exploration result as a successful exact check.
+
+The expected classification is specified before executing the mutant. A changed
+schema need not be intrinsically malformed: the required rejection may be the
+old dependent certificate composing against it. An unchanged-semantic edit or a
+coherent product-wrong rule can be an intentional accepted control. Mutation
+acceptance must not retroactively relabel an unexpected checker miss as an
+application-truth exception.
+
+Every completed mutant case must be either:
+
+#+begin_example
+REJECTED
+with stable reason and proof location
+#+end_example
+
+or deliberately recorded as:
+
+#+begin_example
+ACCEPTED BY DESIGN
+property belongs to application truth or an explicitly trusted boundary
+#+end_example
+
+There should be no ambiguous "probably okay" bucket. Infrastructure failure,
+timeout, or an unsupported test mechanism is an incomplete test, not either
+successful outcome above. An expected unsupported-feature rejection may pass
+its explicit negative case; it does not demonstrate support for that feature.
+A score over mutants is evidence about that corpus, not a soundness theorem.
+
+** HumanHelp proof DAG and compositional pilot
+:PROPERTIES:
+:CUSTOM_ID: req-humanhelp-certification-pilot
+:END:
+
+HumanHelp Request Claim is the first substantial application proof chain.
+
+The graph should extend through the whole application rather than stopping at
+the projected runtime artifact.
+
+Conceptually:
+
+#+begin_example
+user.schema --------------------------+
+                                      |
+user.domain --------------------------+------+
+                                             |
+organization.schema -----------------+      |
+                                      |      |
+organization.domain -----------------+------+------+
+                                                    |
+request.schema -------------------------------------+
+                                                    |
+request.domain -------------------------------------+
+                                                    |
+request/user relationships -------------------------+
+                                                    |
+claim rules ----------------------------------------+
+                                                    |
+request claim operation contract -------------------+
+                                                    |
+request claim choreography -------------------------+
+                         |                          |
+                         v                          v
+                 helper projection         authority projection
+                         |                          |
+                         +------------+-------------+
+                                      |
+                                      v
+                              ExecutablePlan
+                                      |
+                                      v
+                        HumanHelp ApplicationAssembly
+                         /       |       |        \
+                        v        v       v         v
+                 browser      transport route   server realization
+                 artifact                         |
+                     \                             v
+                      +------------------> authoritative model op
+                                             |
+                                             v
+                                  settlement/progression
+                                             |
+                                             v
+                                  authoritative acquisition
+                                             |
+                                             v
+                                  root application report
+#+end_example
+
+The root report does not claim every edge is a theorem of one formal kernel.
+
+It records the assurance class of each edge. The diagram mixes semantic
+dependencies with explanatory execution flow; only certified justification
+edges form the proof DAG. Repeated runtime acquisition or protocol loops do not
+create permission for circular certificate justification.
+
+An upstream semantic mismatch must nevertheless prevent downstream construction
+when the downstream artifact depends on the changed commitment.
+
+HumanHelp Request provides the first real downstream demonstration that
+framework guarantees compose across application-owned semantic layers.
+
+The pilot is not successful merely because a toy proof term works.
+
+It should cover one meaningful production operation with real cross-model
+dependencies.
+
+Request Claim is the preferred conceptual target when its production contracts
+are stable enough.
+
+*** Pilot dependency chain
+
+The root proof DAG should include, where the operation genuinely depends on
+them:
+
+- Request schema;
+- User/Membership schema and domain commitments;
+- Organization schema/domain commitments;
+- Request domain refinements;
+- relationship/graph facts;
+- Claim rule set;
+- Request Claim authoritative operation contract;
+- Request Claim choreography;
+- Helper projection;
+- Request-authority projection;
+- executable browser/server plan artifacts;
+- HumanHelp application assembly realization;
+- explicit application/trusted assumptions.
+
+The chain must not invent dependencies solely to make the graph look impressive.
+
+*** Upstream semantic breakage stops downstream construction
+
+Suppose =organization.domain= changes a semantic guarantee relied upon by Claim
+rules.
+
+The desired result is:
+
+#+begin_example
+organization.domain semantic-id changes
+    |
+old claim-rules dependency no longer matches
+    |
+VerifiedClaimRules cannot be constructed
+    |
+Claim operation certificate cannot compose
+    |
+Claim choreography cannot certify
+    |
+projection cannot certify
+    |
+ExecutablePlan cannot certify
+    |
+HumanHelp application root cannot close
+#+end_example
+
+The system should fail at the first stage that has enough information to know
+the dependency mismatch.
+
+The browser must never be asked to discover it.
+
+*** Application truth remains explicit
+
+The Claim pilot will still contain HumanHelp-specific assumptions that Gesso
+cannot derive from generic semantics.
+
+For example, the application may assert a particular business policy relation.
+
+That assertion is acceptable if:
+
+- named;
+- typed;
+- attached to its source;
+- propagated transitively into dependent certificates;
+- visible in the root report.
+
+It is not silently converted into a framework theorem.
+
+*** Cross-model authority stays public-interface based
+
+If Claim depends on Membership and Organization semantics, the proof DAG consumes
+their certified public semantic interfaces.
+
+It does not reach into their private FX/query implementation merely because that
+would make proof extraction easier.
+
+The proof architecture must reinforce, not erode, the model ownership boundary
+from Part IV.
+
+*** Pilot must include adversarial mutants
+
+The HumanHelp pilot includes mutants such as:
+
+- remove a required Request status variant;
+- change Membership relationship cardinality;
+- remove an Organization guarantee required by Claim;
+- stale the Claim rule certificate;
+- forge a same-shaped operation certificate;
+- remove browser knowledge of a branch discriminator;
+- give the browser asserted provenance where authoritative provenance is required;
+- pair the projection with the wrong choreography identity;
+- omit the application transport edge;
+- pair the plan with a stale browser artifact.
+
+Each mutant should fail at the earliest appropriate layer with a stable
+classification.
+
+*** Pilot root report
+
+A successful pilot emits a report that answers at least:
+
+- what Claim operation is certified;
+- which model semantic interfaces it depends on;
+- which assumptions remain application/trusted;
+- what Choreo properties are proved/checked;
+- what projections were derived;
+- what executable plan was emitted;
+- what whole-application edges are assembly-verified;
+- what runtime premises remain;
+- what trusted external assumptions remain;
+- which normalized subject, checker profile, implementation bindings, and
+  actual application generation the evidence covers;
+- which required operational claims are separately supported by real-browser
+  and production-enforcement evidence;
+- which certification obligations remain unsupported or unresolved.
+
+The pilot must connect to the Claim vertical slice of Part VIII, including its
+actual controls, production model operation, and authoritative reacquisition.
+A successful isolated proof fixture cannot replace that application evidence.
+Conversely, a working Claim browser test does not discharge missing proof
+obligations. The compositional milestone requires both in their proper scopes.
+
+The goal is not merely "green."
+
+The goal is inspectable inheritance of guarantees through a real application.
+
+** Developer experience and acceptance examples
+
+The proof architecture succeeds only if ordinary application development remains
+declaration-first and rejected programs are repairable.
+
+Ordinary downstream development should ideally look like:
+
+#+begin_example
+declare domain/schema/rules/operations/choreo
+        |
+        v
+Gesso elaborates and checks
+        |
+        +-- malformed -> immediate precise rejection
+        |
+        +-- coherent -> certified artifacts
+                           |
+                           v
+                       projection
+                           |
+                           v
+                     executable plan
+#+end_example
+
+The developer should mostly write the program and domain declarations.
+
+Gesso should carry the proof bookkeeping.
+
+Application developers supply domain truth where only the application can know
+it; they should not need to become proof-assistant specialists to inherit Gesso's
+generic guarantees.
+
+The same ergonomic rule applies to nominal or opaque semantic categories.
+Downstream web developers should not have to wrap routine IDs, strings, maps, or
+domain values merely because Gesso internally distinguishes admitted semantic
+stages.  Stronger wrappers or handles should appear at the comparatively small
+number of boundaries where confusing same-shaped values would violate a real
+invariant, and Gesso should construct them automatically wherever possible.
+
+The first implementation tranche should not be considered useful until all of
+these are possible.
+
+*** Valid rule accepted
+
+#+begin_src clojure
+(rule claimable?
+  (and
+   (= request.status :open)
+   (has-role? current-user :helper)))
+#+end_src
+
+assuming the relevant certified domain types.
+
+*** Malformed rule rejected
+
+#+begin_src clojure
+(rule claimable?
+  (< request.status 10))
+#+end_src
+
+*** Valid rule rejected at invalid distributed location
+
+A browser cannot branch on a private authoritative fact it does not know.
+
+*** Upstream schema change invalidates dependent certificate
+
+Rename/remove =:claimed= and prove stale Request rule certificate cannot compose.
+
+*** Model contract mismatch rejected
+
+A choreography requiring =:claim-confirmed= cannot consume an operation contract
+that no longer exports that outcome.
+
+*** Forged certificate rejected
+
+A same-shaped map with copied semantic-id and =:valid? true= cannot enter the
+certified API.
+
+*** Proof mutation rejected
+
+Remove one premise from an otherwise valid derivation and require the kernel to
+reject it.
+
+*** Root proof report generated
+
+One real HumanHelp operation produces a complete assumptions/guarantees/dependency
+report.
+
+*** The developer should not manage proof plumbing manually
+
+Ordinary authoring should not require developers to:
+
+- copy semantic IDs between namespaces;
+- construct certificate maps;
+- manually list transitive dependencies;
+- handwrite derivation trees;
+- understand kernel-internal proof tags;
+- write Lean.
+
+The implementation should derive those artifacts from source-owned semantic
+declarations wherever the dependency is mechanically knowable.
+
+*** Explicit assumptions are still authored
+
+When only the application knows a proposition, the developer may need to name
+that proposition explicitly.
+
+For example:
+
+#+begin_example
+application assertion:
+    HumanHelp product policy treats this relationship as claim-eligible
+#+end_example
+
+That is legitimate.
+
+The system should make the assertion visible in the root report rather than
+forcing a fake derivation or an opaque escape hatch.
+
+** Compositional certification invariant
+
+At the end of the compositional-proof layer, the unified design requires:
+
+#+begin_quote
+Gesso constructs downstream semantic artifacts from certified interfaces rather
+than namespace reputation, copied identifiers, map shape, or =:valid?= flags.
+Raw declarations and certified values are distinct products.  Every certified
+layer exports a minimal semantic interface consisting only of guarantees that
+downstream reasoning may rely upon, together with explicit assumptions and
+machine-checkable dependency identity.
+
+Business-rule expressions use a closed typed semantic language that rejects
+malformed expressions while still permitting coherent but product-wrong policy.
+Intrinsic rule validity is not sufficient for distributed use: knowledge,
+provenance, authority, refinement, and progression obligations must also hold at
+the program point where the rule is consumed.
+
+The certificate hierarchy follows semantic ownership from schema/domain and
+relationships through rules, authoritative operation contracts, Choreo,
+projection, =ExecutablePlan=, and whole-application realization.  Semantic
+fingerprints establish normalized identity, not truth.  Stale or incompatible
+dependency identities prevent downstream certification before browser
+execution.  Compatibility beyond exact identity is admitted only through an
+explicit checked compatibility relation.
+
+A rich elaborator may generate normalized terms, obligations, and derivations,
+but a deliberately smaller proof kernel or dedicated exact checker decides the
+claims it is responsible for. Required obligation coverage and correspondence
+from declared subject through projection to executable plan are explicit
+checking or trust boundaries. An omitted obligation is not discharged merely
+because every submitted derivation passes. Certificates are evidence accepted
+by those checkers, not booleans, and optional proof/diagnostic artifacts never
+influence runtime semantic transitions or authorization.
+
+Assumptions remain scoped and transitively attributable to the guarantees that
+use them. Discharge requires accepted evidence; converting failed checking into
+an implicit assertion is forbidden. Semantic contract reuse does not preserve
+evidence about a changed implementation or admitted generation. Finite checking,
+conditional theorems, runtime enforcement, and tests retain their actual scope;
+incomplete checking never becomes a successful certificate.
+
+Rejected programs retain stable structured diagnostics describing the failed
+obligation, dependencies, available versus required type/knowledge/provenance/
+authority facts, assumptions, and the downstream artifacts that were not
+constructed.  A systematic mutation corpus demonstrates that malformed
+schema/rule/knowledge/authority/choreography/certificate/application variants
+stop at the intended boundary.
+
+HumanHelp Request Claim is the first real compositional pilot.  Its assurance
+graph extends from production model interfaces through Claim rules, operation
+contract, choreography, projections, executable plan, HumanHelp
+=ApplicationAssembly=, exact browser artifact, transport, trusted server/model
+execution, settlement/progression, and authoritative reacquisition.  An upstream
+semantic mismatch prevents construction of the stale downstream application
+artifact, while application-specific policy assumptions remain visible rather
+than being mislabeled as framework theorems.
+#+end_quote
+

@@ -1,0 +1,3267 @@
+* Part VIII — HumanHelp proving application
+:PROPERTIES:
+:CUSTOM_ID: part-08-humanhelp-proving-application
+:END:
+
+This part specifies the proving application that exercises the generic contracts
+of Parts I–VII against production HumanHelp semantics. Its required capabilities
+are independent of its assembly declarations. Structural closure, production
+enforcement, and successful user behavior remain separate completion claims.
+Unresolved product choices are explicit milestone dependencies, not policies
+silently supplied by Gesso or inferred from an illustrative execution.
+
+** HumanHelp as the proving application
+
+HumanHelp is the primary reference application for the executable Gesso design.
+
+Its purpose in this architecture is not to define Gesso semantics.
+
+Its purpose is to force those semantics to compose into a real application with:
+
+- authoritative production models;
+- authenticated principals;
+- browser projections;
+- optimistic lifecycle operations;
+- Live advisory propagation;
+- explicit authoritative reacquisition;
+- rich view state;
+- multiple simultaneous users;
+- real HTMX/browser behavior;
+- real failure and reconnect conditions.
+
+HumanHelp is valuable precisely because it exercises the boundaries between
+layers.
+
+A framework may have:
+
+- correct model operations;
+- correct choreography;
+- correct browser transitions;
+- correct preflight predicates;
+
+and still fail as an assembled application.
+
+HumanHelp therefore serves as the first broad proof-by-use surface for
+whole-application closure. Here, proof-by-use means scoped integration and
+acceptance evidence, not a formal proof that every permitted application
+execution is correct.
+
+*** HumanHelp is a reference consumer, not framework policy
+
+HumanHelp-specific business rules remain HumanHelp-specific.
+
+Gesso must not acquire built-in concepts such as:
+
+- Request claim eligibility;
+- HumanHelp Membership policy;
+- HumanHelp Organization policy;
+- HumanHelp Request lifecycle rules;
+- HumanHelp board sorting policy.
+
+When HumanHelp exposes a missing abstraction, the design asks:
+
+#+begin_quote
+Is this missing fact a generic requirement for constructing correct Gesso
+applications, or is it HumanHelp product/domain policy?
+#+end_quote
+
+Generic examples include:
+
+- semantic operation identity;
+- operation binding;
+- browser plan correspondence;
+- transport requirement;
+- trusted server capability;
+- authoritative progression;
+- acquisition path;
+- application closure edge;
+- structured diagnostic obligation.
+
+Those may become Gesso concepts.
+
+HumanHelp-specific business meaning remains in HumanHelp.
+
+*** The proving application is deliberately broad
+
+The reference surface is not one isolated Claim button.
+
+The HumanHelp proving application must exercise:
+
+- login/authenticated identity;
+- Request creation;
+- Request lifecycle actions;
+- creator-local immediate incorporation;
+- remote-client advisory state;
+- explicit refresh/adoption;
+- live search;
+- sorting;
+- visibility options;
+- Request details;
+- continuity where appropriate;
+- terminal-state rendering;
+- response flow;
+- reconnect behavior;
+- multi-client progression;
+- fail-closed malformed-operation rejection.
+
+This breadth matters because composition bugs tend to appear at joins.
+
+A single happy-path mutation can remain green while:
+
+- initial acquisition is missing;
+- remote invalidation is fake;
+- rendered operation identity disappears;
+- route and browser registries disagree;
+- view state has no producer;
+- stale optimistic callbacks overwrite current authority.
+
+The rich board forces those relationships into one actual application.
+
+** HumanHelp authority boundary
+
+HumanHelp production models own authoritative domain truth.
+
+The production model namespace family remains:
+
+#+begin_example
+net.humanhelp.site.model.*
+#+end_example
+
+The temporary reference/proving UI remains:
+
+#+begin_example
+net.humanhelp.example.*
+#+end_example
+
+These layers have intentionally different responsibilities.
+
+*** Production model layer
+
+The production model layer owns:
+
+- Request business rules;
+- Request state transitions;
+- Membership semantics;
+- Organization semantics;
+- authoritative model queries;
+- authoritative persistence;
+- transaction guards;
+- model-defined reconciliation;
+- model-defined failure/outcome classes;
+- public operation contracts.
+
+The model layer remains meaningful without the example UI.
+
+It remains meaningful without HTMX.
+
+It remains meaningful without a browser.
+
+It remains meaningful without Choreo for callers that use public model
+operations directly.
+
+*** Production Request Choreo layer
+
+The production Request choreography owns distributed programs built from the
+public Request model interface.
+
+It may describe:
+
+- roles;
+- entry knowledge;
+- authoritative observations;
+- semantic command identity;
+- provisional projections;
+- settlement;
+- convergence;
+- distributed continuation.
+
+It does not reimplement Request business policy.
+
+For example:
+
+#+begin_example
+Request Choreo
+    |
+    v
+public Request core operation
+    |
+    v
+authoritative Request semantics
+#+end_example
+
+not:
+
+#+begin_example
+Request Choreo
+    |
+    v
+copy of Request eligibility rules
+#+end_example
+
+*** Example layer
+
+The example application owns integration and presentation concerns such as:
+
+- physical routes;
+- browser-facing page/fragment/stream composition;
+- board presentation state;
+- semantic operation binding to UI controls;
+- Live advisory presentation;
+- explicit refresh interaction;
+- application assembly composition;
+- trusted protocol boundary integration;
+- example-specific HTML/Hiccup;
+- CSS.
+
+It does not become a parallel HumanHelp domain layer.
+
+*** No example-domain authority
+
+There must not be:
+
+#+begin_example
+production Request rules
+        +
+example Request rules
+#+end_example
+
+with the example application deciding which rule set wins.
+
+The example layer consumes production semantics.
+
+If the production model says an operation is rejected, the example application
+renders/propagates that outcome.
+
+It does not reinterpret it into success.
+
+*** Production model migration precedes example workaround
+
+When framework substrate changes require model adaptation, the production model
+layer is migrated rather than bypassed.
+
+The example app must not create temporary replacement business operations merely
+to avoid updating production model code.
+
+This is especially important for:
+
+- FX state-flow changes;
+- transaction semantics;
+- public operation contracts;
+- authoritative progression;
+- authenticated principal binding.
+
+The proving UI only proves the intended architecture if it actually consumes the
+production model layer.
+
+** HumanHelp application topology
+
+The target reference topology is:
+
+#+begin_example
+browser
+    |
+    v
+net.humanhelp.example views/components
+    |
+    v
+Gesso bound semantic operations / browser runtime
+    |
+    v
+example physical routes
+    |
+    v
+example trusted protocol integration
+    |
+    v
+production Request choreography/server projection
+    |
+    v
+production Request core operation
+    |
+    v
+production model FX / XTDB transaction
+    |
+    v
+authoritative state
+    |
+    +--> direct correlated settlement to initiator
+    |
+    +--> Live advisory invalidation
+             |
+             v
+        permitted authoritative reread
+             |
+             v
+        production-backed board projection
+#+end_example
+
+The exact namespace/function names may evolve.
+
+The ownership direction must not.
+
+*** Global application points at the proving UI during this stage
+
+The application startup used to test the Gesso/HumanHelp integration must route
+the active proving surface through the example application.
+
+This does not mean the unfinished production site UI becomes the migration
+target.
+
+The eventual production UI may later consume the same production models and
+Gesso machinery.
+
+For this stage, the example application is the deliberate integration surface.
+
+*** The unfinished production UI remains outside this proving scope
+
+Files under the unfinished production site UI are not modified merely to make
+the proving application more aesthetically complete.
+
+They enter scope only when a concrete shared dependency is required for the
+production models or the example proving surface.
+
+This prevents two migrations from being confused:
+
+#+begin_example
+prove Gesso against production HumanHelp semantics
+    !=
+finish the eventual production HumanHelp UI
+#+end_example
+
+** HumanHelp ApplicationAssembly
+
+HumanHelp has one canonical source-owned =ApplicationAssembly= as defined in
+Part VII.
+
+The application-specific constructor composes facts from their real owners.
+
+Conceptually:
+
+#+begin_example
+production Request Choreo
+    -> semantic operation truth
+
+example.routes
+    -> physical route truth
+
+example.optimistic
+    -> trusted server realization truth
+
+example.live
+    -> Live/acquisition truth
+
+browser declaration
+    -> browser plan requirements
+
+view/component declarations
+    -> rendered semantic affordances
+
+all
+    |
+    v
+example.application-preflight
+    |
+    v
+HumanHelp ApplicationAssembly
+#+end_example
+
+*** Application preflight namespace is the sole assembly composer
+
+The application-preflight namespace owns composition of the canonical HumanHelp
+assembly.
+
+It does not own the semantic facts it composes.
+
+It should expose only the small production constructors needed by:
+
+- browser build;
+- startup;
+- application explanation;
+- static preflight;
+- dynamic rendered-surface preflight;
+- tests.
+
+*** Tests consume the production constructor
+
+HumanHelp preflight tests must not independently reconstruct:
+
+- operation registry;
+- route registry;
+- browser manifest;
+- Live acquisition graph;
+- server registry.
+
+A test should call the production assembly constructor.
+
+Therefore changing or deleting a production declaration must cause the test to
+observe the resulting failure.
+
+A shadow assembly that keeps passing after production is broken is invalid test
+architecture.
+
+*** Browser build consumes the same assembly
+
+The HumanHelp browser artifact is generated from the browser declaration/manifest
+derived from the same assembly.
+
+The application has:
+
+- one intended browser artifact output;
+- one manifest identity;
+- one currentness mechanism;
+- one startup correspondence check.
+
+The running app does not use a manually stale runtime while tests validate a
+different generated artifact.
+
+*** Startup consumes the same assembly
+
+The active HumanHelp development/runtime startup:
+
+- obtains the canonical assembly;
+- verifies browser artifact currentness;
+- performs application preflight;
+- installs the checked structured-response handler boundary;
+- starts Aleph only after preflight succeeds.
+
+There is no ordinary unchecked startup path accidentally used by the real
+application.
+
+** HumanHelp source ownership by namespace
+
+The example source tree has explicit architectural responsibilities.
+
+These responsibilities are normative even if future refactoring changes exact
+function names.
+
+*** =example/app.clj=
+
+=example/app.clj= owns trusted HTTP composition for the proving application.
+
+It is responsible for:
+
+- handler composition order;
+- page/fragment/stream boundary selection;
+- protocol-command extraction at the trusted boundary;
+- lifecycle transport dispatch;
+- Request creation route integration;
+- Request lifecycle mutation route integration;
+- route handler composition;
+- preserving structured responses long enough for Gesso render preflight;
+- carrying required trusted request context into downstream execution;
+- avoiding duplicate publication/notification caused by overlapping handlers.
+
+It does not own:
+
+- Request business rules;
+- optimistic operation semantics independent of production Choreo;
+- route facts that belong canonically to =example.routes=;
+- browser operation identity invented from request shape.
+
+The hard rule is:
+
+#+begin_quote
+A server route may require a Choreo/optimistic protocol only when the rendered
+semantic operation is realized through that protocol.  The server does not make
+an anonymous ordinary POST legal merely to accommodate a broken view.
+#+end_quote
+
+**** Structured response boundary
+
+Where the app returns canonical Gesso Hiccup/HTML responses, they remain
+structured until the dynamic application-preflight boundary has had the
+opportunity to inspect semantic affordances.
+
+The example app should not serialize semantic pages early and thereby bypass the
+render check.
+
+Any intentionally pre-serialized HTML path must identify its excluded assurance
+scope or its separate checked realization under Part VII. An audit label alone
+does not establish that emitted affordances passed structured render checking.
+Invocation validation must precede protected mutation; response-render rejection
+does not undo an already committed valid operation.
+
+**** Creation and lifecycle mutation remain distinct operations
+
+Creating a Request and mutating an existing Request's lifecycle are separate
+semantic operations even if they share:
+
+- authentication;
+- transaction machinery;
+- board publication;
+- Live invalidation.
+
+The app should not route all mutations through one untyped generic handler that
+erases operation identity.
+
+*** =example/application_preflight.clj=
+
+This namespace composes the canonical HumanHelp application assembly.
+
+It must:
+
+- derive the browser manifest from the actual browser declaration;
+- compose the actual production Request operation/choreography registry;
+- consume physical route declarations from =example.routes=;
+- consume Live acquisition/publication declarations from =example.live=;
+- consume the exact trusted prepared-server realization from
+  =example.optimistic=;
+- include every lifecycle operation actually exposed;
+- explicitly classify supported-but-not-rendered operations;
+- use the same data for build and runtime preflight;
+- expose inspectable assembly/explanation state.
+
+It must not:
+
+- hand-copy the same route list into a second registry;
+- create a second production Request operation registry;
+- claim an acquisition path that the running route graph does not provide;
+- use a test-only browser artifact stamp.
+
+*** =example/board.clj=
+
+=example/board.clj= owns the production-backed board projection and board-level
+presentation state.
+
+It is responsible for:
+
+- obtaining Request data through production-backed query interfaces;
+- representing the viewer context needed by presentation;
+- search/filter state;
+- sort state;
+- terminal visibility;
+- mine-first ordering;
+- unclaimed-first ordering;
+- authoritative progression/fact-version information needed by the view contract;
+- preparing/binding lifecycle operation capabilities for Request cards;
+- board-level advisory versus adopted-frontier state where architecturally
+  appropriate.
+
+It must distinguish:
+
+#+begin_example
+presentation eligibility
+    !=
+authoritative permission
+#+end_example
+
+and:
+
+#+begin_example
+optimistic realization available
+    !=
+semantic operation exists
+#+end_example
+
+**** Missing basis never erases operation identity
+
+If Claim requires an authoritative basis for its optimistic realization and no
+basis is currently available:
+
+#+begin_example
+operation :request/claim
+    still exists
+
+optimistic realization
+    unavailable
+#+end_example
+
+The board layer may:
+
+- arrange for required authoritative basis to be supplied;
+- mark the action explicitly unavailable;
+- allow a separately declared non-optimistic realization if one exists;
+- cause checked rendering to reject an impossible enabled action.
+
+It may not reinterpret missing basis as permission to emit an anonymous
+authoritative POST.
+
+**** Search state
+
+Search is live presentation filtering.
+
+Typing in the search input updates the visible board according to current
+adopted board data.
+
+Search does not:
+
+- establish new authoritative facts;
+- change the adopted authoritative frontier by itself;
+- authorize hidden Request operations;
+- turn advisory-but-unadopted remote Requests into adopted board entries.
+
+This restriction is part of the HumanHelp proving contract, including when search
+uses a server-side read. Search is not an alternate remote-adoption action.
+
+**** Sort and visibility options
+
+Board options control presentation of the adopted board projection.
+
+Required behaviors include:
+
+- newest/oldest ordering;
+- mine-first;
+- unclaimed-first;
+- show/hide terminal Requests.
+
+These controls must operate on real Request data and state.
+
+They should not rely on dead hidden fields or placeholder values that never
+change.
+
+*** =example/components/refresh_button/attr.clj=
+
+The Refresh attribute namespace remains presentation-only.
+
+It may map semantic/presentation state into:
+
+- classes;
+- ARIA attributes;
+- labels;
+- data attributes required by the component.
+
+It does not derive whether the board is stale from CSS or presentation.
+
+It receives state produced elsewhere.
+
+In particular it must not manufacture:
+
+#+begin_example
+:stale? true
+#+end_example
+
+merely to trigger a visual effect.
+
+*** =example/components/refresh_button/core.clj=
+
+The Refresh component realizes the explicit advisory/adoption interaction.
+
+Its state is driven by actual advisory versus adopted frontier state.
+
+Required behavior:
+
+#+begin_example
+no newer advisory
+    -> ordinary Refresh appearance
+
+newer advisory exists
+    -> visible stale/new indication
+    -> glow/pulse or equivalent intended treatment
+    -> pending/new count or toast context where supplied
+
+user activates Refresh
+    -> authoritative reread
+    -> adopted frontier advances on successful authoritative observation
+    -> advisory state recomputed/cleared as appropriate
+#+end_example
+
+Refresh is not a hidden automatic adoption trigger.
+
+The component must not install remote canonical content merely because an
+invalidation arrived.
+
+**** Refresh accessibility
+
+Visual stale indication must have an accessible state/label counterpart where
+the component design requires one.
+
+A glow or pulse alone is not sufficient state communication.
+
+The exact wording is presentation design.
+
+The architectural requirement is that accessibility state is driven from the
+same real advisory state as visual presentation.
+
+*** =example/components/request_card/attr.clj=
+
+The Request-card attribute namespace maps real Request-card semantic/presentation
+state into attributes.
+
+Special states such as:
+
+- provisional;
+- terminal;
+- pending;
+- status-specific styling;
+
+must have actual producers and consumers.
+
+The namespace does not preserve historical/dead attributes merely because CSS
+still names them.
+
+It does not infer domain state from appearance.
+
+*** =example/components/request_card/core.clj=
+
+The Request-card component is the canonical view-level owner of lifecycle
+affordance rendering.
+
+Every lifecycle control retains unconditional semantic identity.
+
+At minimum:
+
+#+begin_example
+Claim            -> :request/claim
+Unclaim          -> :request/unclaim
+Mark on the way  -> corresponding production semantic operation
+Complete         -> :request/complete
+Cancel           -> :request/cancel
+Reassign         -> :request/reassign
+#+end_example
+
+Exact operation keywords follow production Request Choreo.
+
+The essential invariant is:
+
+#+begin_quote
+Availability of a particular realization may vary; semantic operation identity
+does not conditionally disappear.
+#+end_quote
+
+**** Request-card physical realization is separate
+
+The component receives or derives a checked binding/realization.
+
+It does not decide:
+
+#+begin_example
+basis present?
+    yes -> semantic Choreo action
+    no  -> anonymous hx-post
+#+end_example
+
+Instead:
+
+#+begin_example
+semantic operation known
+    |
+checked binding/realization available?
+    |
+    +-- yes --> render enabled semantic action
+    |
+    +-- no --> explicit unavailable state or render rejection
+#+end_example
+
+according to the application contract.
+
+**** Presentation eligibility is not authorization
+
+A button may be hidden/disabled because server-prepared view state indicates the
+action is not currently useful.
+
+That is presentation.
+
+The trusted production model operation still re-establishes actual authorization
+at execution.
+
+The component must not contain a second authoritative implementation of Request
+policy.
+
+**** Target identity matches DOM ownership
+
+Optimistic target IDs, logical target identity, and rendered DOM structure must
+correspond.
+
+A component must not claim one target while the browser runtime actually swaps
+or restores another.
+
+This correspondence is part of application/browser correctness.
+
+*** =example/live.clj=
+
+=example/live.clj= owns the example application's Live publication,
+invalidation, advisory, and authoritative reacquisition wiring.
+
+It is responsible for:
+
+- mapping semantic Request publication to Live invalidation;
+- preserving authoritative progression requirements;
+- defining managed board fragment identity;
+- defining initial authoritative board knowledge or acquisition;
+- defining refresh/reread acquisition;
+- producing real advisory state;
+- producing pending/new counts from real frontier relationships;
+- producing =:stale?= from real state;
+- supplying toast/advisory updates;
+- handling reconnect without collapsing advisory into automatic adoption.
+
+It does not own Request business policy.
+
+**** No hardcoded advisory success state
+
+Values conceptually equivalent to:
+
+#+begin_src clojure
+{:pending-open-count 0
+ :stale? false}
+#+end_src
+
+are only correct when derived from actual state.
+
+They may not be permanent placeholders while the UI claims to implement remote
+advisory behavior.
+
+**** Creator-local incorporation
+
+When a browser creates a Request and receives the correlated authoritative
+outcome, the creator should be able to incorporate that Request immediately.
+
+The creator does not need to wait for an unrelated global Refresh merely because
+other browsers use advisory adoption.
+
+Conceptually:
+
+#+begin_example
+Browser A creates Request R
+    |
+authoritative commit
+    |
+correlated settlement / authoritative result
+    |
+A adopts R immediately
+#+end_example
+
+The incorporated representation must ultimately correspond to authoritative
+state.
+
+It is not merely an optimistic card that remains after commit without
+authoritative confirmation.
+
+**** Remote-client advisory
+
+Another browser B that is already viewing the board follows different semantics:
+
+#+begin_example
+Request R commits
+    |
+Live invalidation reaches B
+    |
+B learns newer relevant authority exists
+    |
+B does NOT automatically install R
+    |
+B shows advisory/Refresh stale state
+#+end_example
+
+This distinction is intentional product behavior.
+
+The invalidation establishes advisory knowledge, not remote canonical content.
+
+**** Explicit adoption
+
+When B activates Refresh:
+
+#+begin_example
+Refresh
+    |
+authorized authoritative reread
+    |
+read satisfies progression requirement
+    |
+new authoritative board projection
+    |
+B advances adopted visible frontier
+    |
+R becomes visible
+#+end_example
+
+The board's visible state changes because B performed authoritative acquisition,
+not because SSE pushed trusted Request content into the DOM.
+
+**** Advisory pending count
+
+If the UI displays a count of newly available Requests, that count must be
+derived from actual application semantics.
+
+A difference between progression coordinates is not, by itself, a count of
+Requests. Neither invalidation count nor transaction distance establishes the
+number of newly available, authorized Requests. Any displayed exact count needs
+an explicit counting scope and justified application metadata or read contract,
+including duplicate invalidations, permissions, terminal state, and local
+selective adoption. Such a read must not itself expand adopted membership.
+
+When only the existence of pending work is known, the UI may show an update
+indicator. It must not fabricate an exact count or show zero as if absence of
+count evidence established absence of pending work.
+
+The exact counting method is a HumanHelp product/design question.
+
+It must not be a permanently hardcoded decorative value.
+
+**** Reconnect
+
+Reconnect may re-establish Live transport and learn that authority advanced.
+
+Reconnect must not silently force the board to adopt remote content if the
+intended HumanHelp semantics require explicit Refresh.
+
+The advisory/adopted distinction survives reconnect.
+
+If the current adopted projection cannot safely continue because of stale plan
+or other runtime incompatibility, the generic Part VI recovery rules may require
+authoritative reconstruction.
+
+That is distinct from ordinary remote-update adoption policy. The reconstruction
+contract must say which adopted membership and local choices survive, and which
+require a fresh authorized acquisition. It cannot use reconnect as an implicit
+exception to explicit adoption. If safe continuation is impossible, expose the
+declared recovery action rather than silently claiming normal continuity.
+
+*** =example/optimistic.clj=
+
+=example/optimistic.clj= owns trusted example-layer integration between the
+browser optimistic protocol and production Request Choreo/server realizations.
+
+It preserves:
+
+- the exact production Request Choreo operation registry;
+- authenticated principal normalization from trusted request context;
+- one prepared trusted server realization used by actual execution and
+  preflight;
+- route-selected operation/request identity checking;
+- command decoding/validation;
+- required/supplied server execution capability closure;
+- settlement normalization.
+
+It must not become a second business-rule layer.
+
+**** Same prepared server for preflight and execution
+
+If application preflight validates prepared server realization S, actual
+=run-command= execution must use the admitted generation's S, or an explicitly
+checked compatible transition. Matching operation names or equivalent-looking
+metadata do not establish concrete generation correspondence.
+
+Forbidden:
+
+#+begin_example
+preflight checks prepared server S1
+
+runtime uses separately constructed S2
+#+end_example
+
+even if the two currently look equivalent.
+
+This is a whole-application correspondence guarantee.
+
+**** Trusted principal binding
+
+Browser payload may identify a requested principal or role for protocol
+correlation.
+
+The actual HumanHelp principal is derived from authenticated trusted context.
+
+The server does not accept:
+
+#+begin_example
+browser says user U
+#+end_example
+
+as proof that U is the authenticated principal.
+
+**** Route-selected identity correspondence
+
+Where route parameters select:
+
+- operation;
+- Request ID;
+- other semantic subject;
+
+and the command envelope contains corresponding identities, the trusted
+integration checks that they agree.
+
+A browser may not use contradictory selectors and rely on whichever one is more
+privileged.
+
+*** =example/routes.clj=
+
+=example/routes.clj= is the single owner of physical route facts for the proving
+application.
+
+It defines:
+
+- page route;
+- semantic lifecycle routes;
+- creation route;
+- fragment/acquisition routes;
+- stream/advisory routes;
+- any explicit physical route for Reassign or other lifecycle operations.
+
+It exports route facts in a form consumable by both:
+
+- runtime routing;
+- =ApplicationAssembly= preflight.
+
+It does not require application preflight to retype the route graph manually.
+
+**** Semantic route correspondence
+
+Every semantic lifecycle route has one explicit operation correspondence.
+
+The method/path identity used by actual runtime routing and preflight is the same
+identity.
+
+The application must not have:
+
+#+begin_example
+preflight says:
+    POST /requests/:id/claim
+
+runtime actually routes:
+    POST /request/:id/claim
+#+end_example
+
+through separately maintained maps.
+
+**** Rendered exposure versus route availability
+
+A physical route may exist for an operation that the current UI does not expose.
+
+For example, Reassign may have a trusted route before a complete target-helper
+selector is present in the proving UI.
+
+The assembly distinguishes:
+
+#+begin_example
+operation supported by trusted server
+operation exposed by current UI
+#+end_example
+
+rather than pretending they are identical sets.
+
+**** Fragment and stream routes match acquisition assembly
+
+Every route used for:
+
+- initial board acquisition;
+- fragment refresh;
+- advisory stream;
+- authoritative reread;
+
+must correspond to the acquisition/Live declarations consumed by application
+preflight.
+
+A stale route left in the router but absent from acquisition assembly is not
+silently treated as the canonical path.
+
+*** =example/views.clj=
+
+=example/views.clj= owns composition of the proving UI.
+
+It includes:
+
+- page shell;
+- initial board/fragment installation;
+- toolbar;
+- search UI;
+- Board Options;
+- sorting controls;
+- Request list;
+- Request details/accordion;
+- create dialog;
+- lifecycle extras;
+- advisory toast;
+- Refresh state;
+- OOB content where supported;
+- hidden state fields that have actual semantic purpose.
+
+It does not independently rebuild transport semantics for lifecycle operations.
+
+Lifecycle action rendering delegates through the checked Request-card/Gesso
+binding path.
+
+**** Every visible special state has a producer
+
+If a UI state is visible, there must be a real upstream producer.
+
+Examples include:
+
+- stale Refresh;
+- pending/new count;
+- provisional Request card;
+- terminal fade/status;
+- selected/open Request state.
+
+Decorative state that can never occur is removed or explicitly documented as
+future/unwired rather than presented as implemented behavior.
+
+**** Every hidden state field has a purpose
+
+Hidden form/DOM values may be useful for:
+
+- filter state;
+- sort state;
+- correlation;
+- board option persistence;
+- semantic transport.
+
+They must not accumulate as unexplained migration debris.
+
+A hidden field that no current producer/consumer uses should be removed or
+documented rather than becoming accidental protocol state.
+
+**** Component CSS
+
+The component CSS files are part of the semantic integration audit insofar as
+they advertise application states.
+
+At minimum:
+
+#+begin_example
+example/components/refresh_button/refresh_button.css
+example/components/request_card/request_card.css
+#+end_example
+
+must satisfy:
+
+- every special selector corresponds to an active state producer; or
+- the selector is explicitly non-active/future and does not misrepresent current
+  behavior.
+
+CSS does not define semantic truth.
+
+It renders state supplied by application components.
+
+** Request lifecycle operation set
+
+The proving application uses one generic Gesso operation-binding and
+application-closure mechanism for the Request lifecycle.
+
+The required lifecycle set for the full proving milestone includes:
+
+- Claim;
+- Unclaim;
+- Mark on the way;
+- Complete;
+- Cancel;
+- Reassign.
+
+All exposed operations use the same architectural path.
+
+There is not one special hardcoded Gesso integration for Claim and ordinary
+anonymous HTMX for the rest.
+
+*** Common lifecycle path
+
+For each exposed operation O:
+
+#+begin_example
+production Request Choreo O
+    |
+bound semantic affordance
+    |
+projected browser plan if required
+    |
+current browser artifact
+    |
+declared transport
+    |
+trusted route
+    |
+trusted Request server realization
+    |
+public production Request model operation
+    |
+authoritative transaction/outcome
+    |
+settlement/progression
+    |
+authoritative acquisition
+    |
+rendered authoritative state
+#+end_example
+
+The details may differ by operation.
+
+The closure discipline does not.
+
+*** Claim
+
+Claim is the most detailed reference operation and remains the canonical worked
+example below.
+
+Claim exercises:
+
+- authoritative basis;
+- provisional projection;
+- semantic command identity;
+- trusted principal binding;
+- model policy;
+- atomic authoritative transition;
+- settlement;
+- Live invalidation;
+- authoritative reread;
+- multi-client knowledge lag.
+
+*** Unclaim
+
+Unclaim follows the same generic operation-binding path.
+
+Its business eligibility and resulting Request transition belong to the
+production Request model.
+
+The example UI may only:
+
+- expose a bound Unclaim capability;
+- render provisional/pending state permitted by Choreo;
+- send the declared protocol;
+- render the authoritative outcome.
+
+*** Mark on the way
+
+Mark-on-the-way follows the same generic path.
+
+The exact production operation identity and business preconditions come from
+Request Choreo/model contracts.
+
+No example component hardcodes a substitute state transition.
+
+*** Complete
+
+Complete follows the same generic path.
+
+If completion makes the Request terminal or removes it from the current board
+projection, authoritative absence/removal semantics from Part VI apply.
+
+The UI may animate/present terminal state.
+
+It does not decide that the Request is terminal independently of authority.
+
+*** Cancel
+
+Cancel follows the same generic path.
+
+If cancellation changes visibility, terminal status, or board membership, those
+effects are learned from authoritative model results/projections.
+
+*** Reassign
+
+Reassign follows the same semantic operation-binding path when exposed.
+
+Its UI may require additional subject/input such as a target helper.
+
+The current proving application may distinguish:
+
+#+begin_example
+trusted operation/route exists
+    but
+UI exposure unavailable until legitimate target-helper selection exists
+#+end_example
+
+This is preferable to exposing a malformed partial Reassign control during an
+intermediate checkpoint. It does not satisfy the full proving milestone.
+That milestone requires legitimate target-helper input and a reachable eligible
+case in which Reassign succeeds through the actual rendered control. The model
+still decides target eligibility and the resulting transition.
+
+*** No lifecycle-specific fallback hole
+
+For every lifecycle operation:
+
+#+begin_quote
+If the semantic operation is rendered, missing realization metadata causes
+unavailability or rejection, never semantic erasure.
+#+end_quote
+
+This rule is tested across the lifecycle matrix.
+
+
+
+** Independent lifecycle capability acceptance
+:PROPERTIES:
+:CUSTOM_ID: req-humanhelp-required-capabilities
+:END:
+
+The required set above is an independent product acceptance input. It must not
+be generated by enumerating only the currently exposed actions or current
+assembly entries. Removing an action must fail its capability test even if all
+remaining declarations are closed.
+
+| Capability | Required positive evidence | Negative or concurrent evidence |
+|------------+----------------------------+---------------------------------|
+| Claim | Eligible principal claims an available Request | Competing claim/current policy governs outcome |
+| Unclaim | Eligible principal performs the model-defined release | Ineligible or changed ownership is handled |
+| Mark on the way | Eligible actor reaches the model-defined resulting state | Invalid lifecycle basis is handled |
+| Complete | Eligible actor reaches the model-defined completed state | Repeated/concurrent completion follows model policy |
+| Cancel | Eligible actor reaches the model-defined cancelled state | Unauthorized or disallowed cancellation is handled |
+| Reassign | Legitimate selected target is accepted in an eligible case | Ineligible, missing, or stale target is handled |
+
+Each positive case uses actual rendered affordances and verifies the specific
+production-model outcome through fresh acquisition. The fixture records the
+preconditions and expected outcome independently of the component being tested;
+these are not new framework business rules. A negative case may correctly
+render unavailability or receive a typed rejection. Passing negative cases
+alone never substitutes for a required positive case.
+
+An intermediate report may identify a partial lifecycle checkpoint. It must name
+missing capabilities and must not call that checkpoint full HumanHelp completion.
+
+
+** HumanHelp claim example
+
+Consider a Request claim initiated by helper principal U through browser actor C.
+
+The Request card shown by C was derived from an authoritative read known to be
+consistent through XTDB progression/basis coordinate X17.
+
+X17 is not a Request revision and is not a claim that the database is still
+exactly as it was when C rendered the card. It records the authoritative
+observation frontier from which C is acting, within the read's declared Request
+scope. It is not evidence that the whole board is a snapshot at X17. Any
+browser-carried basis or observation receipt must pass the trusted protocol's
+validation; a client assertion alone does not establish observed authority.
+
+The Request facts represented by the card therefore enter C's knowledge with
+=:authoritative= provenance relative to that observation.
+
+C creates semantic command C42 to claim Request R.
+
+Because the Request claim choreography permits optimism, C may derive a
+provisional local projection from the authoritative facts it knows at X17.
+
+Conceptually:
+
+#+begin_src clojure
+{:authority :provisional
+ :command-id C42
+ :observed-basis X17
+ :operation :request/claim
+ :arguments {:request-id R}
+ :projection :request/claimed-by-principal}
+#+end_src
+
+This is not authoritative Request state and it does not reserve a future Request
+revision.
+
+The projection describes a semantic provisional outcome. It need not be a
+literal patch to Request persistence data. The view/browser realization may
+render it as, for example, "claimed by U" while keeping its provisional
+provenance explicit.
+
+The projected Helper role communicates the semantic command, Request identity,
+and observed-basis information required by the protocol to the Request-authority
+role.
+
+The client does not establish its own trusted principal identity merely by
+including "principal U" in a payload.
+
+The principal on whose behalf the Request authority acts is established from the
+authenticated server context and bound to the choreography according to
+HumanHelp authentication/authorization rules.
+
+Conceptually:
+
+#+begin_example
+browser actor
+    C
+
+authenticated principal
+    U
+
+choreographic role
+    :helper
+
+authoritative role
+    :request-authority
+#+end_example
+
+A concrete web node may execute the authority projection, but web-node identity
+is not Request-authority identity. A retry may reach another web node without
+changing the semantic command or authority.
+
+For example:
+
+#+begin_example
+C42 first attempt
+    |
+Aleph node A
+
+node A fails
+
+C42 retry
+    |
+Aleph node C
+#+end_example
+
+The semantic command remains C42 only under the operation's declared retry and
+identity contract. A new transport attempt is not a new logical intent. Safe
+cross-node deduplication, where claimed, requires the declared durable identity,
+transaction, and retention contract; a command identifier alone cannot provide
+exactly-once effects. Node failure after submission can leave C's outcome unknown.
+This distributed sketch does not require multiple deployed web nodes for the
+initial proving milestone.
+
+The Request-authority role invokes the public Request semantic operation:
+
+#+begin_example
+request.core/claim
+#+end_example
+
+The choreography does not reproduce Request claim policy.
+
+The authoritative Request operation may need facts exposed through public model
+interfaces such as:
+
+- Request;
+- Membership;
+- Organization, including Organization-owned location facts where relevant.
+
+Those checks belong to model semantics, not to the choreography simply because
+the choreography initiated the operation.
+
+The authoritative database may have advanced beyond X17 before C42 is evaluated.
+
+That is expected.
+
+X17 records the basis from which C42 was formed. It is context for semantic
+re-evaluation, not a framework-level "stale command" rejection rule.
+
+For example:
+
+#+begin_example
+X17
+    R is unclaimed
+
+C creates C42
+
+X18
+    unrelated data changes
+
+X23
+    Request authority evaluates C42
+#+end_example
+
+C42 may remain completely valid.
+
+Alternatively:
+
+#+begin_example
+X17
+    R is unclaimed
+
+C creates C42
+
+X18
+    another helper claims R
+
+X23
+    Request authority evaluates C42
+#+end_example
+
+the Request model may now confirm, reconcile, reject, or otherwise resolve C42
+according to Request semantics.
+
+The authoritative operation reads the relevant authoritative facts, derives a
+proposed transition, and identifies the commit-time preconditions required for
+that transition to remain valid.
+
+If successful claim is an atomic domain transition, all authoritative writes
+constituting the claim and all required commit-time guards are applied in one
+XTDB transaction.
+
+Conceptually:
+
+#+begin_example
+read relevant authoritative facts
+        |
+derive Request claim transition
+        |
+prepare commit
+        |
+atomic transaction:
+    guards + writes
+        |
+        +-- success --> authoritative B
+        |
+        +-- guard failure --> no partial B
+                              re-evaluate or return
+                              semantic outcome
+#+end_example
+
+Not every fact read for rendering or diagnostics needs to be guarded. The model
+protects the facts whose incompatible change would invalidate the claim.
+
+Possible semantic outcomes include:
+
+- claim confirmed;
+- claim reconciled with newer authoritative state;
+- claim rejected;
+- command already incorporated;
+- another model-defined result mapped to the choreography's typed continuation.
+
+Once the XTDB transaction commits, the Request authority has moved from
+authoritative A to authoritative B.
+
+Settlement delivery, Live invalidation, fragment refetch, and browser rendering
+occur after that authoritative boundary. Failure in one of those later
+mechanisms must not reclassify the committed mutation as rejected. The browser
+may nevertheless lack command-specific outcome evidence and must represent
+that uncertainty accurately.
+
+The committed transaction establishes authoritative progression information that
+must survive the Live propagation path.
+
+Conceptually:
+
+#+begin_example
+atomic commit
+    |
+    v
+authoritative progression X24
+    |
+    v
+Live invalidation
+    |
+    v
+adoption permission under the selected policy or explicit user action
+    |
+    v
+authorized affected-fragment acquisition
+    |
+    v
+read consistent with the invalidating transaction
+    |
+    v
+canonical representation
+#+end_example
+
+The initiating browser may learn the command outcome through direct settlement
+or an authoritative result that actually attributes an outcome to C42. A later
+ordinary reread can establish current Request state without establishing whether
+C42 caused it. Superseding provisional presentation and settling command
+attribution are separate transitions.
+
+Other actors do not need a dedicated "Alice claimed R" choreography message.
+
+Suppose Bob's browser is connected through another Aleph node.
+
+#+begin_example
+Alice C
+  |
+Aleph A
+  |
+claim commits X24
+  |
+Live / Valkey
+  |
+Aleph C
+  |
+Bob browser receives advisory evidence
+  |
+selected remote-lifecycle policy or explicit Refresh permits acquisition
+  |
+authoritative fragment reread covering the relevant X24 requirement
+#+end_example
+
+Bob now knows the authoritative claim fact because he has observed an
+authoritative projection containing it.
+
+That knowledge has =:authoritative= provenance.
+
+Bob's later behavior may depend on the fact without requiring Alice's execution
+to locate Bob's actor or deliver a direct participant message.
+
+Under the declared acquisition, scheduling, and availability assumptions, the
+client's provisional projection can be confirmed, reconciled, rejected, or
+superseded by justified evidence. This conditional convergence claim is not an
+unconditional delivery guarantee. Current authoritative state can supersede a
+projection while attribution of C42 remains unknown. Late attempt callbacks
+cannot restore retired provisional presentation.
+
+Other actors may still know only facts visible through X17 or another earlier
+frontier. That is knowledge lag, not partial authoritative state.
+
+Live propagation and later authoritative rereads move relevant actor knowledge
+forward.
+
+No requirement says every browser or every web process must synchronously agree
+on X24 before the claim is authoritative.
+
+The atomic model commit establishes B.
+
+The choreography and Live system then provide valid paths by which actors that
+need B can acquire justified knowledge of B.
+
+
+** Request creation and creator visibility
+
+Request creation is part of the reference board behavior even though the v4.5
+worked example focuses on Claim.
+
+The creation path must use production Request semantics and authoritative
+persistence.
+
+*** Creation authority
+
+The example application gathers creation input and invokes the production
+Request creation operation through the intended trusted server/model path.
+
+The example app does not write XTDB directly to make the board demo work.
+
+Any required:
+
+- current time;
+- random/UUID seed;
+- authenticated principal;
+- transaction capability;
+
+is supplied explicitly by the trusted execution environment according to the
+Biff/Gesso capability model from Parts IV and VII.
+
+*** Missing server capability fails before user interaction where knowable
+
+If Request creation requires a clock or seed and the server assembly cannot
+supply it, application preflight should reject the structural omission.
+
+The user should not discover the defect as a runtime exception such as:
+
+#+begin_example
+missing :biff.fx/now
+#+end_example
+
+after filling out the Create Request dialog.
+
+*** Authoritative creation result
+
+Once creation commits, the creator receives a correlated result or performs a
+reread sufficient to install the authoritative new Request.
+
+The intended user-visible behavior is immediate creator visibility once the
+correlated authoritative result is available, without requiring another manual
+Refresh. This is not a guarantee of response delivery after commit. Lost results
+follow the declared command/reacquisition recovery contract. Acceptance must
+also record how this visibility requirement interacts with active search and
+visibility options, rather than silently dropping either requirement.
+
+Conceptually:
+
+#+begin_example
+Browser A creates R
+    |
+authoritative creation commits
+    |
+A receives correlated authoritative result
+    |
+A's adopted board includes R
+#+end_example
+
+*** Creator immediate does not imply remote auto-adoption
+
+The creator's immediate incorporation is correlated to the operation it
+initiated.
+
+It does not imply that every connected browser automatically replaces its board
+projection.
+
+Other clients follow the advisory path described below.
+
+** Board projection semantics
+:PROPERTIES:
+:CUSTOM_ID: req-humanhelp-selective-adoption
+:END:
+
+The board is not a generic client-side source of truth.
+
+It is a rendered projection of authoritative production Request data plus local
+presentation state.
+
+The board contract must distinguish at least these semantic concerns:
+
+- *membership:* which Requests have been admitted to the currently adopted
+  board;
+- *observation provenance:* which authoritative observations justify the Request
+  facts that are currently displayed;
+- *advisory information:* evidence that relevant authority may contain changes
+  that the board has not yet adopted;
+- *local presentation:* search, sorting, visibility, focus, continuity, and
+  related browser-local state;
+- *provisional state:* command-correlated predictions and their runtime
+  ownership while resolution remains pending.
+
+These are semantic distinctions.  They do not require five independent mutable
+stores, per-object integer revisions, or a universal persisted fact graph.
+
+The governing rule is:
+
+#+begin_quote
+Adoption is scoped.  Incorporating a correlated authoritative result for one
+operation, object, or acquisition scope does not by itself establish adoption
+of every relevant change through that result's database progression.
+#+end_quote
+
+Consequently, a newer authoritative observation of Request S does not by itself
+establish that:
+
+- the complete board was reacquired at S's basis;
+- every Request visible at that basis has been admitted;
+- every previously displayed Request was refreshed;
+- every outstanding advisory obligation has been discharged.
+
+A board may therefore contain individually justified authoritative observations
+without claiming that the whole rendered board is one complete database
+snapshot.  Where a view or operation requires a common snapshot, causal
+relation, progression relation, or other cross-object compatibility condition,
+that requirement must be declared and satisfied explicitly.
+
+*** Adopted authoritative frontier
+
+When the adopted board projection was acquired as one scope with one meaningful
+common progression relation, it is useful to describe that relation as an
+adopted authoritative frontier.
+
+That phrase must not be overextended to mixed observations.  If the board has
+selectively incorporated a newer correlated result for one Request while other
+membership remains intentionally older, the implementation must retain enough
+scope/provenance information to describe what has actually been adopted rather
+than pretending that the entire board advanced to the maximum observed basis.
+
+This information does not need to be displayed to the user.
+
+It is needed to reason about:
+
+- which membership and Request facts are currently justified;
+- whether newer advisory information remains outstanding;
+- what progression requirement Refresh must satisfy;
+- which observation or observed-basis claim an optimistic action is formed
+  from;
+- whether an aggregate operation requires stronger cross-object consistency.
+
+*** Advisory frontier
+
+The board may know that relevant authority has advanced beyond what it has
+currently adopted visibly.
+
+Where one scoped progression relation adequately represents that knowledge, the
+design may describe an advisory frontier such as:
+
+#+begin_example
+adopted board coverage:
+    through X17 for scope Q
+
+advisory requirement:
+    observe scope Q sufficiently to satisfy X24
+
+meaning:
+    authority may contain relevant newer state
+    board intentionally retains its currently adopted membership until Refresh
+#+end_example
+
+The exact representation may be a progression requirement, a scope-aware
+frontier relation, or another supported Gesso abstraction.
+
+There need not be one scalar advisory number for every outstanding change.  A
+newer observation in one scope must not erase advisory debt in another scope
+merely because its database token compares as newer.
+
+*** Provisional state
+
+A Request card may temporarily show provisional state associated with a semantic
+command.
+
+That provisional state records or is correlated with:
+
+- command identity;
+- the relevant observed-basis claim or admitted authoritative observation;
+- operation identity;
+- provisional provenance;
+- execution/generation ownership as needed by browser runtime.
+
+It is not folded into adopted authoritative state merely because it is visible.
+
+*** Local presentation state
+
+Search text, sort selection, visibility options, focus, open accordion state,
+and similar values are local/presentation state.
+
+They do not change authoritative Request facts or board membership.
+
+Some may survive fragment replacement through continuity mechanisms.
+
+They do not become choreographic truth, and changing them must not admit Requests
+that are currently withheld by the board's adoption policy.
+
+** Advisory versus adopted authority
+
+The HumanHelp board intentionally separates:
+
+#+begin_example
+knowledge that relevant newer authority may exist
+    !=
+adoption of authoritative content that satisfies that knowledge
+#+end_example
+
+This distinction is a first-class acceptance requirement.
+
+*** Remote creation scenario
+
+The canonical scenario uses at least two browser contexts.
+
+#+begin_example
+Browser A
+    creates Request R
+        |
+        v
+authoritative commit at P18
+
+Browser A
+    correlated authoritative result
+        |
+        v
+adopts R immediately
+
+Browser B
+    already viewing board adopted through P17
+        |
+        v
+receives advisory requiring relevant observation >= P18
+        |
+        v
+does NOT automatically show R
+        |
+        +--> toast / update near Refresh
+        +--> Refresh becomes visually stale/active
+        +--> pending/new state reflects real advisory information
+#+end_example
+
+The advisory is evidence that B has an adoption obligation or opportunity.  It
+is not authoritative Request content and does not itself add R to board
+membership.
+
+*** Selective local adoption while remote work remains pending
+
+The creator-local rule composes with outstanding remote advisory information.
+For example:
+
+#+begin_example
+B has adopted its board through P17.
+
+A creates remote Request R at P18.
+B receives advisory for R but does not adopt R.
+
+B then creates Request S at P19.
+B receives the correlated authoritative result for S.
+
+Required result:
+    S appears on B's board.
+    R remains absent.
+    advisory information covering R remains outstanding.
+
+B changes search or sorting.
+    presentation changes over currently adopted membership.
+    R still does not appear.
+
+B explicitly Refreshes with sufficient scope/progression coverage.
+    R may then be admitted through authoritative acquisition.
+    advisory information is recalculated from what that read actually covered.
+#+end_example
+
+The fact that S was authoritatively observed at P19 does not imply that B
+performed a complete board read at P19.  The implementation must not use a
+single maximum database token as proof that unrelated board membership has been
+adopted.
+
+The same rule applies when B receives a correlated lifecycle result for an
+already-admitted Request while an unrelated remote creation remains awaiting
+Refresh.
+
+*** Explicit Refresh
+:PROPERTIES:
+:CUSTOM_ID: req-humanhelp-refresh-coverage
+:END:
+
+Browser B activates Refresh.
+
+Refresh performs a trusted authoritative reread with a declared acquisition
+scope and progression requirement.  The returned observation establishes only
+the coverage justified by that read.
+
+On a simple successful full-board Refresh:
+
+#+begin_example
+board acquisition satisfying captured requirement
+    |
+authorized authoritative content installed
+    |
+newly covered membership becomes eligible for display
+    |
+advisory obligations actually satisfied by the acquisition are discharged
+    |
+other outstanding advisory information, if any, remains represented
+#+end_example
+
+Completion of the HTTP request is not itself proof that every currently known
+advisory has been resolved.
+
+In particular:
+
+- an advisory arriving after the Refresh captured its requirement remains
+  outstanding unless the returned observation actually covers it;
+- a local authoritative result installed while Refresh is in flight must not be
+  undone by an older response;
+- a response that is incompatible with newer justified state may be rejected,
+  followed by a successor read, or handled by another checked reconciliation
+  strategy;
+- the implementation must not merge incompatible snapshots merely to avoid a
+  successor read;
+- failed Refresh leaves existing adopted content correctly classified and does
+  not erase unresolved advisory information;
+- the application retains a finite supported recovery path after failure.
+
+The implementation must declare the authorization scope of one Refresh action:
+which membership/query scope it may adopt, what requirement it captures, and
+whether an automatic successor acquisition remains authorized by that action.
+Accumulating advisory debt does not itself extend acquisition or adoption
+permission. In particular, the contract must decide whether later advisories
+are eligible within that action or need another explicit action; tests exercise
+the selected rule. A successor read used to resolve an installation race must
+not silently become perpetual automatic remote adoption.
+
+Discharge requires justified coverage and successful semantic adoption under
+the browser realization contract, not merely receipt of a newer token or a
+successful HTTP response. Partial failure must not erase uncovered obligations
+or enable controls against an incoherent partially installed projection.
+
+These rules use the generic progression, scope, and browser-ownership semantics
+from the preceding parts rather than inventing a HumanHelp-specific revision
+counter.
+
+*** SSE/Live is advisory
+
+The SSE/Live stream does not push canonical Request card HTML that becomes
+authoritative merely because it arrived over a server connection.
+
+The stream may carry:
+
+- invalidation;
+- progression requirement;
+- advisory scope;
+- other non-authoritative coordination metadata.
+
+Canonical domain content is obtained through the permitted authoritative read
+path.
+
+*** Why explicit adoption matters
+
+The HumanHelp behavior demonstrates that Gesso can represent a useful state in
+which:
+
+- the browser knows its visible projection may be stale or incomplete relative
+  to relevant newer authority;
+- every displayed authoritative fact retains justified observation provenance;
+- currently adopted membership remains intentional rather than being expanded
+  by incidental newer observations;
+- the user is notified;
+- the application offers a finite path to current authority;
+- new remote content is not forced into the visible board without explicit
+  adoption.
+
+This is stronger than treating every invalidation as an automatic DOM refresh.
+
+*** Remote lifecycle changes
+:PROPERTIES:
+:CUSTOM_ID: decision-humanhelp-remote-lifecycle-adoption
+:END:
+
+Remote creation has a settled product rule: a new Request is not automatically
+admitted to another browser's board.  Advisory indication plus explicit Refresh
+performs that adoption.
+
+Remote lifecycle changes to Requests already admitted to the board are a
+separate HumanHelp product decision.  Canonical r4 records the choice explicitly
+rather than allowing different sections to imply different policies. The decision
+remains unresolved in this draft: the alternatives below are not a selected
+policy, and the worked Claim example does not choose one implicitly.
+
+The permitted choices are:
+
+- require explicit Refresh before adopting remote lifecycle changes;
+- automatically perform an authorized authoritative reacquisition of an
+  already-admitted Request;
+- define a precise policy by transition or visibility consequence.
+
+Whichever policy HumanHelp selects must preserve all of these constraints:
+
+- Live invalidation is advisory evidence, not authoritative domain content;
+- authoritative content comes through the permitted authorized acquisition path;
+- a stale card does not preserve authorization or reserve an operation;
+- commands undergo current authoritative model policy and appropriate
+  commit-time validation;
+- reacquiring an existing Request does not implicitly admit unrelated remote new
+  Requests;
+- absence, lack of access, and terminal domain state remain distinct where the
+  principal is permitted to distinguish them;
+- the specification does not pretend that the browser can be made to forget
+  information that was already disclosed.
+
+The selected policy must state behavior for at least another helper claiming a
+visible Request, author cancellation, terminal transition, a visibility-changing
+transition, and loss of permission to reacquire protected content.
+
+This product decision must be resolved before the HumanHelp operational
+completion milestone can claim the affected multi-client lifecycle behavior.
+Until then, the generic architectural invariant is only:
+
+#+begin_example
+advisory invalidation
+    !=
+authoritative content installation
+#+end_example
+
+** Search, sorting, and visibility
+
+The proving board must retain its intended rich interaction.
+
+These interactions are deliberately part of acceptance because they interact
+with authoritative refresh and DOM replacement.
+
+*** Live search
+
+As the user types, search filters the currently adopted board projection.
+
+Required properties:
+
+- filtering is responsive to current search text;
+- it does not require an authoritative mutation;
+- it composes with current sort/visibility options;
+- fragment replacement does not leave search state incoherent;
+- search does not expose Requests absent from the adopted authoritative
+  projection.
+
+*** Newest/oldest ordering
+
+The board can order Requests by the product's defined relevant temporal field.
+
+The exact field belongs to HumanHelp model/view semantics.
+
+The control must actually affect rendered order.
+
+It must not be decorative.
+
+*** Mine-first ordering
+
+Mine-first promotes Requests associated with the current authenticated viewer
+according to production-backed Request facts.
+
+The view may use trusted/prepared projection data.
+
+It must not invent ownership from provisional CSS state.
+
+*** Unclaimed-first ordering
+
+Unclaimed-first uses production-backed Request claim state.
+
+A provisional local Claim may affect the local provisional presentation as
+declared by Choreo, but authoritative ordering after settlement is based on
+authoritative Request state.
+
+*** Terminal visibility
+
+Show/hide terminal controls whether Requests whose production model state is
+terminal remain visible.
+
+The view does not define which statuses are terminal independently of production
+model semantics.
+
+*** Option composition
+
+Board options compose deterministically.
+
+For example:
+
+#+begin_example
+adopted authoritative Requests
+    |
+terminal visibility
+    |
+search filter
+    |
+sorting / mine-first / unclaimed-first
+    |
+render
+#+end_example
+
+The precise ordering of presentation transforms is part of HumanHelp UI semantics
+and should be tested.
+
+It must not depend on accidental DOM insertion order.
+
+** Request details and response flow
+
+The proving application includes the ability to view Request details and the
+intended response interaction.
+
+The source plans require these behaviors as browser acceptance surface but do not
+fully specify all product semantics.
+
+This unified design therefore fixes only the architecture that the source plans
+support.
+
+*** Request details
+
+A Request card/details/accordion interaction exposes current adopted Request
+information.
+
+It may preserve open/selected local state through continuity where practical.
+
+Opening details is not itself authoritative mutation unless the production
+application explicitly defines such an operation.
+
+*** Continuity
+
+When an authoritative fragment refresh replaces Request-card DOM, local
+interaction state such as:
+
+- selected/open accordion;
+- focus;
+- text selection where relevant;
+
+may be restored through Parts V and VI continuity machinery.
+
+Continuity failure must not alter authoritative Request truth.
+
+*** Response flow
+
+The real-browser acceptance suite includes the Request response flow.
+
+The exact business semantics and authoritative operations of that flow remain
+owned by production HumanHelp model/choreography code.
+
+The example UI must route the interaction through those production semantics
+rather than inventing a demo-only response store.
+
+Where the response flow includes semantic mutation, the same application-closure
+discipline applies:
+
+#+begin_example
+affordance
+    -> semantic operation
+    -> trusted server
+    -> production model
+    -> authoritative result
+    -> acquisition/render
+#+end_example
+
+*** Independent response-flow acceptance contract
+:PROPERTIES:
+:CUSTOM_ID: decision-humanhelp-response-flow
+:END:
+
+Status: unresolved product semantics. The architecture requires the response
+capability, but the source does not define a sufficient independent acceptance
+oracle. Naming a handler or making its current output the expected output does
+not close this gap. HumanHelp must record a selected contract before claiming
+the full rich-board milestone.
+
+The contract must state:
+
+- the user intent, eligible actor, and Request preconditions;
+- the actual affordance and required input, including validation;
+- the successful user-visible result and who may observe it;
+- the production model operation and persisted result, if mutation is intended;
+- the expected reload/reacquisition behavior and disclosure scope;
+- rejection, concurrent-change, duplicate-submission, and uncertain-outcome
+  behavior where applicable;
+- the relation to lifecycle actions and existing details presentation.
+
+This document does not invent a response entity, messaging system, permission
+policy, or storage model. If the selected interaction is non-mutating, its
+observable result and authority boundary must still be specified independently.
+If it mutates authority, normal semantic binding, production model truth,
+settlement, and acquisition rules apply.
+
+Acceptance includes at least one eligible user completing the actual interaction
+and observing the specified result, plus the applicable invalid/concurrent case.
+A missing or permanently unavailable response control fails this capability
+regardless of whether application preflight passes. Until the contract is chosen
+and tested, report response-flow completion as unresolved.
+
+
+** Authentication and principal binding
+
+HumanHelp browser acceptance begins with real authentication/login sufficient to
+establish distinct principals.
+
+The generated browser is adversarial from the server's perspective.
+
+*** Browser identity is not trusted principal identity
+
+The browser may display a user name or include user IDs in protocol data.
+
+The server derives the authenticated HumanHelp principal from trusted
+authentication/session context.
+
+The trusted server projection then binds that principal to the choreography
+role.
+
+*** Multiple personas
+
+Cross-user acceptance uses independent browser contexts/personas.
+
+Each context has its own authenticated principal.
+
+Tests must not simulate "another user" merely by mutating a client-side ID while
+sharing one trusted server session.
+
+*** Authentication is an explicit assumption boundary
+
+Gesso may assume the trusted HumanHelp authentication layer correctly establishes
+the authenticated principal, subject to runtime tests and the named trusted
+assumption.
+
+Choreo then reasons from that trusted binding.
+
+It does not prove the implementation of HumanHelp authentication merely because
+the role binding is valid.
+
+** HumanHelp Live and publication semantics
+
+Production Request mutations that affect board visibility/publication produce the
+declared Live invalidation path.
+
+The commit boundary remains primary.
+
+*** Commit precedes invalidation
+
+Conceptually:
+
+#+begin_example
+production Request transaction commits
+    |
+authoritative progression P
+    |
+publication/invalidation
+    |
+interested client advisory
+#+end_example
+
+If invalidation delivery fails after commit, authoritative Request state remains
+committed.
+
+*** Publication is not a second model mutation
+
+Live publication announces possible newer authority.
+
+It does not persist a duplicate copy of Request truth into a Live-specific store
+that can disagree with XTDB.
+
+*** Publication correlation for initiator
+
+The initiating browser may receive direct correlated settlement independent of
+the general advisory stream.
+
+The architecture does not require the creator to learn its own committed result
+only through broadcast invalidation.
+
+*** Other clients learn through authority
+
+Another browser ultimately knows the new Request or lifecycle fact because it
+performs an authorized authoritative read that contains it.
+
+It does not need a durable participant-to-participant message from the creator.
+
+** HumanHelp optimistic lifecycle semantics
+
+Optimism is enabled only where production Request Choreo declares a provisional
+trajectory.
+
+The example application does not infer optimism from:
+
+- button class;
+- route method;
+- response latency;
+- presence of a target DOM node.
+
+*** Binding requirements
+
+An optimistic Request lifecycle operation requires enough information to form
+the declared semantic provisional state, including where required:
+
+- semantic operation identity;
+- Request identity;
+- authenticated-role binding on trusted side;
+- observed authoritative basis;
+- semantic command identity;
+- browser target identity;
+- projected plan compatibility.
+
+Missing required information makes that realization unavailable.
+
+*** No anonymous fallback
+
+The following is always invalid for an operation whose only declared realization
+is optimistic Choreo:
+
+#+begin_example
+optimistic binding cannot be constructed
+    |
+omit semantic metadata
+    |
+emit ordinary hx-post to semantic lifecycle route
+#+end_example
+
+The page must instead:
+
+- obtain required basis;
+- render explicit unavailable state;
+- use another explicitly declared semantic realization;
+- or fail checked rendering.
+
+*** Pending state
+
+Pending presentation belongs to the active command/execution.
+
+It terminates when:
+
+- settlement resolves;
+- authoritative supersession resolves;
+- execution retires;
+- recovery path takes ownership.
+
+A stale provisional pending label cannot survive after justified authoritative
+supersession has retired its ownership. A distinct unresolved-command status
+may remain where current-state evidence does not establish command attribution;
+it must expose the declared recovery path rather than continue an owned
+provisional spinner for an already retired execution.
+
+*** Rollback
+
+Rollback remains conditional on current semantic ownership.
+
+If newer authoritative state has already installed, an old failure callback may
+not restore the pre-command Request card.
+
+This is tested in the HumanHelp browser matrix because it is an application-level
+manifestation of Part VI authoritative-install monotonicity.
+
+** HumanHelp route and protocol safety
+
+The proving application must reject malformed optimistic lifecycle requests at
+the trusted boundary.
+
+*** Protocol-required routes
+
+A route whose semantic operation requires the Gesso optimistic command protocol
+rejects a request that lacks or malforms the required command.
+
+The server does not silently reinterpret it as an ordinary model call.
+
+*** Render/server consistency
+
+Because the UI may not silently downgrade, an enabled lifecycle control rendered
+by the application must be capable of producing the required protocol through
+the real browser runtime.
+
+This is a join invariant.
+
+A unit test proving route rejection is incomplete without a higher-level test
+showing valid rendered UI actually supplies the protocol.
+
+*** Operation/route mismatch
+
+If the route physically denotes Claim while the command declares Cancel, trusted
+server integration rejects the mismatch.
+
+Likewise Request subject identity mismatches are rejected where the contract
+requires equality.
+
+*** Unsupported anonymous semantic-route requests
+
+An ordinary HTMX request may not occupy a semantic lifecycle route while omitting
+semantic identity.
+
+This is rejected by rendered-surface preflight where produced by trusted views
+and by trusted route/protocol validation at execution as applicable.
+
+** HumanHelp Biff 2 runtime integration
+
+The HumanHelp proving application runs on the final Biff 2 lifecycle/value-flow
+architecture specified in Parts IV and VII. Concrete APIs and lifecycle behavior
+must correspond to the selected supported final Biff 2 release; schematic
+examples here do not establish compatibility with an unspecified dependency.
+
+*** Native lifecycle modules
+
+HumanHelp startup uses native lifecycle-bearing modules for:
+
+- Biff configuration;
+- XTDB;
+- Gesso application preflight;
+- Gesso Live;
+- Aleph/application serving.
+
+Preview-era component conventions are not part of the end-state design.
+
+*** Preflight precedes Aleph service
+
+The actual HumanHelp serving path cannot begin accepting requests until:
+
+- canonical assembly exists;
+- required browser artifact is current;
+- static preflight succeeds;
+- checked application handler is installed.
+
+This is a real runtime property.
+
+It is not only a unit-test construction.
+
+*** FX explicit value flow
+
+HumanHelp production model machines use final Biff explicit state flow:
+
+#+begin_example
+ambient ctx
+explicit invocation input
+explicit previous-state output
+#+end_example
+
+The example application does not rely on preview-era merged context to make
+production models work.
+
+*** Explicit execution capabilities
+
+Where production operations need:
+
+- current time;
+- seed/randomness;
+- transaction;
+- authenticated principal;
+- authoritative basis;
+
+the trusted HumanHelp server environment supplies them explicitly.
+
+Application assembly checks structural supply.
+
+** HumanHelp test architecture
+
+The reference application uses a ladder of tests with honest scope.
+
+No single layer is allowed to stand in for another.
+
+*** Model tests
+
+Production model tests establish:
+
+- pure domain rules;
+- operation contracts;
+- transaction behavior;
+- model-defined outcomes;
+- authority/business policy for the exercised operation contracts.
+
+They do not prove browser operation binding.
+
+*** Choreo tests
+
+Request Choreo tests establish:
+
+- valid global/local structure;
+- knowledge/provenance rules;
+- provisional trajectory;
+- settlement continuations;
+- projection invariants.
+
+They do not prove the HumanHelp route graph or generated browser artifact is
+current.
+
+*** Application preflight tests
+
+Preflight tests consume the production HumanHelp assembly.
+
+They establish structural closure:
+
+- operation exists;
+- browser plan exists;
+- artifact current;
+- route exists;
+- server realization exists;
+- capabilities supplied;
+- Live acquisition exists;
+- no semantic downgrade.
+
+They do not prove current runtime authorization for arbitrary database state.
+
+*** Rendered-surface tests
+
+Concrete Hiccup/render tests establish that real dynamically rendered controls
+remain coherent with the assembly.
+
+They specifically challenge:
+
+- missing basis;
+- conditional lifecycle buttons;
+- route-template collision;
+- forms/nested HTMX action ownership;
+- unavailable realizations.
+
+*** Lower-level server integration tests
+
+A server integration test may deliberately manufacture a valid protocol command.
+
+Such a test proves:
+
+#+begin_example
+valid protocol command
+    -> trusted HumanHelp server/model path
+#+end_example
+
+It does not prove:
+
+#+begin_example
+real rendered button
+    -> browser runtime
+    -> valid protocol command
+#+end_example
+
+Test names/docstrings should preserve this distinction.
+
+*** Real Chromium/Playwright tests
+
+Browser acceptance uses:
+
+- actual HumanHelp server;
+- actual generated Gesso runtime;
+- actual supported HTMX;
+- actual rendered controls;
+- actual HTTP requests;
+- actual production model operations;
+- actual DOM swaps/settlement;
+- multiple independent browser contexts where required.
+
+This is mandatory evidence for the proving application.
+
+** First real-browser lifecycle scenario: Claim
+
+Claim is the first deep end-to-end scenario.
+
+The browser test performs conceptually:
+
+#+begin_example
+start real HumanHelp with local/current Gesso
+    |
+login real test principal
+    |
+establish claimable production Request
+    |
+GET /app
+    |
+find actual Claim control
+    |
+click actual control
+    |
+real browser runtime constructs command
+    |
+real HTMX/Gesso request
+    |
+trusted route
+    |
+production Request claim commits
+    |
+settlement / authoritative acquisition
+    |
+DOM reaches authoritative claimed state
+    |
+reload
+    |
+authoritative claimed state remains
+#+end_example
+
+*** The test never injects the browser command
+
+Top-level acceptance does not manually create:
+
+#+begin_example
+__gesso_live_optimistic_command
+#+end_example
+
+or any equivalent protocol envelope.
+
+That value must arise from the real generated browser/runtime path.
+
+Otherwise the test skips the core rendered-affordance-to-command edge.
+
+*** Failure conditions
+
+The Claim acceptance fails on:
+
+- unexpected console error;
+- unexpected page error;
+- unexpected HTTP 4xx/5xx;
+- unexpected failed browser request;
+- missing protocol command;
+- malformed protocol command;
+- stale provisional DOM left after resolution;
+- missing authoritative transition;
+- visible claimed state without committed authoritative claim;
+- reload showing that the apparent mutation was never persisted.
+
+*** Reload is authoritative confirmation
+
+The test reloads/reacquires after mutation.
+
+This guards against a false success where only provisional DOM changed.
+
+A successful user-visible optimistic interaction is not accepted until persisted
+authoritative state is observable after fresh acquisition.
+
+** Lifecycle browser matrix
+
+After Claim, the same end-to-end pattern applies to every required lifecycle
+operation, independently of which controls the current implementation exposes.
+
+At minimum:
+
+- Unclaim;
+- Mark on the way;
+- Complete;
+- Cancel;
+- Reassign, including legitimate target-helper input.
+
+For each operation the test checks:
+
+- actual rendered operation identity;
+- actual browser command;
+- trusted route correspondence;
+- authoritative production model mutation/outcome;
+- final DOM;
+- fresh authoritative reacquisition.
+
+Where the operation is intentionally unavailable in a state, tests verify
+unavailability rather than expecting an anonymous fallback. These cases are
+additional to the eligible positive case required for every lifecycle capability.
+
+** Rich-board browser acceptance matrix
+
+The rich board is the broad whole-application acceptance surface.
+
+This matrix is intentionally independent of mere assembly closure.  Removing a
+required user capability must make behavioral acceptance fail even if the
+remaining ApplicationAssembly is internally coherent.
+
+Required behaviors include:
+
+1. login establishes the intended principal;
+2. Create Request works through production model semantics;
+3. creator sees the new Request immediately;
+4. another already-connected client does not automatically adopt the new Request;
+5. the remote client receives advisory evidence that newer authority exists;
+6. a toast/update appears near Refresh;
+7. Refresh changes appearance/glows/pulses while advisory state is pending;
+8. explicit Refresh performs authoritative reread/adoption;
+9. after sufficient Refresh coverage the remote client sees the new Request;
+10. a newer correlated local result does not implicitly admit unrelated remote
+    Requests awaiting Refresh;
+11. a newer correlated local result does not clear unrelated advisory debt;
+12. an advisory arriving during Refresh remains outstanding when the returned
+    acquisition does not cover it;
+13. an older Refresh response cannot restore obsolete authoritative presentation
+    over a newer justified installation;
+14. failed Refresh preserves a usable recovery path and does not erase unresolved
+    advisory information;
+15. live search filters while typing without expanding adopted membership;
+16. newest/oldest ordering works;
+17. mine-first works;
+18. unclaimed-first works;
+19. show/hide terminal works;
+20. Request details/accordion works;
+21. selected/open details continuity survives supported same-identity replacement,
+    while removal or lost access follows the declared retirement behavior;
+22. terminal rendering is correct;
+23. lifecycle actions work through the generic bound-operation path;
+24. response flow works through production semantics;
+25. reconnect preserves the advisory-versus-adopted distinction where applicable;
+26. stale optimistic work cannot overwrite newer authoritative state;
+27. malformed optimistic requests are rejected rather than downgraded;
+28. the selected remote-lifecycle adoption policy is exercised for already-visible
+    Requests once that product decision is resolved.
+
+*** At least two independent browser contexts
+
+The remote advisory scenario requires at least two browser contexts/personas.
+
+One browser cannot prove:
+
+#+begin_example
+creator immediate incorporation
+    versus
+remote advisory without adoption
+#+end_example
+
+because those are intentionally different actor behaviors.
+
+*** Creator scenario
+
+#+begin_example
+A creates R
+    |
+commit
+    |
+A immediately adopts authoritative R
+#+end_example
+
+The test verifies both:
+
+- DOM;
+- authoritative state.
+
+*** Remote scenario
+
+#+begin_example
+B already viewing
+    |
+invalidation arrives
+    |
+B still does not show R
+    |
+advisory UI appears
+#+end_example
+
+This is a success condition.
+
+A browser test that immediately shows R before Refresh is red because it violated
+the intended product semantics.
+
+*** Refresh scenario
+
+#+begin_example
+B clicks Refresh
+    |
+authoritative board reread with captured scope/requirement
+    |
+covered membership/observations are installed
+    |
+R appears when the acquisition justifies admitting R
+    |
+only covered advisory obligations clear/recompute
+#+end_example
+
+The test validates that the content came from the authoritative acquisition path,
+not from cached invalidation payload.
+
+The browser suite must also cover the interaction cases that make Refresh
+meaningful rather than ceremonial:
+
+- an advisory arrives after Refresh has captured its requirement and remains
+  pending if the response does not cover it;
+- B has remote R awaiting Refresh, then creates local S and installs S's
+  correlated authoritative result; S appears, R remains absent, and R's advisory
+  remains outstanding;
+- a newer authoritative local installation occurs before an older Refresh
+  response returns, and the older response cannot restore obsolete state;
+- Refresh fails without erasing adopted content classification or advisory debt.
+
+*** Search scenario
+
+The test types search text and observes live filtering.
+
+It verifies no full page reload or unintended authoritative mutation is required
+unless the chosen implementation explicitly uses a server-side read for search.
+
+The semantic requirement is live correct filtering of adopted board content.
+
+*** Sorting scenario
+
+The test exercises:
+
+- newest/oldest;
+- mine-first;
+- unclaimed-first.
+
+It verifies actual order, not merely control state.
+
+*** Visibility scenario
+
+The test toggles terminal Request visibility and verifies:
+
+- correct Requests appear/disappear;
+- authoritative Request state is unchanged;
+- later Refresh preserves the option semantics.
+
+*** Details/continuity scenario
+
+The test opens a Request details accordion, causes a supported same-identity
+fragment replacement, and verifies the declared open/selected continuity.
+It also checks the declared retirement behavior when that Request is no longer
+rendered. Additional focus/selection restoration is tested where supported;
+these optional extensions do not replace the required details scenario.
+
+Continuity is accepted only as local interaction preservation.
+
+The Request's authoritative state remains independently verifiable.
+
+*** Terminal transition scenario
+
+An operation that makes a Request terminal must yield correct authoritative
+terminal state.
+
+The board then follows its current terminal visibility option:
+
+- show terminal -> render correct terminal representation;
+- hide terminal -> local presentation excludes the terminal card.
+
+Hiding is not an authoritative observation of Request absence and does not by
+itself remove adopted membership. If an authoritative acquisition separately
+establishes absence from a scoped complete projection, apply Part VI absence
+rules. Denial, an empty error response, and a local visibility option do not
+establish that fact.
+
+*** Reconnect scenario
+
+The test interrupts and re-establishes the supported Live connection through a
+controlled fixture. It asserts the recovery behavior and relevant availability
+assumptions of that supported path.
+
+It verifies:
+
+- no illegal stale execution resumes;
+- advisory state can recover;
+- reconnect does not force remote content adoption when explicit Refresh is the
+  product rule;
+- authoritative refresh still provides convergence.
+
+*** Stale optimistic scenario
+
+The test deliberately arranges or simulates an ordering where:
+
+#+begin_example
+old optimistic execution
+newer authoritative install
+late old failure/callback
+#+end_example
+
+and verifies the late old callback cannot restore obsolete DOM.
+
+This exercises the generic Part VI invariant in the real HumanHelp surface.
+
+** Structural rejection acceptance matrix
+
+HumanHelp also supplies deterministic malformed fixtures that must fail before
+normal user interaction.
+
+*** Unknown semantic operation
+
+A view references an operation not present in production Request Choreo.
+
+Expected:
+
+- construction/preflight rejection;
+- view/component source identified;
+- unknown operation identified;
+- known candidates supplied where cheap;
+- no fuzzy execution.
+
+*** Missing browser plan
+
+A valid exposed Request operation is omitted from the required browser plan set.
+
+Expected:
+
+- preflight rejection;
+- semantic operation remains recognized;
+- browser realization edge named missing;
+- no ordinary HTMX fallback.
+
+*** Stale browser artifact
+
+The application assembly changes browser plan identity without rebuilding the
+runtime artifact.
+
+Expected:
+
+- startup failure before normal service;
+- expected manifest and admitted artifact identities reported;
+- copied stamps on incompatible artifact bytes are also rejected;
+- the checked artifact corresponds to the artifact actually served;
+- rebuilding restores currentness.
+
+*** Missing route
+
+The browser plan requires a semantic transport whose physical route is absent.
+
+Expected:
+
+- preflight rejection;
+- operation named;
+- required method/path/protocol named;
+- available routes reported where useful.
+
+*** Wrong trusted server realization
+
+The route points at a server realization incompatible with the plan/operation.
+
+Expected:
+
+- preflight rejection;
+- expected and actual semantic server identity/contract reported.
+
+*** Missing execution capability
+
+A production Request operation requires a capability such as trusted current time
+but the server boundary does not supply it.
+
+Expected:
+
+- startup/preflight rejection where statically knowable;
+- missing capability named;
+- operation/source named;
+- no first-click runtime discovery.
+
+*** Missing initial acquisition
+
+A managed board fragment has:
+
+- no authoritative initial content;
+- no permitted load/reread path.
+
+Expected:
+
+- preflight rejection;
+- fragment identity named;
+- expected authoritative projection/progression named.
+
+*** Anonymous lifecycle route
+
+A rendered control emits an ordinary HTMX POST to an assembled lifecycle route
+while omitting semantic operation identity.
+
+Expected:
+
+- dynamic pre-serialization rejection;
+- concrete method/path identified;
+- matched semantic route template identified;
+- intended operation identified;
+- missing semantic identity identified.
+
+*** Malformed browser protocol
+
+An adversarial/modified browser sends malformed optimistic protocol data.
+
+Expected:
+
+- trusted boundary rejects it;
+- no production Request transition occurs merely because route method/path was
+  valid.
+
+** HumanHelp acceptance and production model truth
+
+Every browser-visible success that represents authoritative mutation must be
+backed by production model truth.
+
+*** DOM-only success is failure
+
+A test is red if:
+
+#+begin_example
+DOM says claimed
+but authoritative Request remains unclaimed
+#+end_example
+
+or:
+
+#+begin_example
+DOM says completed
+but fresh authoritative read remains active
+#+end_example
+
+Optimistic UI may temporarily display provisional state.
+
+Final accepted success requires authoritative confirmation.
+
+*** Production model rejection is legitimate behavior
+
+A lifecycle action may be structurally valid but rejected at runtime because
+current domain state changed.
+
+For example:
+
+- another helper claimed the Request;
+- Membership no longer permits the operation;
+- Organization policy changed;
+- commit-time guard failed.
+
+The example application must render/propagate the model-defined outcome.
+
+It must not classify this as broken application assembly.
+
+*** Already-incorporated/reconciled outcomes
+
+Where the production model supports already-incorporated or reconciliation
+semantics, browser tests should verify the declared behavior rather than
+assuming every retry must be a hard error.
+
+The model owns the policy.
+
+Gesso owns the protocol structure needed to transport and render it safely.
+
+** Connected enforcement and recovery evidence
+
+At least the Claim vertical slice records the admitted application generation,
+the real rendered operation, its browser plan/artifact binding, trusted route,
+prepared server realization, relevant capability providers, model outcome,
+settlement, and acquisition/installation evidence. These references come from
+the canonical assembly and observed execution, not a second hand-maintained
+operation registry. Evidence must connect the actual boundaries exercised.
+
+Paired valid and controlled-defect fixtures establish both usability and
+rejection. Required defects include a missing basis in a concrete enabled
+render, an absent browser plan, stale or mismatched artifact content, an
+incompatible server binding, a missing trusted capability, and malformed
+browser protocol. Tests identify the first enforcing boundary and verify the
+absence of the prohibited output or mutation appropriate to that boundary.
+An earlier valid commit is not undone by a later response-render failure.
+
+Recovery cases distinguish:
+
+- rejection before submission;
+- transaction submission followed by loss of command-specific outcome;
+- known commit followed by failed settlement delivery;
+- crash after commit and before Live publication;
+- acquisition failure or an older response arriving after newer installation;
+- retired callbacks arriving after provisional presentation has been superseded.
+
+Publication recovery must exercise the implementation's selected mechanism
+under [[#req-post-commit-recovery]]. Durable publication, reconnect, and explicit
+Refresh make different liveness claims; merely declaring a publication function
+is not evidence that a commit-to-publication crash recovers. Where recovery
+requires a user action, the test performs that action and reports the premise.
+
+A current-state read can resolve presentation without resolving command
+attribution. Recovery tests must not infer that a command committed merely
+because another actor could have produced the same current state. Fault tests
+assert expected diagnostics narrowly and still reject unrelated failures.
+
+
+** Removal of dead migration state
+
+The final proving surface should not retain historical compatibility state that
+no longer participates in semantics.
+
+Potential categories include:
+
+- obsolete demo-store/reset mechanisms;
+- dead visible-revision concepts;
+- duplicate route registries;
+- duplicate operation registries;
+- comments describing removed fallback behavior;
+- CSS selectors with no producer;
+- hidden board fields with no consumer;
+- tests whose only purpose was to bless transitional contradictions.
+
+Removal happens after real behavior is grounded.
+
+*** Deletion discipline
+
+When a source/test file is removed, project workflow produces deletion
+documentation identifying:
+
+- exact path;
+- reason;
+- replacement/superseding location where applicable.
+
+This keeps cleanup explicit rather than losing architectural history through
+silent file disappearance.
+
+** HumanHelp completion gates
+
+The HumanHelp proving application is complete for this architectural stage only
+when all required gates hold simultaneously.
+
+These gates are an independent behavioral specification, not a second semantic
+registry.  They state required user capabilities and authoritative outcomes
+without duplicating route strings, operation identities, generated-plan
+metadata, or model contracts already owned by the canonical assembly.  A
+required capability removed from the product must fail the affected gate even
+when the remaining assembly is structurally valid.  Conditional unavailability
+under current model policy is different from accidental omission.
+
+*** Gate 1 -- semantic-route invariant
+
+An anonymous ordinary HTMX action cannot occupy an assembled Request semantic
+route without preflight rejection.
+
+*** Gate 2 -- actual runtime preflight adoption
+
+The running HumanHelp application demonstrably uses the checked Gesso
+application handler/startup path.
+
+*** Gate 3 -- current browser artifact
+
+HumanHelp startup refuses stale browser assembly/artifact correspondence.
+
+*** Gate 4 -- Claim end to end
+
+The actual browser can click the actual Claim control and reach persisted
+authoritative claimed state without manufactured browser protocol data.
+
+*** Gate 5 -- lifecycle closure
+
+Every required Request lifecycle capability uses the generic semantic operation
+path and succeeds in an eligible positive fixture, including Reassign with
+legitimate target selection. State-dependent unavailability and rejection are
+also verified. Removing a capability or leaving it permanently unavailable
+fails this gate even if the remaining assembly is closed.
+
+*** Gate 6 -- rich board
+
+The board supports:
+
+- creation;
+- immediate creator visibility;
+- remote advisory without auto-adoption;
+- explicit Refresh;
+- search;
+- sorting;
+- visibility options;
+- details/continuity;
+- terminal rendering;
+- response flow.
+
+The response-flow contract at [[#decision-humanhelp-response-flow]] must be selected
+and independently tested. Architectural wiring without that product outcome
+does not satisfy this gate.
+
+*** Gate 7 -- multi-client adoption behavior
+
+At least two independent browser contexts demonstrate:
+
+#+begin_example
+authority advanced
+    !=
+automatic adoption
+#+end_example
+
+The acceptance includes selective local adoption while unrelated remote work
+remains pending, scope-correct advisory discharge, and the concurrent-Refresh
+race cases defined above.
+
+Explicit Refresh advances only the remote projection/membership justified by the
+acquisition it completes.
+
+Before this gate is fully satisfied for remote lifecycle changes to already
+visible Requests, HumanHelp must resolve the product decision recorded at
+=decision-humanhelp-remote-lifecycle-adoption= and test the selected policy.
+
+*** Gate 8 -- production assembly in tests
+
+Application preflight tests consume the real production assembly constructor.
+
+No shadow assembly can remain green while production declarations are broken.
+
+*** Gate 9 -- structural malformed fixtures
+
+The important closure failures reject before ordinary browser interaction and
+produce stable structured diagnostics.
+
+*** Gate 10 -- real browser acceptance
+
+The required Chromium/Playwright scenarios pass with:
+
+- no unexpected console errors;
+- no page errors;
+- no unexpected failed requests;
+- no unexpected 4xx/5xx;
+- deliberately injected fault diagnostics asserted precisely, not suppressed;
+- authoritative persistence confirmed;
+- correct multi-client semantics.
+
+*** Gate 11 -- final Biff/Gesso substrate
+
+HumanHelp uses the final Biff 2 execution/lifecycle contracts assumed by this
+unified design.
+
+There is no compatibility behavior retained solely to preserve an accidental
+preview-era semantic assumption.
+
+** HumanHelp as evidence for generic Gesso evolution
+
+HumanHelp failures are evidence.
+
+They are not automatically framework features.
+
+When a failure occurs, classify it.
+
+*** Generic semantic gap
+
+Examples:
+
+- no representation of required server capability;
+- no way to express acquisition path;
+- no fail-closed operation binding;
+- no exact artifact correspondence;
+- no semantic-route collision check.
+
+These justify generic Gesso work when the abstraction is reusable.
+
+*** HumanHelp application assembly bug
+
+Examples:
+
+- route declaration missing from assembly;
+- example view bypasses Request-card binding;
+- Live fragment declaration points at wrong route;
+- browser artifact was not rebuilt.
+
+These are fixed in HumanHelp unless they reveal a generic guard that should
+prevent the class everywhere.
+
+*** HumanHelp business-rule bug
+
+Examples:
+
+- incorrect Request lifecycle eligibility;
+- wrong Organization policy;
+- wrong terminal-state interpretation.
+
+These remain HumanHelp model concerns.
+
+Gesso should not absorb them merely because they surfaced during integration.
+
+*** External/runtime assumption failure
+
+Examples:
+
+- HTMX lifecycle changed;
+- browser behavior differs from assumed contract;
+- network failure;
+- XTDB/Biff integration changed.
+
+These may require adapter/test/runtime updates without changing choreography
+semantics.
+
+** HumanHelp proving-application invariant
+
+At the end of the HumanHelp reference-application layer, the unified design
+requires:
+
+#+begin_quote
+The active HumanHelp proving application consumes production
+=net.humanhelp.site.model.*= semantics rather than duplicating them in
+=net.humanhelp.example.*=.  One canonical HumanHelp ApplicationAssembly
+composes production Request Choreo, browser plans/artifact, physical routes,
+trusted server realization, Live acquisition, and rendered affordances.
+Every exposed Request lifecycle action retains unconditional semantic identity
+and uses the generic checked Gesso operation-binding path; missing optimistic
+basis or other realization data never produces an anonymous HTMX fallback.
+Request creation and lifecycle mutations commit through production models.
+The creator may adopt its own correlated authoritative result immediately,
+while remote new Requests remain outside another client's adopted membership
+until an authorized Refresh acquires sufficient scope/progression coverage.
+Selective incorporation of a newer local result neither admits unrelated remote
+Requests nor clears unrelated advisory debt.  Refresh discharges only advisory
+obligations actually covered by its authoritative acquisition, and stale
+Refresh responses cannot overwrite newer justified installations.  Remote
+lifecycle adoption for already-visible Requests follows the explicit HumanHelp
+product policy selected before the affected operational gate is claimed; Live
+invalidation itself never becomes authoritative domain content.  Search,
+sorting, visibility options, Request details, continuity, terminal rendering,
+and response flow remain functional without accidentally expanding adopted
+membership.  Real Playwright/Chromium tests use the actual generated runtime,
+actual controls, actual routes, and multiple authenticated contexts, never
+manufactured browser protocol commands, and every apparent mutation is
+confirmed through fresh authoritative state.  Behavioral acceptance remains
+independent of assembly closure: deleting a promised HumanHelp capability does
+not redefine the application into correctness merely because the remaining
+assembly is internally valid.  Structural contradictions are rejected by
+production preflight, dynamic business authorization remains in the production
+models, and HumanHelp drives generic Gesso improvements only when a failure
+exposes a genuinely generic semantic or application-closure gap.
+#+end_quote
+

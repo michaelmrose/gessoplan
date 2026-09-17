@@ -1,0 +1,2122 @@
+* Part II — Semantic model
+:PROPERTIES:
+:CUSTOM_ID: part-02-semantic-model
+:END:
+
+This part defines the semantic distinctions shared by choreography, authoritative
+operations, browser realization, and application assembly. It uses the assurance
+and admission vocabulary established in Part I. The definitions do not require
+a universal persisted fact graph, a new runtime class for every concept, or a
+single global revision coordinate.
+
+** Values and evolving values
+
+A value may be a singular immutable value:
+
+#+begin_src clojure
+42
+:open
+{:user/id user-id}
+#+end_src
+
+A value may also be understood as evolving across a time, revision, causal, or
+transformation-step dimension.
+
+For example:
+
+#+begin_example
+foo = :bar at T1
+foo = :baz at T2
+#+end_example
+
+or:
+
+#+begin_example
+foo = :bar at step S1
+foo = :baz at step S2
+#+end_example
+
+The observations themselves may remain immutable facts.
+
+The evolving value is the relationship among those observations and the rules
+used to select or interpret one observation relative to a particular point of
+view.
+
+"Current value" is therefore not an eternal mutable fact.
+
+It is a derived view relative to some combination of:
+
+- valid/effective time;
+- causal or transformation relation;
+- authoritative basis;
+- authoritative progression;
+- actor knowledge frontier;
+- application policy.
+
+For a HumanHelp Request:
+
+#+begin_example
+F1: Request R was unclaimed at valid time T1.
+F2: Request R was claimed by user U at valid time T2.
+#+end_example
+
+Both statements can remain true under the model's declared valid-time and
+correction semantics. The historical fact that an observation was made is
+distinct from a claim that its interpretation of the world can never be
+corrected. Recording an earlier observation does not make an erroneous domain
+assertion eternally true.
+
+The Request's current state depends on the point from which the Request is
+evaluated and on later facts that supersede, refine, reconcile, or otherwise
+relate to the earlier history.
+
+The framework must not confuse:
+
+#+begin_example
+fact existed
+fact became authoritative
+fact became visible at a database frontier
+actor learned fact
+actor derived another fact
+actor displayed representation of fact
+#+end_example
+
+These are distinct events and relationships.
+
+*** Conceptual fact graph versus required persistence
+
+The semantic model may reason in terms of facts and relations among facts
+without requiring Gesso to persist a universal fact DAG.
+
+The conceptual graph is useful because it allows the design to reason about:
+
+- provenance;
+- supersession;
+- derivation;
+- authority;
+- agreement;
+- causality;
+- command/result relations;
+- provisional versus authoritative state.
+
+Actual persistence remains owned by application models and their chosen
+authoritative systems.
+
+For HumanHelp, XTDB and public model semantics remain the primary persistence
+and authority boundary.
+
+Gesso must not introduce a duplicate universal fact store merely because the
+proof vocabulary can describe facts.
+
+*** Immutability and correction
+
+The statement that observations are immutable does not prohibit an application
+from correcting its model of the world.
+
+A later authoritative fact may state that an earlier interpretation was wrong,
+superseded, withdrawn, or effective over a different valid-time interval.
+
+What must remain explicit is the relationship.
+
+The system should avoid interpreting absence from a current projection as
+evidence that an earlier observation never occurred. This semantic distinction
+does not require indefinite storage of every observation, prohibit legitimate
+data deletion, or introduce an audit-history retention policy. Persistence and
+retention remain model-owned.
+
+This distinction becomes important for:
+
+- reconciliation;
+- idempotency;
+- audit;
+- stale-command interpretation;
+- provisional settlement;
+- authoritative reread;
+- domain-specific corrections.
+
+*** Semantic value versus representation
+
+A semantic value is not identical to a wire encoding, DOM representation, XTDB
+object, or Clojure map merely because one of those represents it.
+
+Representations may change while semantic identity remains stable.
+
+Conversely, two values with identical serialized shape may have different
+semantic meaning because their:
+
+- provenance differs;
+- authority differs;
+- basis differs;
+- principal differs;
+- operation context differs;
+- compatibility generation differs.
+
+Shape equality alone is insufficient when the semantic judgment depends on
+distinctions not established by that shape. Ordinary immutable values may still
+use ordinary value equality when the enclosing contract makes it sufficient.
+Gesso must not mistake matching schemas or encodings for equality of authority,
+provenance, subject, observation scope, or admission status.
+
+*** Representation, semantic category, and admission
+:PROPERTIES:
+:CUSTOM_ID: req-semantic-admission
+:END:
+
+Representation validity, semantic category, semantic admission, and proof are
+separate questions.
+
+A Clojure map, record, scalar, wire value, DOM node, or other representation may
+carry a semantic value without the representation itself establishing the
+stronger status in which later code intends to use it.
+
+The design therefore distinguishes conceptually:
+
+#+begin_example
+representation has the required shape
+        !=
+value belongs to the required semantic category
+        !=
+value has crossed the admission/checking boundary for that category
+        !=
+the strongest propositions associated with that value have been proved
+#+end_example
+
+This distinction matters most where two values may have the same or nearly the
+same representation while differing materially in provenance, authority,
+lifecycle, or assurance status.  Examples include:
+
+- =ObservedBasisClaim= versus an authoritative basis established by trusted
+  acquisition;
+- =CommandId= versus =ExecutionId=;
+- provisional versus authoritative projections;
+- raw versus checked choreography declarations;
+- projected plans versus admitted executable plans;
+- raw certificate data versus checker-accepted certificate evidence;
+- authenticated observation evidence versus an operation capability;
+- historical observation evidence versus current authorization.
+
+The supported Gesso APIs must not silently treat one such category as another
+merely because the underlying values have equal map shape, equal scalar
+representation, matching discriminator keys, or compatible Malli schemas.
+
+This is an admission rule rather than a requirement to turn every semantic
+concept into a new runtime class.  Permitted realizations include, where they
+fit the existing implementation:
+
+- nominal types or records;
+- opaque wrappers;
+- smart or checked constructors;
+- values reachable only through a verifier, elaborator, authoritative
+  acquisition path, or registry lookup;
+- tagged representations whose tags are validated by the appropriate trusted
+  boundary;
+- existing Gesso representations that already make the distinction impossible
+  or immediately rejectable.
+
+The design requires the semantic distinction and its enforcement at the
+supported boundary.  It does not prescribe a nominal-type rewrite when an
+existing mechanism already provides the required protection.
+
+Nominality is especially useful as misuse prevention inside cooperating trusted
+application code.  For example, if =CommandId= and =ExecutionId= are both
+physically UUIDs, a supported API should not make accidental interchange look
+ordinary merely because both values satisfy a UUID schema.  Similarly, a raw
+map containing the fields of a checked certificate must not become accepted
+certificate evidence solely by carrying a discriminator such as
+=:certificate/type= or =:verified? true=.
+
+A boundary must retain or establish the information required to distinguish
+the categories it promises to check. If two untagged UUIDs reach a boundary
+with no trustworthy category or correlation information, UUID shape validation
+cannot reconstruct whether one originated as a command or an execution.
+
+The supported construction path must therefore preserve the needed distinction
+through checked construction, typed or opaque values, declared field bindings,
+trusted correlation, or another mechanism that actually enforces the contract.
+Merely assigning different variable names to interchangeable unchecked inputs
+does not establish that protection. Framework-owned construction should derive
+these bindings wherever it already possesses the required information.
+
+Nominal or opaque representation alone is not a security proof.  A value called
+=VerifiedChoreography= is trustworthy only to the extent that its construction
+or admission path actually establishes the claims downstream code relies on.
+Likewise, a Clojure record constructor is not treated as a cryptographic or
+process-isolation boundary.
+
+Crossing an untrusted serialization boundary also strips any purely in-process
+admission status.  Conceptually:
+
+#+begin_example
+server-side admitted value
+        |
+        | encode / transmit
+        v
+untrusted bytes or client data
+        |
+        | decode + verify / re-establish trusted premises
+        v
+server-side admitted value, if justified
+#+end_example
+
+Deserializing data into the same nominal-looking representation must not by
+itself restore authority, trusted provenance, certification, or admission.
+
+Ordinary downstream application authoring should not pay unnecessary ceremony
+for these distinctions.  Gesso should preferentially construct admitted values
+behind verification, elaboration, acquisition, projection, model, and assembly
+boundaries.  Routine application code should not be required to manually wrap
+every Request id, title, status, or other ordinary domain value merely to
+satisfy framework ceremony.
+
+The practical acceptance criterion is:
+
+#+begin_quote
+Where two same-shaped values have materially different semantic meanings,
+accidental substitution through the supported API is either structurally
+unavailable or rejected at the earliest legitimate boundary with a diagnostic
+that identifies the expected semantic category, the supplied category, and the
+missing derivation or admission step. If the supplied category cannot be
+established, the diagnostic identifies it as unknown or unadmitted rather than
+inventing a trustworthy origin from an untrusted tag.
+#+end_quote
+
+#+LATEX: \newpage
+
+** Facts, time, and authoritative progression
+
+The design distinguishes at least the following dimensions.
+
+*** Valid/effective time
+
+Valid or effective time describes when a domain fact applies in the modeled
+world.
+
+Examples:
+
+- Membership became active on one date;
+- a Request was open during one interval;
+- Organization policy changed at a domain-effective time;
+- a correction applies retroactively to an earlier period.
+
+Valid time belongs to domain meaning.
+
+*** Domain or causal relation
+
+Domain or causal relations describe how semantic facts relate.
+
+Examples include:
+
+- based on;
+- produced by;
+- superseded by;
+- reconciled by;
+- rejected by;
+- confirmed by;
+- corrected by;
+- derived from.
+
+These relations are not necessarily database transaction order.
+
+*** Authoritative database progression
+
+Authoritative database progression describes the consistency/basis frontier at
+which authoritative facts are visible.
+
+For HumanHelp's primary persistent authority, this is supplied through XTDB
+semantics.
+
+An authoritative progression value may advance because unrelated data changed.
+
+Therefore:
+
+#+begin_example
+database advanced
+!=
+this Request changed
+#+end_example
+
+*** Actor knowledge frontier
+
+An actor knowledge frontier describes what authoritative information a
+particular runtime actor has acquired through its admitted observation paths.
+It is scoped by the facts, authority, projection, and relevant temporal context
+of those observations. It need not be one token covering all actor knowledge.
+
+For the supported browser implementation, the frontier records semantic
+acquisition and incorporation by that implementation. It is not a server proof
+that an adversarial browser or the human using it retained or understood the
+information.
+
+Two browser actors may observe the same authoritative database at different
+frontiers.
+
+The same principal may therefore have two browser tabs with different
+knowledge.
+
+The database's current state and an actor's current knowledge are distinct.
+
+*** Physical delivery time
+
+Physical delivery time may matter operationally without becoming semantic
+authority.
+
+An SSE notification may arrive after another message.
+
+A callback may fire after an execution has been retired.
+
+A browser may wake after a deployment.
+
+The fact that an event arrived later in wall-clock time does not by itself make
+the event semantically newer or authorized to mutate current state.
+
+#+LATEX: \newpage
+*** Do not collapse dimensions into one revision integer
+
+The framework must not collapse:
+
+#+begin_example
+valid time
+domain fact identity/version
+causal relation
+XTDB progression
+actor knowledge frontier
+command identity
+execution identity
+artifact compatibility identity
+#+end_example
+
+into one global monotonically increasing application revision.
+
+A global revision number would erase distinctions that matter to correctness.
+
+For example, XTDB may advance while Request R is unchanged.
+
+Likewise, Request R may have meaningful valid-time history independent of when a
+database transaction was recorded.
+
+A browser may hold knowledge through frontier X17 while authority has progressed
+to X23 without any relevant Request fact changing.
+
+That is ordinary distributed execution, not necessarily staleness requiring
+rejection.
+
+*** Progression as provenance
+
+An observed authoritative basis records something approximately like:
+
+#+begin_quote
+The representation from which this actor formed its command was justified by an
+authoritative read consistent through this frontier.
+#+end_quote
+
+It does not mean:
+
+- the entire database is still at that frontier;
+- every fact the command depends on is unchanged;
+- the client owns authority over that frontier;
+- the client can prove merely by sending the token that it really performed the
+  observation;
+- the framework should reject every command formed from an older frontier.
+
+The authoritative-operations and progression part defines the exact command,
+scope, and XTDB semantics, including
+[[#req-progression-scope][scoped progression requirements]].
+
+At the ontology level, the important point is that authoritative progression is
+one provenance coordinate among several and is not a universal domain revision.
+
+** Roles, principals, actors, hosts, and authorities
+:PROPERTIES:
+:CUSTOM_ID: req-semantic-identities
+:END:
+
+These concepts are distinct and must remain distinct throughout declaration,
+projection, runtime execution, proof, diagnostics, and application assembly.
+
+*** Role
+
+A *role* is a static position in a choreography.
+
+Examples:
+
+#+begin_example
+:helper
+:request-authority
+:observer
+#+end_example
+
+A role describes a position in the distributed protocol.
+
+A role is not automatically:
+
+- a user;
+- a browser tab;
+- a process;
+- a web server;
+- an authorization grant.
+
+A principal or actor may instantiate a role only under the rules of the
+particular operation and trusted runtime boundary.
+
+*** Principal
+
+A *principal* is the identity or entity whose authority is being exercised.
+
+Examples:
+
+#+begin_example
+[:user user-id]
+[:service :humanhelp]
+#+end_example
+
+A principal is a semantic/security identity.
+
+A principal is not identical to a browser actor.
+
+One principal may have:
+
+- multiple browser tabs;
+- multiple devices;
+- multiple protocol executions;
+- retries through multiple hosts.
+
+Those actors may hold different knowledge while acting for the same principal.
+
+*** Actor
+
+An *actor* is a concrete participant carrying a local projected machine,
+execution state, or knowledge state.
+
+Examples:
+
+#+begin_example
+[:client client-id]
+[:service-instance logical-service-actor-id]
+#+end_example
+
+An actor gives semantic identity to a participant beyond one physical callback
+or request.
+
+The exact runtime realization may be short-lived.
+
+An actor identity does not require a permanently resident process.
+
+*** Host
+
+A *host* is the physical runtime that happens to execute a step.
+
+Examples:
+
+#+begin_example
+[:web-node node-1]
+[:web-node node-3]
+#+end_example
+
+Hosts are replaceable physical realizations.
+
+A retry may run on another host without changing:
+
+- semantic command;
+- principal;
+- authority;
+- logical operation;
+- relevant actor identity, where the protocol preserves it.
+
+A host does not acquire semantic authority merely because it executes authority
+code.
+
+#+LATEX: \newpage
+
+*** Authority
+
+An *authority* is the locus entitled to establish some class of authoritative
+fact.
+
+Examples:
+
+#+begin_example
+[:authority :request]
+[:authority :request request-id]
+#+end_example
+
+Authority is semantic.
+
+A physical web node may temporarily realize an authoritative operation without
+becoming the authority itself.
+
+For a Request operation:
+
+#+begin_example
+semantic authority
+    [:authority :request R]
+
+first host
+    [:web-node A]
+
+retry host
+    [:web-node C]
+#+end_example
+
+The authority survives host replacement.
+
+*** Server is not a universal semantic identity
+
+"Server" is normally an implementation location or a role category, not one
+unique actor identity.
+
+Multiple web nodes may realize the same logical authority while holding
+different process-local state.
+
+The design therefore avoids proofs or runtime assumptions that rely on:
+
+#+begin_example
+same server process
+= same semantic authority
+#+end_example
+
+or:
+
+#+begin_example
+different server process
+= different semantic authority
+#+end_example
+
+Neither equivalence is generally valid.
+
+#+LATEX: \newpage
+
+*** Relationship among role, principal, actor, host, and authority
+
+A useful conceptual example is:
+
+#+begin_example
+role
+    :helper
+
+principal
+    [:user U]
+
+actor
+    [:client C]
+
+host of the browser-side actor
+    user's browser/device
+
+authoritative role
+    :request-authority
+
+semantic authority
+    [:authority :request R]
+
+host currently realizing authority
+    [:web-node A]
+#+end_example
+
+A later retry may change the final line while leaving the semantic operation
+otherwise intact.
+
+Verification and diagnostics should identify which category an identity belongs
+to instead of overloading one generic "id" field wherever practical.
+
+Authentication establishes the principal binding. The operation's trusted
+admission and model policy establish whether that principal may instantiate a
+particular role for a particular subject. Actor and host identity provide
+correlation or realization information; neither substitutes for those decisions.
+Changing a browser tab, transport connection, or physical host must not silently
+carry permissions into a different principal or authority scope.
+
+** Logical identity and physical realization
+:PROPERTIES:
+:CUSTOM_ID: req-logical-physical-identity
+:END:
+
+Logical identity must not be inferred from incidental physical identity.
+
+The following identities are distinct:
+
+#+begin_example
+role identity
+principal identity
+actor identity
+authority identity
+
+semantic operation identity
+semantic command identity
+protocol execution identity
+
+global choreography identity
+projected-plan compatibility identity
+exact executable artifact identity
+
+logical fragment/target identity
+request generation
+effect/resource generation
+continuity-slot generation
+
+physical request identity
+physical DOM-node identity
+web-node/host identity
+#+end_example
+
+Some applications may not need every category in every operation.
+
+The architecture must nevertheless avoid conflating categories merely because
+one implementation currently uses the same value for two of them.
+
+#+LATEX: \newpage
+
+*** Semantic command identity
+
+A semantic command identifies an attempted semantic operation.
+
+It may survive:
+
+- network retry;
+- host replacement;
+- a new protocol execution;
+- another transport attempt;
+
+where operation semantics permit that retry.
+
+The [[#req-command-participant-uncertainty][command identity and uncertainty contract]]
+in the authoritative-operations part defines the relevant retry and attribution
+conditions. Possessing the same command identifier alone does not establish
+that a retry is permitted or that the command already committed.
+
+*** Protocol execution identity
+
+A protocol execution identifies one realization of a distributed trajectory.
+
+Two executions may relate to the same semantic command without being the same
+execution.
+
+Their resources and callbacks must not be interchangeable merely because the
+semantic command matches.
+
+*** Plan compatibility identity
+
+A projected plan may remain in a browser across deployment.
+
+Compatibility identity answers whether that suspended or retried projection is
+safe to continue under the current server/runtime contract.
+
+Compatibility does not necessarily require exact artifact equality. It must
+nevertheless follow an explicit supported compatibility rule. A runtime must
+not infer compatibility from matching names, approximate version ordering, or
+the absence of a visible error.
+
+*** Exact executable artifact identity
+
+Diagnostic and proof correspondence may require a stronger identity than
+runtime compatibility.
+
+The exact executable artifact identity answers:
+
+#+begin_quote
+Does this diagnostic or proof metadata describe these exact emitted runtime
+coordinates and transitions?
+#+end_quote
+
+A compatibility generation and an exact executable digest therefore serve
+different purposes. Evidence tied to exact emitted coordinates must not be
+attached to a merely compatible artifact as though exact correspondence held.
+Conversely, a compatible continuation need not be rejected solely because
+diagnostic-only material changed, if the declared compatibility contract permits
+it and any exact correspondence claim remains accurate.
+
+*** Logical target identity
+
+A logical UI target may survive replacement of its physical DOM node.
+
+For example, a Request card may remain the same logical fragment after HTMX
+replaces the element representing it.
+
+The runtime must not use physical-node identity as the sole semantic target
+identity when representation replacement is expected.
+** Resource instance identity
+:PROPERTIES:
+:CUSTOM_ID: req-resource-instance-identity
+:END:
+
+A replaceable physical or runtime resource must be distinguishable from prior
+instances of the same logical resource when events from those prior instances
+could still arrive.
+
+For example:
+
+#+begin_example
+logical slot S
+    |
+resource instance R1
+
+replace R1
+    |
+resource instance R2
+
+late callback from R1
+    |
+    X  must not mutate state belonging to R2
+#+end_example
+
+Resource instance identity answers a narrow question:
+
+#+begin_quote
+Does this event belong to the currently admitted instance of this replaceable
+resource?
+#+end_quote
+
+A generation number, generation counter, epoch, opaque token, UUID, object
+identity, or another suitable mechanism may represent resource instance
+identity. The representation must provide the properties required by the boundary;
+additional ordering or structure is unnecessary unless the contract uses it.
+
+A generation counter is appropriate when monotonic ordering between successive
+instances is useful. A distinct opaque identity is sufficient when the only
+required question is whether an event belongs to the current instance.
+
+The distinction must remain valid for as long as callbacks from an earlier
+instance can still reach the boundary. Reusing a token, resetting a counter, or
+wrapping a generation value must not make a retired instance indistinguishable
+from its replacement. A reset is safe only when a separate scope or lifecycle
+boundary prevents old events from being admitted as current.
+
+Resource instance identity must not be used as a compressed representation of
+independent semantic facts.
+
+An event may be inadmissible because it belongs to a retired resource instance,
+but it may also be inadmissible because its command, execution, plan, artifact,
+authoritative basis, ownership, principal, authorization context, or another
+required semantic correspondence no longer matches the current operation.
+
+Those distinctions remain separate even when several of them happen to change
+at the same time.
+
+For example:
+
+#+begin_example
+continuity slot S
+    |
+resource instance R7
+    |
+execution X12
+    |
+authoritative basis B40
+
+physical resource replaced
+
+continuity slot S
+    |
+resource instance R8
+    |
+execution X12
+    |
+authoritative basis B40
+
+late callback carrying R7
+    |
+    X  rejected because the resource instance is stale
+#+end_example
+
+In this case the execution and authoritative basis may still correspond. The
+callback is rejected specifically because it belongs to the replaced physical
+resource instance.
+
+Conversely:
+
+#+begin_example
+continuity slot S
+    |
+resource instance R8
+    |
+execution X12
+    |
+authoritative basis B40
+
+authoritative state advances
+
+continuity slot S
+    |
+resource instance R8
+    |
+execution X12
+    |
+authoritative basis B41
+#+end_example
+
+The resource instance has not changed, but an operation that requires basis B41
+must not treat possession of R8 as evidence that B40 remains admissible.
+
+This separation prevents one generation counter, epoch, or opaque identity from
+becoming a universal proxy for semantic freshness.
+
+** Required correspondence checks are semantic gates
+:PROPERTIES:
+:CUSTOM_ID: req-owner-relative-event-admission
+:END:
+
+At every runtime boundary, an event must satisfy the particular identity and
+correspondence conditions required by that boundary.
+
+Depending on the operation, those conditions may include:
+
+- current resource instance identity;
+- command identity;
+- execution identity;
+- plan or artifact identity;
+- authoritative basis;
+- ownership;
+- authenticated principal;
+- current authorization;
+- continuity or provisional ownership state.
+
+A boundary need not check every category. It must check the categories on which
+its correctness actually depends.
+
+These checks are not merely debug assertions. They determine whether a runtime
+event is semantically admissible.
+
+The design therefore does not require one universal generation value. It
+requires independent semantic distinctions to remain independently
+representable and requires each runtime event to satisfy the correspondence
+conditions appropriate to the operation it is attempting to affect.
+
+*** Admission follows the declared semantic owner
+
+Every asynchronous event capable of influencing Gesso semantic state passes
+the common semantic admission boundary. The boundary first resolves the event's
+declared class and semantic owner, then applies the correspondences required
+by that class.
+
+Conceptually:
+
+#+begin_example
+normalized event
+    -> resolve declared event class and owner
+    -> validate owner-specific correlation and applicability
+    -> validate the permitted transition
+    -> admit transition or classify rejection/recovery
+#+end_example
+
+The owner is not universally a command execution.
+
+| Event class | Relevant owner and checks |
+|-------------+---------------------------|
+| Execution-private callback | Admitted execution, current resource instance, ownership, correlation, and permitted execution state |
+| Shared fragment advisory | Declared subscription or fragment coordination scope, admitted source/correlation, current source instance where required, and valid advisory requirement |
+| Authoritative acquisition completion | Admitted acquisition owner, request/resource correlation, returned observation scope and progression, and applicable installation rules |
+| Continuity completion | Declared continuity owner or slot, current resource instance, and restoration rights still held for the target |
+
+This table identifies distinctions rather than prescribing one public event
+record or a closed enumeration of all future events. Each supported event class
+must define its own required correspondence contract.
+
+An idle board can therefore admit a legitimate shared advisory without an
+unrelated command execution. A shared event must not be assigned to whichever
+execution happens to be current. An execution-private callback must not become
+shared merely because its execution was retired.
+
+The declaration of an event as shared is part of the checked contract. An
+untrusted field such as =:shared? true= cannot select weaker admission rules.
+Shared admission permits only the declared shared transition; it does not
+restore a retired execution's private ownership or authorize installation of
+domain content carried by an advisory.
+
+The browser-realization part defines the concrete normalization, transition,
+and effect contracts implementing this boundary. All such paths obey this
+owner-relative rule; there is no alternate callback path that may mutate
+semantic state without admission.
+
+
+
+** Trust boundaries and adversarial browser actors
+:PROPERTIES:
+:CUSTOM_ID: req-trust-boundary
+:END:
+
+A browser is an untrusted participant.
+
+This statement is stronger than saying browser input should be validated.
+
+The user controls the machine and may modify:
+
+#+begin_example
+gesso-live.js
+projected choreography data
+local machine state
+DOM
+hidden fields
+command envelopes
+role names
+principal ids
+observed basis values
+provenance labels
+provisional/authoritative markers
+available buttons
+bound capabilities
+diagnostic/proof sidecars
+runtime correlation fields
+#+end_example
+
+Therefore no browser-originated value may confer trusted authority merely
+because it has the expected representation.
+
+*** What the browser may propose
+
+A browser may propose values such as:
+
+- a semantic operation;
+- operation arguments;
+- a semantic command identity;
+- an observed-basis claim used as protocol context;
+- correlation information whose validity is checked independently;
+- provisional local state affecting only its own representation;
+- a projected-plan identity whose compatibility is checked by trusted code;
+- transport data required to correlate a request with a server-side operation.
+
+Proposal is not authority.
+
+*** What the browser may not establish by assertion
+
+The browser may not establish by assertion:
+
+- authenticated principal identity;
+- entitlement to a choreography role;
+- model authority;
+- authorization to operate on a protected target;
+- authoritative provenance;
+- an authoritative fact;
+- a privileged server-machine state;
+- permission to read protected data;
+- permission to subscribe to protected Live state;
+- the truth of a proof certificate;
+- that a stale execution is current;
+- that a provisional projection is authoritative;
+- that an observed-basis claim proves prior observation.
+
+Trusted server code must derive or check those propositions through trusted
+boundaries.
+
+*** Trusted authoritative execution
+
+For each protected authoritative operation, the supported trusted path must
+establish the following obligations. Their exact physical ordering may depend
+on the operation, but no protected action may occur before its required premises
+have been established:
+
+1. establish authenticated principal identity from trusted server context;
+2. resolve the requested semantic operation through the trusted current
+   application/operation registry;
+3. establish the permitted server-side trajectory rather than accepting a
+   client-supplied privileged machine state;
+4. re-evaluate current authorization and relevant model policy;
+5. read the authoritative facts required by the public model operation;
+6. invoke the public model operation that owns the authoritative transition;
+7. produce only the settlement/progression outcomes admitted by the declared
+   operation contract.
+
+An authorization decision or relevant precondition established during
+preparation must be protected or re-established at the authoritative transition
+boundary wherever an intervening change could invalidate the operation. The
+atomic-operation contract defines those guards; browser freshness does not
+supply them.
+
+The server must never treat a client-supplied machine continuation such as:
+
+#+begin_src clojure
+{:next-state :request-authority/commit-admin-operation}
+#+end_src
+
+as evidence that the client is entitled to reach that state.
+
+Instead the browser requests a semantic operation, conceptually:
+
+#+begin_src clojure
+{:command-id C42
+ :operation :request/claim
+ :arguments {:request-id R}
+ :observed-basis X17}
+#+end_src
+
+and trusted server semantics decide what operation and continuation are
+permitted.
+
+*** Security boundary
+
+A malicious browser can always lie to itself.
+
+It may render false information, suppress buttons, manufacture buttons, change
+labels, or locally pretend an operation succeeded.
+
+Preventing a user from corrupting their own local representation is not the
+security target.
+
+The security target is:
+
+#+begin_quote
+Compromising or replacing a browser projection may corrupt that browser's local
+representation and protocol participation, but must not increase the authority
+of its authenticated principal, disclose data unavailable to that principal, or
+produce an authoritative model transition unavailable to that principal.
+#+end_quote
+
+This is a verification target, not merely an application coding convention.
+
+*** Read and subscription authorization
+
+Hiding content in a view is not access control.
+
+Not rendering a button is not access control.
+
+Not advertising a Live interest is not access control.
+
+Every protected authoritative observation and subscription must be authorized
+from trusted server context.
+
+An opaque or signed token may protect integrity, correlation, or accidental
+mutation.
+
+Possession of such a token is not automatically authorization unless an
+explicit capability design says that possession has that semantic meaning and
+its applicability and validity conditions are satisfied.
+
+The protected-observation and subscription contracts must state when
+authorization is checked and what later permission changes imply for subsequent
+disclosure. Initial subscription admission must not silently become an
+indefinite permission grant. The protocol may use revalidation, bounded grants,
+revocation, or another explicit policy consistent with the claimed protection.
+No such policy can make an adversarial browser forget data already disclosed.
+
+*** Proof artifacts are untrusted in the browser
+
+A proof sidecar or diagnostic certificate shipped to a browser cannot become a
+security capability.
+
+An adversarial browser may fabricate, modify, remove, or replace it.
+
+Authoritative security therefore depends on trusted server-side state and
+checked protocol boundaries, not the browser's possession of proof metadata.
+
+This follows the general rule:
+
+#+begin_example
+evidence about why code was accepted
+!=
+runtime authority to perform operation
+#+end_example
+
+*** Trusted host code and accidental-misuse prevention
+
+The adversarial-browser boundary must not be confused with a claim that Gesso
+sandboxes arbitrary Clojure code executing inside a trusted application
+process.
+
+Code that deliberately obtains a lower-level transaction capability, database
+handle, model implementation namespace, or another authority-bearing resource
+may be able to bypass the supported Gesso/model path.  If such code can mutate
+the same authoritative state directly, it belongs to the trusted computing
+base for every guarantee that depends on those model invariants unless a
+stronger isolation boundary prevents the bypass.
+
+Within that trusted host-language boundary, Gesso is primarily concerned with
+preventing *accidental semantic misuse* by cooperating application code.  The
+normal path should make incorrect substitutions, missing derivations, stale
+artifacts, undeclared authority paths, and accidental bypasses difficult to
+express and easy to diagnose.
+
+The intended progression is:
+
+#+begin_example
+ordinary supported application code
+    -> narrow semantic/model interfaces
+    -> checked construction and runtime premises
+    -> authoritative model operation
+
+accidental mismatch
+    -> early specific rejection
+
+deliberate lower-level bypass by trusted host code
+    -> explicit exit from the corresponding Gesso assurance claim
+#+end_example
+
+Architectural restrictions may reduce that trusted surface further.  For
+example, application assembly, dependency checks, narrow capabilities, or
+namespace discipline may make ordinary view/handler code unable to reach a
+transaction primitive through the supported construction path.  Later
+whole-application assurance specifies what such enforcement establishes.
+
+These mechanisms are valuable even though a sufficiently determined trusted
+application author can rewrite the program or deliberately acquire a lower-level
+handle.  The target is not to make trusted code physically incapable of
+cheating.  The target is to make the coherent path obvious, accidental misuse
+hard, and deliberate escape from the claimed boundary conspicuous.
+
+#+LATEX: \newpage
+** Knowledge
+:PROPERTIES:
+:CUSTOM_ID: req-knowledge-provenance
+:END:
+
+Knowledge is tracked with respect to actors or projected roles.
+
+A fact or value may become known through several distinct provenance paths.
+
+At minimum the semantic model recognizes:
+
+- =:input=;
+- =:communicated=;
+- =:authoritative=;
+- =:derived=;
+- =:asserted=.
+
+These labels describe justification, not merely transport. Their appearance in
+an incoming map does not establish the corresponding provenance. A knowledge
+judgment includes the subject and scope of the fact and the premises on which
+the permitted use depends; a provenance label alone is not the whole judgment.
+
+The important verifier question is not:
+
+#+begin_quote
+Which packet delivered this map key?
+#+end_quote
+
+It is:
+
+#+begin_quote
+Before this actor performs behavior that depends on fact F, what justifies that
+the actor knows F?
+#+end_quote
+
+*** Input knowledge
+
+Input knowledge is justified knowledge supplied at operation entry.
+
+Conceptually:
+
+#+begin_example
+F in declared inputs(A)
+-----------------------
+A knows F
+provenance: input
+#+end_example
+
+Input knowledge is not equivalent to arbitrary function arguments.
+
+The operation contract must say which incoming facts are accepted as justified
+entry knowledge and under what assumptions.
+
+For example, a trusted server may supply an authenticated principal as input
+knowledge to a server projection.
+
+A browser cannot create the same trusted input merely by serializing an
+identical principal id.
+
+*** Communicated knowledge
+
+Communication may establish knowledge constructively.
+
+Conceptually:
+
+#+begin_example
+A knows X
+A sends declared X to B
+B receives declared X
+-----------------------
+B knows X
+provenance: communicated
+#+end_example
+
+An admitted choreography must justify the sender's knowledge of the value it
+transmits. At an adversarial transport boundary, a message's receipt does not
+prove that the sender satisfied that semantic premise; trusted validation or
+the explicitly stated assumption must supply the justification being claimed.
+
+The receiver gains only the values declared by the message contract.
+
+Arbitrary extra map keys must not silently become choreography context.
+
+Communication establishes the fact that the declared value was communicated in
+that execution; it does not automatically establish that the value is
+authoritative domain truth.
+
+*** Authoritative knowledge
+
+An actor may acquire knowledge by observing a representation justified by
+authority.
+
+Conceptually:
+
+#+begin_example
+authority establishes authoritative F
+B observes an authoritative projection containing F
+at a basis sufficient to justify that projection
+--------------------------------------------------
+B knows authoritative F at that observation frontier
+provenance: authoritative
+#+end_example
+
+The physical representation may be:
+
+- structured data;
+- server-rendered HTML;
+- another checked projection;
+- an application-specific authoritative representation.
+
+The representation format does not weaken the provenance if the trusted path
+from authority to observation is valid.
+
+*** Derived knowledge
+
+A role may derive a fact from other facts it already knows through a declared
+deterministic derivation.
+
+Conceptually:
+
+#+begin_example
+B knows X
+B knows Y
+D requires X and Y
+D deterministically produces F under its declared semantic contract
+--------------------------------
+B knows F
+provenance: derived
+#+end_example
+
+A derivation must declare enough information for the verifier/checker to know
+which inputs justify the result.
+
+The system must not assume arbitrary separately executed Clojure functions
+produce equal results across actors unless that relationship is justified by
+the declared semantics. Any clock, randomness, external read, locale, or other
+environmental input affecting the result must be supplied as a declared input
+or remain an explicit assumption; a function name does not establish determinism.
+
+Derivation preserves the premises on which the result depends. Deriving a value
+from a client assertion does not silently make the result authoritative. A
+derived result can support a stronger claim only when the declared derivation
+rule and its premises justify that claim.
+
+*** Asserted knowledge
+
+An explicit assertion supplies knowledge the verifier does not derive.
+
+This is a legitimate escape hatch for facts whose truth Gesso cannot establish.
+
+The assertion must remain visible as a trusted premise.
+
+It must not be silently promoted to:
+
+- =:derived=;
+- =:communicated=;
+- =:authoritative=.
+
+The application should be able to explain which behavior depends on the
+assertion.
+
+*** Knowledge use
+
+Knowledge determines whether a role may, depending on the operation:
+
+- transmit a value;
+- consume a value;
+- use a value as an FX input;
+- correlate a message;
+- choose a branch;
+- rely on a discriminator when its projected behavior diverges;
+- derive another value;
+- construct provisional state;
+- invoke an operation whose entry contract requires the fact;
+- claim agreement with another role;
+- establish a checked rule precondition.
+
+A role must not consume facts it cannot justifiably know.
+
+*** Knowledge is semantic, not incidental context
+
+The presence of a key in a runtime map is not evidence of knowledge.
+
+For example:
+
+#+begin_src clojure
+{:user/id U
+ :request/status :open}
+#+end_src
+
+does not answer:
+
+- who knows those values;
+- why they know them;
+- whether they are authoritative;
+- at what basis they were observed;
+- whether they may be transmitted;
+- whether they may justify a branch;
+- whether they are merely local provisional data.
+
+The semantic machinery must not infer provenance from incidental map
+membership.
+
+*** Knowledge and privacy
+
+Knowledge is scoped.
+
+Correctness does not require every actor to learn every fact.
+
+Privacy, authorization, role relevance, and protocol structure may deliberately
+prevent knowledge propagation.
+
+A proof that "eventually everybody knows everything" would be wrong for many
+applications.
+
+The useful property is:
+
+#+begin_quote
+Every actor knows enough, with sufficient justification, for the behavior it is
+permitted to perform.
+#+end_quote
+
+*** Knowledge derivations as inspectable evidence
+
+Where knowledge is machine checked, the checker should retain enough derivation
+information to explain why a fact is known.
+
+A boolean such as:
+
+#+begin_src clojure
+{:knows? true}
+#+end_src
+
+is insufficient as the long-term proof product.
+
+The derivation should be able to expose leaves such as:
+
+- input;
+- communication;
+- authoritative observation;
+- deterministic derivation;
+- explicit assertion.
+
+These derivations belong to verifier/checker artifacts.
+
+They do not need to be shipped as production browser state.
+
+** Authoritative observation as a knowledge path
+:PROPERTIES:
+:CUSTOM_ID: req-authoritative-observation
+:END:
+
+Authoritative observation is a first-class semantic provenance path even when
+it is not represented as a first-class portable machine opcode.
+
+This distinction is important for ordinary web applications.
+
+A HumanHelp browser may learn facts such as:
+
+#+begin_example
+Request R is approved
+Request R is claimed
+Membership U is inactive
+Organization O is closed
+#+end_example
+
+by rereading an authoritative representation after Live indicates that relevant
+authority may have changed.
+
+That knowledge is not weaker merely because it arrived as rendered HTML rather
+than as a dedicated choreography participant message.
+
+The authority remains in the model/database.
+
+The HTML is one representation from which the actor learns the fact.
+
+*** Advisory invalidation versus authoritative observation
+
+The normal causal relationship, when the application policy permits the
+acquisition, is:
+
+#+begin_example
+authoritative mutation
+        |
+        v
+model / XTDB
+        |
+        v
+Live invalidation
+        |
+        v
+application-permitted acquisition trigger
+        |
+        v
+authorized authoritative reread
+        |
+        v
+actor acquires newer authoritative knowledge
+#+end_example
+
+A Live invalidation means approximately:
+
+#+begin_quote
+Relevant authority may have changed; a sufficiently current authoritative
+observation may be required for later behavior or offered for explicit adoption.
+#+end_quote
+
+It does not mean:
+
+#+begin_quote
+This particular domain fact is now true.
+#+end_quote
+
+Therefore invalidation is advisory knowledge about possible change, not
+authoritative knowledge of the changed fact.
+
+Receipt of the advisory does not by itself choose when the application adopts
+new content. Acquisition may follow an explicit user action, a declared
+automatic policy, or another admitted trigger. Any convergence claim that relies
+on such a trigger must name it among its liveness premises.
+
+*** Observation scope and selective incorporation
+
+An authoritative observation establishes only the facts and coverage justified
+by its acquisition contract. Its semantic context includes the authority,
+subject or projection scope, relevant basis/progression, and applicable temporal
+or query meaning. These need not all be repeated as fields when they are
+unambiguously supplied by the admitted contract.
+
+A later observation of one Request does not establish acquisition of all board
+membership at the same database progression. An actor may hold individually
+justified observations from different acquisitions without possessing a single
+consistent snapshot of their union.
+
+Consequently, installation of new authoritative content must preserve each
+observation's justified scope. Claims spanning multiple observations require
+the compatibility or consistent-acquisition premise appropriate to that claim.
+The mere existence of separate authoritative observations is insufficient.
+
+The authoritative-operations and progression part owns the detailed
+[[#req-progression-scope][scope and progression contract]] and
+[[#req-advisory-discharge][advisory discharge rules]]. Browser installation follows
+[[#req-runtime-scoped-authoritative-installation][the scoped installation contract]].
+HumanHelp's selective-adoption policy is a use of those generic contracts.
+
+
+*** Observed basis is protocol context, not proof of prior observation
+:PROPERTIES:
+:CUSTOM_ID: req-observation-evidence
+:END:
+
+A naked browser-supplied =:observed-basis= value is a client claim about the
+context from which the browser believes it is acting.  It is not, by itself,
+proof that the browser actually received or incorporated an authoritative
+observation at that basis.
+
+For ordinary Gesso commands this is intentional.  The basis is useful protocol
+context for consistency, reconciliation, provenance, stale-command handling,
+and authoritative reacquisition even when the browser is adversarial.
+
+For example, a browser may say:
+
+#+begin_src clojure
+{:request-id R
+ :observed-basis B}
+#+end_src
+
+and the server may safely use =B= to understand the command's claimed starting
+context without treating =B= as permission:
+
+#+begin_example
+client says it acted from B
+        |
+        v
+server compares B with current authority
+        |
+        +-- compatible/current enough -> continue under normal model guards
+        |
+        +-- stale/incompatible -> reconcile, reject, or reacquire
+#+end_example
+
+Current authenticated principal binding, model authorization, authoritative
+state, and transaction guards remain decisive.  A client may lie about =B=
+without thereby gaining authority.
+
+The trust requirement changes if an application gives *prior observation
+itself* security significance.  Examples include:
+
+- an operation is allowed only after the principal was previously issued a
+  particular authoritative representation;
+- a continuation is valid only when it follows a specific server-issued
+  observation;
+- an acknowledgement must refer to an exact previously delivered semantic
+  version;
+- an application distinguishes "client claims to have seen X" from
+  "the server can verify that it issued X to this principal/session."
+
+In that case a forgeable client field is insufficient.  The application needs
+an explicit server-verifiable mechanism such as:
+
+- a server-issued capability;
+- a MAC-authenticated observation receipt;
+- trusted server-side session state;
+- a signed server attestation;
+- a nonce or continuation identifier bound to a prior response;
+- another mechanism whose trust semantics are stated explicitly.
+
+The framework must never silently promote:
+
+#+begin_example
+ClientClaim<ObservedBasis>
+#+end_example
+
+into:
+
+#+begin_example
+VerifiedObservationEvidence
+#+end_example
+
+merely because the value has the expected shape or happens to equal a real
+basis.
+
+A Message Authentication Code (MAC), for example HMAC-SHA-256, is one possible
+way to let an adversarial browser carry integrity-protected server evidence,
+under the named cryptographic, key-management, encoding, and verification
+assumptions. This example specifies the trust relationship rather than a
+complete cryptographic implementation.  The server authenticates a canonical payload
+using a secret key known only to trusted infrastructure:
+
+#+begin_example
+receipt-payload
+    =
+{:principal-id P
+ :authority [:request R]
+ :projection :request/public-row
+ :basis B
+ :purpose :prior-observation
+ :issued-at I
+ :expires-at E}
+
+mac
+    =
+HMAC(server-secret, canonical-encoding(receipt-payload))
+#+end_example
+
+The browser may read, store, copy, and return the payload and MAC. Under the
+declared integrity assumptions it cannot feasibly change =P=, =R=, =B=,
+=purpose=, or another authenticated field and produce accepted replacement
+evidence. The MAC does not encrypt the payload; receipt contents must therefore
+be suitable for disclosure to the recipient.
+
+On receipt, the server recomputes and verifies the MAC and then checks the
+context in which the receipt is being used:
+
+#+begin_example
+untrusted client-carried bytes
+        |
+verify MAC
+        |
+verify principal / authority / purpose / expiry
+        |
+        v
+server-authenticated prior-observation evidence
+#+end_example
+
+The MAC authenticates the statement represented by the payload; it does not
+make an unjustified statement true.  If the server authenticates a bad or
+overstated proposition, the MAC faithfully preserves that mistake.
+
+In particular, a receipt normally proves something like:
+
+#+begin_quote
+Trusted server infrastructure issued an attestation for principal/session P
+about the declared semantic observation of authority A at basis B, under the
+receipt's stated issuance contract.
+#+end_quote
+
+The issuance contract must identify the event actually attested: for example,
+construction of an authorized response or release of a response to a transport.
+Issuance is not proof of successful delivery, browser installation, retention,
+or human acknowledgement. Returning the receipt proves possession of the
+authenticated bytes, not those stronger events by itself.
+
+It does not by itself prove:
+
+#+begin_quote
+The browser installed the observation, or the human read, understood, or
+consciously incorporated it.
+#+end_quote
+
+If human acknowledgement is semantically relevant, that is a stronger protocol
+and needs its own explicit proposition and evidence.
+
+Observation evidence must also remain distinct from an operation capability.
+A valid authenticated receipt concerning an old authoritative observation may
+remain historically valid even after current authority changes:
+
+#+begin_example
+valid observation receipt
+!=
+current authorization
+#+end_example
+
+For example, another helper may have claimed Request R after the receipt was
+issued.  The receipt can still prove that an earlier observation was issued,
+while current authoritative reread and model guards correctly reject a new
+claim.
+
+Gesso should therefore distinguish at least these concepts:
+
+#+begin_example
+ObservedBasisClaim
+    client supplied
+    forgeable
+    useful for consistency/reconciliation
+
+AuthenticatedObservationReceipt
+    server authenticated
+    evidence about a prior server-issued observation
+
+CurrentAuthoritativeObservation
+    trusted acquisition satisfying its declared scope and consistency contract
+    current relative to that acquisition, not a promise of perpetual freshness
+
+OperationCapability
+    explicitly scoped permission under declared conditions
+
+CurrentAuthorization
+    current trusted decision that a concrete principal may perform the
+    operation against current authoritative state
+#+end_example
+
+None should implicitly coerce into another.  In particular, historical
+observation evidence and possession of an operation capability do not silently
+become current authorization unless the declared capability semantics explicitly
+make possession sufficient and all of that capability's current validity
+conditions are satisfied.
+
+Gesso may emit compact authenticated observation receipts alongside
+authoritative acquisitions when a supported protocol benefits from evidence of
+prior issuance. Routine issuance is an implementation option, not a baseline
+requirement justified solely by the cost of computing a MAC. Its key lifecycle,
+payload disclosure, expiry, and replay contract must be explicit.  The authenticated object
+should be the *semantic observation* or a compact digest/identity of it, not
+arbitrary HTTP response bytes.
+
+For example:
+
+#+begin_src clojure
+{:receipt/version 1
+ :principal-id P
+ :authority [:request R]
+ :projection :request/card
+ :basis B
+ :semantic-digest D
+ :issued-at I
+ :expires-at E}
+#+end_src
+
+could be MACed as one canonical receipt.
+
+Even if such receipts become common, ordinary =:observed-basis= should remain a
+distinct weaker protocol concept.  Requiring cryptographic evidence whenever a
+client reports its starting basis would unnecessarily turn useful consistency
+context into a security credential.
+
+Replay semantics also remain explicit.  A MAC makes a token difficult to forge
+or alter; it does not make the token single-use.  A reusable observation
+receipt may legitimately be replayable because it attests to a historical
+fact.  A one-shot capability must enforce its declared consumption or replay policy.
+Expiry limits validity duration but does not by itself prevent reuse within
+that duration. A nonce distinguishes issuances but does not by itself record
+consumption. A consumed-token record or another trusted mechanism may enforce
+single use; command identity and idempotency may instead enforce a permitted
+duplicate-use outcome. Those are different contracts and must not be presented
+as interchangeable guarantees.
+
+The governing rule is:
+
+#+begin_quote
+When prior observation becomes a premise of authorization or another
+security-sensitive conclusion, the mechanism establishing that premise must
+cross an explicit server-verifiable trust boundary.  Client assertion remains
+client assertion until that boundary is crossed.
+#+end_quote
+
+*** Observation need not imply a long-lived waiting opcode
+
+Many authoritative observations form entry knowledge for a later short
+choreography.
+
+For example:
+
+#+begin_example
+browser renders authoritative Request at X17
+    |
+execution ends
+
+...later...
+
+Live advisory arrives
+    |
+application policy or explicit user action permits acquisition
+    |
+browser performs authorized authoritative reread at X24
+    |
+new short choreography begins with knowledge from X24
+#+end_example
+
+The portable choreography language therefore need not acquire a universal
+=:observe= or durable wait operation merely to model ordinary web rereads.
+
+If an application genuinely needs one semantic execution to suspend on an
+authoritative condition and later resume, that facility should be designed
+deliberately with explicit persistence, compatibility, ownership, and recovery
+semantics.
+
+It must not appear accidentally as a consequence of normal Live behavior.
+
+*** Observation and representation independence
+
+Authoritative observation is semantic.
+
+Its correctness must not depend on one specific presentation format.
+
+A browser may acquire justified knowledge from an authoritative HTML projection
+when the server-rendered representation and its acquisition path establish the
+required facts.
+
+Another application may use structured data.
+
+The important proof obligations concern:
+
+- authority;
+- authorization;
+- basis/progression;
+- projection semantics;
+- correspondence between representation and declared fact.
+
+They do not concern whether the bytes happened to be HTML or EDN unless the
+representation mechanism itself introduces a relevant assumption.
+
+** Agreement
+:PROPERTIES:
+:CUSTOM_ID: req-semantic-agreement
+:END:
+
+Agreement is stronger than two actors having values with the same shape.
+
+Agreement means the protocol can justify that the actors share the relevant
+semantic value or fact under the declared relation, scope, and frontier.
+
+This is a judgment about those actors' relevant observations or values at the
+specified points. It does not automatically mean that either actor knows the
+other actor received the value, that both know that both know it, or that they
+continue to share the same current value after later changes. Protocols needing
+acknowledgement or stronger knowledge about receipt must declare that additional
+obligation.
+
+If A communicates X to B:
+
+#+begin_example
+A knows X
+A communicates declared X to B
+B receives declared X
+--------------------------------
+A's sent observation and B's received observation agree on declared X
+provenance: communicated, subject to the message contract's premises
+#+end_example
+
+Agreement can arise through multiple provenance paths.
+
+At minimum:
+
+- =:communicated=;
+- =:authoritative=;
+- =:derived=;
+- =:asserted=.
+
+*** Communicated agreement
+
+Communication can establish agreement on the communicated value.
+
+It does not imply agreement on every fact either actor knows.
+
+Message contracts therefore matter.
+
+Closed payloads make the agreement boundary explicit.
+
+*** Authoritative agreement
+
+Two actors may independently observe the same authoritative fact and obtain
+justified agreement without receiving one identical network packet.
+
+For example:
+
+#+begin_example
+authority establishes F
+
+actor A
+  reads F through web node 1
+  at compatible authoritative frontier
+
+actor B
+  reads F through web node 3
+  at compatible authoritative frontier
+
+=> A and B may have authoritative agreement on F
+#+end_example
+
+The hosts differ.
+
+The packets differ.
+
+The semantic authority and relevant fact agree. The required agreement is on
+the scoped proposition being used, not necessarily on the exact read timestamp
+or complete database snapshot. Equal progression tokens alone do not establish
+agreement when the subjects or projection meanings differ.
+
+*** Derived agreement
+
+Agreement may propagate through a declared deterministic derivation when the
+inputs and derivation justify doing so.
+
+The system must not infer derived agreement merely because two actors happen to
+run source code with the same function name.
+
+The derivation relation must be part of the checked semantic contract.
+
+*** Asserted agreement
+
+Application code may explicitly assert agreement that Gesso cannot derive.
+
+Such assertions are trusted leaves.
+
+They must remain visible in diagnostics and proof reports.
+
+They should not be used casually to suppress useful obligations.
+
+*** Shape equality is not agreement
+
+Two values can validate against the same Malli schema without being agreed
+semantic facts.
+
+For example:
+
+#+begin_src clojure
+{:request/status :open}
+#+end_src
+
+in two browser contexts does not establish:
+
+- same Request identity;
+- same authoritative basis;
+- same provenance;
+- same valid time;
+- same semantic observation;
+- same authority.
+
+Malli answers shape questions.
+
+Agreement answers semantic relationship questions.
+
+*** Agreement is scoped
+
+Actors need not agree on all application state.
+
+Agreement may be scoped to:
+
+- a Request;
+- a fact;
+- a command;
+- an operation input;
+- a branch discriminator;
+- an authoritative frontier;
+- another explicitly modeled semantic object.
+
+Privacy and irrelevance are legitimate reasons not to establish agreement.
+
+** Agreement frontiers
+:PROPERTIES:
+:CUSTOM_ID: req-agreement-frontiers
+:END:
+
+For evolving values, actors may agree only through a common frontier for the
+relevant facts and relation. A frontier is not necessarily one globally ordered
+position for all actor knowledge.
+
+For a single modeled chain whose prefix observations are retained and justify
+the claimed agreement, for example:
+
+#+begin_example
+F1 -> F2 -> F3 -> F4
+
+Actor A knows through F4.
+Actor B knows through F3.
+
+A and B agree through F3.
+#+end_example
+
+The application universe may change continually.
+
+Complete instantaneous agreement among all relevant actors may never occur.
+
+That is not itself a correctness failure.
+
+Correctness instead requires:
+
+- established historical facts remain immutable under the model's semantics;
+- relevant divergence is explicit rather than silently erased;
+- actors possess enough justified knowledge for the behavior they perform;
+- where convergence is required, the protocol provides a valid path toward a
+  newer common authoritative frontier;
+- under quiescence and the choreography's stated liveness assumptions, required
+  agreement debt can fall to zero.
+
+*** Frontier is relation, not necessarily arithmetic
+
+A frontier need not be represented by an integer.
+
+The browser must not invent arithmetic ordering over opaque progression values
+unless the authoritative system explicitly provides a supported ordering
+operation.
+
+The relevant semantic questions are relational:
+
+- is this observation at least as strong as the requirement that triggered it?
+- are two authoritative observations compatible for the fact whose agreement
+  is being claimed?
+- has this actor incorporated the authoritative change it was required to
+  observe?
+- may this local projection continue under the current compatibility contract?
+
+The concrete XTDB and scope-coverage mechanisms are specified in the
+authoritative-operations and progression part. An ordering relation must not be
+assumed to provide a join, a greatest common frontier, or complete observation
+coverage unless the supported contract actually establishes those properties.
+
+*** Different actors may have different valid frontiers
+
+For example:
+
+#+begin_example
+Authority:
+    F1 -> F2 -> F3 -> F4 -> F5
+
+Actor A:
+    knows through F5
+
+Actor B:
+    knows through F3
+
+Actor C:
+    knows only a privacy-scoped subset through F4
+#+end_example
+
+There may be no meaningful statement that all three actors share one universal
+application frontier.
+
+Agreement and knowledge are scoped to the relevant facts and authorities.
+
+*** Advisory knowledge and adopted knowledge
+
+An actor may learn that authority advanced without immediately adopting the new
+authoritative projection.
+
+This distinction is important for application behaviors such as a multi-user
+board:
+
+#+begin_example
+other client learns:
+    "new relevant Request authority is available"
+
+but does not yet replace:
+    currently adopted board projection
+
+explicit refresh:
+    acquires and adopts newer authoritative projection
+#+end_example
+
+The advisory requirements and adopted authoritative observations are therefore
+distinct pieces of actor state. The word frontier is shorthand for the scoped
+knowledge relation; it does not require either state to be represented by one
+maximum scalar token.
+
+A correct application may intentionally preserve that distinction.
+
+*** Convergence does not require replay of every intermediate change
+
+A browser offline from X17 through X900 need not replay every invalidation
+between those points.
+
+If the application semantics permit it, the actor may converge by acquiring a
+current authoritative observation at X900 or later.
+
+The correctness obligation is not "deliver every historical notification."
+
+It is:
+
+#+begin_quote
+Provide a valid path by which the actor can acquire sufficiently current
+authoritative knowledge for the behavior it needs to perform.
+#+end_quote
+
+*** Agreement debt
+
+Where the choreography requires actors to converge, the difference between
+their relevant justified knowledge may be understood as agreement debt.
+
+The design does not require one universal numeric debt metric.
+
+The useful property is qualitative:
+
+- divergence is represented;
+- required convergence paths exist;
+- stale or provisional actors do not pretend agreement already exists;
+- under stated liveness assumptions and quiescence, the required divergence can
+  be eliminated.
+
+The existence of a recovery path is distinct from its eventual execution.
+Where adoption requires a user to activate Refresh, required eventual adoption
+is conditional on that action or another permitted acquisition trigger. Where
+the product permits indefinite deferral, remaining advisory information is not
+by itself a violation of an unconditional convergence guarantee; such a
+guarantee was never established for that deferred adoption.
+
+*** Privacy constrains convergence
+
+Agreement is always scoped by authorization and relevance.
+
+The system must not satisfy a convergence property by leaking protected facts to
+actors that are not entitled to observe them.
+
+A correct convergence path may therefore involve:
+
+- one actor learning the full authoritative fact;
+- another actor learning only an authorized projection;
+- both actors agreeing on a smaller shared semantic proposition.
+
+For example:
+
+#+begin_example
+authority knows:
+    full Request details + private requester metadata
+
+helper A may know:
+    Request is available for claim
+
+observer B may know:
+    Request count increased
+
+A and B need not agree on private requester metadata.
+#+end_example
+
+*** Foundational invariant
+
+The foundational agreement invariant is:
+
+#+begin_quote
+A Gesso execution never treats mere co-presence, shape equality, physical
+delivery, or coincidental local computation as semantic agreement.  Agreement
+must be justified by a declared communication, compatible authoritative
+observation, checked derivation, or explicit trusted assertion, and any claim
+over evolving facts is relative to a meaningful common frontier.
+#+end_quote
+
+
+#+LATEX: \newpage
+

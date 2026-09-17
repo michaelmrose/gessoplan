@@ -1,0 +1,2061 @@
+* Part IV — Authoritative operations and progression
+:PROPERTIES:
+:CUSTOM_ID: part-04-authoritative-operations-and-progression
+:END:
+
+This part defines the public model boundary, FX realization, atomic transitions,
+scoped authoritative acquisition, and semantic command identity. It separates
+authoritative reality from propagation status and participant knowledge. The
+concrete browser coordinator follows in Part VI; whole-application capability
+and acquisition closure follow in Part VII.
+
+** Model integration
+:PROPERTIES:
+:CUSTOM_ID: req-model-public-boundary
+:END:
+
+HumanHelp models remain the source of domain truth.
+
+For a model such as Request:
+
+#+begin_example
+model/request/
+  domain.clj
+  schema.clj
+  graph.clj
+  fx.clj
+  core.clj
+  choreo.clj
+#+end_example
+
+The responsibilities are:
+
+- =domain.clj= -- Request semantic rules and pure transitions;
+- =schema.clj= -- Request persistence/value schemas;
+- =graph.clj= -- Request graph declarations;
+- =fx.clj= -- authoritative effect planning and atomic persistence realization;
+- =core.clj= -- the narrow public semantic interface of the Request model;
+- =choreo.clj= -- higher-level distributed programs built exclusively from
+  public model interfaces.
+
+The dependency direction is an architectural commitment:
+
+#+begin_example
+domain / schema / graph / fx
+             |
+             v
+          core
+             ^
+             |
+          choreo
+#+end_example
+
+=request.choreo= sits *above* =request.core=. It is not an implementation detail
+behind =request.core= and =request.core= does not facade it.
+
+A model choreography is therefore a higher-level distributed program written
+against public model semantics.
+
+=request.choreo= must not bypass the public model boundary and reach into
+Request domain, graph, schema, or FX internals.
+
+For example:
+
+#+begin_src clojure
+(ns net.humanhelp.site.model.request.choreo
+  (:require
+   [gesso.choreo.core :as choreo]
+   [net.humanhelp.site.model.request.core :as request]))
+#+end_src
+
+and an authoritative choreography step calls something conceptually like:
+
+#+begin_src clojure
+(choreo/at :request-authority
+  (request/claim ...))
+#+end_src
+
+not:
+
+#+begin_src clojure
+(request.fx/claim ...)
+#+end_src
+
+Cross-model dependencies follow the same rule. If a Request choreography needs
+Membership or Organization semantics, it may require their public =core=
+namespaces, never their internals:
+
+#+begin_example
+request.choreo
+   |
+   +--> request.core
+   +--> membership.core
+   +--> organization.core
+#+end_example
+
+The choreography may know facts that the semantic model API does not need to
+know, including:
+
+- roles;
+- runtime actors;
+- principals;
+- communication;
+- distributed knowledge;
+- provenance;
+- agreement;
+- command identity;
+- observed authoritative basis;
+- provisional execution;
+- settlement;
+- timeout/retry behavior;
+- convergence;
+- projection compatibility/version.
+
+Those concerns must not flow downward into the model merely because the model
+has a choreography namespace. Some information, such as a semantic command
+identity or an expected domain version, may independently belong in the public
+model contract when durable deduplication or domain preconditions require it.
+That does not make browser execution state or settlement transport a model
+concern. The placement test below determines the owner of the meaning.
+
+A useful placement test is:
+
+#+begin_quote
+Would this rule still matter if the public model operation were called
+synchronously from one JVM with no browser, network, projection, or second
+actor?
+#+end_quote
+
+If yes, it normally belongs in the model semantics below =core=.
+
+If no because it concerns communication, distributed knowledge, optimism,
+settlement, retry, projection compatibility, or convergence, it is a candidate
+for =choreo.clj=.
+
+A choreography involving one model's semantic operation but multiple runtime
+actors may live in that model's =choreo.clj=.
+
+A choreography whose meaning genuinely spans several peer models should live in
+a higher-level flow/choreography namespace rather than turning one model into an
+aggregation point.
+
+For example, a future onboarding workflow that coordinates Invitation,
+Membership, Organization, and external provisioning should not be forced into
+=invitation.choreo= merely because Invitation happens to be the first step.
+
+*** Model namespaces export semantic interfaces, not implementation privilege
+
+The public =core= namespace is the semantic API boundary of a model.
+
+A higher layer may rely on what that interface declares, but not on arbitrary
+knowledge of the implementation beneath it.
+
+For a Request model, a public operation contract may expose:
+
+- semantic operation identity;
+- typed inputs;
+- typed outcomes;
+- preconditions represented as public semantic commitments;
+- authority requirements;
+- atomicity guarantees;
+- model-defined failure classes;
+- stable facts/projections that higher layers may consume.
+
+It should not require Choreo to know:
+
+- XTDB transaction forms;
+- internal graph query structure;
+- implementation-only helper vars;
+- private schema storage details;
+- private FX staging data.
+
+This is the boundary that allows the authoritative model to remain usable
+without Choreo and allows Choreo to coordinate the model without becoming its
+implementation.
+
+Within one trusted Clojure process, a sufficiently determined application author
+may still import lower-level namespaces, obtain a transaction handle, or write
+to the database outside these interfaces.  Gesso does not claim to sandbox such
+trusted host code.  The design goal inside that boundary is instead that normal
+cooperating application code receives narrow semantic interfaces, accidental
+bypass is difficult, and deliberate departure from the supported path is
+conspicuous and outside the assurance claim that depended on the boundary.
+
+Where practical, ordinary web/view/choreography code should not need a raw
+authoritative mutation capability merely to perform a declared model operation.
+This reduces accidental invariant bypass without pretending that Clojure records,
+namespace privacy, or nominal wrappers constitute a security boundary against
+the application author.
+
+*** Semantic dependency is not necessarily namespace load order
+
+The conceptual dependency:
+
+#+begin_example
+schema/domain/relationships/rules
+        |
+        v
+FX / model operation contract
+        |
+        v
+core
+        |
+        v
+choreo
+#+end_example
+
+describes which semantic commitments may justify later reasoning.
+
+It does not require the final source tree to mirror this diagram mechanically,
+nor does it mean every namespace participates in the later proof system.
+
+What matters is that a dependent semantic layer cannot claim a guarantee that
+its dependencies neither establish nor explicitly assume.
+
+*** Business rules remain model semantics
+
+A rule belongs below =core= when its meaning would still matter in a synchronous
+single-JVM call with no browser or distributed protocol.
+
+Examples include:
+
+- whether a Request may be claimed;
+- whether Membership is active;
+- whether an Organization permits an operation;
+- what state transition follows from a valid command;
+- what facts must remain true at authoritative commit.
+
+Choreo may rely on the public result of those rules, but must not duplicate
+them merely because a browser operation depends on them.
+
+This prevents two dangerous architectures:
+
+#+begin_example
+model says one thing
+view/choreo reimplements "close enough" version
+#+end_example
+
+and:
+
+#+begin_example
+core is only a facade
+real business semantics secretly live in choreo
+#+end_example
+
+Neither is compatible with the intended end state.
+
+*** Well-formed business rules and correct business policy are different
+
+The model layer should eventually make malformed rule expressions rejectable
+where their semantic types are known.
+
+For example, if =request.status= is a closed enum, an ordered numeric comparison
+against it is malformed and should not become a valid certified rule.
+
+This stronger rule-language machinery is specified later in the compositional
+proof part.
+
+The architectural boundary established here is simpler:
+
+- domain/model code owns business meaning;
+- the semantic interface exposes only checked/declared commitments;
+- Choreo consumes those commitments;
+- Choreo does not decide whether product management chose the right policy.
+
+*** Cross-model semantics do not imply cross-model leakage
+
+A Request operation may depend on public facts from Membership and Organization.
+
+That does not authorize =request.choreo= or =request.core= to reach through
+those models into their internal FX/schema/graph implementation.
+
+The dependency remains through public semantic interfaces.
+
+Where several model facts must participate in one atomic transition, the
+authoritative operation may compose the necessary model-level transaction work
+behind the public operation contract.  API boundaries do not require separate
+transactions.
+
+The [[#req-atomic-authoritative-transition][atomic authoritative transition contract]]
+below specifies this distinction in detail.
+
+*** Higher-level cross-model choreography should be named at the right level
+
+A distributed program whose meaning genuinely spans several peer models should
+live in a higher-level flow/choreography namespace.
+
+For example:
+
+#+begin_example
+onboarding.choreo
+    |
+    +--> invitation.core
+    +--> membership.core
+    +--> organization.core
+    +--> provisioning.core
+#+end_example
+
+is preferable to making =invitation.choreo= own the entire workflow merely
+because Invitation happens to be the first model touched.
+
+The namespace location should reflect semantic ownership, not incidental
+chronology.
+
+*** HumanHelp is a reference consumer, not a source of generic Gesso semantics
+
+HumanHelp may reveal missing generic abstractions.
+
+When it does, the design test is:
+
+#+begin_quote
+Is this missing concept intrinsic to distributed semantic correctness for
+Gesso applications generally, or is it HumanHelp business policy?
+#+end_quote
+
+Generic examples include:
+
+- operation capability;
+- knowledge/provenance requirement;
+- transport requirement;
+- server capability;
+- acquisition requirement;
+- progression contract;
+- application-closure edge.
+
+HumanHelp-specific examples include:
+
+- who may claim a particular Request;
+- Organization policy;
+- Membership semantics;
+- Request lifecycle business rules.
+
+The former may justify additions to Gesso.  The latter remain in HumanHelp
+models.
+
+#+LATEX: \newpage
+** Relationship between core, FX, and choreography
+
+FX and Choreo do not merge into one execution mechanism.
+
+They operate at different correctness scopes.
+
+FX is responsible for realizing an authoritative model transition, usually
+within one atomic transaction boundary.
+
+Choreo is responsible for distributed coordination around use of that public
+authoritative operation.
+
+Conceptually:
+
+#+begin_example
+request.choreo/claim
+        |
+        | command, knowledge, observed basis, provisional state
+        v
+   authoritative step
+        |
+        v
+request.core/claim
+        |
+        v
+request.fx
+        |
+        | atomic XTDB transaction
+        v
+ authoritative result
+        |
+        v
+request.choreo continues or terminates
+        |
+        | settlement / Live propagation / later authoritative observation
+        v
+actors learn result
+#+end_example
+
+There is one semantic operation identity, for example =:request/claim=, but the
+public semantic operation and its higher-level distributed realization are not
+the same function and need not have the same type.
+
+Roughly:
+
+#+begin_example
+authoritative semantic operation
+
+ClaimCommand x AuthoritativeWorld
+        ->
+ClaimResult
+
+
+distributed choreographic operation
+
+HelperKnowledge
+        ->
+Confirmed
+| Reconciled
+| Rejected
+| LocallyRetiredWithOutcomeUnknown
+| AnotherDeclaredProtocolOutcome
+#+end_example
+
+These alternatives are illustrative, not a required public enum. An execution
+failure and an authoritative rejection are different outcomes; the former may
+leave the command's disposition unknown to the participant.
+
+The choreography should not invent a second, competing meaning for
+=:request/claim=. Its authoritative step delegates to =request.core/claim=.
+
+Likewise, =request.core= must not require or facade =request.choreo= merely to
+present a single namespace to callers. The layering is intentionally public:
+
+request.core: public Request semantics
+
+request.choreo: public distributed programs built from Request semantics
+
+Views and higher-level application code may consume prepared or bound
+choreographic capabilities without weakening this dependency direction.
+
+Choreo may rely on an authoritative operation's declared contract -- input and
+result schemas, authority, atomicity, or other public metadata -- but it must not
+understand or reproduce the model's XTDB writes.
+
+This preserves an important independence property: =request.core/claim= remains
+meaningful and testable from a REPL, batch job, test, server endpoint, or other
+non-choreographic caller.
+
+*** FX realizes model semantics; it does not define distributed truth
+
+FX may perform multi-step computation, query authoritative state, prepare
+transaction data, validate commit-time conditions, and publish an authoritative
+result.
+
+Those steps belong to realization of a model operation.
+
+Choreo observes the public semantic boundary:
+
+#+begin_example
+authoritative operation invoked
+        |
+        v
+declared semantic outcome
+#+end_example
+
+rather than treating every internal FX step as a distributed choreography
+state.
+
+This preserves a small and meaningful distributed protocol while allowing the
+authoritative implementation to remain sophisticated.
+
+*** One operation identity may span several implementation layers
+
+The same semantic operation identity may be referenced by:
+
+- model =core=;
+- Choreo;
+- UI operation capability;
+- server operation registry;
+- transport binding;
+- diagnostics.
+
+That does not mean all those layers are the same object.
+
+For example:
+
+#+begin_example
+:request/claim
+    |
+    +--> request.core/claim
+    |
+    +--> request.choreo/claim
+    |
+    +--> bound UI capability
+    |
+    +--> trusted server realization
+#+end_example
+
+Each layer adds a different kind of structure around one semantic operation.
+
+Later whole-application preflight must verify that independently realized edges
+actually correspond.  It must not assume correspondence merely because names
+look similar.
+#+LATEX: \newpage
+*** No semantic backchannel from Choreo into model internals
+
+The following dependency is forbidden:
+
+#+begin_example
+request.choreo
+    -> request.fx/private-prepare
+    -> request.graph/private-query
+#+end_example
+
+even if it appears convenient.
+
+Such a path lets distributed coordination depend on implementation facts that
+the public model interface does not promise.
+
+It also makes later proof/certification misleading because the apparent public
+operation contract no longer captures the real dependencies.
+
+The authoritative operation may internally use those facilities.  Choreo may
+not.
+
+*** Core remains meaningful without Choreo
+
+A public model operation must remain useful in contexts such as:
+
+- REPL invocation;
+- tests;
+- batch jobs;
+- administrative tools;
+- server APIs that do not need a distributed choreography;
+- future application flows using a different higher-level protocol.
+
+This is a deliberate independence property, not merely a convenience for
+testing.
+
+If =request.core/claim= only makes sense when called through
+=request.choreo/claim=, business semantics have leaked upward.
+
+Independent use does not mean bypassing required authority. A REPL, batch job,
+or administrative caller must supply the trusted premises required by the same
+public model contract. Removing the browser protocol must not remove current
+authorization, transaction guards, or invariant enforcement.
+
+*** Choreo adds distributed obligations that core should not own
+
+Conversely, =request.core= should not need to understand:
+
+- browser execution generation;
+- communication topology;
+- projected branch knowledge;
+- provisional DOM state;
+- settlement transport;
+- reconnect;
+- continuity;
+- stale projected-plan recovery.
+
+Those are higher-level distributed/runtime concerns.
+
+The two layers meet at an explicit authoritative operation contract.
+
+*** Public operation metadata must be sufficient but minimal
+
+Choreo may need public metadata describing an authoritative operation, such as:
+
+- semantic identity;
+- typed command/input;
+- typed outcome/result;
+- required authority;
+- atomicity class;
+- declared externally visible effects;
+- model-defined reconciliation outcomes;
+- stable facts that may be learned from the result.
+
+This metadata should be rich enough for distributed reasoning without exposing
+the operation's persistence implementation.
+
+A useful test is:
+
+#+begin_quote
+Could a correct alternative implementation of this model operation satisfy the
+same public semantic contract without Choreo changing?
+
+If the answer is no only because Choreo depends on private implementation
+details, the boundary is wrong.
+#+end_quote
+
+
+*** Model and choreography boundary invariant
+
+At the end of this language/model layer, the unified design requires the
+following relationship:
+
+#+begin_quote
+The choreography is the global specification of distributed control flow.
+Projection produces role-local behavior justified by each role's knowledge.
+Model =core= operations remain the public owners of authoritative business
+semantics, FX realizes those operations below that boundary, and Choreo
+coordinates their distributed use above it.  No layer gains stronger semantic
+facts merely by crossing a representation, namespace, transport, or runtime
+boundary.
+#+end_quote
+
+
+#+LATEX: \newpage
+
+** Atomic authoritative transitions
+:PROPERTIES:
+:CUSTOM_ID: req-atomic-authoritative-transition
+:END:
+
+If moving authoritative domain state A to B must be atomic, there must never be
+an authoritative A-half state.
+
+The computation deciding B may be multi-step. Establishment of B within the
+declared authoritative transaction scope is one atomic step. Publication of an
+invalidation or notification is a separate after-commit effect.
+
+Conceptually:
+
+#+begin_example
+read authoritative facts
+        |
+derive / validate / decide
+        |
+prepare proposed transition
+        |
+identify commit-time guards
+        |
+one atomic transaction
+        |
+B
+#+end_example
+
+The important race is between evaluation and commit.
+
+For example:
+
+#+begin_example
+read:
+    Request R is unclaimed
+    Membership U is active
+    Organization permits the operation
+
+decide:
+    claim is allowed
+
+             another transaction changes a relevant fact
+
+commit:
+    ???
+#+end_example
+
+An unconditional write at the end would be unsafe. The authoritative operation
+must protect the facts whose incompatible change would invalidate the prepared
+decision.
+
+Semantically:
+
+#+begin_example
+read relevant authoritative facts
+             |
+             v
+derive proposed transition
+             |
+             v
+transaction:
+    assert required preconditions still hold
+    +
+    apply every authoritative write in the transition
+             |
+          success?
+          /     \
+        yes      no
+        |         |
+        B      no partial B
+                  |
+                  v
+            re-evaluate or
+            return a semantic outcome
+#+end_example
+
+The exact XTDB mechanism used for commit guards is an implementation question for
+the model/FX layer. The choreography language should express the authoritative
+commit boundary and rely on the public model contract rather than reproducing
+those guards itself.
+
+Not every value read while computing a response must become a transaction guard.
+Only facts whose incompatible change could invalidate the semantic transition
+need protection.
+
+Model boundaries are API boundaries, not necessarily transaction boundaries.
+
+A Request operation may depend on facts exposed by Request, Membership, and
+Organization public interfaces. If several authoritative writes collectively
+constitute one invariant, they must be composed into one transaction rather than
+exposed through several independently committing model calls.
+
+The operation should conceptually distinguish:
+
+- preparation;
+- atomic commit;
+- after-commit effects.
+
+For example:
+
+#+begin_src clojure
+{:commit
+ {:guards [...]
+  :writes [...]}
+
+ :after-commit
+ [[:live/invalidate ...]
+  [:notification/send ...]]}
+#+end_src
+
+The exact FX syntax may differ.
+
+A failure established before submission of the proposed commit, or a confirmed
+transaction rejection, establishes that this attempt did not commit its proposed
+transition. It does not establish that the whole authoritative world remains at
+A: other concurrent operations may have changed it.
+
+Loss of contact after commit submission is different. If the trusted caller
+cannot establish whether the transaction committed, it must preserve an unknown
+commit outcome and use the declared resolution contract. An exception or timeout
+does not by itself locate the failure before the commit boundary.
+
+Once the authoritative commit succeeds, this transition established B even if
+later publication, notification, SSE delivery, settlement delivery, or browser
+rendering fails. Subsequent authoritative operations may advance the state
+again; evidence of this commit is not a promise that B remains current forever.
+
+Post-commit failure must therefore never be reported as though the authoritative
+mutation itself had failed. Post-commit work requires its own delivery,
+idempotency, retry, or convergence semantics.
+
+If an operation spans an external system that cannot participate in the same
+atomic transaction, any externally observable intermediate state must itself be
+modeled as a valid domain state.
+
+For example:
+
+#+begin_example
+:pending-provisioning
+:awaiting-external-activation
+#+end_example
+
+The system must not hide an externally real partial state and merely hope nobody
+observes it.
+
+*** Authoritative transition contract
+
+An authoritative operation exposes one semantic transition contract even when
+its implementation contains several computational phases.
+
+The contract must distinguish at least:
+
+#+begin_example
+prepare
+    read and derive candidate transition
+
+commit
+    atomically establish the authoritative transition
+
+after-commit
+    publish, invalidate, notify, settle, or otherwise propagate consequences
+#+end_example
+
+Only the commit boundary changes authoritative domain truth.
+
+This distinction is not merely operational bookkeeping.  It determines what
+failure means.
+
+When non-incorporation of this attempt is established:
+
+#+begin_example
+failure before commit submission, or confirmed transaction rejection
+    -> this attempt did not establish its proposed authoritative transition
+#+end_example
+
+When submission occurred but the result is unavailable:
+
+#+begin_example
+commit request submitted
+    -> acknowledgement/result lost
+    -> commit outcome unknown to this participant
+    -> resolve or retry only under the declared command/transaction contract
+#+end_example
+
+After commit:
+
+#+begin_example
+publication failure
+notification failure
+settlement-delivery failure
+Live-delivery failure
+browser-render failure
+    -> authoritative transition DID occur
+    -> propagation/recovery problem remains
+#+end_example
+
+A caller must never be told "the mutation failed" merely because a later
+delivery mechanism failed after the authoritative transaction committed.
+
+*** Preparation may be rich without weakening atomic publication
+
+The computation that prepares an authoritative transition may involve:
+
+- several model reads;
+- deterministic derivations;
+- relationship checks;
+- current authorization/policy evaluation;
+- construction of multiple writes;
+- generation of command/result metadata;
+- identification of commit-time guards.
+
+There is no requirement that all of this logic fit into one tiny function.
+
+The requirement is instead that any facts whose incompatible change would make
+the prepared transition invalid are protected at commit.
+
+Conceptually:
+
+#+begin_example
+authoritative read set
+        |
+        v
+derive candidate transition
+        |
+        v
+identify semantic dependencies that must remain compatible
+        |
+        v
+atomic commit:
+    guards + complete authoritative write set
+#+end_example
+
+The model must not confuse "was consulted during preparation" with "must be
+guarded at commit." Guard the facts and predicates whose incompatible change
+can invalidate the semantic transition.
+
+Those predicates may concern absence, uniqueness, aggregate constraints, or
+relationship membership rather than just rows returned by an earlier read.
+Checking only previously read entity versions is insufficient if a concurrent
+insertion or relationship change can violate the invariant. The model/FX
+implementation must identify how its chosen transaction mechanism protects each
+relevant predicate under the actual database contract.
+
+Preparation also needs observations compatible with the decision being made.
+Separate reads do not constitute a common snapshot merely because they were
+performed close together. The operation must establish the snapshot or other
+compatibility relation required by its invariant and preserve the required
+premises through commit.
+
+*** API boundaries do not force transaction boundaries
+
+A public operation may depend upon facts owned by several models while still
+forming one authoritative transaction.
+
+For example, Request claim may require public semantic information from:
+
+#+begin_example
+Request
+Membership
+Organization
+#+end_example
+
+If the resulting authoritative change is one domain invariant, the
+implementation may compose the necessary transaction work behind the public
+Request operation contract.
+
+The design rejects this inference:
+
+#+begin_example
+different model APIs
+    => separate independent commits
+#+end_example
+
+Model APIs organize semantic ownership. Atomicity is determined by the domain
+transition and the scope supported by the authoritative system. Composition must
+retain every participating model's required constraints; combining write forms
+alone does not establish that their contracts have been satisfied.
+
+If the selected stores cannot realize the required joint atomic transition, the
+operation cannot be admitted as providing that atomicity guarantee. It needs a
+different realization or an explicitly modeled multi-step domain protocol.
+
+*** External systems require explicit valid intermediate states
+
+When an external system cannot participate in the authoritative transaction,
+Gesso must not pretend the overall world changes atomically.
+
+If external provisioning is observable between local commit and external
+success, that intermediate situation must be represented as a valid domain
+state, for example:
+
+#+begin_example
+:pending-provisioning
+:provisioning-failed
+:awaiting-external-activation
+#+end_example
+
+The model may then define subsequent transitions that resolve that state.
+Compensation, where supported, is a new authoritative transition with its own
+conditions and failure semantics. It does not erase the fact that an earlier
+external effect occurred or guarantee that every external consequence can be
+undone.
+
+What is forbidden is an externally real partial transition whose existence is
+hidden merely because the application wished the operation were atomic.
+
+*** FX value-flow architecture
+
+The Biff FX substrate used by Gesso must preserve a sharp distinction among:
+
+- ambient execution context;
+- machine invocation arguments;
+- previous-state output.
+
+The intended state-machine discipline is conceptually:
+
+#+begin_src clojure
+:start
+(fn [ctx operation-input]
+  ...)
+
+:next
+(fn [ctx previous-output]
+  ...)
+#+end_src
+
+Ordinary state output must not become ambient context merely because an earlier
+state returned it.
+
+This means:
+
+#+begin_example
+ctx
+    stable/ambient capabilities and environment
+
+operation-input
+    explicit value supplied when the machine is invoked
+
+previous-output
+    explicit value produced by the preceding state
+#+end_example
+
+This distinction is an architectural invariant, not a temporary compatibility
+constraint.
+
+It aligns FX execution with the semantic boundaries established in Parts I–III:
+
+- ambient authority/capability remains ambient;
+- operation input remains explicit;
+- intermediate computation remains explicit state flow;
+- a later state cannot accidentally acquire authority or data merely because
+  some earlier state placed a key into an accumulated context map.
+
+*** Ambient context is capability-bearing, not a hidden data bus
+
+Examples of values that may legitimately live in ambient context include:
+
+- authenticated request/server environment;
+- database/runtime handles;
+- clock capability;
+- randomness/seed capability;
+- transaction execution facilities;
+- trusted configuration;
+- other explicitly supplied execution capabilities.
+
+Examples of values that should normally move through explicit machine state
+instead include:
+
+- operation input;
+- queried facts produced by an earlier state;
+- a prepared model command;
+- a transaction plan;
+- a previous semantic outcome;
+- derived values needed by the next machine state.
+
+This keeps state-machine meaning inspectable.
+
+A machine that requires a value should receive it through a declared path rather
+than relying on accidental context accumulation.
+
+An available clock or transaction facility is a capability; a particular sampled
+time or transaction outcome is an explicit value. Merely placing a value in
+=ctx= does not establish trust. The trusted invocation boundary owns the origin
+and permitted use of capability-bearing context, and untrusted input must not
+overwrite it through an ordinary map merge.
+
+Required capabilities and their supplied realizations must be inspectable at
+construction. A structurally missing required clock, principal binding, or
+transaction facility must fail admission before first invocation when the
+absence is already knowable. Concrete authentication, availability, and policy
+remain runtime premises.
+
+*** FX state boundaries preserve semantic ownership
+
+An FX state may compute or realize part of a public model operation, but passing
+through an FX state does not upgrade provenance or authority.
+
+For example:
+
+#+begin_example
+client supplied argument
+    -> validated operation input
+    -> FX state
+#+end_example
+
+does not make the argument authoritative merely because trusted server code
+handled it.
+
+Likewise:
+
+#+begin_example
+query result
+    -> machine state output
+#+end_example
+
+does not automatically become a choreography fact known by some remote actor.
+
+Semantic provenance still comes from the appropriate model, authority,
+knowledge, or projection rule.
+
+*** Ordered effects are explicit semantics
+
+Where effect ordering matters, the FX representation must express ordering
+explicitly rather than relying on incidental collection interpretation.
+
+The supported ordered-effect mechanism is part of the execution contract. It
+must distinguish sequencing from successful completion, and define what happens
+to later effects when an earlier one fails. Ordering by itself supplies neither
+atomicity across effects nor durable retry after process loss.
+
+A sequence such as:
+
+#+begin_example
+commit
+then publish invalidation
+then enqueue notification
+#+end_example
+
+must have a representation whose ordering semantics are unambiguous to the FX
+runtime.
+
+A vector that is merely an effect's value must not be confused with a sequence
+of effects.
+
+This matters because post-commit correctness often depends on distinguishing:
+
+#+begin_example
+what must occur atomically
+what must occur afterward
+what may retry independently
+#+end_example
+
+*** Graph/multistate integrations obey the same value-flow rule
+
+Any multistate graph/resolver facility built on the same FX execution model must
+respect the same separation:
+
+#+begin_example
+ambient ctx
+invocation/resolver input
+previous state output
+#+end_example
+
+Later states may not silently recover original or intermediate values from
+ambient context unless those values are intentionally part of that context.
+
+The exact graph API is subordinate to the invariant.
+
+*** Operation contracts describe effects without exposing implementation details
+
+A public model operation may expose semantic information such as:
+
+- typed inputs;
+- typed outcomes;
+- authority requirements;
+- atomicity;
+- declared externally visible effects;
+- preconditions;
+- postconditions;
+- model-defined failure classes.
+
+It should not require Choreo to understand its internal FX state graph.
+
+The later compositional-proof architecture may certify that an FX/operation
+implementation satisfies such a contract.  The contract boundary exists
+independently of that stronger proof machinery.
+
+*** Post-commit delivery debt is explicit
+
+Once authoritative commit is established, outstanding propagation work is
+delivery debt. It does not undo that commit.
+
+A participant lacking adequate evidence may nevertheless remain uncertain about
+its command. Authoritative disposition, propagation status, and each
+participant's knowledge are separate dimensions. The
+[[#req-command-participant-uncertainty][command uncertainty contract]] below applies
+even when another participant already knows that the commit succeeded.
+
+Examples include:
+
+- Live invalidation not yet published;
+- notification not yet delivered;
+- settlement response lost;
+- browser disconnected before observing the result;
+- downstream cache not yet refreshed.
+
+The system should model or diagnose this state honestly.
+
+Recovery may use:
+
+- retry;
+- idempotent publication;
+- later authoritative reread;
+- advisory invalidation;
+- reconciliation by command identity;
+- another application-specific convergence mechanism.
+
+It must never "roll back" the truth conceptually merely because an observer did
+not learn it immediately. An authoritative reread can recover current state
+without necessarily establishing which command produced it.
+
+**** Publication and recovery contract
+:PROPERTIES:
+:CUSTOM_ID: req-post-commit-recovery
+:END:
+
+Every claimed commit-to-observation guarantee must identify the propagation and
+recovery mechanism and its environmental premises. In particular, it must
+address process loss after commit but before publication, repeated publication,
+and loss of the original settlement where those failures are in scope.
+
+A connected observer that misses publication may have no evidence that anything
+changed. The design must not infer eventual notification merely from the
+existence of an SSE connection or from successful commit. The supported
+realization may provide durable publication intent, reconciliation on reconnect,
+periodic acquisition, explicit user Refresh, or another declared path. Each
+supports a different claim and must be described accordingly.
+
+If recovery depends on user Refresh, convergence is conditional on that action.
+If automatic eventual publication is claimed, the mechanism must retain or
+reconstruct the necessary work across the failures covered by that claim.
+Gesso does not require one universal outbox or durable workflow engine.
+
+Retrying propagation must not re-execute the authoritative mutation unless the
+command's retry contract explicitly permits that and establishes its safety.
+The operational acceptance must exercise the selected recovery path, including
+the commit-before-publication failure window, against the actual production
+realization.
+
+** Authoritative basis and XTDB
+
+XTDB supplies the authoritative database progression/consistency coordinate.
+
+Gesso is intentionally allowed to assume XTDB for its primary persistent
+application authority. Database/backend independence is not a current design
+goal when pursuing it would materially increase complexity or weaken
+correctness.
+
+The semantic vocabulary should still avoid accidental coupling to a particular
+XTDB Java class or serialization format, and authority remains conceptually
+broader than one database because external systems may establish their own
+facts.
+
+Gesso should reuse XTDB's supported consistency mechanisms rather than inventing
+a second generic global revision system.
+
+The generic semantic layer distinguishes at least three related categories even
+when their concrete representation contains the same XTDB token:
+
+- =AuthoritativeBasis= -- a basis established by a trusted authoritative
+  acquisition or trusted runtime boundary;
+- =ObservedBasisClaim= -- an adversarial participant's statement about the basis
+  from which it claims to have acted;
+- =ProgressionRequirement= -- a requirement that a future authoritative
+  acquisition must satisfy for some declared scope.
+
+These names describe meanings, not a mandate for three public wrapper classes.
+The implementation may reuse one token representation while preventing the
+supported APIs from treating the categories as interchangeable without the
+required derivation/admission step.
+
+A browser representation may be known to have been derived from a read
+consistent through some authoritative coordinate X17.
+
+X17 does *not* mean:
+
+- Request revision 17;
+- the seventeenth state of the application;
+- that Request changed seventeen times;
+- that the database has not advanced since the browser rendered;
+- that every actor knows the same facts.
+
+When established by trusted acquisition, it records a consistency coordinate
+for that observation's declared scope. Carried back by an untrusted browser, the
+same bytes are only an observed-basis claim unless stronger evidence is
+established. Neither form alone states that the actor acquired the whole
+authoritative world.
+
+A command may carry protocol data such as:
+
+#+begin_example
+:command-id
+:observed-basis     ; an ObservedBasisClaim at the untrusted boundary
+:operation
+:arguments
+#+end_example
+
+and may additionally carry model-specific fact/version/revision information
+where the model finds that useful.
+
+The dimensions remain separate:
+
+#+begin_example
+XTDB progression / consistency coordinate
+    authoritative database visibility/progression
+
+domain fact/version
+    semantic identity or version of a relevant model fact
+
+valid/effective time
+    when a domain fact applies
+
+actor knowledge frontier
+    which authoritative facts a concrete actor has learned
+#+end_example
+
+The browser must not perform arithmetic comparisons on opaque XTDB tokens unless
+XTDB explicitly provides a supported comparison operation.
+
+The consistency requirement is instead expressed using XTDB-supported read
+semantics: a refresh caused by an authoritative transaction must not accidentally
+return a representation that predates the authoritative change responsible for
+that refresh.
+
+An authoritative observation should record enough provenance to justify the
+knowledge it establishes.
+
+For example:
+
+#+begin_src clojure
+{:provenance :authoritative
+ :basis X24
+ :projection :request/card
+ :facts {...}}
+#+end_src
+
+The exact representation is tentative and need not be exposed literally to
+application views.
+
+A client command formed from X17 may reach authority after the database has
+advanced to X23.
+
+Advancement alone is neither conflict nor rejection.
+
+For example:
+
+#+begin_example
+X17
+    Request R is unclaimed
+
+client forms command C42
+
+X18
+    unrelated Membership changes
+
+X19
+    another Request changes
+
+X23
+    authority receives C42
+#+end_example
+
+If the authoritative facts relevant to C42 remain compatible with the operation,
+the command may still be valid.
+
+Conversely:
+
+#+begin_example
+X17
+    Request R is unclaimed
+
+client forms command C42
+
+X18
+    another helper claims R
+
+X23
+    authority receives C42
+#+end_example
+
+the semantic situation has changed in a way that may matter.
+
+The reason is not merely "X17 is stale." The reason is that authoritative facts
+on which =request/claim= depends have changed.
+
+The model re-evaluates the semantic command against current authoritative facts
+and decides whether it is:
+
+- still legal;
+- already incorporated;
+- rejected;
+- reconcilable;
+- transformable;
+- otherwise handled by application policy.
+
+Gesso supplies command identity, observed-basis provenance, consistency
+propagation, and protocol structure.
+
+HumanHelp supplies the semantic interpretation.
+
+*** Progression is visibility provenance, not domain identity
+
+An authoritative progression/basis coordinate answers a visibility question:
+
+#+begin_quote
+Through what authoritative database frontier was this observation known to be
+consistent?
+#+end_quote
+
+It does not answer:
+
+#+begin_quote
+What semantic version is this Request?
+#+end_quote
+
+Those dimensions may correlate in a particular implementation but they are not
+the same concept.
+
+Consequently, Gesso must not use progression values as ersatz:
+
+- Request revisions;
+- command versions;
+- semantic operation versions;
+- browser-generation numbers;
+- domain valid-time values.
+
+Each identity exists for its own reason.
+
+*** Scope-aware progression and authoritative acquisition
+:PROPERTIES:
+:CUSTOM_ID: req-progression-scope
+:END:
+
+A progression requirement is meaningful only together with the authoritative
+acquisition whose consistency it constrains.  The design must therefore preserve
+the scope or coverage to which a requirement applies rather than treating a
+database progression token as a universal application freshness number.
+
+Examples of acquisition scope include:
+
+- one Request projection;
+- a set of Requests selected by a declared board query;
+- an Organization projection;
+- a relationship needed by one model operation;
+- another explicitly declared authoritative read scope.
+
+A read that satisfies requirement P for scope S establishes only the facts and
+coverage justified by that read.  It does not, merely because the returned XTDB
+basis is newer, establish that unrelated application scopes have been reacquired
+or adopted.
+
+Conceptually:
+
+#+begin_example
+read Request S
+    scope:       [:request S]
+    satisfies:   >= P19
+
+therefore:
+    authoritative observation of S at a sufficient basis
+
+not therefore:
+    whole board adopted through P19
+    every Request refreshed through P19
+    every outstanding advisory resolved
+#+end_example
+
+Where an aggregate operation requires a common snapshot, causal relation, or
+other cross-object compatibility relation, that stronger requirement must be
+declared and established explicitly. Independently authoritative observations
+are not automatically mutually compatible for every aggregate computation.
+
+**** Acquisition scope includes query meaning and coverage
+
+The scope contract must distinguish entity content from aggregate membership.
+For a board query it must identify the selection, authorization context, and
+relevant temporal interpretation on which the coverage claim depends. A page,
+partial result, or narrow projection must not be labeled as a complete board
+observation merely because it carries a sufficiently new database token.
+
+Sorting or filtering a locally adopted set does not itself establish new
+membership. A server-side search or query change establishes only the coverage
+declared for that acquisition and may not silently bypass the application's
+adoption policy.
+
+An empty result proves absence only within the authorized, successfully
+evaluated scope for which the acquisition contract establishes completeness.
+Failure, partial results, or denial of access must not be converted into
+authoritative domain absence. What distinctions may be disclosed remains
+subject to authorization.
+
+The contract may derive scope from an admitted acquisition declaration rather
+than repeating all of its fields in every request. It must still make scope
+identity, coverage, and compatibility mechanically available where required.
+
+**** Requirement satisfaction and safe combination
+:PROPERTIES:
+:CUSTOM_ID: req-progression-combination
+:END:
+
+The supported progression implementation must define the following semantic
+relations. The names here are notation, not a required public API.
+
+- =satisfies(O, R)=: admitted authoritative observation O establishes the scope,
+  coverage, and consistency required by R.
+- =entails(R2, R1)=: every admitted observation satisfying R2 also satisfies R1.
+- =combine(R1, R2)=: an admitted requirement, requirement bundle, or explicitly
+  unsupported result for retaining both obligations.
+
+Normalization must preserve the meaning of a requirement. Where stable identity
+depends on normalized representation, normalization must also be deterministic
+under the declared semantic and adapter versions.
+
+A successful combination must be conservative:
+
+#+begin_example
+satisfies(O, combine(R1, R2))
+    implies satisfies(O, R1) and satisfies(O, R2)
+#+end_example
+
+This implication does not require a universal least upper bound. If one
+observation cannot satisfy both requirements, the representation may retain
+separate obligations discharged by their respective acquisitions. A claim of
+one common snapshot remains stronger and requires its own witness.
+
+Discarding R1 because R2 supersedes it is valid only when the supported contract
+establishes =entails(R2, R1)=. A newer-looking token for another scope is not such
+evidence. Unknown comparability is not equality, and inability to compute a
+join is not permission to drop an obligation.
+
+Where duplicate coalescing, reordering, or regrouping is used, the implementation
+must establish the corresponding idempotence, commutativity, or associativity
+of semantic obligation meaning. These laws need not imply byte-identical data
+structures. They must not be claimed for an operation whose supported semantics
+do not satisfy them.
+
+Strengthening a combined requirement may be safe for observation safety while
+making progress harder. The acquisition contract must therefore state whether
+the strengthened requirement remains satisfiable by its supported read path and
+under which availability or progress assumptions. Combination is not permitted
+to manufacture an impossible requirement and still claim the original liveness
+guarantee.
+
+**** Finite representations and boundedness claims
+
+A declaration of one queued acquisition does not prove that its retained scope
+or progression metadata is bounded. The implementation must identify the bound
+it actually supplies: request concurrency, retained obligation representation,
+admitted scope classes, or a property-specific abstract state space.
+
+For a supported finite scope domain, a canonical representative per scope may
+be sufficient if the scope's progression contract supports safe subsumption.
+For incomparable or dynamically growing scopes, the implementation must state
+whether it retains a larger bundle, partitions coordination, applies a sound
+authorized broader acquisition, or rejects an unsupported configuration.
+It must not silently discard requirements to maintain a claimed bound.
+
+Any broader acquisition requires its own permission and coverage contract.
+Acquiring data and adopting it into the visible application remain separate
+decisions where product policy distinguishes them. Coarsening requirements must
+not automatically admit unrelated board membership.
+
+An implementation claiming a finite mechanically explored model must state the
+abstraction from concrete requirements to that model and why it preserves the
+property checked. Part VI defines the browser coordinator using these contracts.
+
+
+*** Mixed authoritative observations do not imply one aggregate snapshot
+
+An actor may legitimately hold authoritative observations acquired at different
+times or bases.  For example, it may retain a board membership acquired from one
+authorized read while incorporating a correlated authoritative result for one
+Request from a later operation.
+
+Such a state is not inherently contradictory.  The actor may know each displayed
+fact through a justified path without claiming that all displayed facts came
+from one database snapshot.
+
+The representation must therefore avoid overclaiming:
+
+#+begin_example
+Request A justified through P17
+Request B justified through P19
+
+!=
+
+complete board snapshot at P19
+#+end_example
+
+This distinction is semantic and does not require a universal persisted fact
+graph, per-object integer revision, or one mutable data structure per category.
+It requires the implementation to retain enough provenance and scope information
+to make only the consistency claims it can justify.
+
+*** Progression must flow through authoritative propagation
+
+When an authoritative transaction commits and causes Live or another mechanism
+to tell an observer that relevant authority changed, the propagation path must
+preserve enough progression information to prevent the corresponding
+authoritative reread from going backward behind the change that triggered it.
+
+Conceptually:
+
+#+begin_example
+authoritative transaction commits
+        |
+        v
+commit establishes progression P
+        |
+        v
+primary change / invalidation carries requirement >= P
+        |
+        v
+observer refreshes
+        |
+        v
+authoritative read satisfies the progression requirement
+#+end_example
+
+The exact representation of "requirement >= P" must use supported XTDB/Gesso
+progression semantics rather than arithmetic over opaque tokens.
+
+This is a correctness requirement even though the invalidation itself remains
+advisory.
+
+*** Advisory obligations are scoped and discharged by coverage
+:PROPERTIES:
+:CUSTOM_ID: req-advisory-discharge
+:END:
+
+An advisory may carry or imply a progression requirement for a particular
+authoritative acquisition scope.  That creates an obligation to acquire enough
+authoritative information before the application may honestly claim that the
+corresponding advisory debt has been resolved.
+
+A completed read may discharge only obligations actually covered by that read's
+justified scope and progression relation.  Completion of an HTTP request named
+"Refresh" is not itself evidence that every currently outstanding advisory has
+been satisfied.
+
+For example:
+
+#+begin_example
+Refresh starts with obligation O1:
+    board query Q must be observed at >= P18
+
+while read is in flight:
+    advisory O2 arrives requiring Q at >= P20
+
+response proves Q at P18
+
+result:
+    O1 may be discharged
+    O2 remains outstanding unless the response independently satisfies it
+#+end_example
+
+The concrete implementation need not store obligations under those names. It
+must preserve the meaning: later relevant advisory information cannot disappear
+merely because an earlier acquisition finished.
+
+Discharge requires an admitted observation establishing coverage, not only a
+request-start marker, successful HTTP status, echoed minimum requirement, or
+arrival time. A requested lower bound is a demand; the acquisition contract
+must establish that the result satisfies it.
+
+The coordinator must retain the active acquisition's captured requirement and
+account for later obligations independently. A later obligation may be
+discharged by that response only if its actual justified coverage suffices;
+it need not force a redundant successor read when that stronger coverage has
+already been established.
+
+The obligation must also state whether it requires acquisition or incorporation
+into a particular adopted projection. Merely fetching content that remains
+uninstalled does not justify claiming that the visible board has adopted it.
+If an observation cannot be installed because newer admitted state conflicts,
+the implementation must retain or transfer the outstanding incorporation
+obligation until a checked successor or reconciliation satisfies it.
+
+Likewise, an older response must not overwrite a newer already-installed
+authoritative observation merely because the older request completed later in
+wall-clock time.  Rejection, a successor acquisition, or another checked
+reconciliation strategy may be used where required.  What is forbidden is
+silently manufacturing one compatible snapshot by merging observations whose
+compatibility has not been established.
+
+*** Advisory knowledge and authoritative knowledge remain separate
+
+A Live invalidation may establish:
+
+#+begin_quote
+There is relevant authority at or beyond progression P that you have not
+necessarily adopted.
+#+end_quote
+
+It does not establish the changed business fact itself.
+
+Only the subsequent authorized authoritative observation establishes the
+content.
+
+This distinction permits HumanHelp's intended behavior:
+
+#+begin_example
+other browser receives advisory
+    -> knows relevant newer authority exists
+    -> does not automatically install unrelated new board membership
+    -> user explicitly refreshes
+    -> authorized reread adopts the authoritative result for the covered scope
+    -> only advisory obligations covered by that result are discharged
+#+end_example
+
+Knowledge that relevant authority advanced is therefore distinct from adopting
+a new authoritative projection, and adoption of one scoped observation is
+distinct from claiming that every related aggregate has been reacquired at the
+same basis.
+
+*** Initial acquisition is part of a managed authoritative projection
+
+A managed fragment cannot rely only on future invalidations.
+
+It needs either:
+
+- authoritative initial knowledge already rendered into it; or
+- a declared permitted acquisition path capable of obtaining that knowledge.
+
+A fragment with:
+
+#+begin_example
+managed Live semantics
++ empty target
++ no initial projection
++ no acquisition route
+#+end_example
+
+is structurally incomplete even if its SSE subscription works perfectly.
+
+Whole-application preflight will later verify that such acquisition paths are
+actually assembled.  The semantic requirement is established here because it
+follows directly from the meaning of authoritative observation.
+
+*** Observed basis remains a claim unless stronger evidence is verified
+
+The foundational observation contract ([[#req-observation-evidence]]) applies at
+this XTDB boundary.  A browser-supplied =:observed-basis= is an
+=ObservedBasisClaim=: useful protocol context for consistency, reconciliation,
+diagnostics, and comparison with current authority.
+
+It is not upgraded to =AuthoritativeBasis= merely because:
+
+- the token parses successfully;
+- XTDB recognizes the token;
+- the token equals a basis the server could have issued;
+- the browser labels its provenance =:authoritative=;
+- a Malli schema accepts the enclosing map.
+
+Trusted server code may use the claim to construct a safe consistency request or
+to reason about the participant's asserted starting point without believing that
+the participant actually observed it. Token parsing, accepted authority/scope,
+and the supported consistency mode must be validated before use. A malformed,
+unsupported, or unsatisfiable client demand must follow declared rejection or
+recovery semantics rather than grant authority or weaken the required read.
+Operational waiting and resource limits must not turn an unmet requirement into
+a falsely successful authoritative observation.
+
+If prior observation itself becomes security-relevant, the application requires
+an explicit server-verifiable mechanism such as an authenticated observation
+receipt, trusted server-side state, or another declared mechanism.  Verification
+of such evidence may establish the historical issuance or other precise
+proposition defined by that evidence contract; it does not by itself establish
+delivery, installation, or human acknowledgement.  It still
+does not silently establish current operation authorization.
+
+Thus:
+
+#+begin_example
+ObservedBasisClaim
+    != AuthoritativeBasis
+    != AuthenticatedObservationReceipt
+    != OperationCapability
+    != CurrentAuthorization
+#+end_example
+
+The concrete implementation may represent several of these using maps or the
+same underlying XTDB token.  Their supported construction and consumption paths
+must nevertheless preserve the semantic distinctions.
+
+*** Advancement alone does not make a command invalid
+
+A command formed from X17 may be evaluated when the database is at X23.
+
+That fact alone says nothing about whether the command remains semantically
+valid.
+
+The authoritative operation must examine the facts relevant to the command.
+
+Thus:
+
+#+begin_example
+basis advanced because unrelated data changed
+    -> command may remain valid
+#+end_example
+
+while:
+
+#+begin_example
+basis advanced because relevant Request fact changed
+    -> model may confirm / reconcile / reject / transform
+#+end_example
+
+This keeps conflict semantics in the model instead of inventing a generic
+"stale basis means reject" rule.
+
+*** Consistency mechanisms remain XTDB-specific where useful
+
+Gesso is not required to invent a backend-neutral consistency algebra merely to
+avoid acknowledging XTDB.
+
+The system may use XTDB's supported consistency and snapshot mechanisms
+directly when doing so materially simplifies correctness.
+
+The semantic layer should still name concepts such as:
+
+- authoritative basis;
+- progression requirement;
+- authoritative observation;
+- visibility frontier;
+
+rather than baking accidental concrete token classes into every public API.
+
+This provides conceptual clarity without paying speculative portability cost.
+
+*** Dependency upgrades may not silently weaken consistency
+
+The concrete Biff/XTDB integration is a trusted/runtime boundary.
+
+Changes in framework or database versions must not silently alter the
+progression contract on which Gesso relies.
+
+The build and test architecture must therefore preserve regression coverage for:
+
+- snapshot-token propagation;
+- required-progress read semantics;
+- authoritative commit progression;
+- Live invalidation propagation;
+- reread consistency.
+
+This is not a requirement to freeze dependencies forever. It is a requirement
+that changing them cannot silently change the semantic contract.
+
+The concrete adapter must identify the supported dependency versions and the
+read, transaction, token, and failure contracts on which it relies. These
+requirements do not claim that a particular XTDB release provides an unspecified
+guard or comparison operation. The production realization must establish that
+its selected mechanism supplies the contract being claimed.
+
+Regression evidence must cover scope-sensitive failures as well as token flow:
+a narrow newer read cannot discharge a broader obligation; a partial query
+cannot prove complete membership; a read with an unmet minimum cannot be
+reported as satisfying it; and an unknown commit result cannot become confirmed
+non-incorporation through an adapter exception mapping.
+
+** Command identity and execution identity
+
+=:command-id= and choreography execution identity are different.
+
+=:command-id= identifies one semantic attempted operation.
+
+An execution ID identifies one protocol execution.
+
+The distinction is semantic even if both happen to use the same underlying
+representation, such as UUIDs, strings, or maps.  Supported APIs must not make
+=:command-id= and execution identity interchangeable merely because their host-
+language representations are structurally compatible.
+
+A nominal type, opaque wrapper, smart constructor, checked constructor, or
+another existing Gesso admission mechanism may make that distinction harder to
+misuse accidentally.  This design does not require one particular Clojure
+representation.  It requires the semantic categories and their construction/
+consumption paths to remain distinct.
+
+A retry of the same semantic command through another web node should retain the
+same command ID even if the protocol execution instance changes.
+
+For example:
+
+#+begin_example
+Client sends C42
+   |
+web node W1 fails
+   |
+retry of C42
+   |
+web node W3 handles request
+#+end_example
+
+Gesso propagates command identity.
+
+HumanHelp/model persistence decides whether durable idempotency is required and
+how already-incorporated commands are represented.
+
+Command identity is not projected-plan identity.
+
+A browser may retry one command after a deployment using a new execution and a
+new compatible projected plan while preserving the same semantic command
+identity where protocol semantics allow that retry.
+
+*** Semantic command identity survives physical retry
+
+A command ID represents one semantic attempted operation.
+
+It should therefore normally survive:
+
+- retry through another HTTP connection;
+- retry through another Aleph node;
+- reconnect;
+- transient transport failure;
+- a compatible projected-plan replacement.
+
+Physical attempts may acquire distinct request IDs or execution IDs while still
+referring to the same command.
+
+Conceptually:
+
+#+begin_example
+semantic command C42
+
+attempt 1:
+    execution E1
+    request R1
+    host W1
+
+attempt 2:
+    execution E2
+    request R2
+    host W3
+
+both attempts refer to C42
+#+end_example
+
+Whether both attempts may safely execute is a model/protocol question involving
+idempotency or already-incorporated handling.
+
+*** Execution identity scopes protocol-local resources
+
+Execution identity exists because one semantic command may have more than one
+physical/protocol attempt and because one browser may have several concurrent
+operations.
+
+Execution identity may scope:
+
+- current machine state;
+- request correlation;
+- settlement timers;
+- provisional target ownership;
+- continuity resources;
+- browser callback generation;
+- cleanup.
+
+It is not a durable domain identity.
+
+When one execution is retired, stale callbacks carrying that execution's
+identity/generation must not gain power over a newer execution merely because
+they refer to the same semantic command or logical target.
+
+The precise browser isolation rules are specified in Part VI and follow
+[[#req-owner-relative-event-admission][owner-relative event admission]].
+
+*** Command identity is not idempotency policy
+
+Gesso propagates semantic command identity.
+
+The model decides what that identity means for durable behavior.
+
+Possible policies include:
+
+- reject duplicate incorporation;
+- return the already-incorporated result;
+- reconcile with current authoritative state;
+- deliberately allow repeated commands where the domain operation is repeatable.
+
+Gesso must not infer universal exactly-once semantics merely because a
+=:command-id= exists.
+
+Where a command identity participates in retry or deduplication, the model or
+operation contract must define what semantic material that identity binds.  At
+minimum this commonly includes the operation and its semantic arguments, and
+may also include principal, authority subject, or another model-defined scope.
+
+Reusing an identifier with incompatible meaning must not silently count as a
+valid retry.  For example:
+
+#+begin_example
+C42 = claim Request R as principal P
+
+retry C42 = same semantic command under the declared retry contract
+
+C42 reused for cancel Request Q
+    -> reject as incompatible command identity reuse
+#+end_example
+
+The exact binding remains model/operation policy. The framework requirement is
+that retry semantics be explicit enough to prevent identifier equality from
+being mistaken for semantic equivalence.
+
+Where durable deduplication is claimed, concurrent attempts must not both pass
+an unprotected "not seen before" check and incorporate the same command twice.
+The command record, identity binding, and model transition need the atomic or
+otherwise justified coordination required by that claim. Recording a result
+only after an unprotected mutation leaves a failure window and cannot establish
+durable at-most-once incorporation by itself.
+
+The contract must state the deduplication scope, retention/expiry policy, and
+what retries mean after the evidence is no longer available. A cached result
+must not be disclosed to a different principal or subject merely because that
+caller supplied the same command identifier. Retry handling must preserve the
+required identity binding and current permission to obtain protected results.
+
+Allowing repeated incorporation is a different explicit model policy. The
+runtime must not assume that retransmission under that policy is harmless.
+Command identity alone supplies neither deduplication nor permission to retry.
+
+*** Command disposition and participant knowledge are distinct
+:PROPERTIES:
+:CUSTOM_ID: req-command-participant-uncertainty
+:END:
+
+Authoritative reality and a participant's evidence about that reality are
+different dimensions.
+
+A participant may report a semantic command as incorporated or rejected only
+when the evidence available to that participant justifies that conclusion.
+Transport failure, timeout, browser replacement, or loss of a settlement
+response does not by itself establish either incorporation or rejection.
+
+The design must distinguish at least three questions:
+
+1. What is the current authoritative domain state?
+2. What was the authoritative disposition of this semantic command?
+3. What evidence about either fact is available to this participant?
+
+Those questions may have different answers.
+
+For example:
+
+#+begin_example
+client sends C42
+    |
+network outcome becomes unknown to client
+    |
+client later reads Request R = :claimed
+#+end_example
+
+The reread may be sufficient to install a correct authoritative presentation.
+It does not necessarily prove that C42 produced the claimed state.  Another
+actor or command may have produced an observationally equivalent result.
+
+Therefore current-state convergence and command attribution are separate
+claims.  An application that requires command-specific attribution must obtain
+command-specific evidence under the model's declared command contract.  An
+application that does not require attribution may recover by authoritative
+reread without inventing a conclusion about C42.
+
+From a participant's perspective, the command semantics must be able to express
+at least the difference among:
+
+- confirmed incorporation;
+- confirmed rejection or another model-defined non-incorporation outcome;
+- outcome not yet established for that participant.
+
+No fixed public enum is required.  The semantic distinction is required.
+
+A runtime timeout must never be translated automatically into confirmed model
+rejection merely because the local execution needs to terminate.
+
+Non-incorporation evidence must identify its scope. Rejection of one physical
+attempt does not necessarily establish that the semantic command was never
+incorporated by another concurrent or earlier attempt. A command-level rejection
+claim requires the stronger evidence defined by the command contract.
+
+Likewise, failing to find a command record is not automatically proof of
+non-incorporation: the lookup may be stale, scoped differently, incomplete, or
+outside the record-retention period. The model contract must establish when a
+negative lookup justifies a negative command conclusion.
+
+**** Retry and local retirement after an unknown outcome
+
+When outcome remains unknown, the protocol may reacquire current state, query
+command-specific evidence, retry the same bound command if permitted, or expose
+another declared recovery path. The choice must respect the model's retry and
+attribution contract.
+
+Creating a fresh command identifier is a new semantic attempt; it is not a safe
+substitute for resolving an earlier unknown attempt when duplicate effects
+matter. Conversely, retaining an identifier does not make a non-idempotent
+operation safe to repeat without its declared duplicate-handling mechanism.
+
+Local execution retirement revokes local ownership. It neither cancels a commit
+already in progress nor establishes server-side cancellation. Authoritative
+cancellation, where supported, is a separate model operation or protocol with
+its own race and outcome semantics.
+
+An outcome learned after retirement may still be relevant to current
+command-resolution or acquisition state. It must enter through an admitted
+owner and the current correlation contract. It must not revive the retired
+execution or bypass stale-callback rejection to deliver useful information.
+Part VI defines the browser realization of that distinction.
+
+*** Command identity is distinct from operation identity
+
+The operation identifies *what kind* of semantic action is requested.
+
+The command identifies *this semantic attempt* of that action.
+
+For example:
+
+#+begin_example
+operation:
+    :request/claim
+
+commands:
+    C42
+    C77
+    C103
+#+end_example
+
+All may invoke the same operation while representing different semantic
+attempts.
+
+*** Command identity is distinct from projected-plan compatibility
+
+A browser may retain or retry a semantic command across a deployment only when
+the current server/runtime contract defines that continuation as compatible.
+
+The command may remain C42 even when:
+
+#+begin_example
+old execution E7
+old plan P7
+
+becomes
+
+new execution E8
+new compatible plan P8
+#+end_example
+
+If the new plan is incompatible, the command's existence does not authorize an
+undefined continuation.
+
+Stale-plan recovery belongs to Part VI.
+
+*** Correlation identities may be more numerous than semantic identities
+
+One command can produce several runtime correlation identities:
+
+- HTTP request ID;
+- execution ID;
+- browser resource generation;
+- settlement correlation;
+- fragment refresh correlation.
+
+These identities must not be collapsed merely to reduce metadata.
+
+Each exists to prevent a particular class of ambiguity or stale-event bug.
+
+The design favors explicit identity over attempting to rediscover ownership
+later from DOM position, current URL, or another mutable physical fact.
+

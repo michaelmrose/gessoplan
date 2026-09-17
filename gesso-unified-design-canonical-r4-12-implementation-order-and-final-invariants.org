@@ -1,0 +1,908 @@
+* Part XII — Implementation order and final invariants
+:PROPERTIES:
+:CUSTOM_ID: part-12-implementation-order-and-final-invariants
+:END:
+
+This final part preserves the eighteen-stage implementation order while making
+its dependencies, milestone relationships, and cross-stage acceptance explicit.
+It is an end-state roadmap, not a progress report or evidence that a stage has
+already been implemented. The detailed contracts in Parts I–XI govern each gate.
+
+** Unified ordered implementation stages
+
+The canonical implementation order is the following.
+
+The stages are semantic gates, not revision quotas. Their normative details
+remain in Parts I–XI; this roadmap summarizes dependencies and acceptance rather
+than defining weaker alternate contracts. A stage report identifies its supported
+scope, actual implementation evidence, remaining gaps, and applicable milestone.
+
+Each stage must preserve a runnable validation path for the work it claims to
+complete. Intermediate construction may be incomplete, but a passing isolated
+fixture must not be reported as a completed application stage. Concrete defects
+in an earlier layer are repaired at that layer and downstream evidence is
+rechecked where affected.
+
+Work inside one stage may expose a missing prerequisite in an earlier stage.
+
+Low-cost later hardening may be pulled forward when it closes a concrete hole
+without obscuring the current acceptance target.
+
+*** Stage 1 -- Final Biff 2 substrate and lifecycle foundation
+
+Goal:
+
+#+begin_quote
+Make the underlying Biff execution/lifecycle model match the semantic
+assumptions used by Gesso.
+#+end_quote
+
+Required work:
+
+- select and record the supported final Biff 2 dependency and use its official
+  execution/lifecycle contracts; schematic examples are not API verification;
+- preserve explicit XTDB version choice unless separately changed;
+- migrate generated/model FX machines to explicit invocation input and previous
+  output rather than preview-era merged context;
+- audit multistate Graph/FX usage;
+- express Gesso lifecycle integration as stable-ID native Biff modules;
+- establish a mandatory preflight/admitted-handler lifecycle dependency of
+  serving; Stage 6 completes the closure checks carried by that boundary;
+- migrate HumanHelp config/XTDB/Gesso Live/Aleph startup to native lifecycle
+  modules;
+- remove compatibility behavior that exists solely to preserve accidental
+  preview semantics.
+
+Gate:
+
+- Gesso and HumanHelp compile/run on official Biff 2;
+- no production machine relies on merged prior output in =ctx=;
+- lifecycle IDs are explicit and validated;
+- Aleph cannot serve before preflight;
+- core JVM/Node/Chromium and consistency suites for the declared substrate scope
+  are green, with existing unrelated failures reported separately;
+- failed startup cleans up acquired resources without leaving an unchecked
+  application listener serving.
+
+Stage 1 establishes the integration boundary, not a claim that Stage 6's full
+checker already exists. A placeholder success report cannot satisfy mandatory
+whole-application preflight or the operational completion milestone.
+
+*** Stage 2 -- Authoritative model and consistency foundation
+
+Goal:
+
+#+begin_quote
+Make authoritative model transition semantics, XTDB progression, and trusted
+execution capabilities explicit and stable.
+#+end_quote
+
+Required work:
+
+- preserve model ownership of business truth;
+- enforce preparation / atomic commit / after-commit distinction;
+- carry authoritative progression through mutation, publication, and reread;
+- distinguish command ID from execution ID;
+- preserve trusted authenticated-principal binding;
+- expose required/supplied server execution capabilities;
+- reject known missing capabilities before first invocation;
+- keep stale basis as model context rather than generic conflict.
+
+Gate:
+
+- atomic transitions cannot expose half-state;
+- known post-commit publication failure is not mutation failure;
+- outcome loss after submission is represented as uncertainty when appropriate;
+- crash between commit and publication has the declared recovery path and
+  explicit availability/user-action premises;
+- XTDB snapshot/progression tests remain green;
+- production model operations run through explicit Biff value flow;
+- missing =clock=/seed/transaction/principal/basis requirements are structurally
+  visible and resolve to compatible provider contracts, not merely matching names.
+
+*** Stage 3 -- Portable Choreo semantics, verifier, and projection
+
+Goal:
+
+#+begin_quote
+Stabilize the smallest useful global/local semantic core from which browser and
+server plans are derived.
+#+end_quote
+
+Required work:
+
+- explicit global and role-local transition semantics;
+- typed roles/principals/actors/hosts/authorities;
+- knowledge/provenance algebra;
+- behavior-sensitive branch checking;
+- closed messages;
+- explicit operation contracts;
+- explicit FX requires/outputs;
+- resource and terminal semantics;
+- authoritative observation as a knowledge path;
+- deterministic derivation;
+- trusted assertions remaining visible;
+- projection preservation/refinement checks for supported subset;
+- portable machine corpus across JVM, Node, Chromium.
+
+Gate:
+
+- supported choreography cannot consume facts the actor cannot justify;
+- projection does not invent knowledge;
+- all supported message/operation/state boundaries retain runtime schemas;
+- production runtime executes generated projection rather than a handwritten
+  parallel semantics.
+
+*** Stage 4 -- Browser semantic adapter, optimism, continuity, stale recovery
+
+Goal:
+
+#+begin_quote
+Make the browser runtime one explicit transition system whose race safety can be
+mechanically checked.
+#+end_quote
+
+Required work:
+
+- pure =AdapterState x NormalizedEvent -> State x AbstractEffects= core;
+- documented HTMX integration boundary;
+- narrow browser FFI;
+- execution/generation isolation;
+- semantic resource ownership;
+- fragment single-flight/queued-refresh invariant, with logical slot bounds
+  distinguished from metadata and retired physical-request bounds;
+- owner-relative admission for shared fragment/subscription events;
+- effect permission revalidation at deferred physical mutation boundaries;
+- authoritative-install monotonicity;
+- typed provisional state;
+- settlement/timeout/supersession semantics, keeping current-state supersession
+  distinct from command-specific outcome knowledge;
+- authoritative presence/absence;
+- continuity separated from domain semantics;
+- stale projected-plan compatibility and authoritative reconstruction;
+- adversarial event-order/property tests.
+
+Gate:
+
+- stale callbacks cannot mutate newer execution state;
+- retired generations are powerless despite physical cleanup debt;
+- optimistic state cannot silently become authoritative;
+- canonical install cannot be rolled back by stale provisional work;
+- same =ExecutablePlan= drives production and proof-enabled tests;
+- partial installation or continuity failure cannot invent successful adoption,
+  erase unresolved obligations, or expose incoherent enabled controls.
+
+*** Stage 5 -- Gesso Live publication, acquisition, and convergence
+
+Goal:
+
+#+begin_quote
+Close the path from authoritative commit to advisory invalidation to authorized
+authoritative reacquisition.
+#+end_quote
+
+Required work:
+
+- explicit publication after commit;
+- progression carried through invalidation;
+- managed fragment identity;
+- initial authoritative knowledge or explicit acquisition;
+- progression-safe refresh;
+- authoritative absence;
+- advisory versus adopted frontier distinction where applications need it;
+- reconnect semantics;
+- convergence without replaying every advisory invalidation.
+
+Gate:
+
+- no managed fragment is structurally blank with no acquisition path;
+- invalidation never masquerades as authoritative content;
+- admitted refresh results satisfy their scoped progression requirements;
+- insufficient or incomparable observations preserve unsatisfied obligations
+  rather than pretending a successful HTTP response establishes coverage;
+- advisory debt does not itself authorize acquisition or adoption;
+- successor acquisitions stay within the declared user-action/policy permission;
+- reconnect does not grant stale callbacks authority.
+
+*** Stage 6 -- Whole-application assembly and mandatory preflight
+
+Goal:
+
+#+begin_quote
+Reject applications whose individually valid pieces do not assemble.
+#+end_quote
+
+Required work:
+
+- canonical source-owned =ApplicationAssembly=;
+- operation/view/plan/artifact/transport/route/server/model/settlement/acquisition
+  closure graph;
+- exact =BrowserAssemblyManifest= / generated artifact correspondence;
+- required/supplied trusted server capabilities;
+- semantic-route collision detection;
+- no silent realization fallback;
+- static build/start preflight;
+- dynamic pre-serialization rendered-surface preflight;
+- structured error kinds;
+- operation/application explanation;
+- startup lifecycle integration.
+
+Gate:
+
+- a statically knowable missing required closure edge rejects construction;
+- a contradiction first knowable in a concrete render rejects before delivery
+  through the actual production render boundary;
+- invalid invocation is rejected before protected mutation; a later render
+  failure does not undo an earlier valid commit;
+- stale browser artifact prevents serving;
+- anonymous HTMX cannot occupy a semantic route;
+- ordinary genuinely non-Choreo HTMX remains legal;
+- startup cannot omit preflight accidentally;
+- routes, providers, prepared server realizations, rendering, and served artifact
+  stay bound to one admitted generation or a checked compatible transition;
+- paired valid fixtures remain usable while controlled defects fail at the
+  intended production boundary.
+
+Release evidence, actual artifact binding, and operational test gates from
+Part XI apply here. They are not deferred until the later formal-release stage.
+
+*** Stage 7 -- HumanHelp production integration and rich-board proving surface
+
+Goal:
+
+#+begin_quote
+Demonstrate the architecture against production HumanHelp model semantics in a
+real browser.
+#+end_quote
+
+Required work:
+
+- example app consumes =net.humanhelp.site.model.*=;
+- canonical HumanHelp application assembly;
+- all six required Request lifecycle operations use the generic bound-operation
+  path and have eligible positive browser scenarios, including legitimate
+  target-helper selection for Reassign;
+- Create Request works through production model;
+- creator sees own authoritative creation immediately;
+- other clients receive advisory without automatic adoption;
+- Refresh adopts only justified membership/observations, discharges only covered
+  advisory obligations, and preserves newer compatible local installation;
+- live search;
+- sort and visibility controls;
+- Request details/continuity;
+- a selected, independently testable response-flow contract;
+- terminal rendering;
+- login/principal separation;
+- multiple browser contexts;
+- real Playwright/Chromium acceptance.
+
+Gate:
+
+- actual Claim control emits real protocol command without test injection;
+- persisted state survives reload;
+- no missing optimistic contract silently downgrades;
+- remote browser does not show new Request until explicit Refresh under intended
+  product semantics;
+- malformed application fixtures fail at the first applicable construction,
+  rendering, or trusted-invocation boundary;
+- all required lifecycle and rich-board capabilities pass independently of which
+  actions the current implementation happens to expose;
+- local creation while unrelated remote work is pending preserves selective
+  adoption and advisory debt;
+- local hiding is not misclassified as authoritative absence;
+- response-flow and remote-lifecycle policy decisions from Part VIII are resolved
+  and tested, including concurrent Refresh and successor acquisition permission.
+
+Claim alone is the first vertical slice, not this stage's full completion gate.
+A permanently unavailable required operation or an unresolved response flow
+remains an explicit blocker even when the surviving assembly is closed.
+
+*** Stage 8 -- Generic adversarial closure and additional reference applications
+
+Goal:
+
+#+begin_quote
+Demonstrate that the semantic/application design is Gesso-generic rather than
+accidentally HumanHelp-specific.
+#+end_quote
+
+Required work:
+
+- small reference choreographies such as checkout, approval, and an ephemeral
+  message/presence case;
+- forged browser inputs;
+- unauthorized reads/subscriptions;
+- unrelated versus relevant authoritative advancement;
+- duplicate/lost settlement;
+- dropped invalidation;
+- already-incorporated command;
+- authoritative disappearance;
+- browser suspension;
+- stale plan;
+- continuity failure;
+- load/fault testing;
+- HTMX/SSE lifecycle conformance.
+
+Gate:
+
+- reference applications need no HumanHelp-specific framework hooks;
+- adversarial browser cannot gain authority;
+- trusted external shell assumptions are exercised in real Chromium;
+- unsupported semantic constructs fail explicitly rather than degrading;
+- injected failures assert expected diagnostics precisely while unexpected
+  console/page/request failures still fail acceptance;
+- recovery tests distinguish known rejection, lost command attribution, known
+  commit with failed delivery, and current-state supersession.
+
+*** Stage 9 -- Certified semantic interfaces and proof DAG
+
+Goal:
+
+#+begin_quote
+Replace proof-by-reputation with compositional checked semantic dependencies.
+#+end_quote
+
+Required work:
+
+- inventory current assurance claims;
+- canonical proposition/certificate vocabulary;
+- raw versus certified artifact boundary;
+- semantic IDs for normalized interfaces;
+- stale dependency rejection;
+- root proof DAG/report;
+- explicit certification profiles and artifact-class obligations;
+- cache/deserialization re-admission and scoped assumption identity.
+
+Gate:
+
+- same-shaped raw map cannot impersonate certified artifact;
+- semantically stale dependency cannot compose;
+- at least two independent existing checks can share certificate vocabulary
+  without losing their distinctions.
+
+*** Stage 10 -- Typed downstream business-rule language
+
+Goal:
+
+#+begin_quote
+Reject malformed downstream business-rule expressions before they enter model or
+choreography composition.
+#+end_quote
+
+Required work:
+
+- closed rule AST;
+- nominal type/field resolution;
+- enum/variant typing;
+- optional presence refinement;
+- relationship predicates;
+- deterministic derivations;
+- exhaustive closed match/case where required;
+- source-aware diagnostics;
+- explicit evaluation, absence/nil, ordering, and primitive failure semantics;
+- observation- and subject-bound path refinements;
+- declared totality or typed partiality for each admitted primitive.
+
+Gate:
+
+- malformed rule cannot become certified;
+- wrong-but-well-formed policy remains representable;
+- rule use at a distributed point still requires knowledge/provenance/authority.
+
+*** Stage 11 -- Certificate hierarchy across namespaces
+
+Goal:
+
+#+begin_quote
+Make schema/domain/relationship/rule/operation/Choreo/projection/plan/application
+guarantees compose transitively.
+#+end_quote
+
+Required work:
+
+- schema certificates;
+- domain certificates;
+- relationship/graph certificates;
+- rule-set certificates;
+- operation/FX contracts;
+- core/public API certificates;
+- Choreo certificates;
+- projection certificates;
+- executable-plan certificates;
+- application-assembly/report integration.
+
+Gate:
+
+- changing relied-upon upstream semantics invalidates downstream construction at
+  the earliest dependent stage;
+- closed registries cannot gain undeclared members;
+- unsupported dependency cycles fail;
+- assumptions propagate per guarantee and can be discharged only through accepted
+  evidence with compatible scope;
+- semantic contract reuse does not preserve stale implementation evidence.
+
+*** Stage 12 -- Minimal proof kernel and proof-producing elaboration
+
+Goal:
+
+#+begin_quote
+Shrink the logical TCB so a small checker, not the whole compiler, decides
+whether derivations are valid.
+#+end_quote
+
+Required work:
+
+- small proposition syntax;
+- first inference rules;
+- derivation checking;
+- richer elaborator/compiler producing proof terms;
+- malformed-derivation mutation tests;
+- explicit assertions as leaves rather than fake proofs;
+- complete required-obligation coverage tied to the normalized subject;
+- explicit normalization/projection/lowering correspondence or trusted premises;
+- rejection of omitted obligations, wrong-subject proofs, and false assumption
+  discharge, not merely malformed submitted derivations.
+
+Gate:
+
+- deliberately buggy elaborator output cannot convince kernel of invalid
+  conclusion;
+- kernel responsibilities remain small and inspectable;
+- diagnostic/proof sidecars remain runtime-nonsemantic;
+- incomplete checking, timeout, and unsupported features cannot yield successful
+  certification for a profile requiring that judgment.
+
+*** Stage 13 -- HumanHelp compositional proof pilot
+
+Goal:
+
+#+begin_quote
+Carry one real production HumanHelp operation through the semantic proof DAG and
+application realization report.
+#+end_quote
+
+Required work:
+
+- Request/Membership/Organization semantic dependencies where actually needed;
+- Claim rule/operation contract;
+- Choreo certificate;
+- projection;
+- =ExecutablePlan=;
+- application assembly/artifact realization;
+- explicit application assumptions;
+- adversarial upstream/downstream mutants.
+
+Gate:
+
+- upstream semantic change prevents stale Claim plan construction;
+- root report distinguishes proved, assembly-verified, runtime, asserted, and
+  trusted claims;
+- real runtime still uses the same executable artifact;
+- the certificate chain connects to the actual Claim control, trusted model
+  transition, and authoritative reacquisition exercised in Part VIII;
+- omission of an obligation or substitution of an implementation/artifact cannot
+  preserve an inapplicable success report.
+
+*** Stage 14 -- Systematic downstream mutation campaign
+
+Goal:
+
+#+begin_quote
+Demonstrate rejection quality across every supported proof/composition rule.
+#+end_quote
+
+Required work:
+
+- hand-authored diagnostic mutants;
+- generated one-step mutants;
+- schema/domain mutations;
+- rule/type mutations;
+- knowledge/provenance mutations;
+- authority mutations;
+- choreography/projection mutations;
+- certificate/staleness/forgery mutations;
+- application-closure mutations.
+
+Gate:
+
+- every supported rule's applicable rejection conditions have negative cases
+  with expected outcomes fixed before execution, alongside valid controls;
+- intrinsically valid changes that break an old dependency reject at composition,
+  while accepted-by-design policy variations retain their explicit classification;
+- incomplete test execution is not counted as either a successful rejection or
+  an intentional acceptance;
+- root failure is not obscured by later secondary "missing plan" damage;
+- structured diagnostics identify expected versus actual evidence.
+
+*** Stage 15 -- Explainability and repair surface
+
+Goal:
+
+#+begin_quote
+Make the proof/application state inspectable enough that humans and LLMs can
+repair local failures without reverse-engineering the entire runtime.
+#+end_quote
+
+Required work:
+
+- explain operation;
+- explain knowledge/provenance derivation;
+- explain application closure path;
+- explain stale dependency;
+- open-obligation report;
+- stable structured diagnostics;
+- source ownership;
+- valid candidate alternatives for closed registries.
+
+Gate:
+
+- malformed fixtures expose the failed obligation, actual/required evidence,
+  responsible source, and appropriate repair boundary;
+- suggested alternatives preserve declared semantics; diagnostics do not claim
+  a uniquely correct business-policy repair where the product must decide;
+- explanation is read-only and cannot affect semantic execution.
+
+*** Stage 16 -- Independent formalization of the stable small kernel
+
+Goal:
+
+#+begin_quote
+Machine-check soundness of production-used logical rules outside the Clojure
+implementation that proposes them.
+#+end_quote
+
+Required work:
+
+- formal proposition/type semantics;
+- knowledge/provenance algebra;
+- capability/authority entailment;
+- progression algebra;
+- certificate composition;
+- selected transition safety;
+- soundness theorem for the selected production-used rule class;
+- explicit assumptions, admitted axioms, supported subset, and formal-tool version;
+- stated proof scope, with finite exploration and unbounded claims distinguished.
+
+Gate:
+
+- at least one production-used certificate class relies on inference rules with
+  externally machine-checked soundness;
+- the report distinguishes soundness of those formal rules from correspondence
+  of the production checker, which Stage 17 must establish at its claimed level.
+
+*** Stage 17 -- Production/formal correspondence and release integration
+
+Goal:
+
+#+begin_quote
+Connect production certificate acceptance to the externally formalized rules and
+make stale proof/application artifacts impossible to ship accidentally.
+#+end_quote
+
+Required work:
+
+- choose an explicit correspondence method and record its actual evidence class;
+- do not treat generated conformance vectors as a universal correspondence proof
+  without a sound exhaustive-coverage argument;
+- bind formal subjects, complete obligations, dependencies, translations, and
+  actual admitted production artifacts;
+- deterministic certificate regeneration;
+- dependency-aware incremental rebuild;
+- build gates for unresolved obligations/stale semantic IDs;
+- deterministic executable plan generation;
+- exact browser artifact closure;
+- root release report;
+- ordinary JVM/Node/Chromium/adversarial tests retained.
+
+Gate:
+
+- release cannot ship a stale certified plan after semantic dependency change;
+- formal checker story applies to actual production acceptance rather than a
+  disconnected model;
+- proof sidecars remain excluded from production semantics;
+- required unavailable or incomplete checking blocks the requested admission
+  without silently weakening its assurance profile.
+
+This stage strengthens the operational release discipline already required by
+Stages 1–8. It does not introduce artifact freshness, real-browser gates, or
+production-path enforcement for the first time.
+
+*** Stage 18 -- Multi-node realization
+
+Goal:
+
+#+begin_quote
+Realize the already-defined host/authority/invalidation semantics across several
+actual application nodes.
+#+end_quote
+
+Required work:
+
+- multiple Aleph nodes;
+- concrete routing/load balancing;
+- distributed Live invalidation/interest implementation;
+- host replacement;
+- duplicate/lost publication behavior;
+- reconnect through another node;
+- process loss;
+- progression-safe authoritative reread;
+- multi-node adversarial/load/fault tests;
+- update root assumptions/contracts from actual implementation evidence.
+
+Gate:
+
+- physical node replacement never changes semantic authority or command identity;
+- node-local state may disappear without losing authoritative model truth;
+- users on different nodes converge through authority under the declared
+  acquisition/adoption policy, recovery actions, and environmental premises;
+- retry/duplicate handling follows the model's declared durable identity and
+  retention contract where claimed;
+- crash after commit before publication exercises the actual recovery path;
+- another-node current-state reads do not invent command attribution;
+- reconnect preserves authenticated principal binding and selective adoption;
+- direct participant messaging, if added, remains semantically distinct from
+  advisory invalidation;
+- multi-node assumptions are incorporated into the root assurance report.
+
+** Stage dependency summary
+
+The numbered stages express a default delivery order and a useful accumulation
+of evidence.  They are not a universal strict dependency chain.
+
+For roadmap reasoning the design distinguishes:
+
+- *semantic prerequisite* -- a later claim genuinely depends on an earlier
+  semantic contract;
+- *implementation priority* -- work should normally be delivered earlier even
+  when another activity could technically begin;
+- *exploratory feedback* -- bounded work may be done early to expose missing
+  semantics or assumptions;
+- *optional early hardening* -- low-cost later mechanisms may be pulled forward
+  when they close a concrete current hole;
+- *completion dependency* -- a named milestone cannot pass until the listed
+  acceptance condition is satisfied.
+
+The default project priority remains:
+
+#+begin_example
+Stages 1-2
+    substrate + authoritative model foundation
+        |
+Stages 3-5
+    Choreo + browser + Live executable semantics
+        |
+Stages 6-8
+    whole-application closure + HumanHelp + generic adversarial proof-by-use
+        |
+Stages 9-15
+    compositional certification + typed downstream language + mutation/explanation
+        |
+Stages 16-17
+    independent formalization + production correspondence/release
+
+After sufficient executable/authority foundations exist:
+    \--> bounded multi-node prototype may provide exploratory feedback
+
+Stage 18:
+    production multi-node realization under its own acceptance requirements
+#+end_example
+
+This diagram states delivery priority, not that every theorem in Stages 16-17 is
+a semantic prerequisite for learning from a small real multi-node prototype.
+Nor does early topology exploration waive any requirement of production
+multi-node completion.
+
+Low-cost certificate/identity hardening may be added earlier when it helps close
+Stages 1-8.  Full proof-system expansion should not delay making the actual
+application structurally closed and usable.
+
+If exploratory multi-node work exposes a missing distinction in identity,
+authority, progression, invalidation, or recovery, the semantic design is
+corrected at its owning layer and downstream proof assumptions are updated.  The
+prototype does not gain authority merely because it exists earlier in the
+schedule.
+
+*** Milestone relationship
+
+| Completion scope | Principal stage evidence | Additional requirement |
+|------------------+--------------------------+------------------------|
+| Operational application | Stages 1–8 | All [[#milestone-operational-application][Part XI operational gates]], including complete required HumanHelp behavior |
+| Compositional certification | Stages 9–15 over the executable foundation | [[#milestone-compositional-certification][Named certified scope]], real Claim pilot, full obligations and explicit assumptions |
+| External formal verification | Stages 16–17 over the selected stable certification scope | [[#milestone-external-formal-verification][Applicable production correspondence]], not only a theorem about a separate model |
+| Production multi-node | Stage 18 over sufficient operational foundations | [[#milestone-multi-node-production][Real topology and fault evidence]]; external formal completion is not a universal prerequisite |
+
+The table is navigational. Part XI owns the completion requirements. A stage's
+partial implementation or exploratory prototype is not a substitute for those
+gates. Scheduling can overlap while the evidence needed for a claim remains
+mandatory.
+
+*** Avoiding apparent dependency cycles
+
+Early stages may establish integration seams whose full checks are implemented
+later: the mandatory lifecycle preflight boundary precedes full application
+closure, and an initial semantic verifier precedes the smaller proof-producing
+kernel. Reports state exactly what exists at each checkpoint. Placeholder checks
+cannot be labeled as the final stronger guarantee.
+
+Likewise, explainability, release integrity, and controlled-defect tests begin
+when their first relevant production boundary exists. Their later dedicated
+stages expand coverage; they do not permit earlier work to ship silently broken
+or unreviewable. A new failure class may send work back to its owning semantic
+layer without creating a second application-specific workaround.
+
+** Cross-stage acceptance gates
+
+Several gates apply repeatedly across the roadmap.
+
+*** Gate A -- no silent downgrade
+
+If source declares stronger semantics, missing realization data rejects or
+renders explicitly unavailable.
+
+It never silently weakens into ordinary transport semantics. Explicit
+unavailability can be structurally valid while still failing a milestone that
+requires the capability to be usable.
+
+*** Gate B -- same semantic object in proof, test, and production
+
+The object whose properties are reasoned about is the object production executes
+or consumes.
+
+No richer test-only semantic machine substitutes for production. Where a formal
+object is a different representation, the declared checked correspondence or
+explicit trust premise must connect it to the actual production object.
+
+*** Gate C -- source ownership remains single
+
+Semantic facts have one owner.
+
+Other layers derive or validate.
+
+They do not maintain plausibly synchronized copies.
+
+*** Gate D -- security remains trusted-side
+
+No browser-supplied role, principal, certificate, plan, basis, provenance, or
+DOM state can increase server authority.
+
+*** Gate E -- exact artifact correspondence
+
+Diagnostic/proof/artifact correspondence is exact where exactness is claimed.
+
+No timestamp/name/best-effort guessing.
+
+*** Gate F -- dynamic facts remain dynamic
+
+Preflight does not pretend to prove current authorization, network availability,
+or future environment events.
+
+*** Gate G -- real browser remains a release gate
+
+Formal semantic work does not eliminate real Chromium/HTMX integration testing.
+
+*** Gate H -- malformed downstream programs stop early
+
+Once enough information exists to know a structural contradiction, later
+runtime layers are not allowed to "try anyway."
+
+*** Gate I -- representation is not admission
+
+A same-shaped map, nominal-looking value, discriminator key, deserialized record,
+or browser-supplied label cannot acquire stronger semantic status merely by
+representation.
+
+Where stronger status matters, the supported path must establish it through the
+appropriate checker, trusted acquisition, authorization, certificate-validation,
+or other declared admission boundary.  Nominal or opaque types may make that
+boundary harder to misuse accidentally, but their names are not proofs and they
+do not create runtime authority.
+
+*** Gate J -- independent capability completeness
+
+A closed graph cannot redefine the product by omission. Required capabilities
+and their positive outcome tests remain independent of the exposed-operation
+registry. Unresolved required product choices block the affected full milestone.
+
+*** Gate K -- participant knowledge and authoritative outcome remain distinct
+
+A timeout or retired execution does not prove a submitted command failed.
+Current-state acquisition can supersede provisional presentation without proving
+which command produced that state. Recovery and diagnostics preserve the
+remaining uncertainty.
+
+*** Gate L -- scope and permission survive recovery
+
+Advisory requirements, observations, and adoption are scoped. A newer local
+result cannot admit unrelated remote Requests or erase their outstanding debt.
+Queued successors, reconnect, and stale-plan recovery require their declared
+acquisition/adoption permission.
+
+*** Gate M -- evidence scope survives composition and release
+
+Every claim retains its subject, assumptions, evidence class, and applicable
+implementation/generation. Omitted obligations, copied identities, incomplete
+checks, or tests on a different artifact cannot establish the requested gate.
+Finite models and conformance vectors retain the limits of their actual evidence.
+
+** Final unified design principle
+
+The unified design is governed by the following final principle:
+
+#+begin_quote
+A Gesso choreography is a typed description of how roles acting for principals
+interact with authoritative and evolving facts.
+
+Projection produces local machines whose behavior is justified by available
+knowledge. Knowledge may arise through declared inputs, communication,
+authoritative observation, deterministic derivation, or explicit trusted
+assertion; communication is one knowledge-producing mechanism rather than the
+definition of distributed knowledge.
+
+HumanHelp models own semantic truth and atomic authoritative transitions.
+
+Durable cross-user facts normally rendezvous through model authority. Gesso Live
+transports advisory signals that relevant authority changed, and authoritative
+rereads advance scoped actor knowledge when acquisition/adoption is permitted,
+without requiring every observer to receive a dedicated participant message.
+An invalidation does not itself authorize automatic visible adoption.
+
+Concrete Aleph nodes are interchangeable hosts for logical authority
+projections. Node-local runtime state may disappear without changing
+authoritative model truth. Command retry and publication recovery require their
+explicit contracts; physical host interchangeability does not supply exactly-
+once effects or knowledge of a lost command outcome.
+
+Optimistic state is typed provisional knowledge derived from a known
+authoritative basis and semantic command.
+
+Views attach typed operations to affordances and determine presentation.
+
+The browser runtime realizes Gesso semantics through a small pure transition
+core whose safety/refinement properties are machine checked. HTMX remains the
+ordinary declarative owner of its request/response/OOB/swap/settle lifecycle and
+is gated or observed only through documented lifecycle boundaries where Gesso
+semantics require it; a custom HTMX extension is not an architectural
+requirement. Gesso-owned timers, provisional DOM work, continuity resources, and
+other direct browser effects form a deliberately narrow FFI/effect shell. Both
+boundaries are explicit proof assumptions exercised by real Chromium integration
+tests.
+
+The browser is adversarial. Client-provided roles, principals, authority labels,
+projected states, capabilities, basis claims, scopes, or provenance cannot grant
+server authority. Trusted server projections bind authenticated principals,
+re-authorize reads and writes, and establish durable application facts through
+public model operations, normally realized with XTDB.
+
+Gesso may assume XTDB wherever doing so materially simplifies correctness; it
+does not pay speculative complexity for database portability while still
+keeping semantic concepts such as authority distinct from accidental XTDB
+representation details.
+
+Incompatible stale projections retire and follow declared recovery or permitted
+authoritative reconstruction rather than undefined continuation, while continuity
+remains a separate local rendering concern. Recovery does not silently waive the
+application's selective adoption policy. Semantic retirement/generation invalidation makes stale work
+powerless immediately; physical browser cleanup is best effort and is not a
+precondition for new logical ownership.
+
+The proved language grows only when a concrete Gesso failure class or required
+application behavior justifies the additional proof complexity. Usable HumanHelp
+capabilities, production enforcement, and assembly closure remain independent
+acceptance claims; a more sophisticated proof system cannot compensate for an
+omitted required action or an unchecked production path.
+
+Representations, nominal categories, admitted semantic values, certificates,
+and proofs remain distinct.  Gesso may use nominal or opaque values where they
+prevent consequential same-shaped substitutions, but ordinary downstream web
+code should remain declaration-first and should not manually reproduce internal
+proof plumbing.  Stronger semantic status comes from the required construction,
+checking, trusted acquisition, or authorization boundary rather than from a map
+shape or type name.
+
+The word *proved* is reserved for properties derived by the formal semantics and
+its machine-checked proof/refinement machinery under named assumptions. Tests
+remain essential for the trusted shell, external libraries, real browsers,
+operational scale, and application contracts, but they are not used as a
+synonym for proof.
+#+end_quote
+

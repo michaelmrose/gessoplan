@@ -1,0 +1,709 @@
+* Part XI — Release and completion
+:PROPERTIES:
+:CUSTOM_ID: part-11-release-and-completion
+:END:
+
+This part defines evidence reuse, candidate admission, release reports, global
+non-goals, and four distinct completion scopes. It makes a release claim
+reviewable against the actual artifacts and required capabilities without
+requiring every later proof milestone before an operational application exists.
+
+** Incremental certification, build, and release
+:PROPERTIES:
+:CUSTOM_ID: req-release-evidence
+:END:
+
+A proof system that rebuilds the world after every edit will be resisted.
+
+Design for incremental recomputation:
+
+- normalized semantic identities, certified dependency identities, checker/rule
+  profiles, and relevant assumptions determine certificate cache eligibility;
+- direct dependency identities identify what must be reconsidered;
+- unchanged semantic interfaces retain dependent validity where safe;
+- diagnostic/source metadata can change independently of semantic identity;
+- cache entries are re-admitted under the current checker/version and
+  certification-profile contract;
+- cache corruption cannot create a certificate the kernel would otherwise
+  reject.
+
+Correctness dominates cache hit rate.
+
+The build system is where semantic identity, proof dependency identity,
+whole-application closure, and exact browser artifact correspondence become one
+release discipline.
+
+*** Deterministic semantic regeneration
+
+For unchanged normalized semantic inputs, regeneration should produce stable:
+
+- semantic identities;
+- certificate dependency identities;
+- projected plan identity where representation is deterministic;
+- normalized application assembly identity;
+- browser assembly manifest identity.
+
+Determinism is relative to the complete declared inputs, including relevant
+normalization, compiler, dependency, and format versions. It does not claim that
+semantic equality alone makes all compiler output byte-identical. Exact artifact
+bytes have their own checked identity and build binding. Build timestamps or
+other diagnostic metadata may vary only where their exclusion from the relevant
+identity is explicit.
+
+Diagnostic-only source metadata may change without forcing semantic
+re-certification when the normalized interface is unchanged.
+
+*** Release gate
+
+A production release must pass the gates for its declared supported scope and
+claimed milestone. It must not be admitted with any of the following defects
+within that required scope:
+
+- unresolved obligations required by its selected certification profile;
+- stale semantic dependency identities;
+- invalid proof/kernel derivations;
+- stale browser artifact relative to the current assembly manifest;
+- application assembly closure errors;
+- a missing mandatory preflight lifecycle module;
+- generated runtime that is stale relative to authored ClojureScript;
+- proof/diagnostic data included as a runtime semantic decision input;
+- missing required operational capabilities or failed independent acceptance;
+- a production entrypoint that bypasses the required construction/render gates.
+
+The operational milestone does not require completion of the later compositional
+or external-formal milestones. Conversely, a build requesting a stronger profile
+cannot silently fall back to operational assurance when certification fails.
+Admitted trusted premises remain visible; they are not unresolved proof tasks
+unless the selected profile requires their discharge.
+
+Release scope and required capabilities are declared before gate evaluation.
+Removing a failing operation or shrinking the proof subset during that evaluation
+cannot preserve the original completion claim. A deliberately narrower release
+must be identified as such, with its missing capabilities and excluded claims.
+This does not redefine the canonical HumanHelp milestone into a smaller target.
+
+Ordinary runtime test gates remain required. A failed, skipped, unavailable,
+timed-out, or incomplete required check is not a pass. Reports distinguish a
+counterexample or invalid artifact from infrastructure failure and unsupported
+checking. An expected rejection counts as success only for a negative test
+whose expected boundary and diagnostic were specified in advance.
+
+The release gate produces a concrete candidate and evidence; it is not itself
+a deployment action. Activation follows the generation/lifecycle contracts in
+Part VII and must use the artifact that the gate admitted.
+
+*** Incremental invalidation is dependency-driven
+
+When semantic identity A changes:
+
+#+begin_example
+A changed
+    |
+direct dependents of A reconsidered
+    |
+only affected downstream proof DAG rebuilt
+#+end_example
+
+The system should not rebuild unrelated artifacts merely because they live in the
+same source file or Git commit.
+
+At the same time, cache correctness outranks speed.
+
+A cache hit never bypasses kernel/checker validation required by the current
+checker version. Reuse may avoid repeated work through an admitted immutable
+in-process result or another explicitly checked cache contract. Merely finding
+a stored successful report is insufficient.
+
+Implementation changes require separate consideration. An unchanged semantic
+interface can preserve downstream contract-level derivations while invalidating
+conformance or test evidence for a changed handler, provider, compiler, or
+runtime artifact. Reuse follows each claim's actual dependencies under
+[[#req-certificate-composition]], rather than a blanket semantic-ID shortcut.
+
+*** Cached certificate corruption fails closed
+
+A corrupted cache entry must not become accepted simply because its filename or
+cache key matches.
+
+The cache stores candidate evidence.
+
+The current trusted checker still performs the admission checks required for
+that certificate class: normalized subject, structure, dependencies, assumptions,
+checker/rule compatibility, and derivation validity where required. A copied
+semantic ID or stale success flag cannot override those checks.
+
+Corruption may reject the candidate or trigger fresh reconstruction from valid
+inputs; it must never relax acceptance. Cached values crossing serialization
+boundaries regain admission only through the validation specified in Part IX.
+
+*** Root release report
+
+A production build should be able to emit one machine-readable and human-readable
+root report describing at least:
+
+- application/assembly semantic identity;
+- certified artifact classes;
+- proof-kernel/checker version;
+- unresolved obligations, expected zero for certified production scope;
+- explicit assumptions/assertions;
+- whole-application closure status;
+- current browser-artifact identity and correspondence;
+- runtime/test/conformance gate results;
+- TCB classification;
+- declared milestone, supported subset, and certification profile;
+- concrete source/build provenance, admitted generation, and dependency versions;
+- identities of the actual tested and served artifacts;
+- required user-capability acceptance and production-enforcement evidence;
+- exclusions, unresolved product choices, and environmental/liveness premises;
+- result and evidence reference for each required gate, including incomplete
+  or skipped outcomes.
+
+Each evidence reference identifies the subject and configuration it covers.
+Passing tests for a different fixture assembly, old artifact, or shadow model
+cannot establish current release behavior. Reuse is permitted only where its
+applicability is justified by unchanged dependencies or a checked compatibility
+relation. A prior timestamp or a matching operation name is not that relation.
+
+The report is release evidence describing what was built and which assurance
+claims support it.  It is not runtime authorization and does not become a
+semantic input merely because the build that produced it was admitted.
+
+*** Candidate integrity and activation
+
+The admitted candidate binds declarations, prepared server realizations,
+providers, routes, normalized semantic/certificate identities, executable plans,
+manifest, and actual generated bytes according to the acyclic construction
+phases in [[#req-assembly-construction-phases]]. Build and test evidence must not
+be paired with a different artifact at deployment time.
+
+Unchanged normalized inputs produce deterministic identities where claimed,
+including certificate content/identity when its encoding is deterministic.
+Diagnostic source metadata remains separate. Where exact reproducible build
+bytes are claimed, the toolchain and all byte-affecting inputs must also be
+controlled; otherwise the report claims semantic reproducibility and records
+the actual artifact bytes separately.
+
+A dependency or mutable binding changed after admission requires the appropriate
+revalidation before activation. A failed candidate may leave a still-valid old
+generation running under the lifecycle contract; it may not partially replace
+that generation. Old browser plans use the explicitly supported compatibility
+or retirement/recovery path.
+
+Reactivating an older executable generation does not roll back committed domain
+state. Any release involving model/schema evolution must identify its supported
+state compatibility and recovery constraints before claiming that rollback is
+safe. This requirement does not introduce a universal database migration or
+workflow engine.
+
+** Global non-goals
+
+The following constraints keep Gesso's semantic and proof boundary deliberately
+smaller than the set of all possible distributed-system machinery.
+
+Applications may opt into stronger mechanisms when their domain benefits.
+
+Gesso does not require those mechanisms universally.
+
+*** No universal persisted fact DAG
+
+Gesso does not require a second persisted fact graph containing every:
+
+- authoritative fact;
+- provisional fact;
+- supersession relation;
+- command;
+- resolution;
+- dependency edge.
+
+Fact-graph concepts are useful for reasoning.
+
+Application models and their database remain the persistence authority for domain
+facts and any domain history they choose to retain.
+
+*** No universal Git-like history
+
+Gesso does not require every model to persist:
+
+- branches;
+- merge commits;
+- common ancestors;
+- three-way history;
+- universal conflict records.
+
+The Git analogy is useful for reasoning about:
+
+#+begin_example
+authoritative basis
+provisional local state
+semantic commands
+re-evaluation
+reconciliation
+#+end_example
+
+Gesso may provide reusable reconciliation machinery.
+
+The model provides the meaning of reconciliation.
+
+Applications remain free to adopt stronger domain histories such as:
+
+- event sourcing;
+- CRDTs;
+- ancestry;
+- manual reconciliation workflows;
+- base/ours/theirs resolution.
+
+*** No universal global integer revision
+
+Gesso does not invent one global monotonically increasing integer that stands
+for all authoritative application state.
+
+That would incorrectly collapse:
+
+- XTDB progression;
+- model/entity revision;
+- valid/effective time;
+- command causality;
+- actor knowledge frontier.
+
+Models may define their own integer revisions when domain semantics benefit.
+
+*** No universal cross-node participant-message fabric
+
+Durable cross-user facts normally rendezvous through authoritative model state.
+
+A global runtime directory mapping every actor to a current Aleph node is not a
+baseline requirement.
+
+Direct cross-node participant routing is added only for protocols whose message
+receipt is itself semantically required.
+
+*** No universal durable suspended workflow engine
+
+Ordinary Choreo does not persist every suspended server-side execution for hours
+or days.
+
+Human-scale waiting normally lives in authoritative model state and later short
+executions.
+
+A durable workflow engine would be an explicit separate capability.
+
+*** No transparent arbitrary stale-plan migration
+
+The framework does not promise to translate arbitrary suspended browser machine
+state from one incompatible deployment into another.
+
+The safe default is:
+
+#+begin_example
+detect incompatibility
+    |
+semantic retirement
+    |
+best-effort cleanup
+    |
+permitted authoritative reacquisition / explicit recovery action
+    |
+current-plan restart
+#+end_example
+
+Specific compatibility/migration can be added where explicitly justified.
+Retirement cannot be used to silently bypass HumanHelp's acquisition/adoption
+policy. Recovery identifies which local choices and adopted membership survive
+and what requires a new authorized acquisition.
+
+*** No proof of the entire browser/OS/hardware stack
+
+Gesso does not claim to formally verify:
+
+- Chromium/Firefox;
+- JavaScript engine;
+- JVM;
+- OS;
+- CPU;
+- network hardware;
+- HTMX internals;
+- every third-party dependency.
+
+Formal browser-adapter claims are relative to explicit primitive/FFI contracts.
+
+Real integration/fault testing remains mandatory evidence for those boundaries.
+
+*** No inference of correct product policy from syntax
+
+Gesso may establish that a business-rule expression is:
+
+- well typed;
+- compositionally compatible;
+- used only where the actor has justified knowledge/authority;
+- faithfully preserved through projection/execution.
+
+It cannot infer that the product organization chose the desired policy.
+
+A coherent but wrong business rule remains possible.
+
+*** No arbitrary Clojure theorem proving
+
+The formal subset is deliberately closed and smaller than Clojure.
+
+The framework does not initially attempt to prove arbitrary host-language
+functions.
+
+Unsupported constructs fail explicitly or remain outside the stronger proof
+boundary under a declared weaker scope. A required stronger judgment cannot be
+satisfied by silently treating unsupported behavior as an assertion.
+
+*** No elimination of runtime validation
+
+Static/certificate proof does not remove runtime validation for:
+
+- untrusted inputs;
+- schema boundaries;
+- authenticated principal binding;
+- current authorization;
+- plan/runtime compatibility;
+- concrete progression values;
+- external system failure.
+
+Those checks are premises of the complete correctness story.
+
+*** No elimination of adversarial/integration testing
+
+Formal proof does not replace:
+
+- real Chromium;
+- HTMX/SSE integration;
+- XTDB integration;
+- fault injection;
+- load/resource testing;
+- multi-node testing.
+
+Those test the trusted implementation shell and external assumptions.
+
+*** No requirement for Typed Clojure or unrestricted dependent types
+
+The typed semantic rule/choreography languages are purpose-built closed
+languages.
+
+The architecture does not depend on adopting a universal host-language type
+system or unrestricted dependent types.
+
+*** No requirement that application developers write proof-assistant code
+
+Application authors declare domain semantics, rules, operations, choreography,
+and explicit assumptions.
+
+They do not manually construct Lean proof scripts or internal kernel proof terms
+for ordinary development.
+
+*** No conflation of semantic identity with source identity
+
+File path, namespace name, Git commit, line number, and artifact timestamp are
+not semantic identity.
+
+They may be useful provenance/diagnostic data.
+
+They are not substitutes for normalized semantic identity.
+
+*** No proof-sidecar runtime semantics
+
+Proof/diagnostic sidecars remain optional read-only explanation artifacts.
+
+They never participate in production transition decisions.
+
+*** No arbitrary unconditional distributed liveness claim
+
+Liveness/convergence claims name their environment assumptions.
+
+The framework does not prove that an unavailable network, dead client, or failed
+external system will eventually recover without such an assumption.
+
+*** No requirement that every actor know every fact
+
+Knowledge and agreement remain scoped by:
+
+- relevance;
+- role;
+- authorization;
+- privacy;
+- actual behavioral need.
+
+A correct system may intentionally expose different authoritative projections to
+different actors.
+
+*** No automatic conflict policy
+
+Gesso may provide typed reconciliation protocol structure.
+
+The model owns domain-specific conflict meaning and resolution.
+
+*** No speculative database portability
+
+Gesso may use XTDB-specific mechanisms where doing so materially strengthens
+correctness or simplicity.
+
+Semantic concepts remain separate from accidental XTDB representation details,
+but database neutrality is not purchased at the expense of the current design.
+
+** Progress metrics and completion boundaries
+:PROPERTIES:
+:CUSTOM_ID: req-completion-boundaries
+:END:
+
+Project progress should track semantic coverage and rejection quality rather than
+raw test count or revision count.
+
+*** Useful progress metrics
+
+Track, where meaningful:
+
+- number of certified semantic artifact classes;
+- number of framework properties with explicit proof/check rules;
+- number of application assumptions surfaced;
+- number of trusted implementation boundaries;
+- TCB size;
+- proportion of downstream mutation classes rejected before runtime;
+- number of semantic dependency mismatches caught at the first possible stage;
+- number of production plans traceable to a root assurance DAG;
+- number of externally formalized kernel properties;
+- number of production checker rules with an explicit formal-correspondence
+  story;
+- diagnostic completeness for rejected mutants;
+- number of exposed application operations with complete whole-application
+  closure;
+- number of real-browser/multi-client acceptance scenarios exercising actual
+  production artifacts.
+
+Raw test count is not a primary progress metric.
+
+Each coverage metric needs a stable denominator: the required capability set,
+mutation classes, artifact classes, or theorem scope it measures. Reports retain
+missing and blocked items instead of improving percentages by dropping them.
+Count required usable operations separately from exposed closed operations.
+
+Assertion counts and TCB size are audit aids, not scalar confidence scores.
+One central unproved premise may dominate many derived facts. Report the claims
+that depend on it. Rejection quality includes an appropriate first boundary,
+repairable diagnostics, and paired valid cases; rejecting every program is not
+progress.
+
+*** Operational application completion
+:PROPERTIES:
+:CUSTOM_ID: milestone-operational-application
+:END:
+
+The first bounded completion milestone is the usable, structurally closed Gesso
+and HumanHelp proving application.
+
+This milestone requires, at minimum:
+
+- the supported final Biff lifecycle substrate;
+- authoritative production-model ownership with explicit FX value flow;
+- correct XTDB progression/consistency integration;
+- executable Choreo, projection, browser, optimism, continuity, and Live
+  semantics for the supported operational subset;
+- production execution of the same canonical =ExecutablePlan= whose semantics
+  are checked and tested;
+- mandatory whole-application assembly and rendering checks on the supported
+  production path;
+- exact current browser-artifact correspondence;
+- no silent semantic downgrade;
+- required HumanHelp creation, details, response, lifecycle, search, sorting,
+  visibility, advisory, explicit Refresh, continuity, and authorization
+  behavior;
+- real Chromium acceptance using actual controls, routes, generated artifacts,
+  and multiple authenticated contexts where the behavior is multi-client;
+- representative generic adversarial and controlled-defect tests demonstrating
+  that the production path invokes the promised checks.
+
+All required HumanHelp capabilities are interpreted by Part VIII, independently
+of the implementation's exposed-action list. Claim, Unclaim, Mark on the way,
+Complete, Cancel, and Reassign require eligible positive browser scenarios;
+state-dependent unavailability is additional evidence, not a substitute.
+
+The response-flow contract at [[#decision-humanhelp-response-flow]] and remote
+lifecycle policy at [[#decision-humanhelp-remote-lifecycle-adoption]] must be
+selected and tested before full completion. Refresh action scope, concurrent
+advisory handling, and successor-read permission must be explicit under
+[[#req-humanhelp-refresh-coverage]]. These decisions belong to HumanHelp; Gesso
+does not choose them to make a gate pass.
+
+Evidence separately establishes declared closure, actual production enforcement,
+and required user behavior under [[#req-application-assurance-claims]]. A server
+starting, no console errors, or HTTP 200 responses establishes none of these
+alone. Mutation success requires production-model truth and fresh authoritative
+acquisition; a provisional DOM change is insufficient.
+
+This milestone establishes a usable application under its explicitly stated
+assurance and environmental assumptions. Until all required gates pass, a partial
+checkpoint must name the capabilities or decisions still missing.
+
+It does not claim completion of compositional certification, external formal
+verification, or production multi-node realization.
+
+*** Compositional certification completion
+:PROPERTIES:
+:CUSTOM_ID: milestone-compositional-certification
+:END:
+
+The compositional-certification milestone requires the intended semantic
+interfaces and dependency chain to be operational for the artifact classes in
+scope.
+
+It includes:
+
+- certified semantic interfaces for the selected model/schema/domain/rule/
+  operation layers;
+- a closed typed business-rule subset that rejects malformed expressions while
+  permitting coherent but product-wrong policy;
+- distributed admissibility checks for knowledge, provenance, authority,
+  refinement, and progression;
+- certificate composition and stale-dependency rejection;
+- a deliberately small trusted checker/kernel boundary where claimed;
+- proof-producing elaboration or equivalent checked derivation construction for
+  the supported classes;
+- systematic downstream mutation sensitivity;
+- inspectable proof dependencies and repair-oriented diagnostics;
+- at least one substantial HumanHelp operation certified through the semantic
+  and whole-application chain;
+- complete required-obligation coverage and subject/derivation binding;
+- explicit transitive assumption propagation and checked discharge;
+- certificate re-admission after cache/serialization boundaries;
+- evidence binding semantic claims to the implementation or generation actually
+  covered, without conflating their different identities.
+
+The Claim pilot follows [[#req-humanhelp-certification-pilot]] and connects to
+the real operational scenario. Positive valid cases accompany the mutation
+corpus. An isolated proof fixture, a root graph containing mostly unsupported
+claims, or a checker accepting only trivial rules does not satisfy the intended
+production operation scope.
+
+The milestone must name exactly which artifact classes and application scopes
+are certified.  It must not imply certification of arbitrary Clojure code or
+business intent beyond the stated contracts.
+
+*** External formal verification completion
+:PROPERTIES:
+:CUSTOM_ID: milestone-external-formal-verification
+:END:
+
+The external-formalization milestone requires an independent machine-checked
+account of the stable semantic subset for which Gesso makes formal claims.
+
+It includes:
+
+- the formalized semantic subset;
+- exact theorem statements;
+- named assumptions and trusted boundaries;
+- soundness, refinement, or correspondence results appropriate to each theorem;
+- an explicit relationship between formal objects and the production semantic
+  objects/checker rules they justify;
+- release/correspondence evidence preventing a disconnected formally verified
+  model from being mistaken for proof about unrelated production semantics.
+
+The correspondence evidence follows [[#req-formal-production-correspondence]].
+Conformance vectors alone do not discharge a required theorem about production
+acceptance or execution. If the chosen correspondence mechanism retains trusted
+translation/extraction or runtime assumptions, the exact conditional claim and
+those premises must be reported. A theorem for a different or outdated subject
+cannot satisfy the current release gate.
+
+Exact finite exploration, bounded testing, and unbounded theorem proving remain
+distinct evidence classes throughout this milestone. Incomplete exploration or
+an unavailable external checker cannot be reported as successful verification.
+
+*** Multi-node production completion
+:PROPERTIES:
+:CUSTOM_ID: milestone-multi-node-production
+:END:
+
+Production multi-node completion requires the semantic host/authority model to
+be realized over actual multiple application nodes without deriving authority
+from host identity.
+
+It includes:
+
+- physical node topology and routing;
+- distributed invalidation/interest realization;
+- host replacement and process loss;
+- duplicate/lost publication behavior;
+- reconnect through another node;
+- progression-safe authoritative reread;
+- deployment/version compatibility;
+- multi-node adversarial, load, and fault evidence;
+- incorporation of the resulting implementation assumptions into the root
+  assurance report;
+- the concrete host-loss, publication-loss, duplicate/reordered advisory,
+  authorization, and compatibility cases in [[#req-multi-node-realization]];
+- preservation of selective adoption and explicit Refresh across reconnect;
+- declared command retry/deduplication and retention contracts where claimed;
+- stated capacity/resource bounds and load conditions for the production claim.
+
+Tests distinguish an operation's durable outcome from another participant's
+knowledge of it. Current-state reads do not automatically resolve command
+attribution, and lost publication must exercise the implemented recovery path.
+Progress claims include any necessary user action and availability assumptions.
+A load-balanced demonstration without this failure evidence is a prototype.
+
+A bounded multi-node prototype may occur earlier when sufficient executable and
+authority foundations exist and when it can expose semantic mistakes cheaply.
+That exploratory feedback does not constitute this production completion
+milestone.
+
+These four milestones are completion scopes, not aliases for stage numbers.
+Scheduling may overlap where dependencies permit, while every milestone retains
+its own acceptance boundary. Production multi-node completion does not imply
+external formal completion, nor does external proof establish deployment
+resilience. A compositional pilot can be developed alongside operational work,
+but does not authorize calling incomplete HumanHelp capabilities complete.
+
+*** Completion records and continued applicability
+
+A completion record names the milestone, canonical requirement set, supported
+scope, candidate generation, evidence references, test environments, assumptions,
+open decisions, and exclusions. Every required gate has a result; missing
+evidence is not presumed successful. Required unresolved decisions block the
+full claim rather than being buried in release notes.
+
+Completion applies to that admitted scope and generation. Later changes trigger
+re-evaluation of the affected guarantees and gates through their dependency
+relationships. A previous completion record remains historical evidence; it
+does not confer permanent correctness on later builds. Unaffected evidence may
+be reused where its applicability is established, avoiding unnecessary full
+rechecking while preserving the claim.
+
+Documentation changes alone cannot establish implementation completion. This
+specification defines the gates; actual implementation evidence is required to
+claim that any milestone has been met.
+
+** Working rule for every future semantic change
+
+For every framework or application change that claims participation in the
+provable chain, ask:
+
+#+begin_quote
+What proposition does this layer establish, what premises does it rely on, what
+evidence supports the proposition, and can the next layer mechanically verify
+that the premises and guarantees match?
+#+end_quote
+
+If the answer is not precise, the component is not yet part of the compositional
+proof chain.
+
+The intended end state is not:
+
+#+begin_quote
+Everything is formally verified.
+#+end_quote
+
+It is:
+
+#+begin_quote
+Gesso knows which claims are proved, which are kernel-checked, which are exact-
+finite checked, which are assembly-verified, which are runtime-enforced, which
+are conditional on liveness assumptions, which are trusted, which are asserted
+by the application, and which are supported only by tests.  Downstream programs
+are built compositionally from those claims, and construction stops at the first
+semantic mismatch instead of allowing incompatible assumptions to drift into an
+application that merely appears to work.
+#+end_quote
+

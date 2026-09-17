@@ -1,0 +1,1466 @@
+* Part III — Choreography and projection
+:PROPERTIES:
+:CUSTOM_ID: part-03-choreography-and-projection
+:END:
+
+This part defines choreography as a global semantic specification, the operation
+contracts it exposes, and the obligations for deriving role-local behavior. It
+uses the evidence classifications of Part I and the identity, admission,
+knowledge, and authority model of Part II. Concrete model/FX integration follows
+in Part IV; browser realization and whole-application construction follow in
+Parts VI and VII.
+
+** What a choreography is
+
+A choreography is a global description of a distributed state machine involving
+N roles.
+
+The global choreography is projected into N role-local machines. At runtime,
+concrete actors instantiate those roles and execute the local machines
+independently.
+
+There does not need to be a second centralized global machine executing beside
+them. The global choreography is the specification from which local machines
+are verified and projected.
+
+Under the declared entry, runtime, and environmental premises, the interaction
+of admitted projected machines must refine behavior allowed by the global
+choreography. The refinement claim must identify its supported language subset,
+observable behaviors, and treatment of internal or physical steps.
+
+This claim about cooperating projected machines does not assume that an
+adversarial browser follows its projection. Trusted-side admission and model
+enforcement must still preserve the protected authority boundary for arbitrary
+client inputs, as specified in [[#req-trust-boundary][the trust model]].
+
+A choreography may describe:
+
+- local computation;
+- communication;
+- authoritative establishment and observation requirements;
+- environmental events;
+- branching;
+- authoritative operations;
+- provisional projections;
+- resource acquisition and release;
+- failure paths;
+- timeout paths;
+- settlement and reconciliation;
+- convergence requirements.
+
+A choreography does not imply that all participants change state atomically.
+Distributed actors may temporarily hold different knowledge.
+
+The important distinction is between:
+
+#+begin_example
+authoritative state
+provisional state
+actor-local knowledge
+#+end_example
+
+and not a false claim that the entire distributed system changes simultaneously.
+
+A choreography also does not imply one persistent runtime machine per connected
+client or one persistent server process per conceptual workflow.
+
+The global description may be realized by short-lived projections that interact
+through durable authoritative facts.
+
+*** Choreography is specification, not a hidden coordinator
+
+The global choreography is the semantic specification of allowed distributed
+behavior.  It is not a requirement that Gesso run one omniscient global state
+machine alongside every projected role.
+
+The implementation must therefore preserve two complementary truths:
+
+- the global description is authoritative for what behaviors are admitted;
+- projected actors execute locally and independently using only the knowledge,
+  resources, and authority available to them.
+
+A runtime architecture that requires every local step to consult a central
+choreography interpreter solely to rediscover projected control flow would
+defeat an important purpose of projection. This does not prohibit a declared
+authoritative operation from consulting its centralized model authority or
+checking a trusted runtime premise.  It
+would turn the global specification into a distributed lockstep coordinator
+rather than a source from which local programs are derived and checked.
+
+Conversely, independently executing local machines do not become semantically
+independent programs.  Their combined traces remain constrained by the global
+description.
+
+
+#+LATEX: \newpage
+
+The intended relationship is:
+
+#+begin_example
+global choreography
+        |
+        | verify / analyze / project
+        v
+role-local executable plans
+        |
+        | execute independently
+        v
+distributed concrete behavior
+        |
+        | must refine
+        v
+behaviors admitted by the global choreography
+#+end_example
+
+The absence of a central runtime machine is therefore not a weakening of the
+global specification.  It is the point of a successful projection.
+
+*** Semantic behavior versus physical realization
+
+A choreography describes semantic behavior.  Physical realization is permitted
+to vary when that variation does not change the semantic trace.
+
+For example, the semantic statement:
+
+#+begin_example
+:request-authority establishes the result of :request/claim
+#+end_example
+
+does not require:
+
+#+begin_example
+one fixed Aleph process
+one fixed HTTP connection
+one fixed DOM node
+one fixed browser tab
+one fixed database connection
+#+end_example
+
+The authority may be realized through different physical resources at different
+times.  A retry may reach another host.  A fragment may be replaced by a new DOM
+node.  A browser may reconnect.  None of these physical substitutions creates
+a new semantic authority or silently changes the meaning of the operation.
+
+This end-state design therefore requires every layer that crosses a
+replaceable physical boundary to preserve the logical identities needed by the
+semantic layer rather than reconstruct them from physical coincidence.
+
+Detailed multi-node routing belongs to the later multi-node realization part of
+this design.  The semantic requirement established here is only the stronger
+and more durable one:
+
+#+begin_quote
+A host may realize a role or authority for an execution, but physical hosting
+does not create semantic authority.
+#+end_quote
+
+#+LATEX: \newpage
+
+*** Choreography may be partial with respect to the whole application
+
+One choreography need not describe an application's entire lifetime.
+
+A choreography may describe one distributed semantic operation or one coherent
+short-lived protocol.  Durable model facts may connect many such protocols over
+hours, days, deployments, or browser lifetimes.
+
+This means that the following are both legitimate:
+
+#+begin_example
+one choreography
+    claim Request R
+    -> authoritative outcome
+    -> settlement
+    -> terminate
+#+end_example
+
+and:
+
+#+begin_example
+choreography E1
+    create approval request
+    -> commit :approval/pending
+    -> terminate
+
+... later ...
+
+choreography E2
+    approve request
+    -> commit :approval/approved
+    -> terminate
+#+end_example
+
+The durable relationship between E1 and E2 lives in authoritative model state
+unless the application explicitly adopts a durable workflow facility.
+
+This separation prevents Gesso from smuggling a universal workflow engine into
+ordinary Choreo merely because some business processes span human time.
+
+*** Choreography validity and application realizability are distinct questions
+
+A choreography can be internally valid while the surrounding application fails
+to realize a required use of it. An intentionally unexposed operation is not
+automatically an assembly defect: required exposure follows the declared
+realization scope and independent product acceptance.
+
+For example, a verified operation may still be unusable because:
+
+- no view binds it;
+- no projected browser plan is packaged;
+- the packaged artifact is stale;
+- no transport binding reaches the trusted server;
+- the server has no corresponding execution capability;
+- no authoritative acquisition path can observe the successor state.
+
+Missing required realization edges are whole-application assembly failures.
+Omitting an intended user capability can instead leave the remaining assembly
+closed while failing behavioral completeness. Those distinctions follow the
+[[#req-application-assurance-claims][three application assurance claims]] in Part I.
+Neither failure changes the meaning of choreography validity itself.
+
+The distinction is important:
+
+#+begin_example
+valid choreography
+    !=
+complete application realization
+#+end_example
+
+and equally:
+
+#+begin_example
+HTTP route exists
+    !=
+valid choreography
+#+end_example
+
+The unified design therefore preserves Choreo as a strong semantic layer while
+also requiring whole-application checks of the joins between semantic and
+physical/application layers, production enforcement of those checks, and
+independent capability acceptance. Closure results retain their actual assurance
+classification rather than automatically becoming semantic theorems.
+
+*** Construction must fail when the contradiction is already knowable
+
+Choreography construction and verification must reject known contradictions at
+the earliest supported boundary possessing enough information to establish them.
+Unsupported constructs must be identified explicitly; they must not receive a
+successful result by omission from the checker.
+
+Definition-time failures include, for example:
+
+- unknown roles;
+- malformed transitions;
+- impossible branch references;
+- invalid message declarations;
+- inconsistent operation metadata;
+- use of an undeclared authority;
+- a local behavior that requires a fact that the role can never know.
+
+These failures should not be deferred to browser execution merely because a
+runtime implementation could eventually notice them.
+
+This does not mean Gesso should pretend to know dynamic domain facts in
+advance.  A Request becoming claimed by another user after rendering remains a
+runtime/domain event.  Static strictness applies only where the contradiction is
+already present in the declared semantic structure.
+
+*** Canonical authoring principle
+
+Application authors should state semantic intent once whenever the system can
+derive the rest.
+
+A choreography should not require synchronized copies of the same semantic fact
+in:
+
+- operation metadata;
+- view metadata;
+- browser-plan names;
+- transport declarations;
+- route strings;
+- server registries;
+- bootstrap registries.
+
+Where an independent physical choice genuinely exists, it may be declared
+separately and checked for correspondence.  Otherwise the preferred direction
+is:
+
+#+begin_example
+one semantic declaration
+    |
+    +--> derived local plan
+    +--> derived binding metadata
+    +--> derived/validated transport requirements
+    +--> derived diagnostics
+#+end_example
+
+This principle does not collapse all layers into one macro.  It reduces
+duplicated sources of semantic truth while preserving explicit architectural
+boundaries.
+
+#+LATEX: \newpage
+** Choreographic operation types
+:PROPERTIES:
+:CUSTOM_ID: req-choreographic-operation-contract
+:END:
+
+A choreographic operation type is richer than an ordinary function type.
+
+An ordinary function type is roughly:
+
+#+begin_example
+A -> B
+#+end_example
+
+A choreographic operation type describes an entry into a distributed protocol
+and the valid continuations from that entry.
+
+It may include:
+
+- ordinary value schemas;
+- evolving values and their basis;
+- roles participating in the operation;
+- principal and authority requirements;
+- facts known by each role on entry;
+- provenance justifying those facts;
+- facts on which roles agree;
+- resources required by operations;
+- facts and values produced;
+- possible outcomes;
+- provisional execution permissions;
+- authority transitions;
+- continuation requirements;
+- compatibility/version requirements where a suspended projection may outlive a
+  deployment.
+
+The operation type should *not* duplicate the complete choreography by manually
+listing every branch already represented by the choreography.
+
+The choreography is the source of truth for control flow.
+
+The type declaration supplies external semantic commitments that cannot or
+should not be inferred, while analysis derives as much as possible from the
+actual choreography.
+
+For example, the declaration may state:
+
+#+begin_src clojure
+{::choreo/roles
+ {:helper
+  {:principal :user
+   :actor :client}
+
+  :request-authority
+  {:authority :request}}
+
+ ::choreo/inputs
+ {:request-id
+  {:schema :uuid
+   :known-by #{:helper}
+   :provenance :input}
+
+  :observed-basis
+  {:schema ObservedBasisClaim
+   :known-by #{:helper}
+   :provenance :input}}
+
+ ::choreo/authority
+ {:request-authority #{:request/claim}}
+
+ ::choreo/optimism
+ {:role :helper
+  :projection :request/claim}}
+#+end_src
+
+This example declares role requirements, input knowledge, and the intended
+optimistic realization. It does not grant claim authority to whoever sends a
+matching role label. Trusted server admission must establish the concrete
+principal, subject, and operation premises. The helper's input knowledge of an
+=ObservedBasisClaim= is knowledge of the claimed token, not evidence that the
+helper acquired the observation it names.
+
+The names =ObservedBasisClaim= and =AuthoritativeBasis= are conceptual semantic
+categories.  They do not require two unrelated physical token formats, nor do
+they require a particular Clojure nominal-type implementation.  The browser may
+carry the same underlying XTDB token bytes that trusted code later compares or
+uses to construct a consistency requirement, while the semantic status of those
+values remains different.
+
+XTDB-specific representation belongs in the XTDB/Live consistency adapter rather
+than being permanently baked into the generic Choreo type vocabulary.
+
+The verifier derives knowledge changes, branch requirements, and continuation
+structure from the choreography body.
+
+The exact Clojure syntax remains tentative. These semantics are the intended
+contract.
+
+#+LATEX: \newpage
+*** Operation identity is semantic, not transport identity
+
+A choreographic operation has a stable semantic identity that is distinct from
+the mechanism used to invoke it.
+
+For example:
+
+#+begin_example
+:request/claim
+#+end_example
+
+is not synonymous with:
+
+#+begin_example
+POST /requests/123/claim
+#+end_example
+
+nor with:
+
+#+begin_example
+button id="claim-request"
+#+end_example
+
+nor with:
+
+#+begin_example
+browser plan index 17
+#+end_example
+
+The transport, view, and executable-plan coordinates are realizations of the
+semantic operation.  They may change across refactors or deployments without
+changing the operation's meaning, provided compatibility rules permit the
+change.
+
+This distinction is required so that application closure can later verify
+correspondence instead of mistaking physical equality for semantic identity.
+
+A stable operation name is also distinct from the normalized semantic identity
+of its contract. Keeping =:request/claim= unchanged while changing a relied-upon
+authority rule, input requirement, outcome, or postcondition does not preserve
+dependent validity merely because the name stayed the same. Conversely, a
+transport refactor need not change the semantic contract if its checked
+realization and compatibility obligations remain satisfied.
+
+*** Semantic categories at operation boundaries
+
+Operation APIs must preserve distinctions whose accidental substitution would
+violate a semantic invariant even when the underlying Clojure representations
+are identical or structurally compatible.
+
+Representative distinctions include:
+
+- =ObservedBasisClaim= versus trusted =AuthoritativeBasis=;
+- semantic =CommandId= versus runtime =ExecutionId=;
+- provisional versus authoritative observations;
+- raw declarations versus checker-admitted declarations;
+- raw certificate data versus checker-accepted certificate evidence.
+
+The requirement is semantic non-interchangeability through the supported API.
+The design does not mandate that every such category be implemented as a
+=defrecord=, Java class, wrapper object, or other nominal runtime type.  Permitted
+realizations include:
+
+- nominal or opaque host-language values;
+- smart constructors with inaccessible or conventionally private construction;
+- checker-produced admitted values;
+- explicit tagged data whose use is guarded by the appropriate admission path;
+- an existing Gesso representation that already prevents the accidental
+  substitution.
+
+The choice should be the smallest mechanism that makes the wrong ordinary call
+difficult and the resulting diagnostic precise.  A representation technique is
+not valuable merely because it looks more typed.
+
+Ordinary downstream application code should normally author domain values and
+semantic declarations, not manually wrap every UUID, basis token, command, or
+projection in framework ceremony.  Gesso should perform category establishment
+at elaboration, checking, authoritative acquisition, model, or runtime
+boundaries wherever it can derive the distinction itself.
+
+For example, a useful public failure is conceptually:
+
+#+begin_example
+boundary:                trusted claim preparation requiring an acquired basis
+requires:                AuthoritativeBasis for the declared scope
+received:                unadmitted ObservedBasisClaim
+missing step:            trusted authoritative acquisition / admission
+#+end_example
+
+rather than accepting the same-shaped value and relying on a comment to explain
+why the caller should not have done so. The diagnostic applies at the boundary
+that requires the acquired basis. A command intake may legitimately accept an
+=ObservedBasisClaim= as weaker context; it must not demand that the browser
+manufacture server-trusted authority before submitting a command.
+
+The category and admission rules are defined in
+[[#req-semantic-admission][Part II]]. When the supplied category cannot be
+established, diagnostics report an unknown or unadmitted value rather than
+trusting a client-supplied category label.
+
+A nominal host-language value also does not retain trusted status merely because
+it was serialized and reconstructed.  Crossing an adversarial wire boundary
+returns the value to an untrusted representation until the relevant verifier,
+authenticator, decoder, or trusted acquisition path re-establishes the stronger
+semantic category.
+
+This is primarily an accidental-misuse boundary inside cooperating application
+code.  It does not claim that deliberately hostile trusted host code is unable
+to bypass Gesso, import lower-level implementation namespaces, or directly use a
+database capability it already possesses.
+
+*** Operation contracts export a semantic interface
+
+An operation type should expose a normalized semantic interface containing only
+facts that downstream reasoning is allowed to rely on.
+
+Depending on the operation, that interface may include:
+
+- input value types;
+- required entry knowledge;
+- required provenance;
+- role participation;
+- principal/authority constraints;
+- model operation identity;
+- possible semantic outcomes;
+- values/facts produced;
+- authority changes;
+- resource requirements;
+- provisional permissions;
+- settlement requirements;
+- continuation compatibility;
+- named assumptions and guarantees.
+
+It should not include arbitrary implementation details merely because those
+details are easy to serialize.
+
+For example, the operation contract may establish:
+
+#+begin_example
+operation:
+    :request/claim
+
+requires:
+    helper knows Request identity
+    for the declared optimistic realization:
+        helper has acquired the required scoped authoritative Request projection
+    trusted server binds authenticated principal
+    request authority may invoke public request.core/claim
+
+outcomes:
+    :confirmed
+    :reconciled
+    :rejected
+    :already-incorporated
+#+end_example
+
+The outcome names above describe authoritative/model semantic dispositions.
+They do not imply that every participant can immediately establish which
+disposition occurred.  Participant-relative uncertainty and command-specific
+reconciliation are specified in the command/failure layer that follows this
+section. The supported operation must define which dispositions actually exist,
+their payloads, and the predicates or model outcomes that justify them. This
+illustrative list does not require every model to implement all four outcomes.
+An unknown participant-relative outcome is not silently converted into any of
+these authoritative dispositions.
+
+The semantic interface does not encode incidental realization details such as:
+
+#+begin_example
+specific Ring handler var
+specific Reitit route index
+specific DOM node id
+specific XTDB Java class
+specific browser bundle offset
+#+end_example
+
+Those belong to later realization layers unless independently required by
+runtime semantics.
+
+*** External commitments versus derived structure
+
+Operation declarations should state only semantic commitments that cannot or
+should not be safely inferred.
+
+The verifier/projector should derive:
+
+- reachable continuations;
+- behavior-sensitive branch obligations;
+- knowledge propagation caused by declared communication;
+- terminal paths;
+- local plan structure;
+- resource obligations that follow from the body.
+
+It should not require the author to restate those facts manually in metadata.
+
+Redundant declarations are dangerous because each copy may remain individually
+plausible while disagreeing with the others.
+
+The preferred rule is:
+
+#+begin_quote
+Declare external semantic commitments; derive internal control-flow facts from
+the choreography body.
+#+end_quote
+
+*** Availability is not authorization
+
+An operation may be present in a model or choreography registry without being
+currently executable by a particular principal.
+
+Likewise, a prepared or bound operation may be rendered as an affordance without
+becoming durable authorization.
+
+These distinctions must remain explicit:
+
+#+begin_example
+operation exists
+    !=
+operation is valid in this choreography state
+
+operation is valid in this choreography state
+    !=
+current authenticated principal is authorized now
+
+view renders operation capability
+    !=
+browser possesses authority
+#+end_example
+
+The trusted side re-establishes dynamic authorization at execution and protects
+the relevant model premises at the authoritative transition boundary where
+intervening changes matter. A rendered affordance, a successful earlier check,
+and a valid operation contract do not reserve future eligibility.
+
+This separation lets Gesso reason strongly about operation identity and
+distributed protocol structure without pretending to statically prove current
+business facts that can change between render and commit.
+
+*** Malformed operation type versus wrong business policy
+
+The unified design distinguishes structural/type malformedness from product
+correctness.
+
+If a declaration says that =:request/status= is an enum and a rule attempts:
+
+#+begin_src clojure
+(< request.status 10)
+#+end_src
+
+the expression is malformed relative to its semantic types and should be
+rejected.
+
+If the application states:
+
+#+begin_src clojure
+(= request.status :open)
+#+end_src
+
+when product policy actually intended another valid status test, the expression
+may be perfectly well formed while encoding the wrong policy.
+
+Gesso should make the former difficult or impossible to certify.  It cannot
+infer the latter merely from syntax.
+
+This distinction becomes more explicit in the later compositional-proof part,
+where typed business-rule expressions and certified semantic interfaces are
+defined in detail.  It is already a language-design constraint here because
+Choreo must not confuse "type checks" with "is the policy humans intended."
+
+*** A valid rule may still be inadmissible at a distributed program point
+
+Intrinsic rule validity is not enough.
+
+For example:
+
+#+begin_example
+rule:
+    (= request.private-review :approved)
+
+intrinsic type:
+    Boolean
+    VALID
+
+browser use before browser knows request.private-review:
+    INVALID AT THIS PROGRAM POINT
+#+end_example
+
+A distributed use of a rule therefore creates obligations beyond ordinary type
+checking, including:
+
+- the role knows every required fact;
+- required provenance is available;
+- trust or authority requirements are satisfied;
+- optional values have been refined before use;
+- authoritative-basis requirements are met where the rule depends on
+  authoritative observation.
+
+This is one of the central reasons Choreo needs a semantic type/knowledge layer
+richer than ordinary function typing.
+
+*** Operation declarations should remain inspectable data
+
+The ordinary authoring surface may eventually include macros or helpers, but the
+semantic representation after elaboration should remain explicit enough to:
+
+- inspect;
+- normalize;
+- verify;
+- project;
+- fingerprint semantically;
+- explain on failure;
+- compare against dependent declarations.
+
+Convenient syntax must not create an opaque second semantics.
+
+Normalization must preserve the information needed to identify the owning
+declaration and explain failed obligations without making source coordinates
+part of semantic identity when they are diagnostic-only. The compiler or
+elaborator must not synthesize an undeclared trusted assertion simply to make a
+knowledge, authority, or continuation obligation pass.
+
+The desired direction is:
+
+#+begin_example
+pleasant author syntax
+        |
+        v
+explicit normalized semantic data
+        |
+        +--> verification
+        +--> projection
+        +--> diagnostics
+        +--> later certification
+#+end_example
+
+** Malli as the value-schema substrate
+:PROPERTIES:
+:CUSTOM_ID: req-value-schema-boundaries
+:END:
+
+Malli should provide the ordinary value-shape layer underneath choreographic
+types.
+
+A choreographic value may conceptually carry:
+
+#+begin_src clojure
+{:schema ClaimCommand
+ :known-by #{:helper :request-authority}
+ :agreement #{#{:helper :request-authority}}
+ :provenance :communicated}
+#+end_src
+
+or:
+
+#+begin_src clojure
+{:schema RequestProjection
+ :known-by #{:helper}
+ :provenance :authoritative
+ :basis AuthoritativeBasis}
+#+end_src
+
+Malli is responsible for questions such as:
+
+- is this a UUID?
+- does this map contain the required keys?
+- is this settlement one of the allowed values?
+- does this intermediate machine context have the promised shape?
+
+Malli is not responsible for questions such as:
+
+- did this value come from a trusted actor rather than merely having a valid
+  shape?
+- may this helper claim this Request?
+- is this Organization currently open?
+- does this principal have authority?
+- is this stale basis still semantically compatible with the operation?
+- did communication actually establish knowledge?
+- did an authoritative observation justify the actor's knowledge?
+- does this branch satisfy the global choreography?
+
+Those remain domain, FX, Choreo, or authority/progression concerns.
+
+Runtime validators should be compiled and reused for the admitted schema and
+registry generation to which they belong. A relevant schema or registry change
+requires an appropriately recompiled or independently validated compatible
+validator; an old compiled validator must not silently enforce an obsolete
+contract.
+
+The default design should validate important runtime boundaries in production,
+including:
+
+- externally supplied choreography inputs;
+- message payloads;
+- authoritative observation/projection envelopes where they cross a runtime
+  boundary;
+- FX input/output boundaries;
+- projected-machine state transitions;
+- settlements;
+- provisional/canonical protocol payloads.
+
+The successful path should use compiled boolean validators. Rich Malli
+explanations should be constructed only on failure.
+
+The default should be to keep these validations enabled in production and
+optimize only when measurement shows a real hot path. Measurement alone does
+not justify removing enforcement of a required premise. An optimization must
+preserve the contract, for example by avoiding redundant checks after a trusted
+admission boundary while retaining checks where untrusted or dynamic values
+can enter.
+
+*** Shape validation is necessary but not semantic certification
+
+Successful runtime validation establishes conformance to the particular schema
+under the validator and predicate contracts being relied upon. It is classified
+as runtime enforcement, not automatically as a formal theorem. A custom
+predicate's name does not establish an authority or provenance claim that its
+implementation never checks.
+
+It does not prove:
+
+- that a browser supplied the value honestly;
+- that the value has authoritative provenance;
+- that the current principal may use it;
+- that another actor knows the same value;
+- that a model operation may be invoked;
+- that a choreography branch is globally legal.
+
+This is not a limitation to work around.  It is a deliberate separation of
+correctness scopes.
+
+The unified design therefore treats ordinary value schemas as one layer in a
+larger semantic interface:
+
+#+begin_example
+value shape
+    |
+    v
+semantic type / refinement
+    |
+    v
+knowledge + provenance
+    |
+    v
+authority + operation contract
+    |
+    v
+choreographic admissibility
+#+end_example
+
+A success at one layer cannot be silently promoted into a stronger proposition
+owned by a later layer.
+
+The same rule applies when a stronger semantic category happens to use a nominal
+host-language representation.  Malli may validate the fields inside an
+=AuthoritativeBasis= representation, for example, but shape validation does not
+establish that the value came through the trusted authoritative acquisition
+path.  Conversely, an admitted value may still use ordinary immutable Clojure
+data internally.  What matters is the checked construction/admission relation,
+not whether the physical carrier is a record or a map.
+
+A discriminator such as =:type :verified= is therefore useful only as data unless
+the supported API also establishes why callers are entitled to rely on that
+category.
+
+*** Closed value boundaries are the default
+
+Where data crosses a semantic boundary, the declared schema should normally
+describe a closed payload.
+
+Closedness is especially important for:
+
+- client commands;
+- choreography messages;
+- provisional-state envelopes;
+- settlement envelopes;
+- authoritative projection metadata;
+- FX inputs and outputs.
+
+An open map is not harmless merely because consumers ignore unknown keys.
+Unexpected fields can become an accidental covert semantic channel when later
+code begins to read them.
+
+When an application genuinely needs an open payload, that must be explicit and
+its semantic treatment visible to verification and diagnostics. Transporting
+opaque extension data need not grant it first-class knowledge status. If a
+program wishes to branch on an extension field or consume it as authority,
+correlation, or an operation input, that use requires a declared contract and
+the appropriate admission.
+
+Semantic payload closure is distinct from rejecting every byte of physical
+transport metadata. The decoder may separate declared payload from transport
+metadata through an explicit contract. It must reject undeclared semantic
+fields at a closed boundary or keep explicitly permitted nonsemantic data
+outside the semantic context; it must not silently merge it into that context.
+
+*** Runtime validation preserves static premises
+
+Static reasoning depends on runtime values continuing to satisfy the contracts
+under which the reasoning was performed.
+
+Consequently, runtime checks are not "extra tests" after proof.  They are
+enforcement of proof premises where untrusted or dynamic values enter.
+
+Representative boundaries include:
+
+#+begin_example
+browser bytes
+    -> command schema validation
+    -> trusted operation lookup
+
+external read result
+    -> projection-envelope validation
+    -> trusted acquisition / scope / provenance checks
+    -> justified knowledge establishment
+
+FX implementation result
+    -> declared output validation
+    -> next semantic step
+
+settlement payload
+    -> settlement schema validation
+    -> declared source / command / owner correlation checks
+    -> admitted browser transition
+#+end_example
+
+If a runtime premise fails, execution must reject or recover according to the
+declared protocol.  It must not continue on the theory that static verification
+made runtime validation unnecessary.
+
+*** Validators should be reusable and diagnostic failure should be rich
+
+The successful path should use precompiled validators where possible.
+
+The failure path should preserve enough information to explain:
+
+- which semantic value failed;
+- which schema or refinement was expected;
+- where the value entered;
+- which operation or transition depended on it;
+- whether failure concerns shape, provenance, authority, or another layer.
+
+A raw Malli explanation may be part of this evidence, but downstream error
+reporting should not force users to reconstruct the semantic context from a
+low-level schema mismatch alone.
+
+*** Schema changes participate in semantic compatibility
+
+A schema is not merely runtime validation configuration when another semantic
+artifact relies upon its meaning.
+
+Changes such as:
+
+- removing an enum member;
+- changing required versus optional;
+- changing cardinality;
+- changing a field's nominal semantic type;
+- changing a closed variant set;
+
+may invalidate dependent operation, rule, or choreography artifacts.
+
+Later proof/certificate work therefore assigns semantic identities to normalized
+interfaces rather than source files. These operational schema requirements do
+not depend on completion of the later certificate machinery. The language/model
+boundary must nevertheless expose those semantic dependencies instead of hiding
+them inside arbitrary host-language code.
+
+** Projection and branch knowledge
+:PROPERTIES:
+:CUSTOM_ID: req-projection-branch-knowledge
+:END:
+
+Projection creates a local machine for each role.
+
+Projection must preserve whatever mechanism is required to justify local
+behavior.
+
+Sometimes that mechanism is communication.
+
+Sometimes the actor already has justified entry knowledge.
+
+Sometimes the relevant fact is learned from authority outside the current
+execution and enters a later choreography as authoritative input knowledge.
+
+The projector/verifier must therefore reason in terms of knowledge requirements,
+not merely message presence.
+
+A role may branch only when it knows enough information to choose the branch.
+
+The verifier should use behavior-sensitive choice analysis:
+
+- if a role behaves differently between two branches, it must know the
+  discriminator or an equivalent fact before its behavior diverges;
+- the required knowledge may be justified through communication, authoritative
+  observation, input knowledge, declared derivation, or explicit assertion;
+- if its behavior is equivalent across the branches, it does not need to learn
+  the choice merely because it is syntactically mentioned.
+
+This is intentionally more precise than a simple "every role mentioned in either
+branch must know the condition" rule.
+
+For example:
+
+#+begin_example
+authority chooses approved/rejected
+
+helper behavior differs afterward
+        |
+helper must know enough to distinguish the continuations
+#+end_example
+
+That requirement does not imply a dedicated authority-to-helper choreography
+message if the helper can instead obtain the required approval fact through a
+declared, authorized authoritative observation that satisfies the same branch
+obligation.
+
+The substitution must preserve subject, scope, provenance, and the relationship
+to the decision being continued. Reading a currently approved Request does not
+necessarily establish which earlier command was approved or which historical
+branch was selected. If later model changes can erase or supersede the needed
+fact, the protocol needs a suitable retained outcome, receipt, communication,
+or different continuation contract. The projector must not invent that history
+or treat an arbitrary later read as equivalent evidence.
+
+Messages should be closed by default.
+
+A message contract declares the fields that may cross the boundary. Arbitrary
+extra fields should not be merged into choreography context.
+
+An explicit =:open-payload? true= may exist for cases that genuinely require an
+open payload, but closed contracts are the default.
+
+Within the admitted choreography semantics, a sender must have justified
+knowledge of every semantic fact it transmits. Receipt from an adversarial
+participant still requires the trusted-boundary treatment defined in
+[[#req-knowledge-provenance][the knowledge model]].
+
+Receiving a message should only introduce the declared communicated values into
+the receiving context.
+
+Projection must not erase communication that is genuinely required to justify
+knowledge.
+
+Conversely, projection should not manufacture communication merely because the
+global choreography contains a choice when the target role's behavior does not
+depend on it or its knowledge is established through another valid path.
+
+*** Projection is a semantic compilation boundary
+
+Projection is not a convenience transformation that happens to produce smaller
+maps.
+
+It is the boundary at which the global specification is turned into the local
+information and actions available to a role.
+
+A correct projector must therefore preserve every fact required to justify
+local behavior, including when relevant:
+
+- message schemas;
+- correlation identity;
+- entry knowledge;
+- knowledge-producing communication;
+- authoritative-observation requirements;
+- branch discriminators;
+- provenance requirements;
+- resource ownership;
+- failure/terminal structure;
+- executable guards required by local semantics.
+
+At the same time, it should omit global facts that the role neither knows nor
+needs.
+
+The target is neither "copy the whole global machine to everyone" nor "erase
+everything inconvenient."  It is a justified local program.
+
+*** Projection cannot create knowledge
+
+A projector may rearrange or encode information justified by the global
+choreography.  It may not manufacture a fact merely because the local machine
+would be easier to implement if the fact were present.
+
+Bad:
+
+#+begin_example
+global:
+    only authority knows :approved?
+
+project browser:
+    include :approved? in browser context anyway
+#+end_example
+
+Good:
+
+#+begin_example
+global:
+    authority communicates approved outcome
+or
+    browser performs authorized authoritative observation
+
+project browser:
+    local branch becomes possible after that knowledge path
+#+end_example
+
+The same principle applies to provenance.  Projected data cannot silently
+upgrade:
+
+#+begin_example
+asserted -> derived
+communicated -> authoritative
+client supplied -> trusted principal identity
+#+end_example
+
+Projection preserves or weakens claims according to explicit semantics; it does
+not strengthen them by serialization.
+
+*** Behavior-sensitive choice is the central branch rule
+
+A role needs to know a choice only when its observable local behavior depends on
+that choice. The required knowledge must exist before the first differing
+behavior, not merely become available eventually.
+
+This avoids both extremes:
+
+- projecting too little and leaving a role unable to decide its next behavior;
+- overcommunicating every global discriminator to every mentioned role.
+
+The analysis should compare continuations semantically rather than merely by
+source syntax.
+
+If two global branches project to equivalent local behavior for role R, R need
+not learn the branch solely because R appears somewhere inside both branches.
+
+If they diverge, the projector/verifier must establish a valid knowledge path
+before the divergence.
+
+**** Supported equivalence and conservative rejection
+
+Behavior-sensitive checking must define the local equivalence relation used by
+its supported language subset. The observables include whichever messages,
+effects, authoritative invocations, resource actions, and terminal or failure
+outcomes the semantic contract distinguishes. Relevant ordering and timing
+constraints must not disappear merely because the final values happen to match.
+
+Permitted internal steps may be abstracted only under an explicit semantic
+relation. The checker is not required to decide equivalence of arbitrary
+Clojure functions or unrestricted programs.
+
+When the supported analysis cannot establish equivalence or a sufficient
+knowledge path, it must reject or report an unresolved obligation at the
+appropriate admission boundary. It must not silently assume equivalence,
+disclose a private discriminator, or introduce an undeclared message to make
+projection succeed. An explicit supported communication path or visible trusted
+assumption may be authored where permitted by the relevant contract.
+
+**** Trace preservation and progress are separate obligations
+
+Excluding forbidden local traces is a safety claim. It does not by itself prove
+that a projected program can perform every required interaction, avoid deadlock,
+or eventually complete. A projection that admits no useful behavior must not
+satisfy the required operation merely because its empty behavior is safe.
+
+Each claimed projection result must state the global/local behavior relation
+and the entry and environmental premises under which it applies. Required
+realizability, terminal behavior, and progress obligations must be discharged
+with the appropriate evidence. Liveness remains conditional on its named
+delivery, availability, fairness, or application-action assumptions.
+
+These obligations supplement, rather than replace, the independent application
+capability acceptance defined in Part I.
+
+*** Message payload closure protects knowledge boundaries
+
+Closed messages are not only a schema preference.  They are a knowledge-flow
+boundary.
+
+If a message declares:
+
+#+begin_src clojure
+{:request-id UUID
+ :outcome ClaimOutcome}
+#+end_src
+
+then receiving it may establish only the declared communicated facts.
+
+The receiver does not acquire arbitrary sender context, and the implementation
+must not merge unknown payload keys into machine context by convenience.
+
+An explicitly open payload must follow the extension-data contract from the
+[[#req-value-schema-boundaries][value-schema boundary]]. Openness alone does not
+grant undeclared fields semantic knowledge status or permission to influence a
+branch. Any weaker guarantee actually selected remains visible in the result.
+
+*** Projection preserves necessary communication but does not worship messages
+
+Communication is one way to establish knowledge, not the definition of
+knowledge.
+
+A projector must preserve a message when that message is what justifies another
+role's behavior.
+
+It must not insert a redundant direct message merely because one actor's choice
+eventually affects another actor if the other actor can instead obtain the
+necessary fact by:
+
+- justified entry knowledge;
+- authoritative observation;
+- deterministic derivation;
+- another declared knowledge path.
+
+This matters deeply for Gesso's web architecture because durable business facts
+often rendezvous naturally through model authority and reread rather than
+long-lived direct participant messaging.
+
+*** Local executable guards belong in the executable projection
+
+Proof derivations and global proof trees do not belong in the production
+browser.
+
+However, a local predicate or guard whose result is required to execute the
+projected semantics is runtime-semantic data and must remain in the executable
+projection.
+
+The distinction is:
+
+#+begin_example
+"browser may branch only if generation is current"
+    -> executable guard if needed at runtime
+
+"here is the proof tree explaining why that guard is sufficient"
+    -> diagnostic/proof artifact
+#+end_example
+
+The production machine must never depend on an optional proof sidecar to decide
+a transition.
+
+*** Projection failure should identify the missing justification
+
+When projection cannot produce a legal local machine, diagnostics should explain
+the actual semantic deficit.
+
+Useful failure information includes:
+
+- role;
+- global state/transition;
+- local behaviors that diverge;
+- required discriminator;
+- facts currently known;
+- available provenance;
+- missing knowledge path;
+- candidate communication or authoritative-observation paths when derivable.
+
+A generic "projection failed" error throws away precisely the information that
+the verifier already computed.
+
+*** Host-language callbacks may not bypass projected semantics
+
+A local runtime may invoke host-language functions to realize declared local
+effects, but arbitrary callbacks must not become an alternate transition path.
+
+In particular:
+
+#+begin_example
+projected machine
+    -> declared local effect
+    -> host implementation
+    -> normalized completion/failure
+    -> projected machine
+#+end_example
+
+is compatible with the design.
+
+But:
+
+#+begin_example
+host callback
+    -> mutate choreography state directly
+#+end_example
+
+reopens the proof and knowledge boundary.
+
+The common boundary is
+[[#req-owner-relative-event-admission][owner-relative event admission]] in Part II.
+Part VI develops its browser implementation. An execution-private effect
+completion must not bypass that boundary, and a declared shared event must use
+its actual fragment or subscription owner rather than an invented execution.
+
+** Long logical workflows and short runtime executions
+:PROPERTIES:
+:CUSTOM_ID: req-durable-workflow-boundary
+:END:
+
+A choreography may describe a logical workflow that spans human-scale time.
+
+That does not imply that one Aleph node should retain a suspended server-side
+machine in process memory for hours or days.
+
+For example, a business flow may conceptually involve:
+
+#+begin_example
+request approval
+        |
+wait
+        |
+approval granted
+        |
+continue
+#+end_example
+
+A robust HumanHelp realization may instead be:
+
+#+begin_example
+short choreography E1
+    |
+commit authoritative :approval/pending
+    |
+E1 terminates
+
+...minutes or hours...
+
+approver observes pending authority
+    |
+short choreography E2
+    |
+commit authoritative :approval/approved
+    |
+E2 terminates
+
+requestor later observes approved authority
+    |
+short choreography E3 if further action is needed
+#+end_example
+
+The durable wait lives in model state.
+
+Subject to the authoritative store's declared durability and recovery
+assumptions, the durable workflow fact can survive:
+
+- web-node failure;
+- deployment;
+- load-balancer rerouting;
+- client disconnect;
+- browser suspension;
+- long offline periods.
+
+The initial Gesso choreography runtime therefore does not promise durable
+persistence of arbitrary suspended server-local executions.
+
+If a future application genuinely needs durable workflow-machine continuations,
+that should be an explicit opt-in capability with its own persistence, ownership,
+versioning, and recovery semantics.
+
+It must not silently become a requirement of ordinary choreography.
+
+*** Durable waiting belongs in authoritative state by default
+
+Human-scale waiting is normally represented as durable domain state rather than
+a suspended in-memory choreography execution.
+
+This has several consequences.
+
+First, subject to those persistence and compatibility assumptions, the durable
+workflow meaning can survive:
+
+- deployment;
+- process loss;
+- browser suspension;
+- load-balancer rerouting;
+- reconnect;
+- long periods without any participant online.
+
+Second, later actors can acquire the relevant facts by authoritative
+observation rather than requiring the original process to resume.
+
+Third, the framework avoids making one runtime's memory an accidental source of
+business truth.
+
+*** A later choreography is not automatically the same execution
+
+When durable state connects two periods of activity, the later protocol may be
+a new execution with a new execution identity.
+
+For example:
+
+#+begin_example
+E1:
+    submit approval request
+    -> command C1
+    -> commit :pending
+    -> terminate
+
+E2:
+    approver later acts
+    -> command C2
+    -> commit :approved
+    -> terminate
+#+end_example
+
+The business process is continuous in domain meaning, but E1 and E2 need not be
+one persistent protocol execution. E2 must establish its own authenticated
+principal, current model eligibility, required knowledge, and applicable plan.
+The existence of E1's durable result does not carry E1's transient authority or
+resource ownership into E2.
+
+This distinction avoids conflating:
+
+- semantic command identity;
+- protocol execution identity;
+- durable domain identity;
+- workflow/business identity.
+
+Where an application truly requires a durable suspended execution, that feature
+must define its own:
+
+- persistence;
+- ownership;
+- versioning;
+- migration;
+- replay;
+- resource cleanup;
+- liveness;
+- recovery semantics.
+
+It is not silently inherited from ordinary Choreo.
+
+*** Durable model state is the normal rendezvous point
+
+For long workflows, authoritative state provides a stable rendezvous point
+between actors who were never concurrently connected.
+
+A later actor may know what happened because authority establishes:
+
+#+begin_example
+:approval/pending
+:approval/approved
+:request/claimed
+:request/completed
+#+end_example
+
+not because it receives a packet from the actor who caused that state.
+
+This follows [[#req-authoritative-observation][Part II's authoritative observation
+model]]: observation is a first-class knowledge path.
+
+Durable pending state is not itself a progress guarantee. The application must
+provide the declared opportunity for an eligible actor to discover and act on
+it, or state the environmental premises on which progress depends. Where loss
+of a required participant can strand the workflow, the runtime-condition and
+recovery requirements from Part I apply. Any lease, reassignment, cancellation,
+or other successor policy remains model-owned.
+
+*** Deployment compatibility remains explicit
+
+A durable business fact may outlive the executable plan that originally
+produced it.
+
+That is normal.
+
+What cannot be assumed is that a suspended *runtime execution* from an older
+deployment remains compatible forever.
+
+The later stale-plan/recovery design therefore treats durable model truth and
+runtime-plan compatibility as separate dimensions.
+
+A deployment may invalidate continuation of an old projection while leaving the
+authoritative business state entirely valid. If a deployment also changes the
+meaning or representation of persisted domain state, the model needs its own
+compatible interpretation or migration. Restarting a current browser plan does
+not perform that domain migration by implication.
+

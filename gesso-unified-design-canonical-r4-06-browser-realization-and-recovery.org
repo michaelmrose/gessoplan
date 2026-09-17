@@ -1,0 +1,1898 @@
+* Part VI — Browser realization and recovery
+:PROPERTIES:
+:CUSTOM_ID: part-06-browser-realization-and-recovery
+:END:
+
+This part defines the pure browser adapter, its HTMX and physical-effect
+boundaries, fragment coordination, stale-plan recovery, managed effects,
+asynchronous admission, and authoritative absence. It applies the ownership
+rules of Part II, the scoped acquisition and command contracts of Part IV, and
+the executable/presentation boundaries of Part V. Target theorems identify
+required assurance; they do not claim that implementation or proof is complete.
+
+** Browser adapter refinement
+:PROPERTIES:
+:CUSTOM_ID: req-browser-adapter-refinement
+:END:
+
+*** Pure transition core and browser integration boundary
+
+The browser adapter must be structured so the Gesso semantic part is small and
+pure. This does not require Gesso to replace, wrap, or reimplement HTMX's normal
+request and DOM lifecycle.
+
+Normalized Gesso-relevant events enter a deterministic transition function:
+
+#+begin_example
+AdapterStep : ExecutablePlan x AdapterState x NormalizedEvent
+           -> AdapterState x AbstractEffects
+#+end_example
+
+The plan supplies immutable executable rules; state and admitted events supply
+concrete runtime values, following [[#req-executable-plan-sidecar-boundary][Part V]].
+An implementation may bind the plan before invoking the step function, but may
+not replace it with a diagnostic or test-only semantic object.
+
+Representative normalized events include:
+
+#+begin_src clojure
+{:event :htmx/before-request
+ :execution-id E
+ :generation G
+ :request-id R}
+
+{:event :htmx/before-swap
+ :execution-id E
+ :generation G
+ :request-id R
+ :target-id T}
+
+{:event :htmx/after-swap
+ :execution-id E
+ :generation G
+ :request-id R
+ :target-id T}
+
+{:event :http/failed
+ :execution-id E
+ :generation G
+ :request-id R
+ :error X}
+
+{:event :live/invalidated
+ :owner [:fragment F]
+ :source-instance S
+ :requirement R}
+
+{:event :timer/fired
+ :execution-id E
+ :generation G
+ :timer-id T}
+
+{:event :continuity/completed
+ :owner O
+ :resource-instance G
+ :slot S}
+#+end_src
+
+These are illustrative event shapes, not complete wire schemas. In particular,
+the shared advisory resolves its declared source and scoped requirement without
+requiring a command execution. The continuity owner may be an execution or an
+admitted fragment/effect scope. Correlation fields propose information for
+admission; their mere presence does not establish ownership.
+
+Representative abstract effects/dispositions include:
+
+#+begin_src clojure
+[:machine/resume ...]
+[:htmx/allow-request ...]
+[:htmx/cancel-request ...]
+[:htmx/allow-swap ...]
+[:htmx/cancel-swap ...]
+[:timer/start ...]
+[:timer/cancel ...]
+[:dom/install-provisional ...]
+[:execution/retire ...]
+#+end_src
+
+For HTMX-owned operations, Gesso should normally decide semantic disposition--for
+example allow, cancel, ignore as stale, correlate, or observe completion--while
+HTMX continues to perform the request, response parsing, OOB handling, DOM swap,
+and settle work it already owns.
+
+HTMX lifecycle listeners, EventSource/SSE observations, timers, MutationObserver
+callbacks, and Gesso-owned DOM hooks should submit Gesso-relevant observations to
+the semantic core rather than independently deciding choreography semantics,
+mutating execution ownership, or resuming machines through alternative code
+paths.
+
+Gesso-owned physical effects that are not HTMX's responsibility, such as local
+provisional rendering, timers, continuity resources, and related cleanup, are
+interpreted by a narrow imperative effect shell. That shell performs physical
+browser operations but does not invent semantic state transitions.
+
+Conceptually:
+
+#+begin_example
+                ordinary HTMX lifecycle
+                         |
+              documented lifecycle event
+                         |
+                         v
+                  checked AdapterStep
+                         |
+                 allow/cancel/observe
+                         |
+                         v
+                HTMX continues normally
+                         |
+              after-swap / after-settle
+                         |
+                         v
+                  checked AdapterStep
+
+Gesso-owned browser event ---> checked AdapterStep ---> narrow browser FFI effect
+#+end_example
+
+Here =checked= identifies the transition object to which the stated assurance
+applies. It is not a claim that formal proof is already complete. The actual
+evidence class and remaining correspondence assumptions must be reported.
+
+This architecture is a correctness requirement, not merely a code-style
+preference. It deliberately preserves HTMX as a useful declarative runtime
+instead of turning it into a transport primitive beneath a Gesso reimplementation.
+
+*** HTMX integration contract
+
+HTMX is a trusted external runtime, not a Gesso effect implementation.
+
+Gesso should use HTMX through its ordinary declarative API and documented
+lifecycle events. HTMX remains responsible for the behavior it already owns,
+including ordinary request execution, response processing, out-of-band response
+handling, swaps, and settlement.
+
+Gesso may observe or intervene at documented lifecycle boundaries when a
+Gesso-owned semantic invariant requires it. Typical intervention is narrow:
+allow the lifecycle to continue, cancel/suppress stale work, attach or recover
+opaque correlation, capture continuity information, or observe completion.
+
+A custom HTMX extension is NOT required by this architecture. Gesso should not
+introduce one merely to make HTMX look like an abstract effect executor. If a
+future concrete requirement cannot be implemented correctly through HTMX's
+ordinary declarative API and documented lifecycle hooks, an extension may be
+considered then as an explicit engineering choice with its own proof/test
+boundary.
+
+The exact HTMX behavior on which Gesso relies forms a supported-contract subset.
+The implementation should pin and test the HTMX and htmx-ext-sse versions it
+supports and document any response headers, swap modes, OOB behavior, history
+features, or other options that can bypass or alter a lifecycle gate required by
+Gesso correctness. Unsupported combinations may be rejected rather than silently
+weakening the semantic guarantees.
+
+For each supported response/swap mode, the integration must identify which
+documented gate precedes every relevant physical mutation and which event
+establishes completion or failure. Main-target approval must not implicitly
+authorize unrelated out-of-band targets, history restoration, or other effects
+whose ownership and scope have not been admitted. Response parsing alone is
+not authoritative installation.
+
+If a required action cannot be suppressed before it affects protected semantic
+presentation under the selected lifecycle contract, that configuration cannot
+claim the corresponding invariant. The integration must reject it or provide a
+separately specified realization with the required correspondence evidence.
+These requirements do not assert particular hook behavior for an unexamined
+HTMX version.
+
+The proof does not claim HTMX itself is correct. It claims that, assuming the
+supported HTMX lifecycle contract, Gesso's semantic decisions at those boundaries
+preserve the stated adapter invariants.
+
+*** Browser FFI contract
+
+The Gesso-owned browser FFI/effect shell is an explicit proof assumption and must
+remain deliberately weaker than the semantic adapter core. Its job is physical
+execution of Gesso-owned browser effects and faithful translation of primitive
+browser observations, not protocol reasoning. HTMX's native lifecycle is governed
+by the separate HTMX integration contract above rather than being reimplemented
+inside this shell.
+
+The FFI shell may:
+
+- observe primitive browser events and normalize their raw payloads;
+- carry opaque owner/resource correlation identity installed when semantic
+  logic created or admitted the physical resource;
+- report physical success, failure, cancellation, or disappearance as declared
+  normalized events;
+- perform concrete Gesso-owned DOM, EventSource, timer, request, and listener
+  operations requested by admitted abstract effects, without independently
+  duplicating an HTMX-owned request or swap;
+- record diagnostics about physical failures.
+
+The FFI shell must not:
+
+- infer semantic authority or authorization;
+- infer domain facts merely from arbitrary DOM text or client-provided labels;
+- choose an execution or shared owner by independent semantic reasoning;
+- invent or upgrade generation, provenance, authority, basis, or ownership;
+- decide whether rollback, reconciliation, supersession, or retirement is valid;
+- transfer semantic ownership between executions;
+- mutate semantic adapter state through a side channel;
+- resume a projected machine except through an abstract effect emitted by the
+  adapter transition core.
+
+Correlation should be established when semantic logic creates or admits a
+physical resource and then carried opaquely by integration code. Browser code
+must not reconstruct semantic ownership later from mutable DOM position, CSS
+selectors, current target contents, or another physical coincidence.
+
+A physical effect must not rely on an admission decision that has already lost
+its applicability. The execution contract must either perform the action within
+the admitted serialized step or validate its still-current permit/ownership at
+the last required boundary before mutation. A delayed effect queued while E1
+was current cannot install obsolete DOM after E1 retires merely because its
+later completion callback would be rejected.
+
+This is a boundary check, not permission for the shell to independently decide
+ownership. The adapter owns the permit and its validity rule. Physical handles
+must remain associated with the resource instance created for them so cleanup
+cannot rediscover and remove a newer resource by selector alone.
+
+The smaller this shell remains, the smaller the unproved correspondence boundary
+between the formal adapter and the real browser. Chromium integration tests are
+responsible for aggressively challenging both these assumptions and the supported
+HTMX lifecycle contract.
+
+*** Property/model-based transition testing
+
+Property- and model-based testing should be used early while the transition
+semantics are still being designed. This is complementary to proof, not a
+replacement for it.
+
+For example, a generator may produce sequences such as:
+
+#+begin_example
+start E1
+request begins
+invalidation arrives
+retire E1
+start E2
+E1 response arrives
+E1 timer fires
+E2 response arrives
+duplicate E1 response arrives
+continuity callback arrives
+#+end_example
+
+and check the adapter invariants after every transition.
+
+Useful generated properties include execution isolation, stale-generation
+rejection, declared fragment-coordination bounds, semantic ownership uniqueness,
+authoritative-install monotonicity, and terminal retirement.
+
+A generated counterexample can expose a bad invariant or transition rule before
+time is spent proving it. Passing generated tests does not justify the word
+=proved=; the same claimed safety property still requires the mechanical proof
+defined by this document.
+
+*** Adapter refinement theorem
+
+The target claim is approximately:
+
+#+begin_quote
+Assuming the declared browser primitives and supported HTMX lifecycle contract
+satisfy their named assumptions, every semantic transition made by the Gesso
+browser adapter corresponds to a permitted transition of the formal
+browser/Choreo semantics, and the adapter preserves its stated safety
+invariants.
+#+end_quote
+
+The production transition core should be generated from or directly implement
+the checked transition representation. A stronger formal claim additionally
+requires the production/formal correspondence evidence for that representation
+and checker. A separately handwritten semantic callback layer would reopen the
+gap; shared terminology or similar source code is not correspondence evidence.
+
+The abstract event model must include stale, duplicate, malformed, missing, and
+reordered observations relevant to the property. Scheduler fairness, delivery,
+and cleanup assumptions must be named rather than excluded from the model by
+assuming the desired callback order.
+
+The proof need not claim that Chrome, the JavaScript engine, the operating
+system, or the CPU is formally verified by Gesso.
+
+Instead those primitives are explicit assumptions at the browser FFI or HTMX
+integration boundary.
+
+*** Execution isolation theorem
+
+For distinct executions E1 and E2, an asynchronous event produced by a resource
+owned exclusively by E1 must not alter:
+
+- the Choreo state of E2;
+- E2's provisional state;
+- E2's target/resource ownership;
+- E2's continuity generation;
+- an authoritative projection installed after E1 became stale;
+- any other execution-scoped semantic state of E2.
+
+Intentionally shared authoritative invalidation is not execution-private and is
+handled through its own declared path.
+
+This theorem should subsume broad families of race bugs involving:
+
+- old settlement timers;
+- old HTMX completions;
+- old continuity callbacks;
+- old fragment requests;
+- target replacement followed by a new execution;
+- duplicated external callbacks.
+
+*** Authoritative-install monotonicity
+
+Once a logical target has installed an authoritative representation justified at
+a frontier/basis A, cleanup or delayed effects from an older provisional
+execution must not restore a representation whose authority/provenance is older
+or weaker merely because the old execution still has a physical callback.
+
+This is a semantic monotonicity property, not necessarily numeric comparison of
+opaque XTDB progression values.
+
+The implementation should rely on supported progression/ownership relations,
+not arithmetic ordering of opaque tokens.
+
+This property prevents:
+
+#+begin_example
+canonical authoritative response arrives
+        |
+old failure callback runs
+        |
+old optimistic snapshot is restored
+#+end_example
+
+The same rule applies when two authoritative acquisitions have different
+scopes.  A response that is newer in one progression coordinate does not
+automatically supersede every independently justified observation already
+installed for the logical view.  Supersession is permitted only where the
+declared scope, projection, ownership, and progression relations justify it.
+
+*** Scoped authoritative installation and advisory discharge
+:PROPERTIES:
+:CUSTOM_ID: req-runtime-scoped-authoritative-installation
+:END:
+
+The browser runtime must preserve the distinction between installing an
+authoritative observation and claiming that an entire aggregate view has been
+reacquired at one common snapshot.
+
+An authoritative acquisition result must carry or resolve enough checked
+semantic information for the runtime to determine the scope of what the result
+actually establishes.  Depending on the existing Gesso realization, that may be
+represented by projection identity, progression requirements, acquisition
+metadata, semantic ownership, or another checked mechanism.  This requirement
+does not mandate a universal per-object revision number or a new persisted
+history structure.
+
+For a scoped installation, the runtime must be able to preserve all of the
+following simultaneously:
+
+- a newly installed authoritative observation for the acquisition's covered
+  object or projection;
+- other independently justified authoritative observations whose scopes are not
+  superseded by that installation;
+- unrelated advisory obligations not discharged by the acquisition;
+- local presentation state that remains compatible with the adopted semantic
+  view;
+- provisional state whose ownership has not been superseded or otherwise
+  resolved by the installation.
+
+Therefore:
+
+#+begin_example
+response completed
+    !=
+all advisory information discharged
+
+newer database progression observed for object S
+    !=
+whole board reacquired at that progression
+#+end_example
+
+A completed acquisition may discharge only obligations satisfied under the
+[[#req-advisory-discharge][Part IV advisory-discharge contract]]. An obligation
+requiring adoption into a visible projection is not discharged solely because
+the response was fetched or parsed. The runtime must distinguish justified
+observation, admitted installation, physical realization, and completion of any
+required incorporation step.
+An advisory that arrives while a read is in flight remains outstanding when the
+returned observation does not cover the later obligation.
+
+Likewise, if a local correlated operation installs a newer justified
+authoritative observation before an older Refresh response arrives, the older
+response must not blindly replace the newer installation.  The runtime may
+reject the older result, preserve independently compatible portions, schedule a
+successor acquisition, or use another checked reconciliation strategy already
+supported by Gesso.  It must not merge incompatible snapshots merely to avoid
+another read.
+
+**** Installation and physical realization are distinct stages
+
+An admitted authoritative observation is not invalidated by a later DOM or
+continuity failure. Nor does admission establish that its intended physical
+representation was successfully installed.
+
+The adapter must track enough status to distinguish the observation it has
+accepted, the representation currently realized, and any outstanding rendering
+or adoption obligation. A failed or partially completed installation must
+follow a declared repair path rather than claim a coherent DOM that does not
+exist. The affected presentation must not expose enabled semantic affordances
+based on an incoherent mixture of bindings and content.
+
+The integration need not promise one atomic transaction over arbitrary DOM
+effects. It must specify the admitted realization boundary and failure handling
+for the supported swap/effect set. It may preserve already compatible portions
+or reacquire and reconstruct the affected scope where the contract permits it.
+It must not re-enable obsolete provisional restoration to hide a rendering fault.
+
+Continuity failure after successful authoritative installation is a local
+presentation fault. It does not revoke that installation or the authoritative
+model result, as specified in [[#req-continuity-boundary][Part V]].
+
+*** Fragment coordination contract
+:PROPERTIES:
+:CUSTOM_ID: req-fragment-coordinator
+:END:
+
+For each admitted logical coordination scope, the default supported coordinator
+admits at most one active logical acquisition and one queued acquisition slot:
+
+#+begin_example
+active logical acquisition count <= 1
+queued acquisition slot count    <= 1
+#+end_example
+
+The slot may contain a normalized bundle of scoped requirements. Its meaning
+follows [[#req-progression-combination][Part IV's satisfaction and combination
+contract]]. Slot count is not a proof that this bundle or all retained metadata
+is bounded. A realization must state its supported scope domain, representation
+bounds, and treatment of incomparable requirements.
+
+Physical requests may outlive logical retirement. Therefore the logical bound
+does not claim that only one physical request exists in the browser at every
+instant. Physical cancellation debt and its operational limits are tracked
+separately and cannot retain semantic installation rights.
+
+**** Advisory debt is distinct from permission to acquire
+
+Receiving an advisory records the scoped requirement. Whether to start an
+acquisition depends on the declared application policy and current authorized
+acquisition path. A pending advisory does not by itself create a queued command
+to automatically adopt remote content.
+
+An explicit Refresh may admit acquisition of a captured requirement under a
+declared action scope. The contract must say whether that action also permits
+successor reads needed for the same recovery, or whether a later advisory needs
+another user action. A completion callback must not make that policy choice by
+accident. The requirement cannot disappear merely because permission to acquire
+it has not yet been supplied.
+
+Acquisition permission is local scheduling/adoption policy, not server-side
+authorization. Each protected read still follows the trusted authorization path.
+
+**** Coordinator state and transitions
+
+The state must represent, directly or through admitted references:
+
+- logical coordination scope and current owner instance;
+- active acquisition identity, captured requirement, and relevant policy context;
+- outstanding requirements and any queued acquisition permitted to satisfy them;
+- admitted observations and adopted projection state needed for comparison;
+- physical-resource correlations and failure/recovery status relevant to safety.
+
+The following transitions define the required behavior without prescribing one
+public record layout:
+
+| Event | Required semantic result |
+|-------+--------------------------|
+| Advisory arrives while idle | Retain its requirement; start only if declared policy permits acquisition |
+| Advisory arrives while active | Preserve its requirement using safe combination; do not relabel it covered by the captured request |
+| Refresh or other permitted trigger | Admit the requested acquisition scope and captured obligations; queue or start according to current ownership |
+| Active response arrives | Validate correlation, authority/projection contract, scope, consistency, and installation compatibility before applying it |
+| Response covers obligations | Discharge only the acquisition or incorporation obligations actually satisfied; retain the rest |
+| Active read fails or is cancelled | End that logical attempt; preserve unsatisfied obligations and follow declared retry/recovery policy |
+| Owner retires or is replaced | Revoke its private permits and correlations; explicitly retain, transfer, or re-establish still-required coordination state |
+| Retired response arrives | Reject its obsolete installation path; do not infer ownership from the current target |
+
+When an active attempt ends, at most one queued acquisition is admitted next,
+and only if its policy and resource conditions still hold. Failed reads must
+not create an uncontrolled immediate retry loop. Retry limits, delay, and
+availability assumptions belong to the chosen recovery contract; stopping a
+retry does not falsely discharge its requirement.
+
+A successor response may independently satisfy an obligation that arrived after
+the request began. In that case a redundant read is unnecessary, but coverage
+must be established from the returned observation rather than assumed from
+completion order.
+
+**** Mechanical checking and concrete correspondence
+
+The coordinator's formal or exact-finite claim must specify the abstract states,
+events, coverage relations, policy choices, and retained-data abstraction used.
+Current/stale ownership and covered/uncovered obligation relations can be useful
+abstractions only when their soundness for the claimed property is justified.
+A small sample of concrete tokens or two queue slots does not establish this.
+
+The checked properties should include non-loss of obligations, absence of stale
+installation, preservation of independent scopes, policy-correct acquisition,
+and the stated logical concurrency bound. Progress claims additionally require
+their scheduling, user-action, resource, and authoritative-availability premises.
+
+*** Resource/terminal invariant
+
+Every physical resource represented in the semantic adapter state has exactly
+one declared semantic owner or explicitly shared ownership class while that
+ownership is active.
+
+Retirement first revokes the execution's semantic ownership and invalidates the
+generation through which its callbacks could affect current state. After that
+semantic retirement, the execution owns zero execution-private semantic
+resources even if some corresponding physical browser objects have not yet been
+successfully destroyed.
+
+Physical cleanup is then idempotent, best effort, and diagnostic. A timer,
+listener, HTMX request, continuity object, or other physical resource may outlive
+semantic retirement because cancellation raced, threw, was ignored by a library,
+or the browser was suspended. Such a leftover resource is cleanup debt, not a
+source of semantic authority. Any later callback from it must be rejected by the
+generation/ownership safety gate.
+
+New semantic ownership therefore depends on successful revocation of old
+semantic ownership, not on proof that every old physical resource has already
+vanished.
+
+The target theorem is:
+
+#+begin_quote
+Once execution E is semantically retired, no subsequently delivered private
+event or deferred effect may use E's revoked ownership to alter current
+execution or presentation state, regardless of whether E's physical cleanup
+completed successfully. Independently admitted shared or command-resolution
+events retain only the rights of their own declared owner.
+#+end_quote
+
+Cleanup failure in the physical shell is recorded as an external/runtime fault;
+it must not mutate the semantic transition history into an impossible earlier
+state and must not block safe logical reuse merely because physical cleanup is
+incomplete.
+
+*** Adversarial-browser authority theorem
+
+The formal server-side protocol should be checked under an adversarial client
+model rather than assuming the generated browser projection is honest.
+
+The client may send any syntactically representable request bytes.
+
+Subject to the named authentication/model/XTDB assumptions, arbitrary client
+behavior must not be sufficient to:
+
+- establish another principal identity;
+- acquire an undeclared authority role;
+- manufacture authoritative provenance;
+- jump the trusted server projection to a privileged state;
+- perform a model transition not permitted to the authenticated principal;
+- obtain a protected authoritative observation or Live subscription that the
+  authenticated principal is not authorized to receive.
+
+This is stronger than proving that the generated JavaScript follows the global
+choreography.
+
+The honest projected browser is a usability/correctness implementation.
+Security on the trusted side must remain valid even when that implementation is
+replaced entirely.
+
+*** Adapter state has one semantic owner
+
+The browser adapter is the owner of browser coordination semantics and composes
+the portable execution machines under the [[#req-portable-execution][Part V state
+ownership contract]]. Each fact has one semantic owner. A portable execution
+may own its trajectory while the adapter owns fragment coordination and the
+conditions under which that execution is resumed.
+
+HTMX, EventSource callbacks, timers, continuity code, and DOM helpers may
+produce normalized observations or realize abstract effects.
+
+They must not each keep a partial private copy of:
+
+- which execution is current;
+- which generation owns a target;
+- whether authority has superseded optimism;
+- whether rollback remains legal;
+- whether an event may resume a machine.
+
+Duplicated ownership state is exactly how individually reasonable callbacks
+produce impossible global behavior.
+
+*** Semantic admission precedes physical action when intervention is required
+
+Where Gesso must decide whether an HTMX lifecycle action is semantically
+admissible, the order is:
+
+#+begin_example
+raw lifecycle event
+    |
+normalize
+    |
+semantic adapter decision
+    |
+allow / cancel / ignore / correlate
+    |
+HTMX continues or is suppressed
+#+end_example
+
+The shell must not first perform the action and ask the semantic machine
+afterward whether it should have happened.
+
+This does not require Gesso to control every ordinary HTMX lifecycle step.
+Intervention is narrow and only where a Gesso invariant requires it.
+
+*** HTMX remains declarative infrastructure rather than a hidden transport beneath Gesso
+
+The architecture deliberately avoids rebuilding ordinary HTMX behavior.
+
+For supported interactions, HTMX continues to own:
+
+- request execution;
+- normal response processing;
+- swaps;
+- out-of-band processing;
+- settle behavior;
+- its documented lifecycle.
+
+Gesso owns the semantic constraints layered around that behavior.
+
+This distinction is valuable because it keeps the trusted integration contract
+small enough to document and test.
+
+If a future HTMX version changes the lifecycle contract, the supported-contract
+adapter may change.  Choreo/browser semantic invariants should not be rewritten
+merely because an external library renamed events or changed implementation
+mechanisms.
+
+*** Supported HTMX behavior is a named assumption
+
+The framework should define which externally documented HTMX behaviors it relies
+on.
+
+Anything outside that supported subset may be:
+
+- unverified;
+- rejected;
+- explicitly unsupported;
+- admitted only under a weaker stated guarantee.
+
+The system must not silently claim Gesso's stronger browser invariants while
+allowing configuration that bypasses the lifecycle gates on which those
+invariants depend.
+
+*** Browser FFI is intentionally dumb
+
+The browser FFI may know how to:
+
+- start/cancel a timer;
+- install provisional DOM;
+- capture/restore continuity;
+- observe a raw event;
+- ask HTMX to cancel an operation through a supported hook;
+- install/remove a listener;
+- report physical failure.
+
+It should not know why a rollback is legal, why a generation is current, or why
+a settlement wins.
+
+Those semantic facts are outputs of the pure transition core.
+
+This keeps the trusted correspondence boundary narrow and makes browser races
+amenable to explicit state-transition reasoning.
+
+*** Correlation is installed, then carried opaquely
+
+When semantic logic creates or admits a physical resource, the resource receives
+the identity needed to report back safely.
+
+For example:
+
+#+begin_example
+adapter emits
+    [:timer/start
+      {:execution-id E
+       :generation G
+       :timer-id T}]
+
+shell installs timer carrying E/G/T
+
+timer fires
+
+shell reports
+    {:event :timer/fired
+     :execution-id E
+     :generation G
+     :timer-id T}
+#+end_example
+
+The shell must not rediscover E/G/T later from:
+
+- DOM ancestry;
+- CSS selector;
+- target contents;
+- "currently active" global variables;
+- URL shape.
+
+Opaque installed correlation is more reliable than semantic reconstruction from
+mutable browser state.
+
+*** Stale and duplicate events are ordinary modeled cases
+
+Asynchronous browsers naturally produce events that arrive after their semantic
+usefulness has ended.
+
+Examples:
+
+- request completion after execution retirement;
+- timer after settlement;
+- continuity callback after target replacement;
+- duplicate request completion;
+- old fragment response after a newer authoritative install.
+
+The runtime should treat these as explicit event classes admitted by the safety
+model, not as impossible programming errors.
+
+The ordinary result is often:
+
+#+begin_example
+recognized
+classified stale/duplicate
+semantic no-op
+optional diagnostic record
+#+end_example
+
+This is stronger than hoping cancellation prevents delivery.
+
+*** Cancellation is an optimization; invalidation is the safety mechanism
+
+Physical cancellation can race or fail.
+
+Therefore the safety argument may not depend on proving that every old:
+
+- timer;
+- request;
+- listener;
+- observer;
+- callback;
+
+was physically destroyed.
+
+Semantic retirement revokes ownership and generation validity.
+
+After that point a late physical callback is powerless.
+
+Successful physical cancellation remains desirable for efficiency and resource
+use, but it is not the sole correctness gate.
+
+*** Execution isolation is intentionally local except for declared shared events
+
+Most asynchronous resources are execution-private.
+
+Shared authoritative invalidation is different.
+
+For example, an invalidation about a logical Request fragment may legitimately
+matter to a newer execution even if it was triggered by another operation.
+
+The runtime therefore distinguishes:
+
+#+begin_example
+execution-private callback
+    -> must satisfy owner/generation gate
+
+declared shared authoritative invalidation
+    -> follows fragment/progression coordination path
+#+end_example
+
+Treating all events as either globally shared or strictly private would be
+incorrect.
+
+*** Fragment refresh uses the declared coordinator contract
+
+Invalidations can arrive faster than authoritative reads complete. They must
+enter the [[#req-fragment-coordinator][fragment coordinator]] instead of starting an
+independent request per advisory. That contract defines the logical request
+bound, preserved scoped obligations, acquisition policy, and the evidence needed
+for any finite-state or retained-memory claim. It is the single normative owner
+of those coordination rules.
+
+*** Authoritative installation revokes weaker obsolete restoration rights
+
+A stale failure callback may still know an old optimistic snapshot.
+
+That fact does not mean restoring the snapshot remains legal.
+
+After authoritative installation, older provisional cleanup may:
+
+- release resources;
+- record diagnostics;
+- retire execution state.
+
+It may not reinstall weaker/older representation merely because its callback
+finally ran.
+
+This is authoritative-install monotonicity.
+
+The comparison is semantic, based on authority/ownership/progression relations,
+not numeric arithmetic over opaque basis tokens.
+
+*** Semantic retirement precedes physical cleanup
+
+Retirement has a precise order:
+
+#+begin_example
+1. mark execution semantically retired
+2. invalidate generation / revoke callback authority
+3. release semantic ownership
+4. permit new semantic owner where valid
+5. attempt physical cleanup best effort
+#+end_example
+
+This order matters.
+
+If physical cleanup is required before semantic retirement, one uncancellable
+timer or third-party request can prevent logical progress forever.
+
+If semantic ownership remains until cleanup finishes, stale callbacks may retain
+power they should already have lost.
+
+*** Browser security assumes arbitrary client bytes
+
+The trusted server may not rely on:
+
+- the generated adapter having run;
+- local plan state being honest;
+- generation values being truthful;
+- hidden inputs being untouched;
+- client role labels being valid;
+- a client-provided nominal tag, record name, wrapper, or discriminator having
+  crossed the trusted construction path it claims to represent;
+- a button having existed;
+- a sidecar claiming verification.
+
+The server validates syntax/protocol structure as needed, then derives
+authenticated principal and current permission from trusted state and model
+semantics.
+
+This adversarial model is part of the browser architecture, not an optional
+security-hardening mode.
+
+** Projected-plan identity, deployment, and stale continuation recovery
+:PROPERTIES:
+:CUSTOM_ID: req-stale-plan-recovery
+:END:
+
+A projected choreography may remain in a browser across deployment.
+
+Old or suspended browsers must not be assumed compatible with a newly deployed
+server forever.
+
+The design therefore distinguishes:
+
+- choreography representation version;
+- projected-plan version;
+- semantic operation identity/version where needed;
+- wire/protocol version;
+- semantic command identity;
+- protocol execution identity;
+- application/deployment compatibility generation where needed.
+
+These do not need to become one global version integer.
+
+A compatibility check should answer whether a suspended or retried projection is
+safe to continue with the current server/runtime contract.
+
+For example:
+
+#+begin_example
+browser loaded projected plan P7
+        |
+browser sleeps
+        |
+deployment introduces incompatible P8/server contract
+        |
+browser wakes
+#+end_example
+
+The safe default is:
+
+#+begin_example
+detect incompatible continuation
+        |
+semantically retire stale execution
+and invalidate its generation
+        |
+initiate best-effort physical cleanup
+        |
+re-establish transport/authentication
+        |
+authoritative reread/reload
+        |
+instantiate current projection
+#+end_example
+
+Instantiation of the new projection must not depend on successful destruction
+of every stale physical browser resource. Once semantic retirement/generation
+revocation has made stale callbacks powerless, physical cleanup may complete
+later or fail diagnostically without restoring the old execution's ownership.
+
+The framework should not invent transparent migration of arbitrary suspended
+machine state unless an explicit migration facility is designed and tested.
+
+Compatibility failure is a recovery condition, not evidence that authoritative
+model state is invalid or that a pending command was rejected. Recovery must
+preserve the distinction between current-state reconstruction and attribution
+of an earlier command, following [[#req-command-participant-uncertainty][Part IV]].
+
+Changing authenticated principal or protected view context is also an admission
+boundary. Old pending bindings, subscriptions, or observations must not be
+silently treated as belonging to the new principal. The runtime must retire or
+revalidate the affected scopes under the current contract; the server remains
+responsible for every protected read and mutation.
+
+This is particularly important for low-end Android phones whose tabs may survive
+sleep, backgrounding, or long network outages across deployments.
+
+*** Stale plan recovery protects authoritative truth, not suspended local illusion
+
+When a browser wakes with an incompatible plan, the goal is not to preserve every
+detail of its suspended local machine.
+
+The goal is to recover safely to current authoritative truth.
+
+The default recovery sequence is therefore intentionally destructive of stale
+local execution state:
+
+#+begin_example
+detect incompatibility
+    |
+revoke stale semantic ownership
+    |
+invalidate generation
+    |
+best-effort cleanup
+    |
+re-establish current transport/authentication
+    |
+authoritative reacquisition
+    |
+instantiate current projection
+#+end_example
+
+A stale optimistic or continuity state may be lost.
+
+Authoritative model truth is not invalid merely because the old projection can
+no longer continue.
+
+*** Compatibility is explicit and scoped
+
+Compatibility may concern different dimensions:
+
+- executable plan format;
+- protocol envelope;
+- operation meaning/version;
+- settlement interpretation;
+- progression representation;
+- browser/server runtime contract.
+
+The framework should not collapse these into one universal monotonically
+increasing version integer unless a particular layer genuinely has such a
+coordinate.
+
+A compatibility predicate may therefore be more structured than equality.
+
+What matters is that continuation is admitted only when the current runtime can
+justify it.
+
+*** Parseability is not compatibility
+
+A new server may still understand the bytes of an old command while no longer
+supporting the old continuation semantics.
+
+Thus:
+
+#+begin_example
+can decode
+    !=
+safe to continue
+#+end_example
+
+The compatibility check occurs at the semantic/protocol boundary, not merely at
+deserialization.
+
+*** Transparent arbitrary state migration is a non-goal
+
+Automatically translating arbitrary suspended projected-machine state across
+deployments would require:
+
+- source/target semantic correspondence;
+- state migration rules;
+- resource ownership migration;
+- pending effect migration;
+- timer/callback treatment;
+- provisional state treatment;
+- proof of compatibility.
+
+The framework must not accidentally promise this by attempting heuristic
+migration.
+
+Specific cross-version migrations may be defined for high-value cases only when their compatibility semantics are explicit.
+
+The safe baseline is authoritative reacquisition.
+
+*** Same command may survive when execution cannot
+
+A semantic command and its current projected execution have different identity.
+
+An old execution may be retired while the application still recognizes the same
+semantic command for reconciliation or retry.
+
+For example:
+
+#+begin_example
+command C42 persists semantically
+
+old:
+    plan P7
+    execution E7
+
+deployment
+
+new:
+    plan P8
+    execution E8
+
+C42 may be reconciled/retried if operation policy permits
+#+end_example
+
+This is one reason command identity, execution identity, and plan identity must
+remain separate.
+
+*** Recovery must itself obey authorization and progression rules
+
+Authoritative reacquisition after stale-plan detection is not a privileged
+backdoor.
+
+The new read/subscription path must still:
+
+- bind the authenticated principal;
+- authorize protected reads;
+- satisfy required progression semantics;
+- install only current compatible projections.
+
+Recovery changes runtime topology, not security policy. It also does not waive
+explicit adoption policy: reconstructing a board after reconnect must follow
+the declared policy for its existing observations and remote membership. If a
+full reload intentionally establishes a new initial observation, that is a
+separately declared acquisition boundary rather than a hidden advisory-triggered
+adoption.
+
+Recovery must handle failure to acquire a compatible plan or authoritative read
+without repeatedly restarting an incompatible continuation. The unavailable or
+retry state and the conditions for another attempt must be explicit. A missing
+current artifact is not permission to execute the stale plan.
+
+*** Offline duration does not imply replay obligation
+
+A browser offline through many authoritative changes need not replay every
+intermediate invalidation or projection.
+
+If application semantics permit it, recovery may jump directly to a sufficiently
+current authoritative observation.
+
+This keeps Live advisory and convergence semantics compatible with very long
+sleep/offline periods.
+
+** Browser managed effects
+:PROPERTIES:
+:CUSTOM_ID: req-browser-managed-effects
+:END:
+
+A choreography execution may cause browser implementation effects with
+lifetimes longer than one pure machine step.
+
+These must be owned explicitly.
+
+Semantic ownership decisions belong to the pure browser adapter transition core.
+The physical browser effect shell may allocate/cancel concrete resources only in
+response to abstract effects emitted by that core; it must not maintain a second
+competing semantic ownership model.
+
+No supported execution or shared browser activity may create ongoing managed
+browser resources without registering their declared owner with the runtime.
+This requirement concerns Gesso-managed effects, not every unrelated browser
+resource created by the surrounding application.
+
+Effect categories may include:
+
+- *resource* -- must be released;
+- *reversible* -- may be compensated while still safe;
+- *authoritative* -- records installed canonical state and must never be
+  automatically rolled back merely because later cleanup failed;
+- *async* -- timers/callback sources that must be cancelled or invalidated;
+- *ephemeral* -- recorded for diagnostics but leaves no ongoing resource.
+
+An execution should have one managed effect scope.
+
+Examples of owned browser effects:
+
+- optimistic target lock;
+- settlement timer;
+- request correlation;
+- continuity slot/transaction;
+- provisional DOM state;
+- pending browser state;
+- callback/event subscriptions associated with the execution.
+
+Important invariants include:
+
+#+begin_example
+every active managed effect scope has an admitted execution or shared owner
+every active execution's managed effects belong to its declared effect scope
+every managed timer/lock/continuity object has declared owner and instance identity
+retired execution retains no execution-private semantic ownership or callback authority
+physical remnants after retirement are cleanup debt only
+#+end_example
+
+Catastrophic cleanup should be:
+
+- reverse acquisition order where required by the declared resource dependencies;
+- idempotent;
+- best effort;
+- continuing through remaining permitted cleanup actions even when one throws;
+- diagnostic about cleanup failures;
+- subordinate to the original failure;
+- forbidden from undoing already-established authoritative DOM merely because a
+  later cleanup failed.
+
+Stale-plan retirement uses the same ownership rules: an incompatible old
+execution must first lose semantic ownership and have its generation invalidated.
+A new projection may then assume the logical target without waiting for every
+old physical effect to be destroyed. Cleanup of those stale physical effects is
+best effort, and any callbacks they later emit remain powerless because they
+carry retired ownership/generation.
+
+*** One effect scope per active execution
+
+An active projected execution should have one semantic effect scope that records
+the resources and reversible/provisional obligations it owns.
+
+Conceptually:
+
+#+begin_example
+Execution E
+    |
+    +--> target ownership
+    +--> provisional projection
+    +--> settlement timer
+    +--> request correlation
+    +--> continuity slot
+    +--> subscriptions/callback registrations
+#+end_example
+
+The exact representation may be compact.
+
+The important property is that resource ownership is explicit and queryable by
+the semantic transition system.
+
+*** Effect category affects legal cleanup
+
+Not every effect supports the same compensation.
+
+A useful conceptual distinction is:
+
+- resource -- requires release/invalidation;
+- reversible -- may be compensated while the compensation remains semantically
+  legal;
+- authoritative -- must never be undone by local cleanup merely because later
+  delivery failed;
+- async -- creates future callbacks that need cancellation or generation
+  invalidation;
+- ephemeral -- has no ongoing semantic ownership.
+
+An implementation may encode categories differently.
+
+What matters is that cleanup logic cannot blindly run "undo" on every historical
+effect.
+
+*** Rollback rights expire
+
+An optimistic execution may initially own the right to restore a captured local
+snapshot if its request fails before stronger authority supersedes it.
+
+That right is conditional.
+
+It expires when, for example:
+
+- a newer authoritative projection installs;
+- another current execution legitimately owns the target;
+- the old generation is retired;
+- reconciliation chooses a different canonical representation.
+
+Therefore rollback is a semantic operation guarded by current ownership, not a
+generic exception handler.
+
+*** Catastrophic cleanup preserves the original semantic failure
+
+If cleanup action 1 throws, cleanup actions 2 through N should still be
+attempted.
+
+Cleanup exceptions are diagnostics subordinate to the original failure that
+triggered cleanup.
+
+A later cleanup error must not rewrite history so the system appears to have
+failed for a different semantic reason.
+
+Conceptually:
+
+#+begin_example
+primary failure F
+    |
+semantic retirement
+    |
+cleanup A  -> fails CA
+cleanup B  -> succeeds
+cleanup C  -> fails CC
+
+reported:
+    primary F
+    cleanup diagnostics [CA CC]
+#+end_example
+
+*** Cleanup is idempotent
+
+The runtime should tolerate repeated cleanup attempts because:
+
+- timeout and request failure may race;
+- browser lifecycle recovery may repeat retirement;
+- exception handling may retry cleanup;
+- physical cancellation may be uncertain.
+
+Idempotent physical cleanup plus generation-gated semantic safety is preferable
+to fragile exactly-once cleanup assumptions.
+
+*** Physical remnants are observable debt, not hidden success
+
+When cleanup cannot destroy a resource, the runtime should retain enough
+diagnostic information to explain the remnant.
+
+It should not silently claim complete physical cleanup. Semantic isolation does
+not prove a bound on physical leaks. The operational contract must define how
+retained diagnostics and remnant resources are bounded, reclaimed, or reported
+as an unrecoverable local resource condition where repeated failure would
+otherwise exhaust the browser. A resource limit may suspend new work through a
+declared unavailable state; it must not revive obsolete ownership.
+
+At the same time, the semantic system may proceed once the resource's callback
+authority has been revoked.
+
+This separation lets the framework remain safe under imperfect browsers and
+third-party runtimes without concealing operational problems.
+
+*** Shared resources require an explicit shared ownership class
+
+The "one owner" rule applies to execution-private resources.
+
+Some resources may be intentionally shared, for example a fragment-level
+coordinator or shared Live connection.
+
+Such sharing must be represented explicitly.
+
+An unowned global variable that several executions happen to mutate is not a
+shared ownership model.
+
+The semantic design needs to know the class of sharing well enough to prevent an
+execution's retirement from destroying resources still required by legitimate
+owners.
+
+** Async event safety
+:PROPERTIES:
+:CUSTOM_ID: req-browser-async-admission
+:END:
+
+Every asynchronous event delivery must first be normalized at the browser FFI
+boundary and then pass the semantic adapter safety gate. There must not be an
+alternate callback path that directly mutates execution state or resumes the
+portable machine.
+
+The common gate follows [[#req-owner-relative-event-admission][Part II's
+owner-relative admission rule]]. For an execution-private event that resumes a
+projected machine, the runtime must establish:
+
+- the execution still exists;
+- the callback/event belongs to the current execution generation;
+- the resource that produced the event is still owned;
+- the event is accepted in the machine's current state;
+- where relevant, the projected plan is still compatible with the runtime/server
+  contract.
+
+Otherwise the event is stale, duplicate, or incompatible and is ignored,
+converted into recovery, or recorded diagnostically.
+
+All of the following event sources use the common admission boundary, with
+the checks required by their declared ownership class:
+
+- timers;
+- HTMX lifecycle callbacks;
+- request failures;
+- settlements;
+- Live/canonical supersession;
+- continuity callbacks;
+- fragment request completions;
+- Refresh/authoritative-acquisition completions and their captured requirements;
+- browser lifecycle recovery;
+- other asynchronous browser events.
+
+If machine/FX execution throws unexpectedly:
+
+- mark the execution failed;
+- never restore an old pre-drive machine as though the failed transition did not
+  occur;
+- revoke the failed owner's semantic permits and retire the affected execution
+  or admitted coordination scope before attempting physical cleanup;
+- attempt managed cleanup without reviving obsolete ownership;
+- retain failure history and cleanup diagnostics;
+- report/rethrow the original error.
+
+When settlement or authoritative supersession wins, settlement timeout ownership
+should be cancelled immediately before slow/local rendering work such as
+continuity restoration.
+
+*** One admission gate for every asynchronous callback
+
+The browser must not have one safety gate for timers, another informal rule for
+HTMX, and a third special case for continuity.
+
+Every asynchronous callback that can influence Gesso semantic state passes
+through the same conceptual admission sequence:
+
+#+begin_example
+normalize callback
+    |
+resolve declared event class, owner, and correlation
+    |
+owner admitted and applicable?
+    |
+resource instance / execution identity current where required?
+    |
+resource still semantically owned under that class?
+    |
+event legal in the owning execution or coordinator state?
+    |
+scope / progression / plan compatibility satisfied where required?
+    |
+accept transition
+#+end_example
+
+Any failure before the final step means the callback cannot directly perform
+the proposed semantic mutation. The gate may emit the specified diagnostic or
+recovery transition. It must not redispatch a rejected private event as shared
+to bypass the failed check.
+
+An idle fragment may accept an admitted shared advisory with no command
+execution. A stale subscription instance may not impersonate the replacement.
+An old settlement may inform a current command-resolution process only through
+its separately admitted command-evidence path; it does not resume the retired
+execution whose private callback was rejected.
+
+*** Unknown, stale, duplicate, and incompatible are distinct diagnoses
+
+All may result in "do not resume the machine," but they describe different
+conditions.
+
+- unknown -- no recognized owner/resource correlation exists;
+- stale -- correlation belonged to an older retired generation;
+- duplicate -- equivalent event was already consumed;
+- incompatible -- continuation exists but current plan/runtime contract forbids
+  it;
+- illegal-state -- event belongs to an admitted owner but is not admissible from
+  that owner's current execution or coordination state.
+
+Keeping these classifications separate improves diagnostics and testing.
+
+*** Late callback safety must not rely on ordering luck
+
+JavaScript event scheduling, network completion, HTMX lifecycle ordering, and
+browser suspension make many orderings possible.
+
+The design must therefore be correct for adversarial scheduling within the
+documented external contracts.
+
+Tests should deliberately permute:
+
+- response versus timeout;
+- canonical install versus old request failure;
+- execution retirement versus continuity completion;
+- invalidation versus fragment response;
+- advisory arrival during an in-flight Refresh;
+- newer local authoritative installation versus an older Refresh response;
+- reconnect versus old callback;
+- duplicate external events;
+- deferred physical effect versus owner retirement;
+- shared advisory arrival while no command execution exists;
+- explicit Refresh permission versus later advisory arrival;
+- partial installation failure versus continuity completion;
+- authentication-context replacement versus old subscription or request events.
+
+The proof/model abstraction should classify events by semantically relevant
+relations such as current/stale generation rather than by a few chosen concrete
+integers.
+
+*** Unexpected semantic-machine failure retires rather than rewinds
+
+If the semantic machine throws while driving a transition, the runtime must not
+restore an earlier machine object and pretend no transition was attempted.
+
+The safe response is:
+
+#+begin_example
+record primary failure
+    |
+retire affected semantic owner / revoke effect permits
+    |
+invalidate private resource correlations
+    |
+cleanup physical resources best effort
+    |
+surface original failure
+#+end_example
+
+Rewinding arbitrary partial semantic execution would require explicit
+transactional semantics that the browser machine does not claim to provide.
+The runtime may retain the last committed state for diagnosis and recovery, but
+must not use it to replay possibly issued effects without the effect contract's
+duplicate-handling guarantees. A failure after effect dispatch must account for
+the possibility that physical work already occurred.
+
+*** Winning terminal events cancel competing timeout authority immediately
+
+When a settlement or authoritative supersession wins, any settlement timeout
+must lose semantic ownership before slower local presentation work runs.
+
+For example:
+
+#+begin_example
+settlement accepted
+    |
+cancel/invalidate timeout ownership
+    |
+then perform continuity / DOM follow-up
+#+end_example
+
+Otherwise a timeout may fire during a slow local effect and incorrectly compete
+with an already resolved semantic outcome.
+
+#+LATEX: \newpage
+*** Duplicate delivery is part of the protocol environment
+
+External systems may duplicate:
+
+- SSE messages;
+- request completions;
+- browser events;
+- timer observations after cancellation races.
+
+Where a duplicate is semantically harmless, the transition system should make
+that idempotence explicit.
+
+Where it is not harmless, correlation/state must make the second delivery
+rejectable.
+
+"Should only happen once" is not a sufficient browser invariant.
+
+** Authoritative absence
+:PROPERTIES:
+:CUSTOM_ID: req-authoritative-absence
+:END:
+
+The runtime must be able to represent that an authoritative result establishes
+absence of a previously rendered target within a declared projection scope.
+That does not automatically establish nonexistence of the domain entity.
+
+A missing canonical target is not always an error.
+
+For example, a Request may legitimately disappear from a filtered board because
+it became terminal or ceased to match the current view.
+
+The semantic protocol therefore needs a notion equivalent to authoritative
+absence/tombstone for projections.
+
+The browser realization may then remove the corresponding DOM safely while
+preserving the choreography's authority semantics.
+
+An actor can acquire authoritative knowledge of absence in the same sense that
+it can acquire authoritative knowledge of presence.
+
+*** Presence and absence are both authoritative projection outcomes
+
+A projection result should distinguish:
+
+#+begin_example
+present authoritative value
+authoritative absence
+not yet acquired
+failed to acquire
+#+end_example
+
+These are not equivalent.
+
+In particular:
+
+#+begin_example
+empty DOM
+#+end_example
+
+does not by itself tell the runtime whether the authoritative target is absent
+or simply has not been loaded.
+
+This distinction is necessary for both initial acquisition and safe removal.
+
+*** Authoritative absence may legitimately remove local representation
+
+Examples include a Request that:
+
+- becomes terminal and is filtered out;
+- moves to another board scope;
+- no longer satisfies the current search/filter projection;
+- is deleted/withdrawn under domain policy where such absence is authoritative.
+
+The browser may remove the representation when the authoritative projection
+establishes absence.
+
+That removal has the same authority semantics as installing an authoritative
+present representation.
+
+*** Absence supersedes obsolete provisional presence
+
+If a provisional execution rendered a target and authority later establishes
+that the target is absent from the relevant projection, the provisional target
+must not survive merely because it has a physical DOM node.
+
+Likewise a stale rollback cannot resurrect the target after authoritative
+absence has been installed.
+
+This is another instance of authoritative-install monotonicity.
+
+*** Absence is scoped to a projection
+
+Authoritative absence from one projection does not necessarily mean the domain
+entity ceased to exist.
+
+For example:
+
+#+begin_example
+Request R absent from
+    "open requests visible to this helper"
+
+does not imply
+
+Request R does not exist
+#+end_example
+
+The provenance of absence therefore includes the authoritative projection/read
+whose result established it, including the completeness and consistency needed
+to justify the negative result. Access denial, a partial page, a failed request,
+or missing HTML is not interchangeable with authoritative absence.
+
+Local presentation filtering is also distinct. Hiding a terminal card using an
+option over already-adopted data does not necessarily perform a new acquisition
+or revoke adopted membership. Re-showing it must use retained justified content
+or a permitted acquisition, not resurrect a target whose authoritative absence
+or ownership supersession has since been established. It must not admit unrelated
+remote membership merely because a filter changed.
+
+This keeps filtering/view semantics separate from entity existence semantics.
+
+** Failure, liveness, and convergence
+
+Choreography verification must distinguish safety from liveness.
+
+A safety property might say:
+
+#+begin_quote
+Every reachable machine state is allowed by the global choreography.
+#+end_quote
+
+A liveness property might say:
+
+#+begin_quote
+Under eventual delivery, successful authoritative observation, and continued
+execution, every provisional claim eventually reaches a resolving outcome.
+#+end_quote
+
+The verifier must not claim unconditional termination merely because every
+reachable state has some path to a terminal state.
+
+Liveness guarantees depend on explicit assumptions such as:
+
+- message/event delivery where communication is required;
+- authoritative dependencies remaining reachable;
+- authoritative rereads eventually completing where observation is required;
+- participants continuing to execute;
+- clocks/timers firing;
+- browser/runtime compatibility or successful recovery after incompatibility;
+- absence of permanent unresolved application-defined conflict.
+
+These assumptions should be named rather than hidden.
+
+A continuously changing universe may prevent all actors from simultaneously
+observing the latest state.
+
+The correctness target is that actor knowledge remains valid relative to its
+known basis and provenance and that relevant actors have a finite path toward
+newer authoritative knowledge.
+
+For HumanHelp, replay of every intermediate invalidation is not required for
+convergence.
+
+A client that was offline from X17 through X900 may recover by obtaining a
+current authoritative observation at X900 or later rather than replaying every
+intermediate change.
+
+*** Safety, liveness, and recovery are separate claims
+
+A safe protocol may still wait forever if an external dependency never responds.
+
+A live protocol under favorable assumptions may still be unsafe if it can enter
+an invalid state before eventual recovery.
+
+The design therefore reports these classes separately.
+
+Representative safety claim:
+
+#+begin_example
+stale execution callback can never mutate newer execution state
+#+end_example
+
+Representative conditional liveness claim:
+
+#+begin_example
+if authority remains reachable and the actor continues executing,
+every provisional command eventually reaches authoritative resolution
+or a declared recovery terminal
+#+end_example
+
+The assumptions belong in the claim.
+
+*** Path-to-terminal is not termination proof
+
+Finding a terminal path from every state does not prove the environment will
+take it.
+
+For example, a machine may have:
+
+#+begin_example
+waiting
+    -- settlement --> confirmed
+    -- timeout ----> local recovery / outcome still unknown
+#+end_example
+
+but if neither settlement nor timer delivery is assumed eventually to occur,
+unconditional termination has not been established.
+
+The verifier must not promote graph reachability into liveness.
+
+*** Agreement debt may converge under quiescence
+
+Actors can legitimately hold different authoritative frontiers while the world
+changes.
+
+Where the application requires convergence, the system should make the debt
+visible and provide a finite route toward newer authoritative knowledge.
+
+Under suitable assumptions such as:
+
+- relevant authority eventually stops changing long enough;
+- required communication/invalidations are eventually delivered or replaced by
+  authoritative reacquisition;
+- actors continue running;
+- authoritative reads succeed;
+- any user/application acquisition trigger required by policy occurs;
+
+agreement debt should be able to fall to zero for the scoped facts that require
+agreement.
+
+This is a conditional convergence statement, not a claim of instantaneous
+global consistency.
+
+*** Replay of every intermediate change is usually unnecessary
+
+A browser that slept through:
+
+#+begin_example
+X17 ... X900
+#+end_example
+
+may often recover directly by authoritative observation at X900 or later.
+
+This is especially appropriate when Live invalidations are advisory rather than
+durable semantic events.
+
+The system needs current justified knowledge, not a reenactment of every
+notification packet.
+
+Applications whose domain semantics genuinely require every event must model a
+durable event/log contract explicitly instead of assuming SSE replay.
+
+*** Failure classes preserve authoritative commit truth
+
+Failures should remain classified according to where they occur.
+
+At minimum:
+
+#+begin_example
+failure established before commit submission, or confirmed rejection of attempt
+    this attempt did not commit its proposed transition
+
+commit submitted but result unavailable
+    outcome unknown to this participant
+
+authoritative commit succeeded
+then propagation failed
+    mutation occurred
+    delivery/recovery debt remains
+
+browser local effect failed
+    authoritative truth unchanged
+    local execution may recover/retire
+
+stale/incompatible execution detected
+    authoritative truth remains valid
+    local projection reacquires
+#+end_example
+
+Collapsing these categories into a generic "operation failed" destroys the
+information needed for safe recovery.
+
+These categories describe authoritative reality when that reality is actually
+known at the observing boundary.  They must not be inferred solely from a
+participant's transport symptom.  A timeout, connection loss, or missing
+response may leave that participant unable to establish whether authoritative
+commit occurred.  The command/optimism layer's participant-relative uncertainty
+therefore remains in force here: runtime classification must not turn unknown
+commit disposition into either confirmed rejection or confirmed incorporation.
+
+*** Recovery must not fabricate success
+
+A recovery path may:
+
+- reread authority;
+- supersede provisional state;
+- instantiate a current plan;
+- retry publication;
+- reconcile a semantic command.
+
+It must not report success for an authoritative transition that did not occur.
+
+Similarly it must not report authoritative failure merely because local display
+or notification failed after commit.
+
+When command disposition remains unresolved, recovery may restore a correct
+authoritative presentation without claiming that the participant has learned
+which command produced that state.  Presentation convergence, command
+attribution, and authoritative command disposition remain separate conclusions.
+
+*** Runtime fault and semantic outcome remain different
+
+A model may legitimately return semantic outcomes such as:
+
+- rejected;
+- already incorporated;
+- conflict/reconciled;
+- no longer applicable.
+
+Those are not runtime failures.
+
+Conversely:
+
+- broken HTMX contract;
+- malformed response envelope;
+- browser FFI exception;
+- impossible adapter state;
+- unsupported plan version;
+
+are runtime/integration failures, not domain outcomes.
+
+Diagnostics and tests should keep the distinction explicit.
+
+*** Convergence does not require automatic UI adoption
+
+An actor may learn that newer authority exists without immediately adopting that
+projection into visible UI.
+
+HumanHelp deliberately uses this distinction for remote creation. Its policy
+for remote lifecycle changes to already-admitted Requests remains the explicit
+product decision recorded in the HumanHelp part; generic browser semantics do
+not choose that policy.
+
+Therefore a convergence path may include:
+
+#+begin_example
+advisory knowledge of newer authority
+    |
+user/application chooses refresh
+    |
+authoritative reacquisition
+    |
+visible adoption
+#+end_example
+
+The system can remain semantically correct during the interval as long as the
+actor does not perform behavior requiring knowledge it has not adopted and the
+application exposes the required path toward current authority.
+
+Adoption remains scoped.  Installing one newer authoritative observation does
+not itself admit unrelated remote membership changes, clear unrelated advisory
+debt, or establish that every displayed object belongs to one common snapshot.
+A Refresh indication may clear only when the authoritative acquisition actually
+satisfies the obligations whose presence caused that indication.
+
+*** Runtime/browser guarantees are layered
+
+The strongest useful statement combines several assurance kinds:
+
+#+begin_example
+proved / mechanically checked:
+    portable transition invariants
+    execution isolation
+    ownership/generation invariants
+    explicitly stated logical coordination bounds and requirement preservation
+    authoritative-install monotonicity
+    projection/refinement properties for supported subset
+
+runtime-enforced premises:
+    event correlation
+    generation checks
+    plan compatibility
+    schema validation
+    progression decoding
+
+trusted/external assumptions:
+    browser primitives
+    supported HTMX lifecycle
+    scheduler/network liveness where claimed
+    authentication/model/XTDB contracts
+#+end_example
+
+Real Chromium testing remains essential because it challenges the bindings and
+external assumptions that the pure semantic model deliberately does not prove.
+
+*** Browser realization invariant
+
+At the end of the portable/browser runtime layer, the unified design requires:
+
+#+begin_quote
+Production executes one canonical projected semantic plan through a pure
+portable transition core.  Browser integrations normalize observations and
+realize abstract effects without independently deciding semantics. Every
+asynchronous event is admitted according to its declared owner, resource
+instance, correlation, legal state, and applicable scope/compatibility checks.
+Shared events do not require an unrelated execution. Deferred physical effects
+cannot use expired permits to mutate a newer representation.  Semantic retirement makes stale physical
+resources powerless before best-effort cleanup.  New authoritative
+installations cannot be undone by obsolete provisional callbacks, and scoped
+authoritative installation discharges only advisory obligations actually covered
+by its acquisition.  Older Refresh responses cannot erase newer justified state
+or silently convert a mixed authoritative view into a fictitious common
+snapshot.  Transport/runtime failure does not invent command rejection or
+incorporation when disposition remains unknown.  Incompatible stale plans
+recover through authoritative reacquisition rather than heuristic state
+migration.  Proof/diagnostic artifacts may explain execution but can never
+affect it, and liveness/convergence claims remain explicitly conditional on
+their named environment assumptions.
+#+end_quote
+
