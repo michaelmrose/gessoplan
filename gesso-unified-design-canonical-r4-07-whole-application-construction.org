@@ -315,7 +315,7 @@ Source provenance or concrete realization identity may additionally be needed
 to bind test evidence to the implementation actually exercised; a stable public
 contract name does not transfer that evidence to a changed handler body.
 
-*** Assembly construction phases and admitted generation
+*** Assembly construction phases and admitted assembly generation
 :PROPERTIES:
 :CUSTOM_ID: req-assembly-construction-phases
 :END:
@@ -350,6 +350,13 @@ Each identity used by the assembly must make clear:
   bytes;
 - when the identity becomes fixed;
 - which changes invalidate dependent evidence.
+
+An admitted assembly generation binds the application realization accepted for
+serving. In this part, an unqualified “admitted generation” refers to that
+assembly generation, not to a browser execution or resource instance. Deployment
+identity records physical rollout/placement where needed; it is not an alias
+for assembly generation. Plan/protocol compatibility and exact artifact identity
+remain separately declared relationships.
 
 An admitted assembly generation is immutable for the scope of the claims made
 about it.  Source, semantic, compiler, manifest, route, or generated-artifact
@@ -625,13 +632,14 @@ The first can be an assembly requirement.
 
 The second should not be mislabeled as an open preflight obligation.
 
-** Semantic identity is monotonic through realization
+** Semantic operation identity is preserved through realization
 
 Once source code declares that a rendered action means a semantic operation,
-that identity may accumulate physical realization details but may not silently
-disappear.
+later stages may add physical realization details but may not silently erase or
+substitute that operation identity. This is preservation through binding, not an
+ordering over identities.
 
-The intended monotonic path is:
+The intended realization path is:
 
 #+begin_example
 semantic operation
@@ -894,7 +902,7 @@ application assembly requires.
 It should include enough stable identity to answer:
 
 - which plans are required;
-- which compatibility/protocol generation they target;
+- which declared plan/protocol compatibility identities or versions they target;
 - which semantic operations they realize;
 - the build contract that binds the required plan set to the generated artifact.
 
@@ -1010,7 +1018,7 @@ continuation of an older client are distinct claims.
 
 *** Rebuild makes the artifact current
 
-The supported development/build workflow should make browser generation an
+The supported development/build workflow should make browser-artifact generation an
 ordinary reproducible step.
 
 The design target is:
@@ -1346,8 +1354,8 @@ sufficient to establish correspondence.
 The checked route must dispatch through the admitted prepared realization, not
 an unrelated function carrying equivalent-looking metadata. The report must
 distinguish structural binding to that realization from proof of its arbitrary
-host-language implementation. Contract-level identity, concrete generation
-binding, and implementation evidence serve different purposes.
+host-language implementation. Contract-level identity, concrete assembly-
+generation binding, and implementation evidence serve different purposes.
 
 This requirement prevents:
 
@@ -1509,8 +1517,11 @@ For example:
 Preflight establishes the path exists.
 
 It cannot promise external runtime availability unless a stronger premise is
-actually justified. A declared recovery path also does not prove eventual
-recovery without its named environmental and scheduling assumptions.
+actually justified. Where the supported operation contract requires a handling
+or recovery path for such a failure, preflight must establish the declared path's
+structural presence and compatibility. The static handling-coverage requirement
+below defines that check. A declared recovery path does not prove eventual
+recovery without its named environmental, scheduling, or user-action premises.
 
 ** Authoritative settlement and progression closure
 
@@ -1762,6 +1773,8 @@ Representative failures include:
 - missing trusted server operation;
 - server/model operation mismatch;
 - missing execution capability;
+- missing or incompatible declared handling/recovery path required by an
+  operation's supported dynamic-failure contract;
 - undeclared required publication;
 - missing Live initial knowledge;
 - missing authoritative acquisition path;
@@ -1789,6 +1802,54 @@ These remain trusted runtime/model outcomes.
 
 Trying to encode all current database facts into startup preflight would make
 the checker both unsound and unusable.
+
+*** Static coverage of declared dynamic-condition handling
+:PROPERTIES:
+:CUSTOM_ID: req-preflight-dynamic-handling-coverage
+:END:
+
+Preflight need not predict dynamic facts. It must nevertheless check the
+structural presence and compatibility of handling/recovery paths required by
+the supported operation contract for dynamic conditions that could otherwise
+strand an operation. The existence of a provider, happy-path route, or terminal
+state alone does not establish that coverage.
+
+The contract identifies the failure/outcome classes in scope and the handling
+obligations they create. These may include typed rejection, bounded retirement,
+explicit uncertain-outcome presentation, permitted authoritative reacquisition,
+or another declared recovery action. Preflight checks the declared continuations,
+required inputs/correlation, owners, and realization bindings needed by those
+paths where structurally knowable. It must not rely on a bare assertion that
+“recovery exists” when its supported declarations permit those edges to be checked.
+
+For example:
+
+- If a capability can be unavailable and the operation contract requires handling
+  that outcome, the declared continuation must accept the corresponding outcome
+  shape and have the required realization.
+- If loss after submission can leave command attribution unknown, the handling
+  contract must preserve that state and expose its declared recovery path. An
+  unrelated current-state read cannot be wired as unconditional proof of success
+  or rejection.
+- If acquisition is the required recovery mechanism, its declared route,
+  progression/scope contract, and triggering permission must correspond. Merely
+  recording advisory debt does not authorize automatic acquisition or adoption.
+- If continuity restoration fails after successful authoritative installation,
+  the declared handling must not turn that failure into rollback of the already
+  installed observation or rejection of a committed mutation.
+
+These checks establish structural coverage of the declared supported cases.
+They do not prove that arbitrary handler bodies conform, that every external
+failure is enumerated, that authorization will hold later, or that a recovery
+attempt will eventually succeed. Implementation behavior and actual activation
+of the path require their own runtime/conformance evidence. Unsupported analysis
+must remain explicit rather than being presented as completed static checking.
+
+Controlled-defect tests must remove or misbind a required handling edge and
+observe rejection at the applicable production checking boundary. Corresponding
+valid fixtures and fault scenarios must exercise the intended path. Failure
+conditions first knowable at invocation or concrete rendering remain checked at
+those boundaries; preflight does not invent the unavailable dynamic facts.
 
 *** Earliest legitimate failure layer
 
@@ -2077,7 +2138,7 @@ and every application module.
 
 It requires that Aleph or any equivalent externally serving application boundary
 cannot expose the application before closure has succeeded and the admitted
-handler generation is ready. Any separately scoped health or administrative
+handler binding for the admitted assembly generation is ready. Any separately scoped health or administrative
 endpoint must be identified as such and cannot expose unchecked application
 operations under that exception.
 
@@ -2220,7 +2281,8 @@ affordance and observing rejection before serialization/browser delivery.
 
 *** Preflight state is immutable for an assembly generation
 
-Once startup accepts an assembly/artifact generation, the runtime may cache the
+Once startup accepts an assembly generation and its bound artifact identities,
+the runtime may cache the
 normalized closure result.
 
 If application realization declarations change, a new assembly generation must
@@ -2751,7 +2813,7 @@ requires:
 
 #+begin_quote
 Every Choreo-managed affordance exposed by the application retains its semantic
-identity monotonically through browser plan, exact generated artifact, physical
+identity without silent erasure or substitution through browser plan, exact generated artifact, physical
 transport, trusted route, trusted server operation, authoritative model
 operation, settlement/progression, and authoritative reacquisition.  Missing
 edges reject rather than silently downgrade.  One canonical source-owned
@@ -2760,7 +2822,9 @@ surface checking, startup, explanation, and tests while permitting distinct
 construction products and immutable admitted generations.  Browser artifacts
 must correspond exactly to the current required manifest.  Server execution
 capabilities are checked structurally without being confused with domain
-authority.  Live invalidation remains advisory and every managed authoritative
+authority. Required declared handling paths for supported dynamic conditions
+are structurally checked without pretending to predict those conditions or
+prove unconditional recovery.  Live invalidation remains advisory and every managed authoritative
 projection has an initial or permitted acquisition path.  Native Biff 2
 lifecycle identity makes application preflight a mandatory predecessor of
 external service, so Aleph cannot begin serving a structurally invalid

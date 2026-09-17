@@ -1,6 +1,6 @@
 #+title: Gesso Unified Design
 #+subtitle: Canonical architecture, assurance model, and reference application
-#+date: 2026-09-16
+#+date: 2026-09-17
 #+startup: nofold
 #+options: toc:3 num:nil
 #+property: canonical-revision r4-draft
@@ -42,6 +42,14 @@ Canonical r4 preserves those commitments except where this document explicitly
 clarifies, reconciles, or supersedes wording.  A change in implementation does
 not by itself change the requirement.
 
+*** Sectional correction identity
+
+The filename marker =r4-c1= identifies the first correction pass over the r4
+draft segments. A corrected segment replaces the same numbered original segment;
+it is not an additional part to append. Use exactly one version of each numbered
+part when concatenating. The complete specification retains its =r4-draft=
+status during this correction pass.
+
 *** Revision scope
 
 R4 preserves the semantic commitments of r3 while making their construction,
@@ -80,7 +88,7 @@ also the concatenation order.
 | 06 | VI — Browser realization and recovery | Adapter refinement, owner-relative event admission, acquisition coordination, stale plans, managed effects, absence, failure and convergence |
 | 07 | VII — Whole-application construction | ApplicationAssembly, closure, artifacts, routes, capabilities, settlement/acquisition, static and dynamic preflight, Biff lifecycle, diagnostics |
 | 08 | VIII — HumanHelp proving application | Production model ownership, example integration, lifecycle, creation, adoption, board behavior, product decisions and independent acceptance |
-| 09 | IX — Compositional certification | Semantic interfaces, typed rules, certificate hierarchy, dependency identity, kernel, mutation corpus, HumanHelp proof pilot |
+| 09 | IX — Compositional certification | Semantic interfaces, typed rules, certificate hierarchy, dependency identity, proof kernel, mutation corpus, HumanHelp proof pilot |
 | 10 | X — Formal correspondence and system boundaries | Assurance targets, theorem families, formalization, production correspondence, TCB, validation, multi-node semantics |
 | 11 | XI — Release and completion | Incremental builds, release evidence, non-goals, progress measures and the four completion scopes |
 | 12 | XII — Implementation order and final invariants | Ordered stages, dependency relationships, cross-stage acceptance and final unified principle |
@@ -472,7 +480,7 @@ Runtime code realizes the checked semantics.
 It must preserve:
 
 - semantic identities;
-- execution/generation ownership;
+- execution-instance identity and declared resource-instance ownership;
 - stale-work rejection;
 - correlation;
 - progression requirements;
@@ -729,7 +737,7 @@ Candidate framework properties include:
 - declared resource invariants;
 - progression algebra invariants;
 - browser-adapter transition invariants;
-- stale-generation isolation;
+- retired execution/resource isolation;
 - semantic dependency compatibility;
 - executable-plan provenance;
 - certificate dependency consistency.
@@ -909,8 +917,9 @@ notion of "verification":
      AbstractEffects)
   #+end_example
 
-  Candidate invariants include current-generation isolation, resource ownership,
-  authoritative-install monotonicity within the applicable observation scope,
+  Candidate invariants include execution-instance isolation, resource-instance
+  ownership, prevention of obsolete presentation being restored after justified
+  authoritative supersession within the applicable observation scope,
   separation of provisional and authoritative state, immediate semantic
   retirement of obsolete work, scope-preserving acquisition requirements for
   queued refreshes, and terminal ownership/cleanup conditions.  The proof applies to the abstract
@@ -918,12 +927,16 @@ notion of "verification":
   required for the browser shell that normalizes concrete events and performs
   abstract effects.
 
-- *Stale-generation isolation.*  Once generation G is semantically retired, no
-  callback, timer, network result, settlement, continuation event, or delayed
-  browser effect owned by G may change semantic state belonging to a newer
-  generation.  Physical cleanup may occur later.  Semantic power ends at
-  retirement, and new logical ownership must not wait for every obsolete
-  physical operation to disappear.
+- *Retired execution/resource isolation.* Once an execution instance or resource
+  instance loses its relevant semantic ownership, a callback, timer, network
+  result, settlement, continuation event, or delayed effect cannot use that
+  retired ownership to resume execution or mutate a replacement owner's state.
+  Admission identifies the event's declared owner and concrete resource instance;
+  matching a reused logical target name is insufficient. Physical cleanup may
+  occur later, and new logical ownership need not wait for every obsolete
+  physical operation to disappear. Independently useful authoritative or
+  command-outcome evidence may enter only through its separately declared
+  admission path; it does not reactivate the retired owner.
 
 - *Semantic dependency compatibility.*  A certified downstream artifact may
   depend only on upstream semantic interfaces whose guarantees satisfy the
@@ -941,7 +954,7 @@ notion of "verification":
 
 - *Certificate dependency consistency.*  A certificate may claim only
   guarantees justified by its checked derivation, certified dependencies,
-  explicit assumptions/assertions, and the checker/kernel rules applicable to
+  explicit assumptions/assertions, and the checker or proof-kernel rules applicable to
   its certificate class.  Certificates may not self-certify, depend on
   undeclared semantic inputs, silently accept stale dependencies, form
   unsupported circular justification, or claim stronger conclusions than
@@ -1029,7 +1042,7 @@ Examples include:
 - authenticated principal binding;
 - operation-registry lookup;
 - route and capability correspondence;
-- execution and generation identity;
+- execution-instance identity and relevant resource-instance identity;
 - command/correlation identity;
 - projected-plan compatibility;
 - browser-artifact identity;
@@ -1484,6 +1497,79 @@ whole-application proof architecture.
 It is defined here so later layers do not need to redefine what their evidence
 means.
 
+*** Identity and instance terminology
+
+An identity names a particular semantic object or concrete instance. Its meaning
+must be explicit wherever admission, ownership, compatibility, or evidence
+binding depends on it. The canonical distinctions include:
+
+- *Command identity:* the logical intent, which may survive multiple attempts.
+- *Execution identity:* one concrete semantic execution of a choreography or
+  operation; its relation to a command is explicitly declared.
+- *Resource-instance identity:* one concrete timer, subscription, transport
+  request, continuity capture, or other managed resource, distinct from its
+  reusable logical resource/target name.
+- *Transport-request identity:* one transport attempt, distinct from the domain
+  object being acted upon and from the command it may carry.
+- *Admitted assembly generation:* the immutable application realization admitted
+  together, including its routes, providers, prepared operations, and artifacts.
+- *Compatibility identity/version:* the declared protocol or plan compatibility
+  class, distinct from exact executable-artifact identity and from deployment.
+
+A deployment may host multiple admitted assembly generations during a supported
+transition. A deployment identifier, assembly generation, execution identity,
+and resource-instance identity are not interchangeable coordinates.
+
+Use =generation= only when its owning subject and purpose are explicit, such as
+=assembly generation= or a declared =resource-instance generation counter=.
+A counter is one possible representation; opaque identity is sufficient where
+only equality and non-aliasing are needed. Do not imply an ordering, universal
+counter, or shared lifetime merely by calling a value a generation. A later
+reference may abbreviate a locally established subject only when it remains
+unambiguous.
+
+For browser transport examples, =:transport-request-id= names the transport
+attempt. Domain Request arguments such as HumanHelp's =:request-id= retain their
+domain meaning. Different transport attempts must not be conflated because they
+carry the same command or concern the same domain Request.
+
+Operation identity is *preserved* through realization: it cannot be silently
+erased or substituted. Reserve *monotonic* for a stated ordering or information-
+growth relation. In particular, preventing retired work from restoring obsolete
+presentation does not imply that all observations form one totally ordered
+history or that every valid domain transition increases a numeric value.
+
+*** Executable semantic core, proof kernel, and dedicated checkers
+
+The *executable semantic core* defines the production transition meaning for its
+supported semantic subset. It consumes the applicable executable rules, admitted
+state, and inputs/events, and yields semantic state and declared effects. A
+portable machine step or browser adapter transition function is an executable
+semantic core within its stated scope. There need not be one universal step
+function for all layers.
+
+The *proof kernel* checks derivations against explicit inference rules and
+premises. It accepts or rejects the claimed judgment; it does not perform the
+application's runtime transitions or supply runtime authorization. It is
+separate from the richer elaborator that proposes terms and evidence. It must
+not trust the elaborator's conclusion merely because the elaborator supplied it.
+
+A *dedicated semantic checker* establishes a particular judgment or property,
+such as exact finite-state exploration or structural application closure,
+through its declared checking mechanism. It need not be implemented as part of
+the proof kernel. Its result retains the evidence class and trust premises of
+that mechanism.
+
+These components may share canonical semantic definitions. Sharing definitions
+neither merges their responsibilities nor establishes implementation soundness.
+The relationship between the checked subject and the production object remains
+an explicit correspondence obligation. Canonical terminology calls the runtime
+component the executable semantic core, reserving =proof kernel= for derivation
+checking; external proof-assistant kernels must be identified as external.
+
+These definitions fix terminology and boundaries. They do not select a namespace
+layout or specify the later judgment calculus by implication.
+
 *** Raw declaration
 
 A *raw declaration* is user, application, or framework data that has not yet
@@ -1616,7 +1702,7 @@ A certificate may include:
 - guarantees;
 - proof obligations;
 - derivations or checked references to derivations;
-- checker or kernel version;
+- applicable semantic-checker or proof-kernel version;
 - result classification.
 
 A certificate is not a boolean.

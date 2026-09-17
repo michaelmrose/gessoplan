@@ -779,10 +779,13 @@ Malli is not responsible for questions such as:
 Those remain domain, FX, Choreo, or authority/progression concerns.
 
 Runtime validators should be compiled and reused for the admitted schema and
-registry generation to which they belong. A relevant schema or registry change
-requires an appropriately recompiled or independently validated compatible
-validator; an old compiled validator must not silently enforce an obsolete
-contract.
+registry definitions whose identities they reference. If those bindings belong
+to an admitted assembly generation, validator use must remain coherent with
+that assembly generation. A relevant schema or registry change requires an
+appropriately recompiled or independently validated compatible validator; an
+old compiled validator must not silently enforce an obsolete contract.
+Validator correspondence does not depend on a browser execution identity or
+resource-instance counter.
 
 The default design should validate important runtime boundaries in production,
 including:
@@ -1177,7 +1180,9 @@ If a message declares:
  :outcome ClaimOutcome}
 #+end_src
 
-then receiving it may establish only the declared communicated facts.
+Here =:request-id= identifies the domain Request involved in the Claim outcome;
+it is not =:transport-request-id=, which identifies a transport attempt.
+Receiving this message may establish only the declared communicated facts.
 
 The receiver does not acquire arbitrary sender context, and the implementation
 must not merge unknown payload keys into machine context by convenience.
@@ -1220,12 +1225,24 @@ projection.
 The distinction is:
 
 #+begin_example
-"browser may branch only if generation is current"
-    -> executable guard if needed at runtime
+"this callback may resume execution E only while its declared resource
+ instance I retains the required ownership for E"
+    -> executable admission guard if needed at runtime
 
 "here is the proof tree explaining why that guard is sufficient"
     -> diagnostic/proof artifact
 #+end_example
+
+The guard identifies the execution and resource instance required by this
+callback's admission contract; it is not a universal generation comparison.
+Shared fragment or subscription events use their own declared ownership checks.
+Passing an ownership guard does not by itself establish the knowledge,
+provenance, or authority required for the resumed branch.
+
+The executable semantic core evaluates runtime guards as part of the admitted
+transition semantics. A proof kernel or dedicated semantic checker establishes
+its stated judgment about those semantics; it does not replace the runtime
+admission check or supply missing runtime facts.
 
 The production machine must never depend on an optional proof sidecar to decide
 a transition.

@@ -225,7 +225,7 @@ idempotency contract, or another model-declared source of attribution.  Merely
 observing the expected current state is insufficient where another cause could
 produce the same state.
 
-*** Authoritative supersession is monotonic
+*** Authoritative supersession prevents obsolete restoration
 
 Once a logical target has installed an admitted authoritative observation that
 supersedes provisional ownership for the relevant scope, cleanup from that
@@ -236,7 +236,10 @@ late.
 "Newer" is defined by the applicable scoped observation and installation
 contract, not wall-clock arrival or a maximum opaque database token. A narrow
 observation cannot erase unrelated provisional or advisory state without the
-required coverage and ownership justification.
+required coverage and ownership justification. This is a prohibition on obsolete
+restoration, not a claim that all observations form one total order or that
+domain state can only grow. Any stronger monotonicity claim must identify the
+ordering and scope over which it holds.
 
 The browser realization and proof obligations belong to Part VI and the
 [[#req-runtime-scoped-authoritative-installation][scoped installation contract]].
@@ -415,8 +418,8 @@ change the semantic meaning of a Request operation.
 
 Continuity identity must distinguish the current slot/resource instance rather
 than relying only on logical target id. It follows the
-[[#req-resource-instance-identity][resource instance identity contract]]; a numeric
-generation is one possible representation. A delayed restore from an older
+[[#req-resource-instance-identity][resource instance identity contract]]; a scoped
+resource-instance counter is one possible representation. A delayed restore from an older
 replacement must not consume or mutate continuity state of a newer replacement.
 
 *** Continuity is local preservation, not provenance
@@ -449,18 +452,21 @@ replacement.
 Conceptually:
 
 #+begin_example
-logical target T
-    generation G1 -> capture slot S1
-    generation G2 -> capture slot S2
+logical target T, logical continuity slot S
+    capture instance I1 owned by replacement scope O1
+    capture instance I2 owned by replacement scope O2
 
-late callback for S1
-    must not consume/overwrite S2
+late restore callback for I1
+    must not consume/overwrite I2's captured state
 #+end_example
 
 The browser adapter's owner-relative isolation rules in Part VI govern this
 safety. A continuity owner may refer to an execution when one exists, but the
 admission test must use the declared owner rather than require an unrelated
-execution.
+execution. Slot S names the logical capture location; I1 and I2 distinguish its
+concrete captures. O1 and O2 identify the declared replacement/effect owners.
+Their representation need not use ordered counters or separate redundant tokens
+when the ownership contract can preserve these distinctions with fewer values.
 
 *** Failure of continuity must not corrupt semantic settlement
 
@@ -488,8 +494,10 @@ matches the semantic state.
 
 *** Continuity cleanup is best effort after semantic retirement
 
-Once the semantic execution/generation that owned a continuity resource has
-been retired, late physical cleanup may still occur.
+Once a continuity resource instance or its declared execution, fragment-
+replacement, or effect-scope owner has been retired, late physical cleanup may
+still occur. Retirement revokes the corresponding instance's restoration rights;
+it need not imply that every resource of the same execution was replaced.
 
 Cleanup failure becomes diagnostic/runtime debt.
 
@@ -746,11 +754,12 @@ becoming a second independent business-rule engine.
 
 The authoritative operation still rechecks current permission at execution.
 
-*** Semantic operation identity is monotonic through rendering
+*** Semantic operation identity is preserved through rendering
 
 Once a view declares that an affordance is semantically managed as operation O,
 later rendering stages may add realization metadata but may not silently erase
-that identity.
+or substitute that identity. Preservation is not an ordering over operation
+identities.
 
 Conceptually:
 
@@ -963,7 +972,7 @@ transport semantics.
 :END:
 
 The portable choreography representation and transition semantics form one
-shared semantic core.
+shared executable semantic core.
 
 Where the implementation can express that core portably, it lives in shared
 Clojure/ClojureScript code rather than in separate JVM and browser
@@ -978,7 +987,7 @@ Clojure owns or hosts the trusted/server-side work needed for:
 - authoritative model operations;
 - XTDB consistency and transaction work;
 - server-side projections where required;
-- JVM execution of the portable semantic core;
+- JVM execution of the portable executable semantic core;
 - compiler/build-time verification and projection.
 
 ClojureScript owns or hosts the browser-side realization needed for:
@@ -1055,7 +1064,7 @@ function production actually uses.
 
 *** Portable execution owns semantic state, not the browser shell
 
-The portable semantic core and browser adapter must have an explicit ownership
+The portable executable semantic core and browser adapter must have an explicit ownership
 boundary for semantic state. An execution machine owns its projected trajectory;
 the adapter owns cross-execution browser coordination where required. Those are
 composed responsibilities, not competing copies of one state machine. Each
@@ -1065,7 +1074,7 @@ Together their admitted state includes:
 
 - projected machine state;
 - execution identity;
-- generation;
+- concrete resource-instance identities required by admission;
 - semantic command identity where operationally required;
 - resource/effect ownership;
 - authoritative versus provisional status;
@@ -1125,7 +1134,7 @@ It may not infer:
 - principal identity;
 - semantic ownership;
 - provenance;
-- current generation;
+- whether a referenced execution or resource instance remains admitted;
 - permission to resume a machine;
 
 from mutable physical state.
@@ -1238,7 +1247,12 @@ The runtime must therefore distinguish at least:
 - plan representation/version;
 - wire/protocol compatibility;
 - semantic operation identity/version where needed;
-- deployment/application compatibility generation where needed.
+- application/server compatibility identity where needed;
+- admitted assembly generation identity where required for realization binding.
+
+Deployment identity records physical rollout or placement where needed. It must
+not substitute for plan compatibility or imply that every execution/resource
+shares one lifetime with the deployment.
 
 A parser accepting bytes does not imply the server and suspended browser are
 semantically compatible.
@@ -1282,8 +1296,8 @@ plan. There is no best-effort fallback to matching state or transition
 coordinates across different executable artifacts.
 
 This exact artifact identity is distinct from semantic/protocol compatibility
-identity. A =plan-id= may intentionally identify a compatibility generation or
-other runtime deployment contract, while =executable-digest= answers the much
+identity. A =plan-id= may intentionally identify a declared plan compatibility
+class or version, while =executable-digest= answers the much
 stricter diagnostic question: "does this sidecar describe these exact emitted
 state and transition coordinates?" The digest may live in a build manifest,
 asset metadata, or the executable plan when needed by diagnostic tooling; its
@@ -1360,13 +1374,26 @@ For example, a compact executable plan may conceptually contain:
  :states [...]
  :transitions
  [[{:event :claim/settled
-    :guard [:generation/current]
+    :guard [:admission/execution-resource-current]
     :next 5}]
   ...]}
 #+end_src
 
-while the optional sidecar maps compact runtime locators to richer semantic and
-proof information:
+The guard tag is schematic executable vocabulary, not a prescribed public API.
+It requires that this event's declared execution and relevant resource instance
+retain the ownership needed for the transition. Concrete identities come from
+admitted runtime state and event correlation, not the immutable plan or sidecar.
+Shared-event paths use their own owner-relative admission rules. Passing this
+guard does not replace required command correlation, outcome validation, or
+other transition premises.
+
+The executable semantic core evaluates the applicable transition and guards.
+The proof kernel checks derivations about the declared semantics, and dedicated
+semantic checkers establish their particular judgments. Neither checking role
+supplies runtime permission merely by having accepted the plan.
+
+The optional sidecar maps compact runtime locators to richer semantic and proof
+information:
 
 #+begin_src clojure
 {:plan-id P8

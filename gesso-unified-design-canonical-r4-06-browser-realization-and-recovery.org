@@ -15,7 +15,7 @@ required assurance; they do not claim that implementation or proof is complete.
 :CUSTOM_ID: req-browser-adapter-refinement
 :END:
 
-*** Pure transition core and browser integration boundary
+*** Executable semantic core and browser integration boundary
 
 The browser adapter must be structured so the Gesso semantic part is small and
 pure. This does not require Gesso to replace, wrap, or reimplement HTMX's normal
@@ -33,30 +33,32 @@ concrete runtime values, following [[#req-executable-plan-sidecar-boundary][Part
 An implementation may bind the plan before invoking the step function, but may
 not replace it with a diagnostic or test-only semantic object.
 
+This adapter is an executable semantic core for browser coordination. The
+portable execution machine owns its projected trajectory; the two cores compose
+through their declared state/effect boundary. A proof kernel checks derivations
+about the semantics, and a dedicated semantic checker establishes its particular
+judgment. Neither supplies runtime facts or replaces concrete event admission.
+
 Representative normalized events include:
 
 #+begin_src clojure
 {:event :htmx/before-request
  :execution-id E
- :generation G
- :request-id R}
+ :transport-request-id H}
 
 {:event :htmx/before-swap
  :execution-id E
- :generation G
- :request-id R
+ :transport-request-id H
  :target-id T}
 
 {:event :htmx/after-swap
  :execution-id E
- :generation G
- :request-id R
+ :transport-request-id H
  :target-id T}
 
 {:event :http/failed
  :execution-id E
- :generation G
- :request-id R
+ :transport-request-id H
  :error X}
 
 {:event :live/invalidated
@@ -66,19 +68,23 @@ Representative normalized events include:
 
 {:event :timer/fired
  :execution-id E
- :generation G
- :timer-id T}
+ :timer-id T
+ :resource-instance I}
 
 {:event :continuity/completed
  :owner O
- :resource-instance G
+ :resource-instance I
  :slot S}
 #+end_src
 
 These are illustrative event shapes, not complete wire schemas. In particular,
 the shared advisory resolves its declared source and scoped requirement without
-requiring a command execution. The continuity owner may be an execution or an
-admitted fragment/effect scope. Correlation fields propose information for
+requiring a command execution. H identifies one transport attempt, not a
+HumanHelp domain Request; a retry has a distinct transport-request identity even
+when it retains the command identity. In these examples H also identifies the
+concrete request resource, so a redundant resource-instance field is unnecessary.
+For the timer, T names the logical timer and I identifies its concrete instance.
+The continuity owner may be an execution or an admitted fragment/effect scope. Correlation fields propose information for
 admission; their mere presence does not establish ownership.
 
 Representative abstract effects/dispositions include:
@@ -102,7 +108,7 @@ and settle work it already owns.
 
 HTMX lifecycle listeners, EventSource/SSE observations, timers, MutationObserver
 callbacks, and Gesso-owned DOM hooks should submit Gesso-relevant observations to
-the semantic core rather than independently deciding choreography semantics,
+the executable semantic core rather than independently deciding choreography semantics,
 mutating execution ownership, or resuming machines through alternative code
 paths.
 
@@ -214,7 +220,8 @@ The FFI shell must not:
 - infer semantic authority or authorization;
 - infer domain facts merely from arbitrary DOM text or client-provided labels;
 - choose an execution or shared owner by independent semantic reasoning;
-- invent or upgrade generation, provenance, authority, basis, or ownership;
+- invent an admitted execution/resource identity or upgrade provenance,
+  authority, basis, or ownership;
 - decide whether rollback, reconciliation, supersession, or retirement is valid;
 - transfer semantic ownership between executions;
 - mutate semantic adapter state through a side channel;
@@ -266,9 +273,9 @@ continuity callback arrives
 
 and check the adapter invariants after every transition.
 
-Useful generated properties include execution isolation, stale-generation
+Useful generated properties include execution isolation, retired-resource
 rejection, declared fragment-coordination bounds, semantic ownership uniqueness,
-authoritative-install monotonicity, and terminal retirement.
+prevention of obsolete restoration after authoritative installation, and terminal retirement.
 
 A generated counterexample can expose a bad invariant or transition rule before
 time is spent proving it. Passing generated tests does not justify the word
@@ -312,7 +319,7 @@ owned exclusively by E1 must not alter:
 - the Choreo state of E2;
 - E2's provisional state;
 - E2's target/resource ownership;
-- E2's continuity generation;
+- E2's continuity-capture instance identity and ownership;
 - an authoritative projection installed after E1 became stale;
 - any other execution-scoped semantic state of E2.
 
@@ -328,15 +335,16 @@ This theorem should subsume broad families of race bugs involving:
 - target replacement followed by a new execution;
 - duplicated external callbacks.
 
-*** Authoritative-install monotonicity
+*** Authoritative installation prevents obsolete restoration
 
-Once a logical target has installed an authoritative representation justified at
-a frontier/basis A, cleanup or delayed effects from an older provisional
-execution must not restore a representation whose authority/provenance is older
-or weaker merely because the old execution still has a physical callback.
+Once a logical target has installed an admitted authoritative observation that
+supersedes provisional ownership for the relevant scope, cleanup or delayed
+effects from the superseded execution must not restore presentation that violates
+that observation or its ownership contract merely because a callback remains.
 
-This is a semantic monotonicity property, not necessarily numeric comparison of
-opaque XTDB progression values.
+This prohibition does not impose a total ordering on observations or provenance,
+nor prevent legitimate later domain changes. Any stronger monotonicity claim
+must specify the ordering and scope for which it is established.
 
 The implementation should rely on supported progression/ownership relations,
 not arithmetic ordering of opaque tokens.
@@ -534,8 +542,8 @@ Every physical resource represented in the semantic adapter state has exactly
 one declared semantic owner or explicitly shared ownership class while that
 ownership is active.
 
-Retirement first revokes the execution's semantic ownership and invalidates the
-generation through which its callbacks could affect current state. After that
+Retirement first revokes the execution's semantic ownership and the admission
+rights of its execution-private resource instances. After that
 semantic retirement, the execution owns zero execution-private semantic
 resources even if some corresponding physical browser objects have not yet been
 successfully destroyed.
@@ -545,7 +553,7 @@ listener, HTMX request, continuity object, or other physical resource may outliv
 semantic retirement because cancellation raced, threw, was ignored by a library,
 or the browser was suspended. Such a leftover resource is cleanup debt, not a
 source of semantic authority. Any later callback from it must be rejected by the
-generation/ownership safety gate.
+owner/resource-instance admission gate.
 
 New semantic ownership therefore depends on successful revocation of old
 semantic ownership, not on proof that every old physical resource has already
@@ -605,7 +613,7 @@ produce normalized observations or realize abstract effects.
 They must not each keep a partial private copy of:
 
 - which execution is current;
-- which generation owns a target;
+- which admitted execution or effect-scope owner holds the target;
 - whether authority has superseded optimism;
 - whether rollback remains legal;
 - whether an event may resume a machine.
@@ -687,7 +695,7 @@ The browser FFI may know how to:
 - install/remove a listener;
 - report physical failure.
 
-It should not know why a rollback is legal, why a generation is current, or why
+It should not know why a rollback is legal, why a resource instance is currently admitted, or why
 a settlement wins.
 
 Those semantic facts are outputs of the pure transition core.
@@ -706,21 +714,21 @@ For example:
 adapter emits
     [:timer/start
       {:execution-id E
-       :generation G
-       :timer-id T}]
+       :timer-id T
+       :resource-instance I}]
 
-shell installs timer carrying E/G/T
+shell installs timer carrying E/T/I
 
 timer fires
 
 shell reports
     {:event :timer/fired
      :execution-id E
-     :generation G
-     :timer-id T}
+     :timer-id T
+     :resource-instance I}
 #+end_example
 
-The shell must not rediscover E/G/T later from:
+The shell must not rediscover E/T/I later from:
 
 - DOM ancestry;
 - CSS selector;
@@ -772,7 +780,8 @@ Therefore the safety argument may not depend on proving that every old:
 
 was physically destroyed.
 
-Semantic retirement revokes ownership and generation validity.
+Semantic retirement revokes the affected owner or resource instance's semantic
+admission rights.
 
 After that point a late physical callback is powerless.
 
@@ -792,7 +801,7 @@ The runtime therefore distinguishes:
 
 #+begin_example
 execution-private callback
-    -> must satisfy owner/generation gate
+    -> must satisfy owner/resource-instance gate
 
 declared shared authoritative invalidation
     -> follows fragment/progression coordination path
@@ -825,7 +834,7 @@ After authoritative installation, older provisional cleanup may:
 It may not reinstall weaker/older representation merely because its callback
 finally ran.
 
-This is authoritative-install monotonicity.
+This is prevention of obsolete restoration after authoritative installation.
 
 The comparison is semantic, based on authority/ownership/progression relations,
 not numeric arithmetic over opaque basis tokens.
@@ -836,7 +845,7 @@ Retirement has a precise order:
 
 #+begin_example
 1. mark execution semantically retired
-2. invalidate generation / revoke callback authority
+2. revoke admission rights of execution-private resource instances
 3. release semantic ownership
 4. permit new semantic owner where valid
 5. attempt physical cleanup best effort
@@ -856,7 +865,7 @@ The trusted server may not rely on:
 
 - the generated adapter having run;
 - local plan state being honest;
-- generation values being truthful;
+- execution/resource-instance correlation being truthful;
 - hidden inputs being untouched;
 - client role labels being valid;
 - a client-provided nominal tag, record name, wrapper, or discriminator having
@@ -889,7 +898,11 @@ The design therefore distinguishes:
 - wire/protocol version;
 - semantic command identity;
 - protocol execution identity;
-- application/deployment compatibility generation where needed.
+- application/server compatibility identity where needed;
+- admitted assembly generation identity where required for realization binding.
+
+Deployment identity records placement or rollout. It is not interchangeable with
+assembly, execution, resource-instance, or compatibility identity.
 
 These do not need to become one global version integer.
 
@@ -914,7 +927,7 @@ The safe default is:
 detect incompatible continuation
         |
 semantically retire stale execution
-and invalidate its generation
+and revoke its execution-private callback rights
         |
 initiate best-effort physical cleanup
         |
@@ -926,7 +939,7 @@ instantiate current projection
 #+end_example
 
 Instantiation of the new projection must not depend on successful destruction
-of every stale physical browser resource. Once semantic retirement/generation
+of every stale physical browser resource. Once semantic retirement and ownership
 revocation has made stale callbacks powerless, physical cleanup may complete
 later or fail diagnostically without restoring the old execution's ownership.
 
@@ -962,7 +975,7 @@ detect incompatibility
     |
 revoke stale semantic ownership
     |
-invalidate generation
+revoke stale resource-instance admission rights
     |
 best-effort cleanup
     |
@@ -1160,11 +1173,12 @@ Catastrophic cleanup should be:
   later cleanup failed.
 
 Stale-plan retirement uses the same ownership rules: an incompatible old
-execution must first lose semantic ownership and have its generation invalidated.
+execution must first lose semantic ownership and its execution-private callback
+rights.
 A new projection may then assume the logical target without waiting for every
 old physical effect to be destroyed. Cleanup of those stale physical effects is
 best effort, and any callbacks they later emit remain powerless because they
-carry retired ownership/generation.
+carry retired execution or resource-instance correlation.
 
 *** One effect scope per active execution
 
@@ -1200,8 +1214,8 @@ A useful conceptual distinction is:
   legal;
 - authoritative -- must never be undone by local cleanup merely because later
   delivery failed;
-- async -- creates future callbacks that need cancellation or generation
-  invalidation;
+- async -- creates future callbacks whose semantic admission rights must be
+  revocable independently of best-effort physical cancellation;
 - ephemeral -- has no ongoing semantic ownership.
 
 An implementation may encode categories differently.
@@ -1220,7 +1234,7 @@ It expires when, for example:
 
 - a newer authoritative projection installs;
 - another current execution legitimately owns the target;
-- the old generation is retired;
+- the relevant execution or resource instance is retired;
 - reconciliation chooses a different canonical representation.
 
 Therefore rollback is a semantic operation guarded by current ownership, not a
@@ -1262,7 +1276,7 @@ The runtime should tolerate repeated cleanup attempts because:
 - exception handling may retry cleanup;
 - physical cancellation may be uncertain.
 
-Idempotent physical cleanup plus generation-gated semantic safety is preferable
+Idempotent physical cleanup plus owner/resource-instance admission safety is preferable
 to fragile exactly-once cleanup assumptions.
 
 *** Physical remnants are observable debt, not hidden success
@@ -1314,7 +1328,8 @@ owner-relative admission rule]]. For an execution-private event that resumes a
 projected machine, the runtime must establish:
 
 - the execution still exists;
-- the callback/event belongs to the current execution generation;
+- correlation identifies the admitted execution instance and the concrete
+  resource instance whose event may resume it;
 - the resource that produced the event is still owned;
 - the event is accepted in the machine's current state;
 - where relevant, the projected plan is still compatible with the runtime/server
@@ -1322,6 +1337,13 @@ projected machine, the runtime must establish:
 
 Otherwise the event is stale, duplicate, or incompatible and is ignored,
 converted into recovery, or recorded diagnostically.
+
+Retirement forbids resuming the retired owner; it does not prove that the
+associated command failed or that every later authoritative result is useless.
+Command-outcome or authoritative evidence may enter through an independently
+declared admission path without reactivating the old execution or granting its
+callbacks permission to mutate replacement state. Normalization cannot invent
+that alternate path by relabeling a rejected callback as a shared event.
 
 All of the following event sources use the common admission boundary, with
 the checks required by their declared ownership class:
@@ -1395,7 +1417,8 @@ All may result in "do not resume the machine," but they describe different
 conditions.
 
 - unknown -- no recognized owner/resource correlation exists;
-- stale -- correlation belonged to an older retired generation;
+- stale -- correlation refers to a retired execution or replaced/retired
+  resource instance;
 - duplicate -- equivalent event was already consumed;
 - incompatible -- continuation exists but current plan/runtime contract forbids
   it;
@@ -1429,8 +1452,11 @@ Tests should deliberately permute:
 - authentication-context replacement versus old subscription or request events.
 
 The proof/model abstraction should classify events by semantically relevant
-relations such as current/stale generation rather than by a few chosen concrete
-integers.
+relations such as admitted/retired owner and current/replaced resource instance,
+rather than a few chosen concrete integers. A resource can be replaced without
+retiring its execution, and different owners can reuse a logical target without
+sharing admission rights. A sound abstraction must preserve these distinctions
+where they affect the property.
 
 *** Unexpected semantic-machine failure retires rather than rewinds
 
@@ -1565,7 +1591,7 @@ must not survive merely because it has a physical DOM node.
 Likewise a stale rollback cannot resurrect the target after authoritative
 absence has been installed.
 
-This is another instance of authoritative-install monotonicity.
+This is another instance of prevention of obsolete restoration after authoritative installation.
 
 *** Absence is scoped to a projection
 
@@ -1849,14 +1875,14 @@ The strongest useful statement combines several assurance kinds:
 proved / mechanically checked:
     portable transition invariants
     execution isolation
-    ownership/generation invariants
+    execution/resource-instance ownership invariants
     explicitly stated logical coordination bounds and requirement preservation
-    authoritative-install monotonicity
+    prevention of obsolete restoration after authoritative installation
     projection/refinement properties for supported subset
 
 runtime-enforced premises:
     event correlation
-    generation checks
+    owner/resource-instance admission checks
     plan compatibility
     schema validation
     progression decoding

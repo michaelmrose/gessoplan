@@ -525,7 +525,7 @@ authorization, transaction guards, or invariant enforcement.
 
 Conversely, =request.core= should not need to understand:
 
-- browser execution generation;
+- browser execution-instance identity and resource ownership;
 - communication topology;
 - projected branch knowledge;
 - provisional DOM state;
@@ -1316,7 +1316,7 @@ Consequently, Gesso must not use progression values as ersatz:
 - Request revisions;
 - command versions;
 - semantic operation versions;
-- browser-generation numbers;
+- browser execution or resource-instance identities;
 - domain valid-time values.
 
 Each identity exists for its own reason.
@@ -1820,16 +1820,21 @@ semantic command C42
 
 attempt 1:
     execution E1
-    request R1
+    transport request T1
     host W1
 
 attempt 2:
     execution E2
-    request R2
+    transport request T2
     host W3
 
 both attempts refer to C42
 #+end_example
+
+T1 and T2 identify transport attempts, not HumanHelp domain Requests. The example
+uses a separate protocol execution for each attempt; a supported retry contract
+may instead permit multiple transport attempts within one execution. The command,
+execution, and transport identities remain distinct in either case.
 
 Whether both attempts may safely execute is a model/protocol question involving
 idempotency or already-incorporated handling.
@@ -1843,18 +1848,25 @@ operations.
 Execution identity may scope:
 
 - current machine state;
-- request correlation;
+- transport-request correlation;
 - settlement timers;
 - provisional target ownership;
 - continuity resources;
-- browser callback generation;
+- resource-instance identities used to admit browser callbacks;
 - cleanup.
 
 It is not a durable domain identity.
 
-When one execution is retired, stale callbacks carrying that execution's
-identity/generation must not gain power over a newer execution merely because
-they refer to the same semantic command or logical target.
+When one execution is retired, stale callbacks carrying that execution identity
+or its retired resource-instance identity must not gain power over a replacement
+execution merely because they refer to the same semantic command or logical
+target. Replacing a resource can also retire that resource's callback rights
+without replacing the execution. Admission must identify which owner or instance
+lost its rights rather than infer retirement from one universal counter.
+
+Command-outcome or authoritative evidence that remains useful may enter through
+its independently declared admission path. Accepting that evidence does not
+reactivate a retired execution or resource instance.
 
 The precise browser isolation rules are specified in Part VI and follow
 [[#req-owner-relative-event-admission][owner-relative event admission]].
@@ -2046,15 +2058,20 @@ Stale-plan recovery belongs to Part VI.
 
 One command can produce several runtime correlation identities:
 
-- HTTP request ID;
+- transport-request ID for one HTTP attempt;
 - execution ID;
-- browser resource generation;
+- browser resource-instance identity;
 - settlement correlation;
 - fragment refresh correlation.
 
 These identities must not be collapsed merely to reduce metadata.
 
 Each exists to prevent a particular class of ambiguity or stale-event bug.
+In browser/runtime examples, =:transport-request-id= names the transport attempt;
+a domain =:request-id= continues to identify the HumanHelp Request. A specialized
+resource-instance identity may serve as the transport-request identity when the
+contract identifies exactly that resource; distinct semantics do not require
+redundant tokens for the same instance.
 
 The design favors explicit identity over attempting to rediscover ownership
 later from DOM position, current URL, or another mutable physical fact.

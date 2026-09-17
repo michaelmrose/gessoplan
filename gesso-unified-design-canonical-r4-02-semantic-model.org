@@ -149,7 +149,7 @@ semantic meaning because their:
 - basis differs;
 - principal differs;
 - operation context differs;
-- compatibility generation differs.
+- plan/protocol compatibility identity differs.
 
 Shape equality alone is insufficient when the semantic judgment depends on
 distinctions not established by that shape. Ordinary immutable values may still
@@ -649,19 +649,27 @@ projected-plan compatibility identity
 exact executable artifact identity
 
 logical fragment/target identity
-request generation
-effect/resource generation
-continuity-slot generation
+logical resource/continuity-slot identity
+concrete effect/resource-instance identity
+concrete continuity-capture identity
 
-physical request identity
+transport-request identity (one transport attempt)
 physical DOM-node identity
 web-node/host identity
+
+admitted assembly generation identity
+deployment identity
 #+end_example
 
 Some applications may not need every category in every operation.
 
 The architecture must nevertheless avoid conflating categories merely because
-one implementation currently uses the same value for two of them.
+one implementation currently uses the same value for two of them. Resource-
+instance identity is the general category; a transport-request identity or
+continuity-capture identity may be a specialized instance of it. Listing these
+categories does not require multiple independent tokens for the same instance.
+The representation must preserve whichever distinctions the admission contract
+actually uses.
 
 #+LATEX: \newpage
 
@@ -717,12 +725,46 @@ Does this diagnostic or proof metadata describe these exact emitted runtime
 coordinates and transitions?
 #+end_quote
 
-A compatibility generation and an exact executable digest therefore serve
+A plan/protocol compatibility identity and an exact executable digest therefore serve
 different purposes. Evidence tied to exact emitted coordinates must not be
 attached to a merely compatible artifact as though exact correspondence held.
 Conversely, a compatible continuation need not be rejected solely because
 diagnostic-only material changed, if the declared compatibility contract permits
 it and any exact correspondence claim remains accurate.
+
+*** Admitted assembly generation and deployment identity
+
+An admitted assembly generation identifies the immutable application realization
+accepted for use under the construction contract in Part VII. Its bindings
+include the relevant routes, prepared server operations, providers, rendering
+rules, executable plans, and artifact correspondence.
+
+Deployment identity identifies a physical rollout or placement, if the
+implementation needs that distinction. One deployment may host more than one
+admitted assembly generation during a supported transition. Moving an admitted
+realization between hosts does not, by itself, change its semantic identity or
+establish a new compatibility relation.
+
+Neither identity substitutes for command, execution, or resource-instance
+identity. Two concurrent executions using the same assembly generation still
+have separate ownership. Replacing a resource inside one execution need not
+change that execution's plan or the application's assembly generation.
+
+*** Transport-request identity
+
+A transport-request identity identifies one transport attempt. In browser/runtime
+examples its canonical field name is =:transport-request-id=. A new retry attempt
+has its own transport identity even when the command identity is retained under
+the operation's retry contract. The execution-to-attempt relationship is declared
+by the supported realization rather than inferred from shared field values.
+
+HumanHelp's domain =:request-id= identifies a Request being acted upon. It does
+not identify an HTTP request. Domain arguments and route parameters retain that
+meaning; they must not be renamed as transport identities.
+
+Event correlation identifies a candidate owner/attempt. Possessing a matching
+transport-request identifier alone does not establish semantic admission,
+current ownership, authorization, or command outcome.
 
 *** Logical target identity
 
@@ -733,6 +775,7 @@ replaces the element representing it.
 
 The runtime must not use physical-node identity as the sole semantic target
 identity when representation replacement is expected.
+
 ** Resource instance identity
 :PROPERTIES:
 :CUSTOM_ID: req-resource-instance-identity
@@ -765,18 +808,18 @@ Does this event belong to the currently admitted instance of this replaceable
 resource?
 #+end_quote
 
-A generation number, generation counter, epoch, opaque token, UUID, object
-identity, or another suitable mechanism may represent resource instance
+A resource-instance generation counter, scoped epoch, opaque token, UUID,
+object identity, or another suitable mechanism may represent resource-instance
 identity. The representation must provide the properties required by the boundary;
 additional ordering or structure is unnecessary unless the contract uses it.
 
-A generation counter is appropriate when monotonic ordering between successive
-instances is useful. A distinct opaque identity is sufficient when the only
+A resource-instance generation counter is appropriate when the contract uses
+monotonic ordering between successive instances within that resource scope. A distinct opaque identity is sufficient when the only
 required question is whether an event belongs to the current instance.
 
 The distinction must remain valid for as long as callbacks from an earlier
 instance can still reach the boundary. Reusing a token, resetting a counter, or
-wrapping a generation value must not make a retired instance indistinguishable
+wrapping a resource-instance counter must not make a retired instance indistinguishable
 from its replacement. A reset is safe only when a separate scope or lifecycle
 boundary prevents old events from being admitted as current.
 
@@ -846,8 +889,11 @@ authoritative basis B41
 The resource instance has not changed, but an operation that requires basis B41
 must not treat possession of R8 as evidence that B40 remains admissible.
 
-This separation prevents one generation counter, epoch, or opaque identity from
-becoming a universal proxy for semantic freshness.
+This separation prevents a resource-instance counter, epoch, or opaque identity
+from becoming a universal proxy for semantic freshness. A numerical comparison
+is meaningful only within the declared counter scope and ordering contract;
+identities from different resource or execution scopes cannot be ordered merely
+because both happen to be integers.
 
 ** Required correspondence checks are semantic gates
 :PROPERTIES:
@@ -1518,7 +1564,8 @@ For example, a browser may say:
  :observed-basis B}
 #+end_src
 
-and the server may safely use =B= to understand the command's claimed starting
+Here =R= is the domain Request identity, not a transport-request identity.
+The server may safely use =B= to understand the command's claimed starting
 context without treating =B= as permission:
 
 #+begin_example

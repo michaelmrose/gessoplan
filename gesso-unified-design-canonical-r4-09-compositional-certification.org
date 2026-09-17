@@ -152,7 +152,7 @@ For example:
 
 #+begin_example
 schema typing
-    machine/kernel checked
+    machine-checked by the identified semantic checker or proof kernel
 
 operation implementation conformance
     trusted or separately checked
@@ -206,7 +206,7 @@ Gesso should perform the proof bookkeeping:
 - knowledge/provenance checking;
 - authority/capability checking;
 - derivation construction;
-- kernel checking;
+- proof-kernel checking;
 - certificate issuance;
 - projection;
 - executable-plan construction;
@@ -368,7 +368,7 @@ A closed artifact stating:
 - guarantees;
 - proof obligations;
 - derivations or references to checked derivations;
-- checker/kernel version;
+- applicable semantic-checker or proof-kernel version;
 - result classification.
 
 A certificate is evidence accepted by the checker, not a boolean. Serialized
@@ -424,7 +424,7 @@ Examples:
 - Malli value shape;
 - authenticated principal binding;
 - operation registry lookup;
-- execution/generation identity;
+- execution identity and relevant resource-instance identity;
 - correlation identity;
 - plan compatibility;
 - progression header decoding;
@@ -1204,7 +1204,7 @@ application realization chain:
 runtime premises:
     authenticated principal binding
     concrete schema checks
-    generation/correlation
+    execution/resource-instance identity and event correlation
     dynamic authorization
     plan compatibility
 
@@ -1216,7 +1216,7 @@ trusted assumptions:
 #+end_example
 
 The root report is an explanation of assurance. It identifies the root subject,
-admitted generation, selected certification profile, dependency closure, and
+admitted assembly generation, selected certification profile, dependency closure, and
 the actual evidence status of each required claim. Missing, unsupported, or
 unresolved evidence must remain distinguishable from accepted conditional
 claims and from tested behavior.
@@ -1264,7 +1264,7 @@ A conceptual certificate shape:
  [...]
 
  :checker
- {:kernel-version 1
+ {:proof-kernel-version 1
   :rule-set-id "..."
   :elaborator-version 1}}
 #+end_src
@@ -1386,7 +1386,7 @@ Cached or persisted certificates re-enter through a validation boundary.
 The system must validate at least:
 
 - certificate structure;
-- checker/kernel version compatibility;
+- applicable semantic-checker or proof-kernel version compatibility;
 - semantic identity;
 - dependency identities;
 - derivation validity where required;
@@ -1475,7 +1475,7 @@ A dependent stage must reject immediately if:
 - a required semantic dependency is missing;
 - a supplied dependency has the wrong certificate kind;
 - semantic identities do not match the dependency named in the certificate;
-- the checker/kernel version is unsupported;
+- the required semantic-checker or proof-kernel version is unsupported;
 - an upstream guarantee needed by the dependent stage is absent;
 - an assumption is supplied with an incompatible proposition/type;
 - two dependencies export incompatible definitions of the same semantic
@@ -1662,7 +1662,8 @@ behavioral acceptance remain necessary to prevent vacuous completion claims.
 Exact semantic identity permits reuse only for claims that depend on that
 semantic interface. Evidence about a concrete implementation, provider binding,
 compiler, generated artifact, or browser integration must remain attached to
-the corresponding implementation/generation identities and environment scope.
+the corresponding implementation and admitted assembly-generation identities,
+where relevant, and the environment scope.
 An implementation change can preserve all downstream contract-level derivations
 while requiring renewed implementation conformance or test evidence.
 
@@ -1676,7 +1677,7 @@ profile in the current admission policy.
 Admission of one immutable dependency closure must not race mutable lookups
 that later substitute a different dependency. Construction either retains the
 admitted closure or detects changes and rechecks before use. This follows
-Part VII's generation binding; it does not require one global lock or storage
+Part VII's admitted assembly-generation binding; it does not require one global lock or storage
 implementation.
 
 
@@ -1688,11 +1689,31 @@ implementation.
 The logical trusted base should remain much smaller than the compiler that
 constructs semantic artifacts.
 
-The end state should have a deliberately small trusted logical kernel.
+The end state should have a deliberately small trusted proof kernel.
 
-The large compiler/elaborator is allowed to be complicated.
+The large compiler/elaborator is allowed to be complicated. The proof kernel
+must remain small enough to inspect independently.
 
-The kernel is not.
+The canonical terminology from Part I distinguishes three responsibilities:
+
+- The *executable semantic core* determines production transitions from executable
+  rules, admitted state, and inputs/events, producing state and declared effects.
+- The *proof kernel* accepts or rejects derivations under explicit inference
+  rules and premises. It does not execute the application trajectory or supply
+  runtime facts, ownership, or authorization.
+- A *dedicated semantic checker* establishes its stated judgment through its
+  own checking mechanism, such as structural closure or exact finite exploration.
+  Its result retains the evidence class and trusted premises of that mechanism.
+
+These components may share canonical semantic definitions, but sharing does not
+merge their responsibilities or prove implementation conformance. The proof
+kernel checks proposed derivations independently of the elaborator's claimed
+success. The production executable semantic core remains necessary regardless
+of the certification profile; introducing the later proof kernel does not create
+a second runtime semantics.
+
+This terminology does not prescribe a new namespace, expand the supported rule
+language, or settle the judgment-calculus definitions deferred by this part.
 
 Conceptually:
 
@@ -1712,13 +1733,13 @@ certificate
 #+end_example
 
 A compiler bug that generates an invalid derivation must therefore fail at the
-kernel boundary. This guarantee alone does not cover omitted obligations,
+proof-kernel boundary. This guarantee alone does not cover omitted obligations,
 incorrect source normalization, or incorrect executable lowering. Those require
 their own checked correspondence or explicit trusted premises.
 
-*** Candidate kernel responsibilities
+*** Candidate proof-kernel responsibilities
 
-Keep the kernel small enough to audit.
+Keep the proof kernel small enough to audit.
 
 Possible responsibilities:
 
@@ -1740,11 +1761,11 @@ Possible responsibilities:
 - selected projection proof obligations.
 
 Some properties may remain separate model checkers at first if forcing them into
-one kernel would obscure rather than reduce the trusted base.
+one proof kernel would obscure rather than reduce the trusted base.
 
-*** Kernel non-responsibilities
+*** Proof-kernel non-responsibilities
 
-Do not put these in the logical kernel:
+Do not put these in the proof kernel:
 
 - arbitrary Clojure evaluation;
 - DOM behavior;
@@ -1820,7 +1841,7 @@ argument permits a stronger correspondence claim.
 
 The logical trusted base includes inference-rule semantics, checker code,
 primitive semantics, and the representation/parser assumptions used in checking.
-A small kernel reduces that surface; it does not prove its own implementation
+A small proof kernel reduces that surface; it does not prove its own implementation
 sound merely by being small. Dedicated checkers add their own stated trusted
 surface or supply evidence accepted by a smaller checker.
 
@@ -1829,7 +1850,7 @@ features yield distinct non-admitted results where relevant. They never mean
 that an obligation was proved false, nor that it passed. Resource limits must
 not turn incomplete search or exploration into successful certification.
 
-*** Kernel/elaborator separation is a fault-containment boundary
+*** Proof-kernel/elaborator separation is a fault-containment boundary
 
 The elaborator may contain bugs.
 
@@ -1853,13 +1874,13 @@ Therefore mutation tests should deliberately construct:
 - an executable plan altered after valid projection certification.
 
 The appropriate checker or correspondence boundary must reject each defect;
-a purely logical kernel is not credited with checking an external binding it
+a proof kernel is not credited with checking an external binding it
 does not inspect.
 
-The kernel accepts or rejects the proof term independently of the elaborator's
+The proof kernel accepts or rejects the proof term independently of the elaborator's
 claim that the term is valid.
 
-*** Dedicated checkers may coexist with the kernel
+*** Dedicated semantic checkers may coexist with the proof kernel
 
 Not every property must immediately be forced into one universal logic.
 
@@ -2143,7 +2164,8 @@ satisfy the acceptance contract.
 - change continuation type;
 - omit terminal path;
 - leak resource on one branch;
-- reuse a retired generation;
+- reuse a retired execution or resource-instance identity to claim current
+  ownership;
 - pair a projection with the wrong verified choreography identity.
 
 *** Certificate mutations
@@ -2249,7 +2271,7 @@ request claim choreography -------------------------+
                                   root application report
 #+end_example
 
-The root report does not claim every edge is a theorem of one formal kernel.
+The root report does not claim every edge is a theorem checked by one proof kernel.
 
 It records the assurance class of each edge. The diagram mixes semantic
 dependencies with explanatory execution flow; only certified justification
@@ -2381,7 +2403,7 @@ A successful pilot emits a report that answers at least:
 - what runtime premises remain;
 - what trusted external assumptions remain;
 - which normalized subject, checker profile, implementation bindings, and
-  actual application generation the evidence covers;
+  actual admitted assembly generation the evidence covers;
 - which required operational claims are separately supported by real-browser
   and production-enforcement evidence;
 - which certification obligations remain unsupported or unresolved.
@@ -2476,7 +2498,7 @@ certified API.
 
 *** Proof mutation rejected
 
-Remove one premise from an otherwise valid derivation and require the kernel to
+Remove one premise from an otherwise valid derivation and require the proof kernel to
 reject it.
 
 *** Root proof report generated
@@ -2492,7 +2514,7 @@ Ordinary authoring should not require developers to:
 - construct certificate maps;
 - manually list transitive dependencies;
 - handwrite derivation trees;
-- understand kernel-internal proof tags;
+- understand proof-kernel-internal tags;
 - write Lean.
 
 The implementation should derive those artifacts from source-owned semantic
@@ -2553,7 +2575,7 @@ influence runtime semantic transitions or authorization.
 Assumptions remain scoped and transitively attributable to the guarantees that
 use them. Discharge requires accepted evidence; converting failed checking into
 an implicit assertion is forbidden. Semantic contract reuse does not preserve
-evidence about a changed implementation or admitted generation. Finite checking,
+evidence about a changed implementation or admitted assembly generation. Finite checking,
 conditional theorems, runtime enforcement, and tests retain their actual scope;
 incomplete checking never becomes a successful certificate.
 
