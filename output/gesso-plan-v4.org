@@ -20281,7 +20281,7 @@ when the intended correctness claim concerns B.
 The desired direction is:
 
 #+begin_example
-one explicit production semantic core
+explicit production executable semantics
         |
         +--> executable use
         |
@@ -20294,6 +20294,14 @@ one explicit production semantic core
 
 The same rule applies to projected plans, browser transition semantics, and
 whole-application assembly.
+
+The executable semantic core realizes production transitions. The proof kernel
+checks derivations, while dedicated semantic checkers establish their particular
+judgments through declared mechanisms. These roles may share canonical semantic
+definitions without being one component or one assurance class. An external
+proof-assistant kernel is another explicitly named checking boundary, not an
+alternate application runtime. Correspondence connects the checked subject to
+the production object; terminology alone does not establish that connection.
 
 ** System-wide assurance target matrix
 :PROPERTIES:
@@ -20331,7 +20339,8 @@ The system should establish that:
 Target evidence:
 
 - explicit semantics;
-- kernel/exact-model checking for construction rules;
+- proof-kernel checking or a dedicated exact-model checker for the stated
+  construction judgments;
 - external theorem support for stable projection rules where practical.
 
 *** Knowledge, provenance, and agreement
@@ -20356,7 +20365,7 @@ The system should establish that:
 
 Target evidence:
 
-- kernel-checkable knowledge/provenance rules for the closed semantic subset;
+- proof-kernel-checkable knowledge/provenance rules for the closed semantic subset;
 - runtime enforcement for concrete authoritative reads and authentication;
 - application assertions where domain truth is external to Gesso.
 
@@ -20416,7 +20425,7 @@ Target evidence:
 The system should establish that:
 
 - authoritative progression is distinct from domain revision, valid time,
-  command identity, and browser generation;
+  command identity, and browser execution/resource-instance identities;
 - progression requirements are canonical;
 - composition of progression requirements is conservative;
 - commit-derived invalidation and reread preserve sufficient scoped progression
@@ -20475,7 +20484,7 @@ The system should establish that:
 - every semantically active async effect has one declared owner or explicit
   shared-ownership class;
 - execution-private callbacks are admitted only for the current
-  execution/generation/ownership state;
+  execution identity and relevant resource-instance ownership state;
 - stale or duplicate events cannot resume an illegal machine state;
 - stale callbacks cannot acquire validity merely because a logical target still
   exists;
@@ -20565,7 +20574,7 @@ Target evidence:
 - =ApplicationAssembly= closure checking;
 - runtime rendered-surface enforcement;
 - lifecycle-enforced preflight before serving;
-- real-browser acceptance through the same admitted generation.
+- real-browser acceptance through the same admitted assembly generation.
 
 Closure quantifies over declared affordances. Independent required-capability
 acceptance must also fail when a promised action is omitted. Production
@@ -20639,7 +20648,9 @@ Target evidence:
 
 ** Framework theorem families
 
-The following are the principal theorem families the stable semantic core should support.
+The following are the principal theorem families over the stable semantic
+definitions. Their subjects and evidence mechanisms must be stated separately;
+the executable semantic core is not itself the proof kernel.
 
 *** Certified composition soundness
 
@@ -20713,7 +20724,7 @@ trusted/tested realization boundary.
 
 External formalization follows the stable production semantics. The intended
 progression is explicit semantic data, compositional Clojure certificates, a
-small checking kernel, proof-producing elaboration, stable kernel semantics,
+small proof kernel, proof-producing elaboration, stable proof-kernel semantics,
 external soundness theorems, and checked production/formal correspondence.
 
 Formalization aims to reduce trust in Gesso's own verifier. It does not replace
@@ -20793,20 +20804,20 @@ algorithm does not prove a handwritten implementation conforms to it.
 *** Bind formal checking to the admitted production artifact
 
 The correspondence path must bind the normalized subject, complete required
-obligations, derivation, dependencies, kernel semantics, and result to the object
+obligations, derivation, dependencies, proof-kernel semantics, and result to the object
 actually admitted. The boundaries identified in [[#req-proof-kernel-boundary]]
 remain relevant: normalization, projection, executable lowering, and runtime
 realization each need appropriate checked correspondence or named trust.
 
 An independently valid proof about subject A must not authorize construction of
 subject B. Copying A's identity onto B is insufficient. Build/startup must bind
-the admitted plan and generated artifact to the generation actually served,
+the admitted plan and generated artifact to the admitted assembly generation actually served,
 following Part VII. Immutable references or revalidation must prevent a later
 mutable lookup from substituting a different object after checking.
 
 If an external check is a required construction gate, unavailable checking,
 timeout, unsupported features, or invalid evidence prevent that admission. The
-system may retain an already admitted valid generation under the declared
+system may retain an already admitted valid assembly generation under the declared
 lifecycle contract; it must not silently waive the requested certification
 profile. Proof sidecars remain unnecessary for runtime semantic decisions after
 admission and never become authorization capabilities.
@@ -20829,8 +20840,11 @@ The model must name its initial states, transitions, data domains, property, and
 exploration completeness. A timeout or partially explored graph is incomplete
 evidence, not a successful exact check or a counterexample.
 
-Checking generations 0 through 3 establishes only that bounded result unless a
-sound abstraction argument covers all relevant concrete generations. The same
+Checking resource-instance counter values 0 through 3 establishes only that
+bounded result unless a sound abstraction argument covers all relevant concrete
+resource instances, counter scopes, and reuse/retirement behavior. Opaque instance
+identities may require a different abstraction; no universal counter is assumed.
+The same
 applies to command identities, progression tokens, dependency depth, queue
 metadata, and retired physical effects. Bounded queue slots do not imply a
 finite overall state space.
@@ -20909,7 +20923,7 @@ The exact list evolves with implementation, but likely boundaries include:
 - authentication/session implementation;
 - XTDB transaction/consistency implementation;
 - operating system/network behavior;
-- external proof assistant/kernel implementation where used;
+- external proof assistant and its proof-checking kernel implementation where used;
 - parsing, serialization, normalization, extraction/code generation, and build
   tooling wherever their correctness is not independently checked;
 - primitive operator semantics and cryptographic assumptions used for identity
@@ -20977,13 +20991,13 @@ share a bug.
 
 Mitigations include:
 
-- deliberately small kernel;
+- deliberately small proof kernel;
 - adversarial malformed derivations;
 - independent rule tests;
 - external formalization;
 - production/formal correspondence.
 
-The purpose of the independent kernel/formal step is specifically to reduce the
+The purpose of the independent proof-kernel/formal step is specifically to reduce the
 amount of semantic correctness that depends on trusting the compiler that
 generated the evidence.
 
@@ -21030,7 +21044,7 @@ Root reports should count and surface assertions prominently so an application
 whose "proof" is mostly assertion is visibly different from one with derived
 guarantees. Counts are diagnostic information, not a confidence score: one
 central opaque premise may matter more than many minor assertions. Reports must
-show which guarantees depend on each premise. Required kernel obligations cannot
+show which guarantees depend on each premise. Required proof-kernel obligations cannot
 be converted into assertions merely because checking them failed.
 
 *** Semantic-fingerprint under-approximation
@@ -21128,10 +21142,10 @@ A useful failure can live outside the theorem boundary.
 
 For example:
 
-- a proof may establish adapter generation safety;
+- a proof may establish adapter execution/resource-instance isolation;
 - a Chromium test may reveal that an HTMX lifecycle event is normalized
   incorrectly;
-- a property test may find an elaborator bug before the kernel sees its output;
+- a property test may find an elaborator bug before the proof kernel sees its output;
 - an XTDB integration test may reveal an incorrect assumption about snapshot
   propagation;
 - a HumanHelp multi-client test may reveal a missing whole-application edge.
@@ -21146,7 +21160,7 @@ The correction may occur in:
 
 The framework should not distort the proof boundary merely to make every bug a
 theorem violation. Acceptance records the first enforcing boundary, the actual
-admitted generation, and the evidence scope. Expected network/console failures
+admitted assembly generation, and the evidence scope. Expected network/console failures
 in fault scenarios are asserted precisely; unrelated failures still fail the
 scenario. A test-only wrapper rejecting before the real boundary is reached is
 not evidence that production enforces that boundary.
@@ -21260,7 +21274,8 @@ That use case may introduce:
 - duplicate/loss semantics;
 - retry/delivery policy;
 - authenticated routing, protected payload disclosure, and recipient admission;
-- resource retirement and compatibility across host or generation replacement.
+- resource-instance retirement and the applicable compatibility contract across
+  host replacement or a change of admitted assembly generation.
 
 Delivery acknowledgments, broker persistence, execution admission, and domain
 commit are distinct facts. Any stronger delivery guarantee must name its scope
@@ -21308,7 +21323,8 @@ the contracts needed for:
 - progression-safe reread from another node;
 - command identity/deduplication scope and retention where retry guarantees rely
   on them;
-- cross-node session/principal binding and compatible deployment generations;
+- cross-node session/principal binding and compatible application realizations
+  under the declared plan/protocol and admitted assembly contracts;
 - acquisition/adoption policy across reconnect and initial reconstruction.
 
 Authority committed while publication was lost must remain discoverable through
@@ -21337,7 +21353,7 @@ The multi-node milestone must identify the actual topology and test at least:
 - a read unable to meet the required progression preserving recovery rather than
   falsely claiming current authority;
 - current authentication and authorization at the replacement host;
-- incompatible old/new plan generations following the selected compatibility or
+- incompatible old/new plan versions following the selected compatibility or
   retirement contract.
 
 These cases use real node/transport boundaries where the claimed failure depends
@@ -21405,7 +21421,8 @@ silently become an unbounded theorem, and safety correspondence does not
 silently establish liveness.
 
 The root report preserves the evidence class, open assumptions, trusted boundary,
-and applicable generation of each claim. Runtime authorization and protected
+and applicable subject/artifact identities and admitted assembly generation of
+each claim where relevant. Runtime authorization and protected
 acquisition remain necessary regardless of certificates. Multi-node placement
 changes hosts, not authority; retries, publication recovery, current reads, and
 command attribution follow their explicit contracts. HumanHelp's selective
