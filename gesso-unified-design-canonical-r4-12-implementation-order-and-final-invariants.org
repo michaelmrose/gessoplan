@@ -105,8 +105,8 @@ Gate:
 Goal:
 
 #+begin_quote
-Stabilize the smallest useful global/local semantic core from which browser and
-server plans are derived.
+Stabilize the smallest useful global/local executable semantic core from which
+browser and server plans are derived.
 #+end_quote
 
 Required work:
@@ -147,13 +147,14 @@ Required work:
 - pure =AdapterState x NormalizedEvent -> State x AbstractEffects= core;
 - documented HTMX integration boundary;
 - narrow browser FFI;
-- execution/generation isolation;
+- execution and resource-instance isolation;
 - semantic resource ownership;
 - fragment single-flight/queued-refresh invariant, with logical slot bounds
   distinguished from metadata and retired physical-request bounds;
 - owner-relative admission for shared fragment/subscription events;
 - effect permission revalidation at deferred physical mutation boundaries;
-- authoritative-install monotonicity;
+- prevention of obsolete restoration after authoritative installation under the
+  declared scope and supersession relation;
 - typed provisional state;
 - settlement/timeout/supersession semantics, keeping current-state supersession
   distinct from command-specific outcome knowledge;
@@ -165,7 +166,8 @@ Required work:
 Gate:
 
 - stale callbacks cannot mutate newer execution state;
-- retired generations are powerless despite physical cleanup debt;
+- retired executions and resource instances cannot exercise revoked ownership
+  rights despite physical cleanup debt;
 - optimistic state cannot silently become authoritative;
 - canonical install cannot be rolled back by stale provisional work;
 - same =ExecutablePlan= drives production and proof-enabled tests;
@@ -221,7 +223,8 @@ Required work:
 - required/supplied trusted server capabilities;
 - semantic-route collision detection;
 - no silent realization fallback;
-- static build/start preflight;
+- static build/start preflight, including structural coverage of required
+  declared handling/recovery paths for supported dynamic failure conditions;
 - dynamic pre-serialization rendered-surface preflight;
 - structured error kinds;
 - operation/application explanation;
@@ -230,6 +233,9 @@ Required work:
 Gate:
 
 - a statically knowable missing required closure edge rejects construction;
+- required dynamic-condition handling/recovery paths are declared and
+  structurally compatible under [[#req-preflight-dynamic-handling-coverage]];
+  preflight does not have to predict whether those conditions will occur;
 - a contradiction first knowable in a concrete render rejects before delivery
   through the actual production render boundary;
 - invalid invocation is rejected before protected mutation; a later render
@@ -239,7 +245,8 @@ Gate:
 - ordinary genuinely non-Choreo HTMX remains legal;
 - startup cannot omit preflight accidentally;
 - routes, providers, prepared server realizations, rendering, and served artifact
-  stay bound to one admitted generation or a checked compatible transition;
+  stay bound to one admitted assembly generation or a checked compatible
+  transition;
 - paired valid fixtures remain usable while controlled defects fail at the
   intended production boundary.
 
@@ -426,8 +433,8 @@ Gate:
 Goal:
 
 #+begin_quote
-Shrink the logical TCB so a small checker, not the whole compiler, decides
-whether derivations are valid.
+Shrink the logical TCB so the small proof kernel decides whether derivations
+produced by the elaborator/compiler are valid.
 #+end_quote
 
 Required work:
@@ -445,12 +452,17 @@ Required work:
 
 Gate:
 
-- deliberately buggy elaborator output cannot convince kernel of invalid
-  conclusion;
-- kernel responsibilities remain small and inspectable;
+- deliberately buggy elaborator output cannot convince the proof kernel of an
+  invalid conclusion;
+- proof-kernel responsibilities remain small and inspectable;
 - diagnostic/proof sidecars remain runtime-nonsemantic;
 - incomplete checking, timeout, and unsupported features cannot yield successful
   certification for a profile requiring that judgment.
+
+The executable semantic core established earlier remains responsible for runtime
+transition semantics. The proof kernel checks derivations; dedicated semantic
+checkers establish their named judgments. This stage adds proof checking without
+replacing the executable semantic core or making proof sidecars runtime inputs.
 
 *** Stage 13 -- HumanHelp compositional proof pilot
 
@@ -542,7 +554,7 @@ Gate:
   a uniquely correct business-policy repair where the product must decide;
 - explanation is read-only and cannot affect semantic execution.
 
-*** Stage 16 -- Independent formalization of the stable small kernel
+*** Stage 16 -- Independent formalization of the stable small proof kernel
 
 Goal:
 
@@ -720,9 +732,11 @@ mandatory.
 
 Early stages may establish integration seams whose full checks are implemented
 later: the mandatory lifecycle preflight boundary precedes full application
-closure, and an initial semantic verifier precedes the smaller proof-producing
-kernel. Reports state exactly what exists at each checkpoint. Placeholder checks
-cannot be labeled as the final stronger guarantee.
+closure, and an initial semantic verifier precedes the smaller proof kernel and
+proof-producing elaborator. The executable semantic core persists through these
+stages; it is not an interim name for either checker. Reports state exactly what
+exists at each checkpoint. Placeholder checks cannot be labeled as the final
+stronger guarantee.
 
 Likewise, explainability, release integrity, and controlled-defect tests begin
 when their first relevant production boundary exists. Their later dedicated
@@ -774,7 +788,13 @@ No timestamp/name/best-effort guessing.
 *** Gate F -- dynamic facts remain dynamic
 
 Preflight does not pretend to prove current authorization, network availability,
-or future environment events.
+or future environment events. It still checks the structural presence and
+compatibility of required declared handling/recovery paths for supported dynamic
+conditions that can strand an operation, as specified in
+[[#req-preflight-dynamic-handling-coverage]]. This establishes declared coverage;
+runtime enforcement and fault tests establish implementation behavior under
+stated premises. It is not a prediction of dynamic facts or an unconditional
+recovery/liveness guarantee.
 
 *** Gate G -- real browser remains a release gate
 
@@ -820,8 +840,9 @@ acquisition/adoption permission.
 *** Gate M -- evidence scope survives composition and release
 
 Every claim retains its subject, assumptions, evidence class, and applicable
-implementation/generation. Omitted obligations, copied identities, incomplete
-checks, or tests on a different artifact cannot establish the requested gate.
+implementation or admitted assembly generation. Omitted obligations, copied
+identities, incomplete checks, or tests on a different artifact cannot establish
+the requested gate.
 Finite models and conformance vectors retain the limits of their actual evidence.
 
 ** Final unified design principle
@@ -858,8 +879,8 @@ authoritative basis and semantic command.
 Views attach typed operations to affordances and determine presentation.
 
 The browser runtime realizes Gesso semantics through a small pure transition
-core whose safety/refinement properties are machine checked. HTMX remains the
-ordinary declarative owner of its request/response/OOB/swap/settle lifecycle and
+system in the executable semantic core, whose safety/refinement properties are
+machine checked. HTMX remains the ordinary declarative owner of its request/response/OOB/swap/settle lifecycle and
 is gated or observed only through documented lifecycle boundaries where Gesso
 semantics require it; a custom HTMX extension is not an architectural
 requirement. Gesso-owned timers, provisional DOM work, continuity resources, and
@@ -881,9 +902,11 @@ representation details.
 Incompatible stale projections retire and follow declared recovery or permitted
 authoritative reconstruction rather than undefined continuation, while continuity
 remains a separate local rendering concern. Recovery does not silently waive the
-application's selective adoption policy. Semantic retirement/generation invalidation makes stale work
-powerless immediately; physical browser cleanup is best effort and is not a
-precondition for new logical ownership.
+application's selective adoption policy. Semantic retirement revokes the declared
+execution or resource-instance ownership rights immediately; physical browser
+cleanup is best effort and is not a precondition for new logical ownership.
+Independent admission of useful command-outcome evidence does not restore those
+revoked rights.
 
 The proved language grows only when a concrete Gesso failure class or required
 application behavior justifies the additional proof complexity. Usable HumanHelp
