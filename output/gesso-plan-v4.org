@@ -21457,8 +21457,8 @@ Design for incremental recomputation:
 - diagnostic/source metadata can change independently of semantic identity;
 - cache entries are re-admitted under the current checker/version and
   certification-profile contract;
-- cache corruption cannot create a certificate the kernel would otherwise
-  reject.
+- cache corruption cannot create a certificate the proof kernel or applicable
+  dedicated semantic checker would otherwise reject.
 
 Correctness dominates cache hit rate.
 
@@ -21494,7 +21494,8 @@ within that required scope:
 
 - unresolved obligations required by its selected certification profile;
 - stale semantic dependency identities;
-- invalid proof/kernel derivations;
+- invalid derivations submitted to the proof kernel or applicable dedicated
+  semantic checker;
 - stale browser artifact relative to the current assembly manifest;
 - application assembly closure errors;
 - a missing mandatory preflight lifecycle module;
@@ -21522,8 +21523,8 @@ checking. An expected rejection counts as success only for a negative test
 whose expected boundary and diagnostic were specified in advance.
 
 The release gate produces a concrete candidate and evidence; it is not itself
-a deployment action. Activation follows the generation/lifecycle contracts in
-Part VII and must use the artifact that the gate admitted.
+a deployment action. Activation follows the assembly-generation and lifecycle
+contracts in Part VII and must use the artifact that the gate admitted.
 
 *** Incremental invalidation is dependency-driven
 
@@ -21542,9 +21543,9 @@ same source file or Git commit.
 
 At the same time, cache correctness outranks speed.
 
-A cache hit never bypasses kernel/checker validation required by the current
-checker version. Reuse may avoid repeated work through an admitted immutable
-in-process result or another explicitly checked cache contract. Merely finding
+A cache hit never bypasses validation by the proof kernel or dedicated semantic
+checker required by its current version and applicable certification profile.
+Reuse may avoid repeated work through an admitted immutable in-process result or another explicitly checked cache contract. Merely finding
 a stored successful report is insufficient.
 
 Implementation changes require separate consideration. An unchanged semantic
@@ -21576,7 +21577,7 @@ root report describing at least:
 
 - application/assembly semantic identity;
 - certified artifact classes;
-- proof-kernel/checker version;
+- proof kernel and dedicated semantic checker versions, as applicable;
 - unresolved obligations, expected zero for certified production scope;
 - explicit assumptions/assertions;
 - whole-application closure status;
@@ -21584,7 +21585,8 @@ root report describing at least:
 - runtime/test/conformance gate results;
 - TCB classification;
 - declared milestone, supported subset, and certification profile;
-- concrete source/build provenance, admitted generation, and dependency versions;
+- concrete source/build provenance, admitted assembly generation, and dependency
+  versions;
 - identities of the actual tested and served artifacts;
 - required user-capability acceptance and production-enforcement evidence;
 - exclusions, unresolved product choices, and environmental/liveness premises;
@@ -21618,11 +21620,11 @@ the actual artifact bytes separately.
 
 A dependency or mutable binding changed after admission requires the appropriate
 revalidation before activation. A failed candidate may leave a still-valid old
-generation running under the lifecycle contract; it may not partially replace
-that generation. Old browser plans use the explicitly supported compatibility
-or retirement/recovery path.
+assembly generation running under the lifecycle contract; it may not partially
+replace that assembly generation. Old browser plans use the explicitly supported
+compatibility or retirement/recovery path.
 
-Reactivating an older executable generation does not roll back committed domain
+Reactivating an older assembly generation does not roll back committed domain
 state. Any release involving model/schema evolution must identify its supported
 state compatibility and recovery constraints before claiming that rollback is
 safe. This requirement does not introduce a universal database migration or
@@ -21825,7 +21827,7 @@ system or unrestricted dependent types.
 Application authors declare domain semantics, rules, operations, choreography,
 and explicit assumptions.
 
-They do not manually construct Lean proof scripts or internal kernel proof terms
+They do not manually construct Lean proof scripts or internal proof-kernel terms
 for ordinary development.
 
 *** No conflation of semantic identity with source identity
@@ -21897,7 +21899,7 @@ Track, where meaningful:
 - proportion of downstream mutation classes rejected before runtime;
 - number of semantic dependency mismatches caught at the first possible stage;
 - number of production plans traceable to a root assurance DAG;
-- number of externally formalized kernel properties;
+- number of externally formalized proof-kernel properties;
 - number of production checker rules with an explicit formal-correspondence
   story;
 - diagnostic completeness for rejected mutants;
@@ -21991,7 +21993,8 @@ It includes:
 - distributed admissibility checks for knowledge, provenance, authority,
   refinement, and progression;
 - certificate composition and stale-dependency rejection;
-- a deliberately small trusted checker/kernel boundary where claimed;
+- a deliberately small trusted proof kernel or dedicated semantic checker
+  boundary where claimed;
 - proof-producing elaboration or equivalent checked derivation construction for
   the supported classes;
 - systematic downstream mutation sensitivity;
@@ -22001,14 +22004,19 @@ It includes:
 - complete required-obligation coverage and subject/derivation binding;
 - explicit transitive assumption propagation and checked discharge;
 - certificate re-admission after cache/serialization boundaries;
-- evidence binding semantic claims to the implementation or generation actually
-  covered, without conflating their different identities.
+- evidence binding semantic claims to the implementation or admitted assembly
+  generation actually covered, without conflating their different identities.
 
 The Claim pilot follows [[#req-humanhelp-certification-pilot]] and connects to
 the real operational scenario. Positive valid cases accompany the mutation
 corpus. An isolated proof fixture, a root graph containing mostly unsupported
 claims, or a checker accepting only trivial rules does not satisfy the intended
 production operation scope.
+
+The executable semantic core remains the production transition semantics; the
+proof kernel checks derivations, and dedicated semantic checkers establish their
+named judgments. Completion of this milestone does not merge these roles or
+turn proof evidence into runtime transition input.
 
 The milestone must name exactly which artifact classes and application scopes
 are certified.  It must not imply certification of arbitrary Clojure code or
@@ -22092,14 +22100,14 @@ but does not authorize calling incomplete HumanHelp capabilities complete.
 *** Completion records and continued applicability
 
 A completion record names the milestone, canonical requirement set, supported
-scope, candidate generation, evidence references, test environments, assumptions,
-open decisions, and exclusions. Every required gate has a result; missing
-evidence is not presumed successful. Required unresolved decisions block the
+scope, candidate assembly generation, evidence references, test environments,
+assumptions, open decisions, and exclusions. Every required gate has a result;
+missing evidence is not presumed successful. Required unresolved decisions block the
 full claim rather than being buried in release notes.
 
-Completion applies to that admitted scope and generation. Later changes trigger
-re-evaluation of the affected guarantees and gates through their dependency
-relationships. A previous completion record remains historical evidence; it
+Completion applies to that admitted scope and assembly generation. Later changes
+trigger re-evaluation of the affected guarantees and gates through their
+dependency relationships. A previous completion record remains historical evidence; it
 does not confer permanent correctness on later builds. Unaffected evidence may
 be reused where its applicability is established, avoiding unnecessary full
 rechecking while preserving the claim.
