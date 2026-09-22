@@ -121,6 +121,77 @@ conformance or test evidence for a changed handler, provider, compiler, or
 runtime artifact. Reuse follows each claim's actual dependencies under
 [[#req-certificate-composition]], rather than a blanket semantic-ID shortcut.
 
+
+**** Worked invalidation slice: one policy edit rebuilds only its semantic cone
+
+Suppose HumanHelp changes the rule that admits a helper to Claim a Request.  The
+source edit matters because it changes normalized semantic input, not because it
+shares a file or commit with other code.
+
+#+begin_src clojure
+(def claim-eligibility-v7
+  {:artifact/class :semantic/rule
+   :rule/id :request/claim-eligible?
+   :semantic/id :rule/claim-eligible-R7
+   :requires #{:membership/current :request/open}
+   :result :helper-may-claim})
+
+(def claim-operation-v12
+  {:artifact/class :semantic/operation
+   :operation :request/claim
+   :semantic/id :operation/request-claim-O12
+   :depends-on #{:rule/claim-eligible-R7
+                 :schema/request-S9}
+   :effect :request/open->claimed})
+
+(def request-card-plan-v18
+  {:artifact/class :browser/plan
+   :plan/id :plan/request-card-P18
+   :depends-on #{:operation/request-claim-O12
+                 :projection/request-card-J6}})
+
+(def search-plan-v4
+  {:artifact/class :browser/plan
+   :plan/id :plan/request-search-P4
+   :depends-on #{:projection/request-search-J3}})
+
+;; Product policy changes: suspended helpers may no longer Claim.
+(def claim-eligibility-v8
+  (-> claim-eligibility-v7
+      (assoc :semantic/id :rule/claim-eligible-R8)
+      (update :requires conj :helper/not-suspended)))
+
+(def invalidation
+  (release/reconsider
+   {:changed #{:rule/claim-eligible-R7}
+    :replacement {:rule/claim-eligible-R7 :rule/claim-eligible-R8}
+    :dependency-index production-dependencies}))
+
+;; Conceptual result:
+{:rebuild
+ #{:operation/request-claim
+   :certificate/request-claim
+   :plan/request-card
+   :assembly/humanhelp
+   :browser-artifact/humanhelp}
+ :retain
+ #{:plan/request-search
+   :certificate/request-search
+   :projection/request-search}}
+#+end_src
+
+The operation must be reconstructed against =R8= because its former dependency
+identity is stale.  The Claim-facing projection/plan and the root assembly are
+then reconsidered because their dependency closure contains that operation.  If
+the generated browser artifact incorporates the changed Claim plan, its exact
+bytes and artifact identity change as well.
+
+The search plan does not become stale merely because its implementation lives in
+the same repository, release, or source namespace.  Its dependencies did not
+change.  This is the useful meaning of incremental certification: retain claims
+whose applicability is mechanically established, while rebuilding the complete
+semantic cone of the changed subject.
+
 *** Cached certificate corruption fails closed
 
 A corrupted cache entry must not become accepted simply because its filename or
@@ -136,6 +207,119 @@ semantic ID or stale success flag cannot override those checks.
 Corruption may reject the candidate or trigger fresh reconstruction from valid
 inputs; it must never relax acceptance. Cached values crossing serialization
 boundaries regain admission only through the validation specified in Part IX.
+
+
+**** Worked cache-admission slice: a green file is not a certificate
+
+A cache lookup may return bytes that look exactly like an earlier successful
+certificate.  Admission still checks whether those bytes establish the current
+claim under the current checker contract.
+
+#+begin_src clojure
+(def current-subject
+  {:semantic/id :operation/request-claim-O13
+   :depends-on #{:rule/claim-eligible-R8
+                 :schema/request-S9}})
+
+(def cached-report
+  {:cache/key [:operation/request-claim
+               :profile/compositional-v3]
+   :subject :operation/request-claim-O12
+   :dependencies #{:rule/claim-eligible-R7
+                   :schema/request-S9}
+   :checker :checker/operation-v6
+   :result :valid
+   :derivation-hash "71ad..."})
+
+(def admission
+  (certificate/admit-cached
+   {:expected-subject current-subject
+    :required-checker :checker/operation-v7
+    :required-profile :profile/compositional-v3
+    :candidate cached-report}))
+
+;; The cache filename and :result do not override these mismatches.
+{:admitted? false
+ :errors
+ [{:type :certificate/subject-mismatch
+   :expected :operation/request-claim-O13
+   :actual :operation/request-claim-O12}
+  {:type :certificate/stale-dependency
+   :expected :rule/claim-eligible-R8
+   :actual :rule/claim-eligible-R7}
+  {:type :certificate/checker-mismatch
+   :required :checker/operation-v7
+   :actual :checker/operation-v6}]}
+#+end_src
+
+A hostile variant could copy the new subject ID and leave the old derivation
+bytes.  That still fails when the applicable checker validates structure,
+dependency binding, assumptions, and derivation validity.  A cache hit is an
+optimization opportunity; it is never an alternate trust path.
+
+
+**** Worked implementation slice: unchanged contract, changed adapter
+
+A different kind of edit changes production realization while leaving the
+semantic operation unchanged.  That does not justify throwing away every proof,
+but neither may the old implementation evidence be silently reused.
+
+#+begin_src clojure
+(def claim-contract
+  {:semantic/id :operation/request-claim-O12
+   :pre [:request/open :helper/eligible]
+   :post [:request/claimed-by-actor]})
+
+(def xtdb-claim-adapter-a
+  {:implementation/id :impl/claim-xtdb-A44
+   :implements :operation/request-claim-O12
+   :handler #'request.model/claim-v1})
+
+(def xtdb-claim-adapter-b
+  {:implementation/id :impl/claim-xtdb-B45
+   :implements :operation/request-claim-O12
+   :handler #'request.model/claim-v2})
+
+(def previous-evidence
+  {:semantic-certificate
+   {:subject :operation/request-claim-O12
+    :result :valid}
+
+   :implementation-conformance
+   {:subject :impl/claim-xtdb-A44
+    :against :operation/request-claim-O12
+    :result :pass}
+
+   :integration
+   {:subject :assembly/humanhelp-G31
+    :uses :impl/claim-xtdb-A44
+    :result :pass}})
+
+(def reconsidered
+  (release/reconsider-implementation
+   {:old xtdb-claim-adapter-a
+    :new xtdb-claim-adapter-b
+    :evidence previous-evidence}))
+
+;; The semantic theorem still concerns O12.
+{:retain #{:semantic-certificate/operation-request-claim-O12}
+ ;; Evidence about A44 cannot establish facts about B45.
+ :rerun #{:conformance/claim-adapter
+          :integration/humanhelp-claim
+          :real-browser/request-claim}
+ :rebuild-if-bound #{:assembly/humanhelp
+                     :browser-manifest/humanhelp}}
+#+end_src
+
+The semantic certificate is reusable because its subject and semantic
+dependencies are unchanged.  The conformance result is not reusable because it
+was evidence about implementation =A44=.  Assembly and artifact work is
+recomputed precisely where the admitted implementation identity participates in
+their construction.
+
+This distinction prevents two opposite pathologies: rebuilding every theorem
+because a handler was refactored, and retaining a green production report for
+code that the report never exercised.
 
 *** Root release report
 
@@ -682,6 +866,70 @@ rechecking while preserving the claim.
 Documentation changes alone cannot establish implementation completion. This
 specification defines the gates; actual implementation evidence is required to
 claim that any milestone has been met.
+
+
+**** Worked completion record: one release, four different answers
+
+A release report should make partial progress boringly explicit.  A usable
+HumanHelp release may have completed the operational milestone while later
+assurance scopes remain incomplete.
+
+#+begin_src clojure
+(def humanhelp-release-2026-09
+  {:release/id :humanhelp/2026-09-r4-candidate-17
+   :assembly
+   {:semantic/id :assembly/humanhelp-A61
+    :generation :assembly-generation/G204
+    :browser-artifact "sha256:83c4..."
+    :source {:gesso "819117f..."
+             :humanhelp "dad5c7c..."}}
+
+   :milestones
+   {:operational-application
+    {:status :complete
+     :scope #{:request/create :request/details :request/search
+              :request/claim :request/unclaim :request/on-the-way
+              :request/complete :request/cancel :request/reassign
+              :advisory/refresh :continuity/reconnect}
+     :evidence #{:gate/jvm :gate/node :gate/chromium
+                 :gate/real-http :gate/multi-client}}
+
+    :compositional-certification
+    {:status :partial
+     :scope #{:request/claim}
+     :complete #{:typed-rule-subset
+                 :dependency-composition
+                 :claim-pilot}
+     :missing #{:full-required-artifact-class-coverage}}
+
+    :external-formal-verification
+    {:status :not-complete
+     :complete #{:formal/knowledge-safety-draft
+                 :formal/progression-finite-model}
+     :missing #{:production-correspondence-theorem
+                :stable-release-bound-evidence}}
+
+    :multi-node-production
+    {:status :prototype
+     :complete #{:two-node-authoritative-reread
+                 :duplicate-advisory-test}
+     :missing #{:host-loss-suite
+                :deployment-compatibility
+                :production-load-bounds}}}
+
+   :open-decisions #{}
+   :release-claim :operational-application})
+#+end_src
+
+The report can admit this candidate for the operational claim if every required
+operational gate passes.  It cannot summarize the same record as "R4 complete"
+or silently reinterpret =:partial=, =:not-complete=, and =:prototype= as green.
+Conversely, unfinished formal or multi-node work does not erase evidence that
+already establishes the explicitly bounded operational milestone.
+
+Later releases reevaluate only the statuses whose subjects or premises changed.
+The historical record remains useful because it names the exact assembly
+generation, scope, and evidence to which each answer applied.
 
 ** Working rule for every future semantic change
 

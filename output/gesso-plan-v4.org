@@ -33570,6 +33570,70 @@ Clojure, Malli, XTDB, HTMX, or Chromium, and does not move HumanHelp business
 policy into the framework. This is a target architecture, not a statement that
 its theorems or correspondence mechanisms already exist.
 
+
+**** Worked correspondence slice: HumanHelp Claim has one production meaning
+
+A Claim slice makes the correspondence direction concrete.  The formal and
+production objects may differ in representation, but the transferred theorem
+must still concern the production semantics actually admitted.
+
+#+begin_src clojure
+(def claim-subject
+  {:operation :request/claim
+   :state-type :humanhelp/Request
+   :input-type :humanhelp/ClaimInput
+   :preconditions
+   [[:= [:field :request/status] :request.status/open]
+    [:known? :actor :membership/current]
+    [:authorized? :actor :request/claim]]
+   :transition
+   {:request/status :request.status/claimed
+    :request/helper-id [:input :actor/id]}
+   :outcomes #{:accepted :rejected :unknown}})
+
+(def claim-formal-subject
+  (gesso.formal/translate-operation claim-subject))
+
+(def claim-production-plan
+  (gesso.compile/executable-operation claim-subject))
+
+(def claim-correspondence
+  (gesso.formal/check-correspondence
+   {:formal-subject claim-formal-subject
+    :production-subject claim-production-plan
+    :claim
+    [:forall-supported-inputs
+     [:production-accepts? :request/claim]
+     [:formal-judgment-holds? :claim-safe]]
+    :representation :gesso.correspondence/operation-v1
+    :direction :production-acceptance-implies-formal-validity
+    :dependencies
+    {:rule-set :semantic/claim-rules-C21
+     :operation :semantic/request-claim-op-O31
+     :kernel :gesso-proof-kernel/K7}}))
+
+(def admitted-claim
+  (gesso.application/admit-operation
+   {:plan claim-production-plan
+    :correspondence claim-correspondence}))
+
+;; Wrong shape: prove F while production independently executes G.
+(def formal-F {:when :open :then :claimed})
+(defn production-G [request actor]
+  (if (:request/priority-lock? request)
+    request
+    (assoc request
+           :request/status :request.status/claimed
+           :request/helper-id (:actor/id actor))))
+#+end_src
+
+The second shape leaves an unproved semantic gap even if =F= and =G= share a
+name, examples, or copied digest metadata.  The desired architecture checks the
+representation/refinement path to the executable production object.  Where an
+arbitrary Clojure implementation remains behind the public operation contract,
+its conformance remains an explicit trusted or tested premise until stronger
+evidence exists.
+
 *** External proof assistant role
 
 Lean is the leading candidate, but the architectural role matters more than the
@@ -33694,6 +33758,64 @@ mapping each state to some abstract state is insufficient. A liveness transfer
 needs the additional progress/fairness/divergence conditions its theorem uses.
 An abstract counterexample may require concretization before being reported as
 a realizable production failure.
+
+
+**** Worked abstraction slice: resource ownership without a fake finite universe
+
+Browser resource-instance identities may be unbounded even when the safety
+property depends on only a small relation among them.  Checking four chosen
+UUIDs would therefore prove only an artificial four-value model.
+
+#+begin_src clojure
+(def concrete-state
+  {:target :request-list
+   :current-resource-instance #uuid "62eae6bf-d8e5-4faa-9c65-5387408ec111"
+   :retired-resource-instances
+   #{#uuid "e3ff7f3d-a62e-4995-9ef9-314298250812"}
+   :pending
+   {#uuid "62eae6bf-d8e5-4faa-9c65-5387408ec111"
+    {:effect :fragment-fetch
+     :phase :awaiting-response}}})
+
+(defn callback-admitted? [state callback]
+  (and (= (:resource-instance callback)
+          (:current-resource-instance state))
+       (contains? (:pending state)
+                  (:resource-instance callback))))
+
+(defn abstract-instance [state instance]
+  (cond
+    (= instance (:current-resource-instance state)) :instance/current
+    (contains? (:retired-resource-instances state) instance) :instance/retired
+    :else :instance/other))
+
+(defn abstract-callback [state callback]
+  {:instance-class
+   (abstract-instance state (:resource-instance callback))
+   :pending?
+   (contains? (:pending state) (:resource-instance callback))
+   :event (:event callback)})
+
+(defn abstract-admitted? [{:keys [instance-class pending?]}]
+  (and (= instance-class :instance/current) pending?))
+
+(def resource-ownership-obligation
+  {:initial :every-concrete-initial-state-has-related-abstract-state
+   :step :every-relevant-concrete-transition-is-simulated
+   :property
+   [:implies
+    [:abstract-callback-admitted?]
+    [:concrete-callback-owned-by-current-resource?]]
+   :scope
+   #{:start-resource :retire-resource :receive-callback
+     :authoritative-install}})
+#+end_src
+
+If the abstraction relation and simulation obligation are machine-checked,
+exhaustive exploration of the finite abstract state space can support a claim
+about every concrete identity covered by that theorem.  Without that bridge,
+the same exploration is merely bounded evidence.  Liveness still needs its own
+scheduling/fairness argument rather than inheriting this safety result.
 
 *** Evidence package and maintenance
 
@@ -33821,6 +33943,43 @@ identity evidence
     from
 semantic proof evidence
 #+end_example
+
+
+A cache lookup makes the distinction operational.  Matching bytes can establish
+artifact identity while old semantic evidence is nevertheless stale under a new
+dependency closure.
+
+#+begin_src clojure
+(def cached-browser-artifact
+  {:artifact/id "sha256:91b..."
+   :proof-report/id :proof/request-board-R12
+   :dependencies
+   {:claim-operation :semantic/request-claim-op-O31
+    :membership :semantic/membership-M18}
+   :assembly-generation :assembly/H42})
+
+(def current-application
+  {:required-artifact/id "sha256:91b..."
+   :dependencies
+   {:claim-operation :semantic/request-claim-op-O31
+    :membership :semantic/membership-M19}
+   :assembly-generation :assembly/H43})
+
+(defn artifact-identical? [cached current]
+  (= (:artifact/id cached) (:required-artifact/id current)))
+
+(defn evidence-admissible? [cached current]
+  (and (artifact-identical? cached current)
+       (= (:dependencies cached) (:dependencies current))
+       (= (:assembly-generation cached) (:assembly-generation current))))
+
+(artifact-identical? cached-browser-artifact current-application) ;=> true
+(evidence-admissible? cached-browser-artifact current-application) ;=> false
+#+end_src
+
+The digest still says something useful about exact artifact identity.  It does
+not authorize carrying the old Membership-dependent proposition into the new
+assembly, and a new digest alone would not prove semantic correctness either.
 
 *** Elaborator/checker shared-bug risk
 
@@ -34123,6 +34282,85 @@ Those mechanisms should be added when a real choreography requires them.
 
 They must not redefine ordinary authoritative convergence.
 
+
+**** Worked multi-node contrast: durable Request versus ephemeral typing message
+
+Two cross-user features may traverse the same cluster while requiring different
+semantics.  First, Alice claims a durable HumanHelp Request through node A:
+
+#+begin_src clojure
+(def claim-command
+  {:command/id #uuid "76d7d7e1-fd03-47f7-82f7-66915ec283d9"
+   :operation :request/claim
+   :request/id #uuid "412090ce-0e79-4bc8-9d66-a4690ee52022"
+   :actor/id #uuid "069ca45d-33de-4d06-b958-ef1a0da69390"})
+
+(def claim-result
+  (request/claim! node-a-system claim-command))
+
+;; The committed fact outlives node A.
+{:request/id (:request/id claim-command)
+ :request/status :request.status/claimed
+ :request/helper-id (:actor/id claim-command)
+ :progression {:request/id (:request/id claim-command)
+               :basis 1842}}
+
+(def advisory
+  {:kind :request/authority-may-have-advanced
+   :scope [:request/id (:request/id claim-command)]
+   :requires {:basis-at-least 1842}})
+
+(defn refresh-through-node-c [principal advisory]
+  (auth/authorize-read! node-c-system principal (:scope advisory))
+  (let [observation
+        (request/read-authoritative
+         node-c-system
+         {:principal principal
+          :scope (:scope advisory)
+          :requirement (:requires advisory)})]
+    (progression/assert-satisfies! observation (:requires advisory))
+    observation))
+#+end_src
+
+If publication is lost, node C satisfies the outstanding requirement by reading
+the durable model under current authorization.  It does not reconstruct the
+Claim from node A's process memory.  The reread may establish current Request
+state without proving whether Alice received her direct settlement response.
+
+Now contrast an ephemeral typing signal whose receipt itself is the semantic
+event:
+
+#+begin_src clojure
+(def typing-message
+  {:execution/id #uuid "240e696a-e527-4fd1-80ac-bb104d91ef02"
+   :message/id #uuid "0a675872-2ba3-4575-a76f-4024d2c73938"
+   :from :actor/alice
+   :to :actor/bob
+   :kind :collaboration/typing
+   :document/id #uuid "389bdfac-48c9-4563-8b83-83bfae42d32e"
+   :expires-at #inst "2026-09-21T21:36:04.000-07:00"})
+
+(def typing-route-contract
+  {:delivery :best-effort
+   :durability :ephemeral
+   :duplicates :permitted
+   :late-message :discard
+   :authorization :current-document-membership
+   :semantic-effect :recipient-observed-message})
+
+(defn receive-typing! [recipient message]
+  (when (and (routing/current-recipient? recipient message)
+             (auth/currently-authorized? recipient (:document/id message))
+             (time/before? (time/now) (:expires-at message)))
+    (ui/show-typing-indicator! (:from message))))
+#+end_src
+
+There may be no durable business fact for node C to reread later.  A stronger
+product guarantee would need an explicit stronger routing, persistence,
+acknowledgment, or recovery contract.  Reusing Request invalidation semantics
+would conflate two meanings merely because both can travel through the same
+broker or load-balanced hosts.
+
 *** First physical multi-node topology may be simple
 
 The first useful multi-node environment does not need sophisticated
@@ -34392,6 +34630,77 @@ conformance or test evidence for a changed handler, provider, compiler, or
 runtime artifact. Reuse follows each claim's actual dependencies under
 [[#req-certificate-composition]], rather than a blanket semantic-ID shortcut.
 
+
+**** Worked invalidation slice: one policy edit rebuilds only its semantic cone
+
+Suppose HumanHelp changes the rule that admits a helper to Claim a Request.  The
+source edit matters because it changes normalized semantic input, not because it
+shares a file or commit with other code.
+
+#+begin_src clojure
+(def claim-eligibility-v7
+  {:artifact/class :semantic/rule
+   :rule/id :request/claim-eligible?
+   :semantic/id :rule/claim-eligible-R7
+   :requires #{:membership/current :request/open}
+   :result :helper-may-claim})
+
+(def claim-operation-v12
+  {:artifact/class :semantic/operation
+   :operation :request/claim
+   :semantic/id :operation/request-claim-O12
+   :depends-on #{:rule/claim-eligible-R7
+                 :schema/request-S9}
+   :effect :request/open->claimed})
+
+(def request-card-plan-v18
+  {:artifact/class :browser/plan
+   :plan/id :plan/request-card-P18
+   :depends-on #{:operation/request-claim-O12
+                 :projection/request-card-J6}})
+
+(def search-plan-v4
+  {:artifact/class :browser/plan
+   :plan/id :plan/request-search-P4
+   :depends-on #{:projection/request-search-J3}})
+
+;; Product policy changes: suspended helpers may no longer Claim.
+(def claim-eligibility-v8
+  (-> claim-eligibility-v7
+      (assoc :semantic/id :rule/claim-eligible-R8)
+      (update :requires conj :helper/not-suspended)))
+
+(def invalidation
+  (release/reconsider
+   {:changed #{:rule/claim-eligible-R7}
+    :replacement {:rule/claim-eligible-R7 :rule/claim-eligible-R8}
+    :dependency-index production-dependencies}))
+
+;; Conceptual result:
+{:rebuild
+ #{:operation/request-claim
+   :certificate/request-claim
+   :plan/request-card
+   :assembly/humanhelp
+   :browser-artifact/humanhelp}
+ :retain
+ #{:plan/request-search
+   :certificate/request-search
+   :projection/request-search}}
+#+end_src
+
+The operation must be reconstructed against =R8= because its former dependency
+identity is stale.  The Claim-facing projection/plan and the root assembly are
+then reconsidered because their dependency closure contains that operation.  If
+the generated browser artifact incorporates the changed Claim plan, its exact
+bytes and artifact identity change as well.
+
+The search plan does not become stale merely because its implementation lives in
+the same repository, release, or source namespace.  Its dependencies did not
+change.  This is the useful meaning of incremental certification: retain claims
+whose applicability is mechanically established, while rebuilding the complete
+semantic cone of the changed subject.
+
 *** Cached certificate corruption fails closed
 
 A corrupted cache entry must not become accepted simply because its filename or
@@ -34407,6 +34716,119 @@ semantic ID or stale success flag cannot override those checks.
 Corruption may reject the candidate or trigger fresh reconstruction from valid
 inputs; it must never relax acceptance. Cached values crossing serialization
 boundaries regain admission only through the validation specified in Part IX.
+
+
+**** Worked cache-admission slice: a green file is not a certificate
+
+A cache lookup may return bytes that look exactly like an earlier successful
+certificate.  Admission still checks whether those bytes establish the current
+claim under the current checker contract.
+
+#+begin_src clojure
+(def current-subject
+  {:semantic/id :operation/request-claim-O13
+   :depends-on #{:rule/claim-eligible-R8
+                 :schema/request-S9}})
+
+(def cached-report
+  {:cache/key [:operation/request-claim
+               :profile/compositional-v3]
+   :subject :operation/request-claim-O12
+   :dependencies #{:rule/claim-eligible-R7
+                   :schema/request-S9}
+   :checker :checker/operation-v6
+   :result :valid
+   :derivation-hash "71ad..."})
+
+(def admission
+  (certificate/admit-cached
+   {:expected-subject current-subject
+    :required-checker :checker/operation-v7
+    :required-profile :profile/compositional-v3
+    :candidate cached-report}))
+
+;; The cache filename and :result do not override these mismatches.
+{:admitted? false
+ :errors
+ [{:type :certificate/subject-mismatch
+   :expected :operation/request-claim-O13
+   :actual :operation/request-claim-O12}
+  {:type :certificate/stale-dependency
+   :expected :rule/claim-eligible-R8
+   :actual :rule/claim-eligible-R7}
+  {:type :certificate/checker-mismatch
+   :required :checker/operation-v7
+   :actual :checker/operation-v6}]}
+#+end_src
+
+A hostile variant could copy the new subject ID and leave the old derivation
+bytes.  That still fails when the applicable checker validates structure,
+dependency binding, assumptions, and derivation validity.  A cache hit is an
+optimization opportunity; it is never an alternate trust path.
+
+
+**** Worked implementation slice: unchanged contract, changed adapter
+
+A different kind of edit changes production realization while leaving the
+semantic operation unchanged.  That does not justify throwing away every proof,
+but neither may the old implementation evidence be silently reused.
+
+#+begin_src clojure
+(def claim-contract
+  {:semantic/id :operation/request-claim-O12
+   :pre [:request/open :helper/eligible]
+   :post [:request/claimed-by-actor]})
+
+(def xtdb-claim-adapter-a
+  {:implementation/id :impl/claim-xtdb-A44
+   :implements :operation/request-claim-O12
+   :handler #'request.model/claim-v1})
+
+(def xtdb-claim-adapter-b
+  {:implementation/id :impl/claim-xtdb-B45
+   :implements :operation/request-claim-O12
+   :handler #'request.model/claim-v2})
+
+(def previous-evidence
+  {:semantic-certificate
+   {:subject :operation/request-claim-O12
+    :result :valid}
+
+   :implementation-conformance
+   {:subject :impl/claim-xtdb-A44
+    :against :operation/request-claim-O12
+    :result :pass}
+
+   :integration
+   {:subject :assembly/humanhelp-G31
+    :uses :impl/claim-xtdb-A44
+    :result :pass}})
+
+(def reconsidered
+  (release/reconsider-implementation
+   {:old xtdb-claim-adapter-a
+    :new xtdb-claim-adapter-b
+    :evidence previous-evidence}))
+
+;; The semantic theorem still concerns O12.
+{:retain #{:semantic-certificate/operation-request-claim-O12}
+ ;; Evidence about A44 cannot establish facts about B45.
+ :rerun #{:conformance/claim-adapter
+          :integration/humanhelp-claim
+          :real-browser/request-claim}
+ :rebuild-if-bound #{:assembly/humanhelp
+                     :browser-manifest/humanhelp}}
+#+end_src
+
+The semantic certificate is reusable because its subject and semantic
+dependencies are unchanged.  The conformance result is not reusable because it
+was evidence about implementation =A44=.  Assembly and artifact work is
+recomputed precisely where the admitted implementation identity participates in
+their construction.
+
+This distinction prevents two opposite pathologies: rebuilding every theorem
+because a handler was refactored, and retaining a green production report for
+code that the report never exercised.
 
 *** Root release report
 
@@ -34953,6 +35375,70 @@ rechecking while preserving the claim.
 Documentation changes alone cannot establish implementation completion. This
 specification defines the gates; actual implementation evidence is required to
 claim that any milestone has been met.
+
+
+**** Worked completion record: one release, four different answers
+
+A release report should make partial progress boringly explicit.  A usable
+HumanHelp release may have completed the operational milestone while later
+assurance scopes remain incomplete.
+
+#+begin_src clojure
+(def humanhelp-release-2026-09
+  {:release/id :humanhelp/2026-09-r4-candidate-17
+   :assembly
+   {:semantic/id :assembly/humanhelp-A61
+    :generation :assembly-generation/G204
+    :browser-artifact "sha256:83c4..."
+    :source {:gesso "819117f..."
+             :humanhelp "dad5c7c..."}}
+
+   :milestones
+   {:operational-application
+    {:status :complete
+     :scope #{:request/create :request/details :request/search
+              :request/claim :request/unclaim :request/on-the-way
+              :request/complete :request/cancel :request/reassign
+              :advisory/refresh :continuity/reconnect}
+     :evidence #{:gate/jvm :gate/node :gate/chromium
+                 :gate/real-http :gate/multi-client}}
+
+    :compositional-certification
+    {:status :partial
+     :scope #{:request/claim}
+     :complete #{:typed-rule-subset
+                 :dependency-composition
+                 :claim-pilot}
+     :missing #{:full-required-artifact-class-coverage}}
+
+    :external-formal-verification
+    {:status :not-complete
+     :complete #{:formal/knowledge-safety-draft
+                 :formal/progression-finite-model}
+     :missing #{:production-correspondence-theorem
+                :stable-release-bound-evidence}}
+
+    :multi-node-production
+    {:status :prototype
+     :complete #{:two-node-authoritative-reread
+                 :duplicate-advisory-test}
+     :missing #{:host-loss-suite
+                :deployment-compatibility
+                :production-load-bounds}}}
+
+   :open-decisions #{}
+   :release-claim :operational-application})
+#+end_src
+
+The report can admit this candidate for the operational claim if every required
+operational gate passes.  It cannot summarize the same record as "R4 complete"
+or silently reinterpret =:partial=, =:not-complete=, and =:prototype= as green.
+Conversely, unfinished formal or multi-node work does not erase evidence that
+already establishes the explicitly bounded operational milestone.
+
+Later releases reevaluate only the statuses whose subjects or premises changed.
+The historical record remains useful because it names the exact assembly
+generation, scope, and evidence to which each answer applied.
 
 ** Working rule for every future semantic change
 
@@ -35644,6 +36130,151 @@ Gate:
   advisory invalidation;
 - multi-node assumptions are incorporated into the root assurance report.
 
+
+*** Worked evolving slice -- the same HumanHelp Claim through the roadmap
+
+The stages are easier to read if one operation survives all of them.  The
+following is intentionally one evolving Claim slice rather than eighteen toy
+applications.  Names are illustrative; the important point is which facts become
+available at each stage and which earlier ownership decisions remain unchanged.
+
+At Stages 1-2, Claim is first an authoritative HumanHelp transition running on the
+supported substrate.  Gesso does not own the business rule and the browser does
+not submit authority facts.
+
+#+begin_src clojure
+(def claim-transition
+  {:operation :request/claim
+   :authoritative-owner :humanhelp/request-model
+   :requires #{:principal/authenticated :clock/current :request/current-basis}
+   :command-id :command/request-claim-7f2
+   :execution-id :execution/claim-attempt-91
+   :prepare [:read-request :authorize-helper :derive-transition]
+   :commit [:request/open->claimed]
+   :after-commit [:publish-request-changed]})
+#+end_src
+
+By Stage 3, the same operation has a portable semantic description.  Projection
+may expose Claim to the helper only where the projected actor can justify the
+facts used by the branch.  The semantic operation still denotes the production
+model transition above; it is not a second implementation of Claim.
+#+begin_src clojure
+(def claim-choreo
+  {:roles #{:helper :request-authority}
+   :operation :request/claim
+   :knowledge {:helper #{:request/id :request/status :request/progression}
+               :request-authority #{:principal/current :request/current}}
+   :branch {:when [:known= [:helper :request/status] :open]
+            :offer :request/claim
+            :otherwise :claim/unavailable}
+   :authoritative-observation :request/current})
+(def helper-projection (choreo/project claim-choreo :helper))
+#+end_src
+
+Stages 4-5 make that projection executable in the browser and connect a successful
+commit to advisory invalidation and permitted authoritative reacquisition.  The
+optimistic presentation is tied to a known authoritative basis and a semantic
+command; a later current-state observation may supersede presentation without
+retroactively proving which uncertain command produced that state.
+
+#+begin_src clojure
+(def claim-plan
+  {:semantic-operation :request/claim
+   :basis {:request/id request-id :progression 41}
+   :provisional-effect :request/show-claimed-by-self
+   :settlement #{:committed :rejected :outcome-unknown}
+   :managed-fragment :request/card})
+(def request-change
+  {:kind :advisory/invalidation :request/id request-id :progression 42
+   :acquisition :request/current :adoption-policy :board/explicit-refresh})
+#+end_src
+
+The invalidation says authority advanced; it neither carries authoritative Request
+contents nor grants permission to adopt unrelated Requests.  Stale callbacks also
+cannot exercise ownership rights over a newer resource instance.
+
+At Stages 6-8, the Claim slice must close as part of the actual application.  The
+control, plan, route, trusted handler, model operation, settlement path,
+acquisition path, and generated browser artifact are checked as one assembly.
+HumanHelp then proves the join by using the real production Request model and a
+real browser rather than a fixture-only semantic twin.
+#+begin_src clojure
+(def claim-assembly-slice
+  {:operation :request/claim
+   :view-control :request-card/claim-button
+   :plan :plan/request-claim
+   :route [:post "/app/requests/:request-id/claim"]
+   :handler :humanhelp/request-claim-handler
+   :model-operation :humanhelp.request/claim!
+   :settlement :settlement/request-claim
+   :acquisition :acquire/request-card
+   :artifact :browser-artifact/humanhelp})
+(preflight/check claim-assembly-slice)
+;; render -> generated command -> real HTTP -> model commit -> reread -> card
+#+end_src
+
+Stages 9-15 add assurance around the same subject instead of replacing it with a
+proof-only language.  The Claim rule becomes a typed downstream rule, its
+operation and projection gain certificates, the elaborator emits derivations for
+the required obligations, and the application report composes those results with
+explicit assumptions and production evidence.
+
+#+begin_src clojure
+(def claim-rule
+  {:rule/id :request/helper-may-claim :subject :request
+   :when [:and [:= [:request/status] :open]
+          [:membership/current-helper? [:principal/current]]]
+   :result :claim/allowed})
+(def claim-certificate-chain
+  {:rule :certificate/claim-rule
+   :operation :certificate/request-claim-operation
+   :choreo :certificate/request-claim-choreo
+   :projection :certificate/request-claim-helper-projection
+   :plan :certificate/request-claim-plan
+   :application :certificate/humanhelp-assembly})
+(explain/operation :request/claim)
+#+end_src
+
+Changing =claim-rule= invalidates its dependent Claim evidence without invalidating
+unrelated Search evidence.  A malformed proof term cannot convince the Stage 12
+kernel, while a well-formed alternate business policy remains representable.
+
+Stages 16-17 then connect the stable production-used proof rules to an independent
+formalization and to the actual production acceptance path.  The release binds
+its formal subject and implementation evidence to the precise Claim artifacts it
+admits; green evidence about a predecessor implementation cannot migrate by name.
+
+#+begin_src clojure
+(def claim-release-evidence
+  {:semantic-subject :operation/request-claim-O19
+   :formal-rule-set :formal/gesso-kernel-F6
+   :production-checker :checker/gesso-kernel-C11
+   :correspondence :correspondence/F6-C11-v3
+   :implementation :impl/humanhelp-request-claim-I52
+   :assembly :assembly/humanhelp-A73
+   :browser-artifact "sha256:6b20..." :real-browser :pass})
+#+end_src
+
+Finally Stage 18 changes physical topology, not Claim's semantic owner.  A
+submission handled by node A may commit to XTDB, publish through distributed Live
+invalidation, and later be reread through node C.  Node C can establish current
+Request state without inventing knowledge that node C observed the original
+command outcome.
+
+#+begin_src clojure
+{:command-id :command/request-claim-7f2 :submitted-via :aleph/node-a
+ :authoritative-commit {:request/id request-id :progression 42}
+ :advisory-delivered-via :aleph/node-b :authoritative-reread-via :aleph/node-c
+ :result {:request/status :claimed :request/helper current-helper}
+ :command-outcome-knowledge :only-if-declared-evidence-establishes-it}
+#+end_src
+
+Across all eighteen stages, the operation becomes better specified, better
+realized, better checked, and better evidenced.  It never becomes a browser-owned
+transition, a proof-owned business rule, or a node-owned fact.  That continuity is
+why the roadmap is an accumulation of guarantees rather than a succession of
+parallel implementations.
+
 ** Stage dependency summary
 
 The numbered stages express a default delivery order and a useful accumulation
@@ -35832,6 +36463,111 @@ implementation or admitted assembly generation. Omitted obligations, copied
 identities, incomplete checks, or tests on a different artifact cannot establish
 the requested gate.
 Finite models and conformance vectors retain the limits of their actual evidence.
+
+
+*** Worked failed release -- one green-looking candidate stopped by the final gates
+
+Consider a candidate assembled under deadline pressure.  Every individual
+mistake is plausible precisely because some nearby artifact is green.  The final
+gates prevent those local successes from being promoted into a stronger release
+claim.
+#+begin_src clojure
+(def broken-candidate
+  {:operation :request/claim
+
+   ;; Old generated JavaScript survived a semantic-plan change.
+   :assembly {:plan :plan/request-claim-P24
+              :browser-artifact {:identity "sha256:old-bytes"
+                                 :declares-plan :plan/request-claim-P23}}
+
+   ;; A handler silently falls back when the required trusted clock is absent.
+   :server {:requires #{:principal/current :clock/current}
+            :supplied #{:principal/current}
+            :fallback :ordinary-htmx-handler}
+
+   ;; The browser posts authority-shaped values and the handler trusts them.
+   :invocation {:principal "helper-17"
+                :role :helper
+                :basis 42}
+
+   ;; Timeout recovery sees current state and invents command attribution.
+   :recovery {:current-request {:status :claimed :progression 43}
+              :conclusion :timed-out-command-definitely-succeeded}
+
+   ;; Reconnect automatically adopts every newer Request despite selective policy.
+   :continuity {:observation-frontier 47
+                :remote-frontier 52
+                :action :adopt-all-visible-requests}
+
+   ;; The exposed operation registry accidentally omits Reassign, then calls the
+   ;; smaller registry the complete product.
+   :capabilities {:required #{:claim :unclaim :complete :cancel :reassign}
+                  :exposed #{:claim :unclaim :complete :cancel}}
+
+   ;; Formal and browser evidence concern neighboring, not admitted, artifacts.
+   :evidence {:certificate-subject :plan/request-claim-P23
+              :production-plan :plan/request-claim-P24
+              :chromium-tested-artifact "sha256:previous-release"
+              :release-artifact "sha256:old-bytes"}
+
+   ;; Preflight also overclaims a future fact.
+   :preflight {:network-will-remain-available true}})
+#+end_src
+
+The candidate is not repaired by choosing one late gate and calling every defect a
+release error.  Each contradiction stops where enough information first exists:
+
+| Defect | Earliest owning rejection | Final gate reinforced |
+|--------+----------------------------+-----------------------|
+| Missing trusted clock with fallback | capability/assembly preflight | A -- no silent downgrade |
+| Proof/test subject differs from production | certificate/application composition | B -- same semantic object |
+| Browser-provided principal/role increases authority | trusted server admission | D -- security trusted-side |
+| P23 artifact presented for P24 plan | browser/application correspondence | E -- exact artifact correspondence |
+| Preflight predicts future network availability | preflight contract | F -- dynamic facts remain dynamic |
+| Release lacks Chromium evidence for shipped bytes | release admission | G -- real browser release gate |
+| Known malformed closure is allowed to run | application preflight | H -- stop malformed programs early |
+| Authority-shaped browser map treated as admitted value | trusted admission | I -- representation is not admission |
+| Reassign disappears because registry omitted it | product completeness check | J -- independent capability completeness |
+| Current state is treated as proof of timed-out command outcome | recovery semantics | K -- knowledge differs from outcome |
+| Reconnect adopts outside declared policy/scope | acquisition/adoption check | L -- scope survives recovery |
+| Certificate/test identities copied onto different artifacts | release composition | M -- evidence scope survives release |
+
+Gate C is checked throughout as well: fixing the candidate must not introduce a
+second copy of the Claim policy in the browser, release manifest, or proof layer.
+The repair points back to the HumanHelp model/rule owner and regenerates or
+rechecks dependent artifacts from there.
+
+A repaired candidate therefore changes the construction, not merely the report:
+
+#+begin_src clojure
+(def repaired-candidate
+  (-> broken-candidate
+      (assoc-in [:server :supplied]
+                #{:principal/current :clock/current})
+      (assoc-in [:server :fallback] nil)
+      (assoc :invocation {:command-id :command/request-claim-8a1
+                          :execution-id :execution/claim-attempt-104})
+      (assoc-in [:recovery :conclusion] :command-outcome-unknown)
+      (assoc-in [:continuity :action] :preserve-advisory-debt)
+      (assoc-in [:capabilities :exposed]
+                #{:claim :unclaim :complete :cancel :reassign})
+      (assoc :assembly {:plan :plan/request-claim-P24
+                        :browser-artifact {:identity "sha256:new-bytes"
+                                           :declares-plan :plan/request-claim-P24}})
+      (assoc :evidence {:certificate-subject :plan/request-claim-P24
+                        :production-plan :plan/request-claim-P24
+                        :chromium-tested-artifact "sha256:new-bytes"
+                        :release-artifact "sha256:new-bytes"})
+      (assoc :preflight {:network-failure-handling
+                         :declared-retry-or-user-recovery})))
+#+end_src
+
+Even this map is not evidence that the release passes.  It is merely shaped like a
+candidate whose contradictions have been repaired.  Admission still requires the
+actual checkers, trusted bindings, generated-artifact comparison, tests, and
+applicable proof/correspondence evidence.  The final gates are therefore not a
+ceremonial checklist: they are the repeated invariants that prevent a locally
+plausible artifact from acquiring a global claim it never earned.
 
 ** Final unified design principle
 

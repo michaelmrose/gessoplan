@@ -541,6 +541,70 @@ Clojure, Malli, XTDB, HTMX, or Chromium, and does not move HumanHelp business
 policy into the framework. This is a target architecture, not a statement that
 its theorems or correspondence mechanisms already exist.
 
+
+**** Worked correspondence slice: HumanHelp Claim has one production meaning
+
+A Claim slice makes the correspondence direction concrete.  The formal and
+production objects may differ in representation, but the transferred theorem
+must still concern the production semantics actually admitted.
+
+#+begin_src clojure
+(def claim-subject
+  {:operation :request/claim
+   :state-type :humanhelp/Request
+   :input-type :humanhelp/ClaimInput
+   :preconditions
+   [[:= [:field :request/status] :request.status/open]
+    [:known? :actor :membership/current]
+    [:authorized? :actor :request/claim]]
+   :transition
+   {:request/status :request.status/claimed
+    :request/helper-id [:input :actor/id]}
+   :outcomes #{:accepted :rejected :unknown}})
+
+(def claim-formal-subject
+  (gesso.formal/translate-operation claim-subject))
+
+(def claim-production-plan
+  (gesso.compile/executable-operation claim-subject))
+
+(def claim-correspondence
+  (gesso.formal/check-correspondence
+   {:formal-subject claim-formal-subject
+    :production-subject claim-production-plan
+    :claim
+    [:forall-supported-inputs
+     [:production-accepts? :request/claim]
+     [:formal-judgment-holds? :claim-safe]]
+    :representation :gesso.correspondence/operation-v1
+    :direction :production-acceptance-implies-formal-validity
+    :dependencies
+    {:rule-set :semantic/claim-rules-C21
+     :operation :semantic/request-claim-op-O31
+     :kernel :gesso-proof-kernel/K7}}))
+
+(def admitted-claim
+  (gesso.application/admit-operation
+   {:plan claim-production-plan
+    :correspondence claim-correspondence}))
+
+;; Wrong shape: prove F while production independently executes G.
+(def formal-F {:when :open :then :claimed})
+(defn production-G [request actor]
+  (if (:request/priority-lock? request)
+    request
+    (assoc request
+           :request/status :request.status/claimed
+           :request/helper-id (:actor/id actor))))
+#+end_src
+
+The second shape leaves an unproved semantic gap even if =F= and =G= share a
+name, examples, or copied digest metadata.  The desired architecture checks the
+representation/refinement path to the executable production object.  Where an
+arbitrary Clojure implementation remains behind the public operation contract,
+its conformance remains an explicit trusted or tested premise until stronger
+evidence exists.
+
 *** External proof assistant role
 
 Lean is the leading candidate, but the architectural role matters more than the
@@ -665,6 +729,64 @@ mapping each state to some abstract state is insufficient. A liveness transfer
 needs the additional progress/fairness/divergence conditions its theorem uses.
 An abstract counterexample may require concretization before being reported as
 a realizable production failure.
+
+
+**** Worked abstraction slice: resource ownership without a fake finite universe
+
+Browser resource-instance identities may be unbounded even when the safety
+property depends on only a small relation among them.  Checking four chosen
+UUIDs would therefore prove only an artificial four-value model.
+
+#+begin_src clojure
+(def concrete-state
+  {:target :request-list
+   :current-resource-instance #uuid "62eae6bf-d8e5-4faa-9c65-5387408ec111"
+   :retired-resource-instances
+   #{#uuid "e3ff7f3d-a62e-4995-9ef9-314298250812"}
+   :pending
+   {#uuid "62eae6bf-d8e5-4faa-9c65-5387408ec111"
+    {:effect :fragment-fetch
+     :phase :awaiting-response}}})
+
+(defn callback-admitted? [state callback]
+  (and (= (:resource-instance callback)
+          (:current-resource-instance state))
+       (contains? (:pending state)
+                  (:resource-instance callback))))
+
+(defn abstract-instance [state instance]
+  (cond
+    (= instance (:current-resource-instance state)) :instance/current
+    (contains? (:retired-resource-instances state) instance) :instance/retired
+    :else :instance/other))
+
+(defn abstract-callback [state callback]
+  {:instance-class
+   (abstract-instance state (:resource-instance callback))
+   :pending?
+   (contains? (:pending state) (:resource-instance callback))
+   :event (:event callback)})
+
+(defn abstract-admitted? [{:keys [instance-class pending?]}]
+  (and (= instance-class :instance/current) pending?))
+
+(def resource-ownership-obligation
+  {:initial :every-concrete-initial-state-has-related-abstract-state
+   :step :every-relevant-concrete-transition-is-simulated
+   :property
+   [:implies
+    [:abstract-callback-admitted?]
+    [:concrete-callback-owned-by-current-resource?]]
+   :scope
+   #{:start-resource :retire-resource :receive-callback
+     :authoritative-install}})
+#+end_src
+
+If the abstraction relation and simulation obligation are machine-checked,
+exhaustive exploration of the finite abstract state space can support a claim
+about every concrete identity covered by that theorem.  Without that bridge,
+the same exploration is merely bounded evidence.  Liveness still needs its own
+scheduling/fairness argument rather than inheriting this safety result.
 
 *** Evidence package and maintenance
 
@@ -792,6 +914,43 @@ identity evidence
     from
 semantic proof evidence
 #+end_example
+
+
+A cache lookup makes the distinction operational.  Matching bytes can establish
+artifact identity while old semantic evidence is nevertheless stale under a new
+dependency closure.
+
+#+begin_src clojure
+(def cached-browser-artifact
+  {:artifact/id "sha256:91b..."
+   :proof-report/id :proof/request-board-R12
+   :dependencies
+   {:claim-operation :semantic/request-claim-op-O31
+    :membership :semantic/membership-M18}
+   :assembly-generation :assembly/H42})
+
+(def current-application
+  {:required-artifact/id "sha256:91b..."
+   :dependencies
+   {:claim-operation :semantic/request-claim-op-O31
+    :membership :semantic/membership-M19}
+   :assembly-generation :assembly/H43})
+
+(defn artifact-identical? [cached current]
+  (= (:artifact/id cached) (:required-artifact/id current)))
+
+(defn evidence-admissible? [cached current]
+  (and (artifact-identical? cached current)
+       (= (:dependencies cached) (:dependencies current))
+       (= (:assembly-generation cached) (:assembly-generation current))))
+
+(artifact-identical? cached-browser-artifact current-application) ;=> true
+(evidence-admissible? cached-browser-artifact current-application) ;=> false
+#+end_src
+
+The digest still says something useful about exact artifact identity.  It does
+not authorize carrying the old Membership-dependent proposition into the new
+assembly, and a new digest alone would not prove semantic correctness either.
 
 *** Elaborator/checker shared-bug risk
 
@@ -1093,6 +1252,85 @@ and recovery assumptions rather than inheriting them from the broker's label.
 Those mechanisms should be added when a real choreography requires them.
 
 They must not redefine ordinary authoritative convergence.
+
+
+**** Worked multi-node contrast: durable Request versus ephemeral typing message
+
+Two cross-user features may traverse the same cluster while requiring different
+semantics.  First, Alice claims a durable HumanHelp Request through node A:
+
+#+begin_src clojure
+(def claim-command
+  {:command/id #uuid "76d7d7e1-fd03-47f7-82f7-66915ec283d9"
+   :operation :request/claim
+   :request/id #uuid "412090ce-0e79-4bc8-9d66-a4690ee52022"
+   :actor/id #uuid "069ca45d-33de-4d06-b958-ef1a0da69390"})
+
+(def claim-result
+  (request/claim! node-a-system claim-command))
+
+;; The committed fact outlives node A.
+{:request/id (:request/id claim-command)
+ :request/status :request.status/claimed
+ :request/helper-id (:actor/id claim-command)
+ :progression {:request/id (:request/id claim-command)
+               :basis 1842}}
+
+(def advisory
+  {:kind :request/authority-may-have-advanced
+   :scope [:request/id (:request/id claim-command)]
+   :requires {:basis-at-least 1842}})
+
+(defn refresh-through-node-c [principal advisory]
+  (auth/authorize-read! node-c-system principal (:scope advisory))
+  (let [observation
+        (request/read-authoritative
+         node-c-system
+         {:principal principal
+          :scope (:scope advisory)
+          :requirement (:requires advisory)})]
+    (progression/assert-satisfies! observation (:requires advisory))
+    observation))
+#+end_src
+
+If publication is lost, node C satisfies the outstanding requirement by reading
+the durable model under current authorization.  It does not reconstruct the
+Claim from node A's process memory.  The reread may establish current Request
+state without proving whether Alice received her direct settlement response.
+
+Now contrast an ephemeral typing signal whose receipt itself is the semantic
+event:
+
+#+begin_src clojure
+(def typing-message
+  {:execution/id #uuid "240e696a-e527-4fd1-80ac-bb104d91ef02"
+   :message/id #uuid "0a675872-2ba3-4575-a76f-4024d2c73938"
+   :from :actor/alice
+   :to :actor/bob
+   :kind :collaboration/typing
+   :document/id #uuid "389bdfac-48c9-4563-8b83-83bfae42d32e"
+   :expires-at #inst "2026-09-21T21:36:04.000-07:00"})
+
+(def typing-route-contract
+  {:delivery :best-effort
+   :durability :ephemeral
+   :duplicates :permitted
+   :late-message :discard
+   :authorization :current-document-membership
+   :semantic-effect :recipient-observed-message})
+
+(defn receive-typing! [recipient message]
+  (when (and (routing/current-recipient? recipient message)
+             (auth/currently-authorized? recipient (:document/id message))
+             (time/before? (time/now) (:expires-at message)))
+    (ui/show-typing-indicator! (:from message))))
+#+end_src
+
+There may be no durable business fact for node C to reread later.  A stronger
+product guarantee would need an explicit stronger routing, persistence,
+acknowledgment, or recovery contract.  Reusing Request invalidation semantics
+would conflate two meanings merely because both can travel through the same
+broker or load-balanced hosts.
 
 *** First physical multi-node topology may be simple
 
