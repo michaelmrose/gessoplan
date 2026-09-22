@@ -310,14 +310,16 @@ here because they make the admission boundary visible.
   [value
    authority
    basis
-   projection])
+   projection
+   observation-id])
 
 (defrecord AdmittedEmployee
   [value
    authority
    basis
    projection
-   principal])
+   principal
+   admission-id])
 
 (defn decode-employee-form
   [params]
@@ -339,25 +341,36 @@ here because they make the admission boundary visible.
     (->ProposedEmployee value)))
 
 (defn observe-employee!
-  [{:keys [db]} employee-id]
+  [{:keys [db principal authorization employee-admission-registry]}
+   employee-id]
   (let [{:keys [value basis]}
-        (employee-model/read-current
+        (employee-model/read-authorized-current!
           db
-          {:employee-id employee-id
+          {:principal principal
+           :authorization authorization
+           :purpose :expense/approval
+           :employee-id employee-id
            :projection :employee/approval-facts})]
 
     (m/assert EmployeeValue value)
 
     ;; This value has crossed the model-owned authoritative acquisition
     ;; boundary, so it carries provenance that the form value does not.
-    (->ObservedEmployee
-      value
-      [:authority :employee employee-id]
-      basis
-      :employee/approval-facts)))
+    (let [authority [:authority :employee employee-id]
+          projection :employee/approval-facts
+          observation-id
+          (admission/issue-observation!
+            employee-admission-registry
+            {:principal (:user/id principal)
+             :value value
+             :authority authority
+             :basis basis
+             :projection projection})]
+      (->ObservedEmployee
+        value authority basis projection observation-id))))
 
 (defn admit-employee-for-approval!
-  [{:keys [principal authorization]}
+  [{:keys [principal authorization employee-admission-registry]}
    observed]
 
   (when-not (instance? ObservedEmployee observed)
@@ -377,6 +390,17 @@ here because they make the admission boundary visible.
            :else
            :semantic/unknown)})))
 
+  ;; The record class is only a local category hint. This checks a
+  ;; server-owned issuance binding before admitting its contents.
+  (admission/require-observation!
+    employee-admission-registry
+    (:observation-id observed)
+    {:principal (:user/id principal)
+     :value (:value observed)
+     :authority (:authority observed)
+     :basis (:basis observed)
+     :projection (:projection observed)})
+
   (when-not
     (authorization/can-observe-employee-for-approval?
       authorization
@@ -390,21 +414,32 @@ here because they make the admission boundary visible.
          :authority (:authority observed)
          :projection (:projection observed)})))
 
-  (->AdmittedEmployee
-    (:value observed)
-    (:authority observed)
-    (:basis observed)
-    (:projection observed)
-    principal))
+  (let [admission-id
+        (admission/issue!
+          employee-admission-registry
+          {:purpose :expense/approval
+           :principal (:user/id principal)
+           :value (:value observed)
+           :authority (:authority observed)
+           :basis (:basis observed)
+           :projection (:projection observed)})]
+    (->AdmittedEmployee
+      (:value observed)
+      (:authority observed)
+      (:basis observed)
+      (:projection observed)
+      principal
+      admission-id)))
 
 (defn approval-context!
   [{:keys [principal] :as ctx}
    expense-id]
 
   (let [expense
-        (expense-model/require-current!
+        (expense-model/require-authorized-current!
           ctx
-          expense-id)
+          expense-id
+          :expense/approval)
 
         observed-employee
         (observe-employee!
@@ -455,9 +490,21 @@ observation:
 
 #+begin_src clojure
 (defn manager-may-approve?
-  [{:keys [expense employee principal]}]
+  [{:keys [employee-admission-registry] :as ctx}
+   {:keys [expense employee principal]}]
 
-  (when-not (instance? AdmittedEmployee employee)
+  (when-not
+    (and
+      (instance? AdmittedEmployee employee)
+      (admission/issued-for?
+        employee-admission-registry
+        (:admission-id employee)
+        {:purpose :expense/approval
+         :principal (:user/id principal)
+         :value (:value employee)
+         :authority (:authority employee)
+         :basis (:basis employee)
+         :projection (:projection employee)}))
     (throw
       (ex-info
         "Approval rule requires an admitted Employee observation."
@@ -484,6 +531,7 @@ The tempting substitution is exactly the one Gesso should make difficult:
 ;; Same inner map. Wrong semantic category.
 
 (manager-may-approve?
+  ctx
   {:expense expense
    :employee browser-proposal
    :principal principal})
@@ -514,12 +562,29 @@ encoded into HTML or EDN and later returned by the browser:
   (:authority returned)
   (:basis returned)
   :employee/approval-facts
-  principal)
+  principal
+  (:admission-id returned))
 #+end_src
 
 A supported server API should instead either reacquire the authoritative
 Employee or validate a separately defined server-verifiable receipt whose
 contract actually establishes the premise required by the operation.
+
+Even the reconstructed =AdmittedEmployee= above fails =admission/issued-for?=
+unless trusted server state contains a matching, still applicable admission
+bound to the actual principal, value, authority, basis, projection, and
+purpose. The same check on =ObservedEmployee= prevents a forged observation
+record from being laundered into admission. The wire example does not carry a
+server admission. A browser cannot create one by choosing record tags or an
+=:admission-id=; the registry is trusted server context and is never populated
+from decoded browser data.
+Realizing that registry across web nodes requires a declared shared or
+server-verifiable mechanism; a process-local cache alone cannot support a
+cross-node claim. The authorized read must enforce access *before* disclosing
+Employee data. Finally, an approval mutation still rechecks the expense and
+Employee policy against mutually compatible, transaction-current facts. This
+example's admitted observation supports the rule's input discipline, but does
+not by itself make an earlier pre-read safe for a later commit.
 
 The lesson is not that records are magical security objects. They are not. The
 lesson is that shape, semantic category, admission, and proof can coincide in
@@ -904,7 +969,7 @@ projected editor actor and later reconnects through another web node:
    :execution
    #uuid "e0000000-0000-0000-0000-000000000019"
 
-   :transport-request
+   :transport-request-id
    #uuid "70000000-0000-0000-0000-000000000204"
 
    :host
@@ -918,7 +983,7 @@ operation's retry contract permits another transport attempt through node C:
 (def retry-session
   (-> editor-session
       (assoc
-        :transport-request
+        :transport-request-id
         #uuid "70000000-0000-0000-0000-000000000205"
 
         :host
@@ -935,12 +1000,12 @@ operation's retry contract permits another transport attempt through node C:
 ;; same values
 
 (select-keys editor-session
-  [:transport-request :host])
+  [:transport-request-id :host])
 ;; =>
 ;; http attempt 204 on node A
 
 (select-keys retry-session
-  [:transport-request :host])
+  [:transport-request-id :host])
 ;; =>
 ;; http attempt 205 on node C
 #+end_src
@@ -960,7 +1025,7 @@ Now Alice opens a second browser tab:
         :execution
         #uuid "e0000000-0000-0000-0000-000000000020"
 
-        :transport-request
+        :transport-request-id
         #uuid "70000000-0000-0000-0000-000000000206")))
 
 (= (:principal retry-session)
@@ -1105,9 +1170,10 @@ The following structure is intentionally verbose so the independence is visible:
    nil
 
    :transport
-   {:transport-request/id
+   {:transport-request-id
     #uuid "44444444-4444-4444-4444-444444444204"
 
+    ;; Fetch callback ownership is distinct from HTTP attempt correlation.
     :resource-instance/id
     #uuid "55555555-5555-5555-5555-555555555051"
 
@@ -1123,7 +1189,7 @@ replacing the transport attempt and its resource instance:
 (def retry
   (-> checkout-attempt
       (assoc-in
-        [:transport :transport-request/id]
+        [:transport :transport-request-id]
         #uuid "44444444-4444-4444-4444-444444444205")
       (assoc-in
         [:transport :resource-instance/id]
@@ -1142,8 +1208,8 @@ replacing the transport attempt and its resource instance:
 
 (assert
   (not=
-    (get-in checkout-attempt [:transport :transport-request/id])
-    (get-in retry [:transport :transport-request/id])))
+    (get-in checkout-attempt [:transport :transport-request-id])
+    (get-in retry [:transport :transport-request-id])))
 
 (assert
   (not=
@@ -1161,7 +1227,7 @@ new execution that still tries to reconcile the same command:
         :execution/id
         #uuid "22222222-2222-2222-2222-222222222220")
       (assoc-in
-        [:transport :transport-request/id]
+        [:transport :transport-request-id]
         #uuid "44444444-4444-4444-4444-444444444206")
       (assoc-in
         [:transport :resource-instance/id]
@@ -1522,16 +1588,21 @@ must not call that narrow result semantic admission:
 #+begin_src clojure
 (defn current-resource?
   [runtime event]
-  (=
-    (get-in runtime
-      [:current-resource :resource-instance/id])
-    (:resource-instance/id event)))
+  (let [resource (get runtime :current-resource)]
+    (and
+      (= :in-flight (:status resource))
+      (some? (:target runtime))
+      (some? (:resource-instance/id resource))
+      (= (:resource-instance/id resource)
+         (:resource-instance/id event))
+      (= (:target runtime) (:target event)))))
 
 (defn same-execution?
   [runtime event]
-  (=
-    (:execution/id runtime)
-    (:execution/id event)))
+  (and
+    (some? (:execution/id runtime))
+    (= (:execution/id runtime)
+       (:execution/id event))))
 
 (defn correlate-acquisition-owner
   [runtime event]
@@ -1589,8 +1660,13 @@ contract has also been established:
            :declared-observation-scope
            :compatible-progression
            :current-resource-owner
-           :permitted-installation-right}}))))
+         :permitted-installation-right}}))))
 #+end_src
+
+The =:require= set is selected by the admitted acquisition contract, not by
+event fields or arbitrary callers. Source authenticity, observation scope,
+progression, and installation rights remain checks in that boundary. Owner
+correlation alone cannot make received HTML safe to install.
 
 Notice what the owner guard does *not* infer. It does not claim that B42 is
 universally newer than every basis in the application. It does not prove that
@@ -1611,6 +1687,9 @@ shared advisory is not execution-private:
    {:subscription/id
     #uuid "73000000-0000-0000-0000-000000000031"
 
+    :source-instance/id
+    #uuid "74000000-0000-0000-0000-000000000031"
+
     :scope
     {:organization-id
      #uuid "72000000-0000-0000-0000-000000000001"
@@ -1620,18 +1699,51 @@ shared advisory is not execution-private:
    {:kind :authority-may-have-advanced
     :scope :request/board}})
 
-(defn admit-board-advisory
-  [runtime event]
-  (let [subscription
-        (get-in runtime [:board-subscription :subscription/id])]
+(def advisory-runtime
+  {:board-subscription
+   {:subscription/id
+    #uuid "73000000-0000-0000-0000-000000000031"
 
-    (if (= subscription
-           (get-in event [:owner :subscription/id]))
-      {:result :admitted
-       :transition :record-advisory-requirement}
-      {:result :rejected
-       :reason :wrong-subscription})))
+    :source-instance/id
+    #uuid "74000000-0000-0000-0000-000000000031"
+
+    :scope
+    {:organization-id
+     #uuid "72000000-0000-0000-0000-000000000001"
+     :projection :request/board}
+
+    :status :open}})
+
+(defn admit-board-advisory
+  [trusted-context runtime event]
+  (let [subscription (:board-subscription runtime)
+        owner (:owner event)]
+    (if-not
+      (and
+        (= :open (:status subscription))
+        (some? (:subscription/id subscription))
+        (some? (:source-instance/id subscription))
+        (= (:subscription/id subscription) (:subscription/id owner))
+        (= (:source-instance/id subscription)
+           (:source-instance/id owner))
+        (= (:scope subscription) (:scope owner)))
+      {:result :owner-rejected
+       :reason :wrong-subscription-or-source}
+      (advisory-admission/admit!
+        {:trusted-context trusted-context
+         :runtime runtime
+         :event event
+         ;; Fixed by the admitted shared-event contract, not by the event.
+         :require
+         #{:declared-board-advisory-class
+           :admitted-source-provenance
+           :valid-scoped-requirement
+           :permitted-shared-transition}}))))
 #+end_src
+
+The subscription check is only owner correlation. Shared semantic admission
+also checks source provenance and the permitted advisory transition. A
+client-supplied =:owner= or =:event/class= does not by itself prove either.
 
 Assigning that advisory to whichever command execution happens to be current
 would be a category error. Conversely, marking a private callback as
@@ -2851,7 +2963,7 @@ containing only R1 and R2. A browser-side semantic state might look like:
     #uuid "82000000-0000-0000-0000-000000000002"]
 
    :projection
-   {:kind :request/board
+   {:projection :request/board
     :organization-id
     #uuid "83000000-0000-0000-0000-000000000001"}
 
@@ -2886,6 +2998,16 @@ whose semantic content is deliberately weaker than the Request itself:
 (def create-advisory
   {:event/class :board-advisory
 
+   :owner
+   {:subscription/id
+    #uuid "85000000-0000-0000-0000-000000000001"
+    :source-instance/id
+    #uuid "86000000-0000-0000-0000-000000000001"
+    :scope
+    {:organization-id
+     #uuid "83000000-0000-0000-0000-000000000001"
+     :projection :request/board}}
+
    :scope
    {:organization-id
     #uuid "83000000-0000-0000-0000-000000000001"
@@ -2895,17 +3017,41 @@ whose semantic content is deliberately weaker than the Request itself:
    {:kind :newer-authority-available
     :after :X17}})
 
+(def current-board-subscription
+  {:board-subscription
+   {:subscription/id
+    #uuid "85000000-0000-0000-0000-000000000001"
+    :source-instance/id
+    #uuid "86000000-0000-0000-0000-000000000001"
+    :scope (:projection bob-board)
+    :status :open}})
+
 (defn record-advisory
-  [board advisory]
+  [board admitted-advisory]
+  ;; This is an internal semantic transition. The common shared-event
+  ;; boundary has already validated source, owner, scope, and requirement.
+  (advisory-admission/require-admitted-for!
+    admitted-advisory
+    (:projection board))
   (update-in board
     [:advisory :requirements]
     conj
-    (:requirement advisory)))
+    (:requirement admitted-advisory)))
+
+(def admitted-create-advisory
+  (advisory-admission/admit!
+    {:trusted-context trusted-board-context
+     :runtime current-board-subscription
+     :event create-advisory
+     :require #{:declared-board-advisory-class
+                :admitted-source-provenance
+                :valid-scoped-requirement
+                :permitted-shared-transition}}))
 
 (def bob-after-advisory
   (record-advisory
     bob-board
-    create-advisory))
+    admitted-create-advisory))
 
 (get-in bob-after-advisory [:adopted :requests])
 ;; =>
@@ -2926,44 +3072,47 @@ The Refresh action performs a new authoritative acquisition:
 
 #+begin_src clojure
 (defn refresh-board!
-  [{:keys [principal] :as ctx} board]
-  (let [scope
-        (get board :projection)
-
-        {:keys [requests basis authority]}
+  [{:keys [principal] :as ctx} board-state]
+  (let [started @board-state
+        scope (:projection started)
+        acquisition
         (request-model/read-authorized-board
           ctx
           {:principal principal
            :organization-id (:organization-id scope)
-           :projection (:kind scope)})]
+           :projection (:projection scope)})]
 
-    {:actor (:actor board)
-     :principal principal
-     :projection scope
+    ;; Installation happens against the latest state, including advisories
+    ;; received during the read. The admitted installer checks current owner,
+    ;; trusted provenance, scope, and progression before replacing the board.
+    (swap! board-state
+      (fn [current]
+        (board-admission/install-acquisition
+          current
+          {:acquisition acquisition
+           :expected-scope scope
+           :principal principal})))
+    @board-state))
 
-     :adopted
-     {:requests requests
-      :observation
-      {:authority authority
-       :scope scope
-       :basis basis}}
-
-     ;; Only requirements actually covered by this acquisition may be
-     ;; discharged. The exact progression rule belongs to Part IV.
-     :advisory
-     {:requirements
-      (remove
-        #(covered-by-acquisition?
-           %
-           {:scope scope
-            :basis basis})
-        (get-in board [:advisory :requirements]))}}))
+(def bob-board-state
+  (atom bob-after-advisory))
 
 (def bob-after-refresh
   (refresh-board!
     current-context
-    bob-after-advisory))
+    bob-board-state))
 #+end_src
+
+The installer is a pure state transition, since =swap!= may call it again after
+a concurrent state change; it cannot send network requests or emit irreversible
+effects inside that function. It discharges only advisory requirements that the
+new acquisition actually covers under Part IV's scope and progression rules.
+It preserves newer or unrelated requirements and rejects a stale result if
+another acquisition
+already installed a stronger board or the owner changed. Evaluating that rule
+against the captured =started= value would erase an advisory received while
+the read was in flight. The principal comes from trusted context; a client
+field cannot choose whose board is read or installed.
 
 If Bob is authorized to see R3, the new projection may contain it. If policy or
 privacy excludes R3, Refresh can still be a valid authoritative acquisition
@@ -3118,4 +3267,3 @@ over evolving facts is relative to a meaningful common frontier.
 
 
 #+LATEX: \newpage
-

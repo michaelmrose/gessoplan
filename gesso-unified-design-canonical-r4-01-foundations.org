@@ -477,7 +477,11 @@ this:
    :effect
    [:model/invoke :request/claim
     {:request-id [:request/id :current-request]
-     :principal  :authenticated-principal}]
+     :principal  :authenticated-principal
+     ;; Allocated once by the admitted command boundary, then preserved
+     ;; through retries and reconciliation. Browser-carried values are
+     ;; validated and bound; their bytes alone grant no authority.
+     :command-id :gesso/command-id}]
 
    :settlement
    {:accepted
@@ -491,7 +495,9 @@ this:
 
     :unknown
     {:learns [:claim/outcome-unknown]
-     :recover [:request/reconcile-claim :request/id]}}})
+     :recover [:request/reconcile-claim
+               {:request-id :request/id
+                :command-id :gesso/command-id}]}}})
 #+end_src
 
 Verification can establish a structural proposition about that declaration. A
@@ -502,14 +508,17 @@ certificate or checked report might contain evidence resembling:
  :semantic-object   :request/claim
  :guarantees
  [{:proposition
-   [:implies
-    [:execution/reaches :model/invoke :request/claim]
-    [:and
-     [:premise/present :authenticated-principal]
-     [:premise/present :current-membership]
-     [:premise/present :current-request]
-     [:premise/present :current-organization]
-     [:rule/holds :claimable?]]]
+   [:plan/reaching-model-invoke-requires
+    :request/claim
+    #{:authenticated-principal
+      :current-membership
+      :current-request
+      :current-organization
+      :claimable-rule-guard}]
+   :evidence :kernel-checked
+   :scope :admitted-semantic-plan}
+
+  {:proposition [:rule/well-typed :claimable?]
    :evidence :kernel-checked}
 
   {:proposition
@@ -523,64 +532,70 @@ certificate or checked report might contain evidence resembling:
    :evidence :exact-finite-checked}]}
 #+end_src
 
-That is useful evidence about the *plan*. It still cannot answer whether Alice
-may claim Request R now.
+That is useful evidence about the *plan*, provided the checker actually proves
+the stated reachability obligation. A rule checker can validate a rule's type
+and semantics; it cannot certify that the rule holds for a future invocation's
+current Request and Membership. Nor does a plan certificate alone establish
+that an independently authored production handler implements the checked guard.
+The server binding and model transaction require their own admission and
+runtime-enforcement evidence. This certificate cannot answer whether Alice may
+claim Request R now.
 
-A trusted invocation boundary has to establish the concrete runtime premises
-again:
+A trusted invocation boundary must bind the concrete principal and pass the
+semantic command to the public authoritative model operation. The operation
+owns current domain authorization and the decision about a repeated command:
 
 #+begin_src clojure
 (defn invoke-claim!
-  [{:keys [request session db now] :as ctx}
-   {:request/keys [id] :as command}]
+  [{:keys [session now] :as ctx}
+   {:request/keys [id] :gesso/keys [command-id]}]
 
-  ;; Authentication establishes the principal for this concrete request.
+  ;; Authentication establishes the principal for this concrete request;
+  ;; the admitted command binding validates the command id and arguments.
   (let [principal
-        (auth/current-principal! session)
+        (auth/current-principal! session)]
 
-        ;; These are current authoritative observations, not browser-carried
-        ;; replacements for them.
-        request*
-        (request-model/require-current! db id)
-
-        membership*
-        (membership-model/require-current!
-          db
-          {:user-id (:user/id principal)
-           :organization-id (:request/organization-id request*)})
-
-        organization*
-        (organization-model/require-current!
-          db
-          (:request/organization-id request*))]
-
-    ;; The current concrete authorization is evaluated here.
-    (when-not
-      (claimable?
-        {:request request*
-         :membership membership*
-         :organization organization*})
-      (throw
-        (ex-info
-          "Request is not currently claimable by this principal."
-          {:error/type :request/claim-not-authorized
-           :request/id id
-           :principal (:user/id principal)})))
-
-    ;; Only after those premises hold does the public authoritative model
-    ;; operation receive the request.
+    ;; The model checks transaction-current facts and recognizes compatible
+    ;; repetitions before interpreting the now-claimed Request as a new claim.
     (request-model/claim!
       (assoc ctx
         :biff.fx/now now
         :principal principal)
       {:request-id id
-       :helper-id (:user/id principal)})))
+       :helper-id (:user/id principal)
+       :command-id command-id})))
 #+end_src
+
+The admitted command boundary supplies a stable =:gesso/command-id= before the
+first possible send, validates its binding to this operation, arguments, and
+principal, and preserves it through retries; a browser may carry the identifier
+but does not confer authority by choosing its bytes. The public
+=request-model/claim!= operation must check any existing command record's
+binding and permission to disclose it, then atomically guard the current
+Request state, the helper's active Membership, the Organization policy, and the
+Request/Organization association together with the ownership change and
+command-result record. A compatible repetition of an incorporated command
+returns its permitted recorded outcome, including when the Request is now
+claimed; incompatible reuse is rejected. A new command whose commit guard
+fails returns a typed rejection and permits authoritative card reacquisition;
+an indeterminate delivery remains unknown until reconciliation against
+authoritative outcome evidence. Separate pre-reads would leave a race and
+could incorrectly reject a retry after a successful commit.
+
+Part IV distinguishes model outcomes =:committed=, =:rejected=,
+=:already-incorporated=, and =:commit-unknown=. This example's presentation
+settlements are =:accepted=, =:rejected=, and =:unknown=: a permitted
+=:already-incorporated= outcome with a recorded successful claim maps to the
+same accepted successor without incorporating the command again;
+=:commit-unknown= remains unknown until reconciled. The assembly must check
+these explicit mappings, including the authority needed to disclose a prior
+result.
 
 The exact declaration, certificate representation, and handler API are
 illustrative. The separation is not. A checked certificate can justify
-admitting the Claim realization because the realization is constrained to
-require current authority. It cannot itself manufacture Alice's principal,
+admitting the Claim plan when its obligations are discharged; separate
+production and transaction evidence must show that the admitted realization
+actually enforces current authority. A certificate cannot manufacture Alice's principal,
 Membership, Request state, Organization policy, or present authorization.
 
 This is also why sending the certificate back from the browser would add no
@@ -888,17 +903,34 @@ data:
 (def humanhelp-assembly
   {:assembly/id :humanhelp/web
 
+   ;; Each referenced identity is backed by a source-owned declaration;
+   ;; these abbreviated entries show the edges needed by this slice.
+   :choreographies
+   {:request/claim {:operation :request/claim}}
+
+   :plans
+   {:plan/request-claim {:from :request/claim
+                         :artifact :artifact/gesso-live}}
+
    :operations
    {:request/claim
     {:choreography :request/claim
      :plan         :plan/request-claim
      :artifact     :artifact/gesso-live
-     :transport    :http/post
+     :transport    :transport/trusted-post
      :route        :route/request-claim
      :capability   :server/request-claim
      :model-op     :request/claim
      :settlement   :request/claim-settlement
      :reacquire    :request/card}}
+
+   :transports
+   {:transport/trusted-post {:kind :http/post
+                             :route :route/request-claim}}
+
+   :routes
+   {:route/request-claim {:transport :transport/trusted-post
+                          :capability :server/request-claim}}
 
    :views
    {:request/card
@@ -910,6 +942,24 @@ data:
    :server-capabilities
    {:server/request-claim
     {:route    :route/request-claim
+     :model-op :request/claim}}
+
+   :model-operations
+   {:request/claim {:public-entry :request-model/claim!}}
+
+   :settlements
+   {:request/claim-settlement
+    {:outcomes #{:accepted :rejected :unknown}
+     :reacquire {:accepted :request/card
+                 :rejected :request/card}
+     :recover {:unknown :request/reconcile-claim}}}
+
+   :acquisitions
+   {:request/card {:result :request/card}}
+
+   :recovery-capabilities
+   {:request/reconcile-claim
+    {:by :gesso/command-id
      :model-op :request/claim}}
 
    :artifacts
@@ -926,14 +976,25 @@ A closure checker can establish relationships *inside that declaration*:
  :evidence :assembly-verified
  :closed-edges
  [[:request/card :claim :request/claim]
+  [:request/claim :choreography :request/claim]
   [:request/claim :plan/request-claim]
   [:plan/request-claim :artifact/gesso-live]
+  [:request/claim :transport/trusted-post]
+  [:transport/trusted-post :route/request-claim]
   [:request/claim :route/request-claim]
   [:route/request-claim :server/request-claim]
   [:server/request-claim :request/claim]
   [:request/claim :request/claim-settlement]
-  [:request/claim-settlement :request/card]]}
+  [:request/claim-settlement :request/card]
+  [:request/claim-settlement :request/reconcile-claim]]}
 #+end_src
+
+The checker must collect these entries from the actual admitted choreography,
+projected plan, artifact bytes, route table, server binding, model operation,
+settlement, and acquisition/recovery declarations. Copying plausible entries
+into a disconnected map would show only that the map agrees with itself. The
+accepted report is illustrative of a checker that resolves every referenced
+source and validates the recorded edges.
 
 That still does not establish production enforcement. The actual startup and
 request path must make the admitted assembly unavoidable for the claimed
@@ -993,7 +1054,7 @@ Behavioral completeness still needs an independent statement of what the user
 must actually be able to do:
 
 #+begin_src clojure
-(def required-humanhelp-capabilities
+(def required-humanhelp-capabilities-excerpt
   [{:capability :request/create
     :eligible-scenario :authenticated-customer
     :required-outcome :request/created-and-visible-to-creator}
@@ -1010,6 +1071,11 @@ must actually be able to do:
     :required-outcome
     :authorized-current-board-adopted}])
 #+end_src
+
+These three entries are an excerpt for the Claim illustration, not HumanHelp's
+complete required-capability basis. The complete independent acceptance basis
+and its operational milestone scope are specified in
+[[#req-humanhelp-required-capabilities][Part VIII's required capabilities]].
 
 If =:request/claim= is removed from both the view and the assembly, the remaining
 assembly may still be perfectly closed. The independent capability list is what
@@ -2563,13 +2629,18 @@ Examples of definition/construction-time failures include:
 
 Examples of build/application-preflight failures include:
 
-- rendered semantic affordance with no projected executable plan;
+- declared semantic affordance with no projected executable plan;
 - stale generated artifact;
 - missing transport;
 - missing trusted route/capability;
 - missing server execution capability;
 - managed fragment with no permitted initial acquisition;
 - authoritative successor with no permitted reacquisition path.
+
+An affordance introduced only while constructing a concrete view is checked
+before that rendered surface is serialized or exposed. Static assembly
+preflight checks the affordances and operation bindings available from its
+declarations; it cannot claim to have inspected future arbitrary view data.
 
 
 The same HumanHelp Claim slice can fail legitimately at three different times,
@@ -2644,11 +2715,8 @@ Finally, current authorization may change after a completely valid render:
 ;; T3: Alice clicks the still-visible affordance.
 (invoke-claim!
   current-server-context
-  {:request/id R})
-;; throws:
-{:error/type :request/claim-not-authorized
- :request/id R
- :principal Alice}
+  {:request/id R :gesso/command-id C42})
+;; => {:outcome :rejected :reason :membership-inactive}
 #+end_src
 
 Static preflight should not have rejected the application merely because a
@@ -2750,7 +2818,8 @@ small executable contract rather than a prose-only promise.
    [:model/invoke :seat/reserve
     {:flight-id :flight/id
      :seat-id :seat/id
-     :traveler :authenticated-traveler}]
+     :traveler :authenticated-traveler
+     :command-id :gesso/command-id}]
 
    :settlement
    {:accepted
@@ -2768,45 +2837,50 @@ small executable contract rather than a prose-only promise.
      [:seat/reconcile-reservation
       {:flight-id :flight/id
        :seat-id :seat/id
-       :command-id :command/id}]}}})
+       :command-id :gesso/command-id}]}}})
 #+end_src
 
-The authoritative model operation still guards current state:
+The admitted command boundary supplies =:gesso/command-id= once, before the
+first possible send. The authoritative model operation uses the identity for
+deduplication and reconciliation, and guards eligibility and seat availability
+*inside the same transaction* that records the reservation. Pre-reading seat
+state may provide a prompt rejection but cannot be the commit guard:
 
 #+begin_src clojure
 (defn reserve-seat!
   [{:keys [db principal now]} {:keys [flight-id seat-id command-id]}]
 
-  (let [seat
-        (seat-model/require-current!
-          db
-          {:flight-id flight-id
-           :seat-id seat-id})]
+  (seat-model/transact-reservation!
+    {:db db :now now}
+    {:flight-id flight-id
+     :seat-id seat-id
+     :traveler-id (:user/id principal)
+     :command-id command-id
 
-    (cond
-      (not (traveler/eligible? db principal flight-id))
-      {:outcome :rejected
-       :reason :traveler/not-eligible}
+     ;; All of these are evaluated against transaction-current state;
+     ;; the winning commit preserves them, or returns a typed rejection.
+     :commit-guards
+     [[:traveler/eligible? (:user/id principal) flight-id]
+      [:seat/offered? flight-id seat-id]
+      [:seat/unreserved? flight-id seat-id]]
 
-      (= :reserved (:seat/status seat))
-      {:outcome :rejected
-       :reason :seat/already-reserved
-       :current-seat seat}
-
-      (not= :offered (:seat/status seat))
-      {:outcome :rejected
-       :reason :seat/no-longer-offered
-       :current-seat seat}
-
-      :else
-      (seat-model/transact-reservation!
-        {:db db
-         :now now}
-        {:flight-id flight-id
-         :seat-id seat-id
-         :traveler-id (:user/id principal)
-         :command-id command-id}))))
+     ;; The scoped identity binds principal, operation, flight, and seat.
+     ;; A repeat returns the recorded outcome, never a second reservation.
+     :deduplicate-by
+     [:flight/reserve-seat (:user/id principal) command-id]
+     :bind-arguments
+     {:flight-id flight-id :seat-id seat-id}}))
 #+end_src
+
+The transaction API above is schematic: the implementation must prove that
+its chosen database transaction or compare-and-set mechanism rejects a
+conflicting commit, that changes to any guard-owned eligibility record cannot
+slip between the guard and the write, and that command deduplication is atomic
+with the reservation. A failed guard maps to =:seat/already-reserved=,
+=:seat/no-longer-offered=, or =:traveler/not-eligible= based on current
+authoritative evidence. When delivery or commit status cannot be established,
+the client retains =:unknown= and reconciles by the bound command identity;
+it must not infer rejection from a timeout.
 
 A valid browser interaction may therefore begin from an authoritative observation
 at =T1= and still receive a typed rejection because Bob reserved the seat at

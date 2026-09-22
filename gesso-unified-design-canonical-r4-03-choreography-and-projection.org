@@ -78,7 +78,7 @@ model operations:
 
 #+begin_src clojure
 (defschema Expense
-  [:map
+  [:map {:closed true}
    [:expense/id uuid?]
    [:expense/employee-id uuid?]
    [:expense/department keyword?]
@@ -91,7 +91,7 @@ model operations:
            :rejected]]])
 
 (defschema ApprovalPolicy
-  [:map
+  [:map {:closed true}
    [:policy/department keyword?]
    [:policy/manager-limit decimal?]
    [:policy/finance-required-at decimal?]])
@@ -103,6 +103,11 @@ model operations:
   [:>=
    [:expense/amount :expense]
    [:policy/finance-required-at :policy]])
+
+(defoperation submit-expense
+  {:operation/id :expense/submit
+   :actor :employee
+   :effect [:model/invoke :expense/submit]})
 
 (defoperation manager-approve
   {:operation/id :expense/manager-approve
@@ -150,6 +155,13 @@ One global choreography can then describe how those operations relate:
      :provenance :input}}}
 
   (employee
+    ;; Only a confirmed authoritative submission permits this message.
+    ;; Rejected or unknown submissions follow their declared settlement and
+    ;; reconciliation paths, not the manager continuation.
+    (invoke expense-authority
+      submit-expense
+      {:expense-id expense-id})
+
     (send manager
       [:expense/submitted
        {:expense-id expense-id}]))
@@ -201,6 +213,18 @@ One global choreography can then describe how those operations relate:
 
 The global form is not intended to run forever as one omniscient process. It is
 a specification from which local behavior can be derived.
+
+This first choreography assumes a short supported execution in which the
+employee's confirmed submission and the manager/Finance responses have a
+declared delivery and progress contract. The multi-day realization later in
+this part uses durable model state and separate executions instead. In either
+realization, model operations recheck current status, principal eligibility,
+and applicable policy at their own guarded commit. A policy or status change
+after the manager's observations yields a declared rejection/reacquisition or
+retry path; it does not justify sending a Finance message for an uncommitted
+escalation. Finance's own operation also guards =:awaiting-finance= and current
+Finance authority. The observation and projection examples do not replace
+those model obligations.
 
 A manager projection might contain only what the manager needs:
 
@@ -294,6 +318,10 @@ The employee projection can be smaller still:
    :from expense-approval}
 
   (state :ready
+    (invoke
+      :expense/submit
+      {:expense-id :expense-id})
+
     (emit
       [:expense/submitted
        {:expense-id :expense-id}])
@@ -568,7 +596,7 @@ A declaration-first surface might begin with one semantic operation:
     {:authority :request}}
 
    :input
-   [:map
+   [:map {:closed true}
     [:request/id uuid?]]
 
    :entry
@@ -593,7 +621,8 @@ A declaration-first surface might begin with one semantic operation:
    [:invoke :request-authority
     :request/claim
     {:request-id :request/id
-     :principal :authenticated-principal}]
+     :principal :authenticated-principal
+     :command-id :gesso/command-id}]
 
    :settlement
    {:accepted
@@ -608,7 +637,7 @@ A declaration-first surface might begin with one semantic operation:
     {:recover
      [:request/reconcile-claim
       {:request-id :request/id
-       :command-id :command/id}]}}})
+       :command-id :gesso/command-id}]}}})
 #+end_src
 
 The view should be able to refer to that semantic operation without duplicating
@@ -709,7 +738,7 @@ browser's view of the world:
 
 #+begin_src clojure
 (defn request-claim-handler
-  [{:keys [db session] :as ctx} request]
+  [{:keys [session] :as ctx} request]
 
   (let [binding
         (assembly/require-current-binding!
@@ -723,39 +752,27 @@ browser's view of the world:
 
         principal
         (auth/current-principal!
-          session)
-
-        request*
-        (request-model/require-current!
-          db
-          (:request/id command))
-
-        membership*
-        (membership-model/require-current!
-          db
-          {:user-id (:user/id principal)
-           :organization-id
-           (:request/organization-id request*)})
-
-        organization*
-        (organization-model/require-current!
-          db
-          (:request/organization-id request*))]
-
-    (claim-policy/require-authorized!
-      {:principal principal
-       :request request*
-       :membership membership*
-       :organization organization*})
+          session)]
 
     (server/invoke-bound-model-operation!
       binding
       (assoc ctx
         :principal principal)
-      {:request-id (:request/id request*)
+      {:request-id (:request/id command)
        :helper-id (:user/id principal)
        :command-id (:gesso/command-id command)})))
 #+end_src
+
+The admitted decoder binds the command identity, operation, arguments, and
+authenticated principal. The public Request model operation establishes
+transaction-current Request, Membership, and Organization premises and checks
+the claim rule in the same guarded transition that records the result. It first
+recognizes a compatible already-incorporated command under the declared
+idempotency and disclosure contract. A separate handler pre-read could race
+with the commit and could reject a retry after a successful claim because the
+Request is no longer open. Part IV owns the concrete model transaction; the
+handler above illustrates the required authority handoff, not the transaction
+implementation.
 
 The syntax in all four blocks is provisional. The design pressure is not.
 
@@ -1633,7 +1650,12 @@ manager observes the Expense and current policy:
    {:manager {:principal :user}
     :finance {:principal :user}
     :notifier {:principal [:service :notifications]}
-    :expense-authority {:authority :expense}}}
+    :expense-authority {:authority :expense}}
+   :inputs
+   {:expense-id
+    {:schema :uuid
+     :known-by #{:manager}
+     :provenance :input}}}
 
   (manager
     (observe expense-authority
@@ -1660,9 +1682,8 @@ manager observes the Expense and current policy:
            {:expense-id expense-id}])
 
         (send notifier
-          [:expense/status-notification
-           {:expense-id expense-id
-            :status :submitted}]))
+          [:expense/review-recorded
+           {:expense-id expense-id}]))
 
       (else
         (invoke expense-authority
@@ -1670,15 +1691,18 @@ manager observes the Expense and current policy:
           {:expense-id expense-id})
 
         (send notifier
-          [:expense/status-notification
-           {:expense-id expense-id
-            :status :submitted}])))))
+          [:expense/review-recorded
+           {:expense-id expense-id}])))))
 #+end_src
 
 The notifier performs the same semantic action in both branches with the same
 payload. It does not need the manager's private threshold or the boolean
 =needs-finance?= merely because the global source contains a branch around the
-notification.
+notification. The common message means that a manager review was recorded;
+it does not assert the Expense is still =:submitted= after one branch changed
+it to =:awaiting-finance= and the other to =:approved=. If a notification
+must report current status, it needs an authorized authoritative read or a
+branch-dependent communicated outcome, with the corresponding knowledge path.
 
 A projected notifier machine can therefore be independent of that
 discriminator:
@@ -1689,14 +1713,14 @@ discriminator:
 
   (state :waiting
     (on-message
-      [:expense/status-notification
-       {:keys [expense-id status]}]
+      [:expense/review-recorded
+       {:keys [expense-id]}]
 
       (notify-user!
         {:expense-id expense-id
-         :status status})
+         :event :review-recorded})
 
-      (terminate :sent)))
+      (terminate :sent))))
 #+end_src
 
 Finance is different. Its behavior exists only in one continuation, so it needs
@@ -1769,7 +1793,7 @@ observation:
   (finance
     (observe expense-authority
       [:expense/pending-finance-queue
-       {:principal :authenticated-finance-user}]
+       {:principal :authenticated-principal}]
       -> pending)
 
     (for-each [expense pending]
@@ -1919,21 +1943,31 @@ record that newer relevant authority may be available:
 
 #+begin_src clojure
 (defn handle-board-advisory
-  [board-runtime advisory]
-
-  (if
-    (board-subscription/owns?
-      (:subscription board-runtime)
-      advisory)
-
+  [trusted-context board-runtime event]
+  (let [admitted
+        (advisory-admission/admit!
+          {:trusted-context trusted-context
+           :runtime board-runtime
+           :event event
+           ;; Fixed by the admitted shared-event contract; event data
+           ;; cannot weaken these checks.
+           :require #{:current-subscription-owner
+                      :current-source-instance
+                      :admitted-source-provenance
+                      :valid-scoped-requirement
+                      :permitted-shared-transition}})]
+    (advisory-admission/require-admitted! admitted)
     (update
       board-runtime
       :advisory-requirements
       conj
-      (:requirement advisory))
-
-    board-runtime))
+      (:requirement admitted))))
 #+end_src
+
+The transition above runs only after admission succeeds; a failed admission
+rejects the event without changing state. Matching a subscription id alone
+does not establish source provenance, valid scope, or permission to record the
+requirement.
 
 Bob may continue displaying his adopted board until the product's explicit
 Refresh/adoption policy permits reacquisition:
@@ -1941,34 +1975,35 @@ Refresh/adoption policy permits reacquisition:
 #+begin_src clojure
 (defn refresh-request-board!
   [{:keys [principal] :as ctx}
-   board-runtime]
+   board-state]
 
-  (let [{:keys [requests basis scope]}
+  (let [started @board-state
+        scope (:projection started)
+        acquisition
         (request-model/read-board
           ctx
           {:principal principal
            :organization-id
-           (get-in board-runtime
-             [:projection :organization-id])})]
+           (:organization-id scope)})]
 
-    (-> board-runtime
-        (assoc
-          :adopted
-          {:requests requests
-           :basis basis
-           :scope scope})
-
-        (update
-          :advisory-requirements
-          #(remove
-             (fn [requirement]
-               (progression/covered-by?
-                 {:requirement requirement
-                  :acquisition
-                  {:basis basis
-                   :scope scope}}))
-             %)))))
+    ;; Install against current state. A shared advisory can arrive while
+    ;; read-board is in flight; the installer must preserve it unless this
+    ;; acquisition proves that it covers the advisory's scope and minimum.
+    (swap! board-state
+      (fn [current]
+        (board-admission/install-acquisition
+          current
+          {:acquisition acquisition
+           :expected-scope scope
+           :principal principal})))
+    @board-state))
 #+end_src
+
+=board-admission/install-acquisition= is a pure transition because =swap!= may
+retry it. It checks current acquisition owner, scope, trusted provenance,
+authorization, and progression against the latest runtime state. A stale
+completion cannot overwrite a newer board, and a concurrent advisory cannot
+be silently erased by refreshing from an earlier snapshot.
 
 The advisory does not need to carry the new Request title, requester, lifecycle
 state, or every intermediate board mutation. The durable authoritative model is
@@ -1986,7 +2021,7 @@ Now compare a collaborative editor's typing indicator:
    ;; The adversarial wire payload describes ephemeral intent only.  It does
    ;; not get to assert who the sender is.
    :payload
-   [:map
+   [:map {:closed true}
     [:document/id uuid?]
     [:typing? boolean?]]
 
@@ -1995,8 +2030,10 @@ Now compare a collaborative editor's typing indicator:
    ;; that this principal may participate in this document.
    :sender-binding
    {:principal-source :authenticated-channel
+    :actor-source     :admitted-channel-actor
     :authorize        :document/current-editor
-    :bind-as          :actor/id}
+    :bind-principal-as :principal/id
+    :bind-actor-as     :actor/id}
 
    :delivery
    {:durability :ephemeral
@@ -2008,9 +2045,11 @@ Now compare a collaborative editor's typing indicator:
 
 (defn admit-typing-message
   [{:keys [authenticated-principal
+           authenticated-actor
            current-document-membership
            decoded-message]}]
   (let [{:keys [document/id typing?]} decoded-message]
+    (m/assert TypingPayload decoded-message)
     (when-not (= id (:document/id current-document-membership))
       (throw (ex-info "typing message is for an unauthorized document"
                       {:document/id id})))
@@ -2018,19 +2057,33 @@ Now compare a collaborative editor's typing indicator:
                  (:principal/id current-document-membership))
       (throw (ex-info "typing sender is not the authenticated editor"
                       {:document/id id})))
+    (when-not
+      (and (= :active (:membership/status current-document-membership))
+           (some? authenticated-actor))
+      (throw (ex-info "typing sender has no active admitted actor"
+                      {:document/id id})))
 
     ;; This admitted value is produced by the trusted boundary.  The actor
-    ;; identity is established by authentication + current membership, not by
-    ;; a same-shaped field supplied in decoded-message.
+    ;; identity comes from the channel's admitted actor binding, distinct from
+    ;; its principal. The receiver's document subscription must also admit
+    ;; this scope before delivery to a peer machine.
     {:message/id :document/typing
      :document/id id
      :typing? typing?
-     :actor/id authenticated-principal
+     :actor/id authenticated-actor
+     :principal/id authenticated-principal
      :provenance
-     {:actor/id :authenticated-channel
+     {:actor/id :admitted-channel-actor
+      :principal/id :authenticated-channel
       :document/id :validated-payload
       :membership :current-authority}}))
 #+end_src
+
+=TypingPayload= denotes the declared closed message schema above; a concrete
+elaborator may generate its validator. The membership check must be backed by
+current trusted authority, not a field decoded from the client. The admitted
+message is routed only to peer subscriptions currently permitted to receive
+typing indicators for this document.
 
 A projected peer machine may legitimately react to the received message itself:
 
@@ -2046,27 +2099,57 @@ A projected peer machine may legitimately react to the received message itself:
       [:document/typing
        {:keys [document/id actor/id typing?]}]
 
-      (when typing?
-        (effect
-          [:ui/show-typing-indicator
-           {:document/id id
-            :actor/id actor/id}]))
+      (if typing?
+        (then
+          (effect
+            [:ui/show-typing-indicator
+             {:document/id id
+              :actor/id actor/id}])
 
-      (acquire-resource
-        {:kind :timer
-         :purpose :typing-expiry
-         :after-ms 3000}
-        -> expiry-timer)
+          (acquire-resource
+            {:kind :timer
+             :purpose :typing-expiry
+             :after-ms 3000}
+            -> expiry-timer)
 
-      (goto :showing
-        {:document/id id
-         :actor/id actor/id
-         :timer expiry-timer})))
+          (goto :showing
+            {:document/id id
+             :actor/id actor/id
+             :timer expiry-timer}))
+
+        (terminate :not-typing))))
 
   (state :showing
+    ;; The admitted router selects this indicator by document and actor.
+    (on-admitted-message
+      [:document/typing
+       {:keys [document/id actor/id typing?]}]
+
+      (if typing?
+        (then
+          (release-resource :timer)
+          (acquire-resource
+            {:kind :timer
+             :purpose :typing-expiry
+             :after-ms 3000}
+            -> replacement-timer)
+          (goto :showing
+            {:document/id id
+             :actor/id actor/id
+             :timer replacement-timer}))
+
+        (then
+          (release-resource :timer)
+          (effect
+            [:ui/hide-typing-indicator
+             {:document/id id
+              :actor/id actor/id}])
+          (terminate :stopped))))
+
     (on-resource
       :timer-expired
-      {:resource :timer}
+      {:resource :timer
+       :instance :current-timer-instance}
 
       (effect
         [:ui/hide-typing-indicator
@@ -2075,6 +2158,13 @@ A projected peer machine may legitimately react to the received message itself:
 
       (terminate :expired))))
 #+end_src
+
+The peer machine is keyed by document and admitted actor. A =typing? false=
+event closes only that actor's current indicator. A later =typing? true= event
+replaces the expiry timer; a timeout from the retired timer cannot hide the
+replacement because resource-instance ownership is checked before the timeout
+transition. Ephemeral messages need no durable replay, but their local timers
+still need that owner check.
 
 If Alice never receives Bob's typing message, an authoritative reread two
 minutes later cannot reconstruct the semantic event in any useful sense. There
@@ -2338,21 +2428,27 @@ submission and commits durable pending state:
 (defchoreo submit-expense
   {:roles
    {:employee {:principal :user}
-    :expense-authority {:authority :expense}}}
+    :expense-authority {:authority :expense}}
+   :inputs
+   {:expense-id
+    {:schema :uuid
+     :known-by #{:employee}
+     :provenance :input}}}
 
   (employee
     (invoke expense-authority
       :expense/submit
       {:expense-id expense-id
-       :employee :authenticated-principal})
+       :employee :authenticated-principal
+       :command-id :gesso/command-id}
+      -> submit-outcome)
 
-    (observe expense-authority
-      [:expense/current expense-id]
-      -> expense)
-
-    (assert
-      [:= (:expense/status expense)
-          :submitted])
+    ;; A later current-state read might already show a further transition.
+    ;; This branch is justified by the scoped outcome of this command.
+    (require-outcome
+      submit-outcome
+      :committed-or-compatible-already-incorporated
+      :otherwise [:rejected :unknown])
 
     (terminate :submitted)))
 #+end_src
@@ -2362,38 +2458,36 @@ The public model operation owns the durable transition:
 #+begin_src clojure
 (defn submit-expense!
   [{:keys [db principal now]}
-   {:keys [expense-id]}]
+   {:keys [expense-id command-id]}]
 
-  (let [expense
-        (expense-model/require-current!
-          db
-          expense-id)]
+  (expense-model/transact-submission!
+    db
+    {:expense-id expense-id
+     :employee-id (:user/id principal)
+     :command-id command-id
+     :submitted-at now
 
-    (when-not
-      (= (:expense/employee-id expense)
-         (:user/id principal))
-      (throw
-        (ex-info
-          "Only the owning employee may submit this expense."
-          {:error/type :expense/not-owner
-           :expense/id expense-id
-           :principal (:user/id principal)})))
+     ;; The model enforces these against transaction-current facts, in the
+     ;; same atomic decision that writes :submitted and the command outcome.
+     :commit-guards
+     [[:expense/owned-by expense-id (:user/id principal)]
+      [:expense/status-is expense-id :draft]]
 
-    (when-not
-      (= :draft (:expense/status expense))
-      (throw
-        (ex-info
-          "Expense is not in a submittable state."
-          {:error/type :expense/not-submittable
-           :expense/id expense-id
-           :status (:expense/status expense)})))
-
-    (expense-model/transact!
-      db
-      {:expense/id expense-id
-       :expense/status :submitted
-       :expense/submitted-at now})))
+     :retry-binding
+     {:operation :expense/submit
+      :principal (:user/id principal)
+      :expense-id expense-id}}))
 #+end_src
+
+The transaction form is schematic. The selected store mechanism must make the
+ownership and status guards effective at commit, reject concurrent conflicting
+changes, and bind a recorded result to the command identity atomically with
+the transition. On a compatible retry the model checks disclosure rights and
+returns the already-incorporated result without requiring the Expense to remain
+=:draft=. A rejected guard and an unknown commit follow different settlement
+paths; neither authorizes the employee's confirmed-submission continuation.
+The Thursday and Friday operations likewise guard current status, actor
+authorization, and any policy premise they rely on at their own commits.
 
 Execution E1 can now terminate. There is no correctness benefit in keeping the
 employee's server process resident until a manager responds.
@@ -2577,4 +2671,3 @@ authoritative business state entirely valid. If a deployment also changes the
 meaning or representation of persisted domain state, the model needs its own
 compatible interpretation or migration. Restarting a current browser plan does
 not perform that domain migration by implication.
-
