@@ -172,6 +172,40 @@ include:
 Those are framework-recognizable contradictions and should be rejected as
 early and descriptively as feasible.
 
+A mundane expense-approval rule makes the distinction concrete. Suppose the
+company intends managers to approve submitted expenses only below $500, but an
+application author accidentally writes $5,000:
+
+#+begin_src clojure
+(rule :expense/manager-may-approve?
+  [:and
+   [:= [:expense/status] :submitted]
+   [:< [:expense/amount] 5000]])
+#+end_src
+
+The exact rule syntax is illustrative. Semantically, this rule is coherent:
+=:expense/status= is compared with a status value and =:expense/amount= with a
+number. Gesso may be able to type-check the rule, carry its dependencies through
+choreography, and execute it faithfully. Nothing in that internal structure can
+reveal that the organization actually intended a $500 limit.
+
+Now change the error:
+
+#+begin_src clojure
+(rule :expense/manager-may-approve?
+  [:and
+   [:< [:expense/status] 5000]
+   [:= [:expense/amount] :submitted]])
+#+end_src
+
+That is different. A status is being ordered against a number and an amount is
+being compared with a status value. The framework can reject that contradiction
+without knowing the organization's desired approval policy. The expense example
+is deliberately ordinary: the same boundary recurs later when Gesso rejects an
+unknowable branch fact, an impossible authority path, a stale executable
+correspondence, or a browser callback that no longer owns the resource it is
+trying to mutate.
+
 The choreography system should provide the following broad properties:
 
 - one global choreography describes an allowed distributed interaction;
@@ -345,6 +379,46 @@ the same semantic transitions and abstract effects, modulo diagnostics.
 Evidence explains or justifies why an executable was accepted; it does not
 become a bearer capability or an alternate semantic control path.
 
+HumanHelp's Claim path shows what that separation means in an application.
+Suppose a checked Claim plan has a certificate establishing a structural
+proposition like:
+
+#+begin_quote
+Any admitted execution of this plan may reach the Request claim operation only
+through a path that requires current claim authority for the authenticated
+principal and Request.
+#+end_quote
+
+That certificate can justify admitting the plan into an application assembly.
+It still says nothing about whether Alice, clicking =Claim= at 14:03, is
+currently an eligible helper or whether the Request remains claimable. Those
+premises belong to the concrete execution:
+
+#+begin_example
+checked Claim plan
+    |
+    +--> admitted for execution
+             |
+             v
+Alice clicks Claim
+             |
+             v
+trusted server authenticates Alice
+             |
+             v
+current Membership / Request / Organization facts
+             |
+             v
+current claim authorization
+#+end_example
+
+Putting the certificate into the HTTP request, reproducing its hash, or rendering
+an already-certified button cannot replace those runtime premises. The
+certificate constrains what an admitted plan is allowed to do; it does not make
+the current principal authorized to do it. This is why evidence may justify
+admitting a realization without becoming one of the higher-level facts that the
+realization later consumes.
+
 The dependency direction is intentional:
 
 - application business meaning belongs in application models;
@@ -409,6 +483,21 @@ Examples illustrate the enclosing contract. Their concrete syntax is
 illustrative unless the owning section explicitly defines it as the required
 public or wire representation. Their stated required behavior must still obey
 the normative invariants.
+
+Many examples deliberately show only the smallest application fragment needed
+to make a semantic distinction visible. They may omit unrelated error handling,
+HTML, routing boilerplate, transaction construction, authentication plumbing, or
+proof data. Such omissions are explanatory compression, not alternate runtime
+paths.
+
+Application-facing Clojure sketches also serve as API design probes. They show
+the best current guess at what ordinary use of Gesso should feel like without
+freezing function names, map keys, macros, namespace organization, or other
+syntax that the enclosing requirement does not make normative. If an important
+semantic relationship can be expressed only by making ordinary application code
+manually reproduce internal identities, proof terms, certificate plumbing, or
+runtime bookkeeping, that awkwardness is evidence to reconsider the eventual
+API rather than a reason to canonize the sketch unchanged.
 
 An abbreviated diagram does not waive an authorization, admission, scope,
 ownership, or outcome-attribution condition merely because the diagram omits
@@ -553,6 +642,55 @@ behaviorally successful path can exist while bypassing a checker that the design
 claims is mandatory.  The three claims therefore reinforce one another without
 collapsing into one another.
 
+A single visible HumanHelp =Claim= control makes the separation concrete.
+For declared closure, the question is whether the affordance connects coherently
+to the semantics it names:
+
+#+begin_example
+Claim control
+    |
+:request/claim operation
+    |
+projected plan
+    |
+browser artifact / transport / trusted capability
+    |
+Request model claim operation
+    |
+settlement and permitted authoritative reacquisition
+#+end_example
+
+Production enforcement asks a different question: does the actual rendered
+control and actual server invocation pass through those boundaries? A perfect
+isolated assembly checker establishes little if production renders a handwritten
+=:hx-post= that bypasses the admitted operation path.
+
+Behavioral completeness asks something different again: is there an eligible
+HumanHelp scenario in which a user who should be able to Claim can actually see
+and use the control and reach the required authoritative outcome? Simply
+omitting Claim can leave every remaining assembly edge closed while still
+failing the required product behavior.
+
+The three failures can therefore occur independently:
+
+#+begin_example
+closed graph, Claim omitted
+    -> declared closure may hold
+    -> behavioral completeness fails
+
+Claim works through unchecked handwritten route
+    -> user behavior may appear correct
+    -> production enforcement fails
+
+Claim fully wired but no eligible positive scenario exists
+    -> structural closure may hold
+    -> required usable capability is not established
+#+end_example
+
+HumanHelp makes the distinction visible, but the same reasoning applies to any
+capability whose wiring, enforcement, and actual availability can fail
+independently.
+
 Assembly closure is always relative to declared scope.  Gesso cannot infer an
 application author's missing business intention merely because the remaining
 graph is closed.  Required product behavior therefore needs an acceptance basis
@@ -671,6 +809,26 @@ green integration test
 #+end_example
 
 A complete assurance argument may require several of them simultaneously.
+
+A store checkout shows what such a mixed argument looks like in one ordinary
+operation. Suppose its =Place order= action is already wired through an admitted
+Gesso plan. A release report might contain claims resembling:
+
+| Proposition | Evidence classification |
+|-------------+-------------------------|
+| the checkout rule is accepted by the selected checked rule system | kernel-checked or another precisely named machine-checked class |
+| this HTTP request is bound to customer Alice | runtime-enforced |
+| the payment provider obeys the external contract Gesso relies upon | trusted external-system premise |
+| this application's Place-order affordance resolves through the declared plan, route, model operation, settlement, and reacquisition path | assembly-verified |
+| Chromium and HTMX realize the expected concrete lifecycle for this artifact | tested implementation-correspondence evidence |
+| retry eventually succeeds after a transient provider outage | conditional on the stated availability/retry assumptions |
+
+A green Chromium test does not prove the checkout rule. The rule proof does not
+authenticate Alice. Assembly closure does not prove that the payment provider
+behaved correctly. The complete argument is useful precisely because those
+claims remain separate while supporting one operation together. In other words,
+the checkout does not have one meaningful assurance label; it has a composition
+of claims whose evidence retains its own classification.
 
 The classification belongs to the *claim and its evidence*, not merely to the
 source file, namespace, subsystem, or tool that produced it.  A single
@@ -1533,6 +1691,34 @@ attempt. Domain Request arguments such as HumanHelp's =:request-id= retain their
 domain meaning. Different transport attempts must not be conflated because they
 carry the same command or concern the same domain Request.
 
+A single checkout click makes the independence of these coordinates easier to
+see. Suppose Alice presses =Place order= once. An implementation might represent
+the relevant coordinates approximately as:
+
+#+begin_example
+semantic operation           :checkout/place-order
+command identity             cmd-77
+execution identity           exec-19
+transport-request identity   http-204
+resource-instance identity   timeout-51
+executable plan identity     checkout-plan-v3
+admitted assembly generation assembly-A12
+domain object identity       order-483
+#+end_example
+
+The names and representation are illustrative; the independence is not. If the
+HTTP connection fails before an outcome arrives, a retry may create =http-205=
+while preserving =cmd-77=. A new concrete execution may have a new execution
+identity while still attempting to resolve the same command. Replacing a timer
+or fetch creates a new resource instance without implying a new Order. Deploying
+a new admitted assembly does not itself create a new command or change the
+Order's identity.
+
+Collapsing those coordinates into one universal generation would make it harder
+to answer the questions the identities exist to answer: whether a late callback
+is stale, whether a retry repeats intent, whether a plan is compatible, and
+which authoritative object the operation concerns.
+
 Operation identity is *preserved* through realization: it cannot be silently
 erased or substituted. Reserve *monotonic* for a stated ordering or information-
 growth relation. In particular, preventing retired work from restoring obsolete
@@ -1858,6 +2044,42 @@ it.
 
 Do not create a second source of truth merely to make one layer easier to
 implement.
+
+The benefit is easiest to see in ordinary view code. Suppose a HumanHelp
+request card wants to expose the semantic Claim operation. A desirable
+authoring shape should be compact enough to resemble:
+
+#+begin_src clojure
+(request-card
+  request
+  {:actions
+   [(gesso/bind :request/claim
+      {:request-id (:request/id request)})]})
+#+end_src
+
+This is not a required API. It illustrates the desired ownership of information:
+the application states which semantic operation the affordance means and
+supplies its domain arguments.
+
+If Gesso already owns the projected plan, command schema, transport contract,
+artifact identity, and trusted server realization, ordinary view code should
+not have to restate all of them:
+
+#+begin_src clojure
+;; Illustrative shape to avoid as an ordinary authoring path.
+{:operation :request/claim
+ :plan-name "claim-helper-v7"
+ :route "/app/claim"
+ :http-method :post
+ :browser-command-param "__gesso_live_optimistic_command"
+ :artifact "gesso-live-a12.js"
+ :settlement :request/claimed}
+#+end_src
+
+Those duplicated values create opportunities for individually plausible pieces
+to disagree. Derivation or explicit checked correspondence lets application
+code state semantic intent once while keeping genuinely independent physical
+choices explicit where they really are choices.
 #+LATEX: \newpage
 *** Fail at the earliest legitimate boundary
 
@@ -1883,6 +2105,40 @@ Examples of build/application-preflight failures include:
 - managed fragment with no permitted initial acquisition;
 - authoritative successor with no permitted reacquisition path.
 
+HumanHelp can make these boundaries look deceptively similar to a user even
+though the system learns about them at different times.
+
+If the application declares =:request/claim= but no trusted route or projected
+plan exists, construction already has enough information to reject the
+application. Waiting for somebody to click the button would only delay a known
+contradiction.
+
+If a Reassign control requires a concrete target helper, the static application
+may be valid while one particular render lacks the required target. That
+contradiction belongs at the render/pre-serialization boundary rather than at
+startup.
+
+If Alice was authorized when the card rendered but her Membership is revoked
+before she clicks Claim, neither startup nor rendering could have known the
+future fact. The trusted invocation must re-establish current authorization and
+reject or recover according to the declared semantics.
+
+#+begin_example
+missing Claim realization
+    -> construction / startup rejection
+
+Reassign render lacks required concrete target
+    -> render-time rejection or explicit unavailability
+
+Alice loses current authorization after render
+    -> trusted runtime authorization failure
+#+end_example
+
+"Fail early" therefore means the earliest boundary that actually possesses the
+necessary evidence, not forcing every possible failure into static analysis.
+The last case leads directly to the runtime-only conditions below: they are not
+weaker correctness concerns, only facts whose decisive evidence exists later.
+
 *** Runtime-only conditions and required recovery
 
 Some facts relevant to an execution can be established only at runtime. Examples
@@ -1903,6 +2159,40 @@ Runtime-only establishment does not place these conditions outside the
 application's correctness model. The distinction is between knowing before
 execution whether a condition will occur and knowing before execution that the
 application has a coherent response if it does occur.
+
+A seat-reservation race shows why both halves matter. Suppose an authoritative
+page shows Seat 12 as available at time =T1=. Alice hesitates, and Bob reserves
+the seat at =T2= before Alice presses =Reserve=.
+
+No useful preflight can prove that Seat 12 will remain available between render
+and click. Trying to make that dynamic fact static would either be impossible or
+would merely move the race somewhere else. What construction can require is a
+coherent response when the trusted authoritative operation checks current
+state:
+
+#+begin_example
+render at T1
+    Seat 12 available
+        |
+Bob reserves at T2
+        |
+Alice submits Reserve
+        |
+trusted authoritative operation checks current state
+        |
+        +--> still available
+        |       -> commit Alice's reservation
+        |
+        +--> no longer available
+                -> typed rejection / current authoritative reacquisition
+#+end_example
+
+The rejection branch is part of the application's declared correctness story
+even though no static checker predicted that Alice would encounter it. A stale
+button cannot manufacture success merely because it was legitimate when first
+rendered. Seat 12 is only one instance of the broader rule: dynamic uncertainty
+may remain dynamic while the application's permitted response to it is still
+part of the design.
 
 Where a declared operation or workflow can encounter a runtime condition that
 invalidates its premises, removes a participant required for progress, or would

@@ -172,6 +172,40 @@ include:
 Those are framework-recognizable contradictions and should be rejected as
 early and descriptively as feasible.
 
+A mundane expense-approval rule makes the distinction concrete. Suppose the
+company intends managers to approve submitted expenses only below $500, but an
+application author accidentally writes $5,000:
+
+#+begin_src clojure
+(rule :expense/manager-may-approve?
+  [:and
+   [:= [:expense/status] :submitted]
+   [:< [:expense/amount] 5000]])
+#+end_src
+
+The exact rule syntax is illustrative. Semantically, this rule is coherent:
+=:expense/status= is compared with a status value and =:expense/amount= with a
+number. Gesso may be able to type-check the rule, carry its dependencies through
+choreography, and execute it faithfully. Nothing in that internal structure can
+reveal that the organization actually intended a $500 limit.
+
+Now change the error:
+
+#+begin_src clojure
+(rule :expense/manager-may-approve?
+  [:and
+   [:< [:expense/status] 5000]
+   [:= [:expense/amount] :submitted]])
+#+end_src
+
+That is different. A status is being ordered against a number and an amount is
+being compared with a status value. The framework can reject that contradiction
+without knowing the organization's desired approval policy. The expense example
+is deliberately ordinary: the same boundary recurs later when Gesso rejects an
+unknowable branch fact, an impossible authority path, a stale executable
+correspondence, or a browser callback that no longer owns the resource it is
+trying to mutate.
+
 The choreography system should provide the following broad properties:
 
 - one global choreography describes an allowed distributed interaction;
@@ -345,6 +379,46 @@ the same semantic transitions and abstract effects, modulo diagnostics.
 Evidence explains or justifies why an executable was accepted; it does not
 become a bearer capability or an alternate semantic control path.
 
+HumanHelp's Claim path shows what that separation means in an application.
+Suppose a checked Claim plan has a certificate establishing a structural
+proposition like:
+
+#+begin_quote
+Any admitted execution of this plan may reach the Request claim operation only
+through a path that requires current claim authority for the authenticated
+principal and Request.
+#+end_quote
+
+That certificate can justify admitting the plan into an application assembly.
+It still says nothing about whether Alice, clicking =Claim= at 14:03, is
+currently an eligible helper or whether the Request remains claimable. Those
+premises belong to the concrete execution:
+
+#+begin_example
+checked Claim plan
+    |
+    +--> admitted for execution
+             |
+             v
+Alice clicks Claim
+             |
+             v
+trusted server authenticates Alice
+             |
+             v
+current Membership / Request / Organization facts
+             |
+             v
+current claim authorization
+#+end_example
+
+Putting the certificate into the HTTP request, reproducing its hash, or rendering
+an already-certified button cannot replace those runtime premises. The
+certificate constrains what an admitted plan is allowed to do; it does not make
+the current principal authorized to do it. This is why evidence may justify
+admitting a realization without becoming one of the higher-level facts that the
+realization later consumes.
+
 The dependency direction is intentional:
 
 - application business meaning belongs in application models;
@@ -409,6 +483,21 @@ Examples illustrate the enclosing contract. Their concrete syntax is
 illustrative unless the owning section explicitly defines it as the required
 public or wire representation. Their stated required behavior must still obey
 the normative invariants.
+
+Many examples deliberately show only the smallest application fragment needed
+to make a semantic distinction visible. They may omit unrelated error handling,
+HTML, routing boilerplate, transaction construction, authentication plumbing, or
+proof data. Such omissions are explanatory compression, not alternate runtime
+paths.
+
+Application-facing Clojure sketches also serve as API design probes. They show
+the best current guess at what ordinary use of Gesso should feel like without
+freezing function names, map keys, macros, namespace organization, or other
+syntax that the enclosing requirement does not make normative. If an important
+semantic relationship can be expressed only by making ordinary application code
+manually reproduce internal identities, proof terms, certificate plumbing, or
+runtime bookkeeping, that awkwardness is evidence to reconsider the eventual
+API rather than a reason to canonize the sketch unchanged.
 
 An abbreviated diagram does not waive an authorization, admission, scope,
 ownership, or outcome-attribution condition merely because the diagram omits
@@ -553,6 +642,55 @@ behaviorally successful path can exist while bypassing a checker that the design
 claims is mandatory.  The three claims therefore reinforce one another without
 collapsing into one another.
 
+A single visible HumanHelp =Claim= control makes the separation concrete.
+For declared closure, the question is whether the affordance connects coherently
+to the semantics it names:
+
+#+begin_example
+Claim control
+    |
+:request/claim operation
+    |
+projected plan
+    |
+browser artifact / transport / trusted capability
+    |
+Request model claim operation
+    |
+settlement and permitted authoritative reacquisition
+#+end_example
+
+Production enforcement asks a different question: does the actual rendered
+control and actual server invocation pass through those boundaries? A perfect
+isolated assembly checker establishes little if production renders a handwritten
+=:hx-post= that bypasses the admitted operation path.
+
+Behavioral completeness asks something different again: is there an eligible
+HumanHelp scenario in which a user who should be able to Claim can actually see
+and use the control and reach the required authoritative outcome? Simply
+omitting Claim can leave every remaining assembly edge closed while still
+failing the required product behavior.
+
+The three failures can therefore occur independently:
+
+#+begin_example
+closed graph, Claim omitted
+    -> declared closure may hold
+    -> behavioral completeness fails
+
+Claim works through unchecked handwritten route
+    -> user behavior may appear correct
+    -> production enforcement fails
+
+Claim fully wired but no eligible positive scenario exists
+    -> structural closure may hold
+    -> required usable capability is not established
+#+end_example
+
+HumanHelp makes the distinction visible, but the same reasoning applies to any
+capability whose wiring, enforcement, and actual availability can fail
+independently.
+
 Assembly closure is always relative to declared scope.  Gesso cannot infer an
 application author's missing business intention merely because the remaining
 graph is closed.  Required product behavior therefore needs an acceptance basis
@@ -671,6 +809,26 @@ green integration test
 #+end_example
 
 A complete assurance argument may require several of them simultaneously.
+
+A store checkout shows what such a mixed argument looks like in one ordinary
+operation. Suppose its =Place order= action is already wired through an admitted
+Gesso plan. A release report might contain claims resembling:
+
+| Proposition | Evidence classification |
+|-------------+-------------------------|
+| the checkout rule is accepted by the selected checked rule system | kernel-checked or another precisely named machine-checked class |
+| this HTTP request is bound to customer Alice | runtime-enforced |
+| the payment provider obeys the external contract Gesso relies upon | trusted external-system premise |
+| this application's Place-order affordance resolves through the declared plan, route, model operation, settlement, and reacquisition path | assembly-verified |
+| Chromium and HTMX realize the expected concrete lifecycle for this artifact | tested implementation-correspondence evidence |
+| retry eventually succeeds after a transient provider outage | conditional on the stated availability/retry assumptions |
+
+A green Chromium test does not prove the checkout rule. The rule proof does not
+authenticate Alice. Assembly closure does not prove that the payment provider
+behaved correctly. The complete argument is useful precisely because those
+claims remain separate while supporting one operation together. In other words,
+the checkout does not have one meaningful assurance label; it has a composition
+of claims whose evidence retains its own classification.
 
 The classification belongs to the *claim and its evidence*, not merely to the
 source file, namespace, subsystem, or tool that produced it.  A single
@@ -1533,6 +1691,34 @@ attempt. Domain Request arguments such as HumanHelp's =:request-id= retain their
 domain meaning. Different transport attempts must not be conflated because they
 carry the same command or concern the same domain Request.
 
+A single checkout click makes the independence of these coordinates easier to
+see. Suppose Alice presses =Place order= once. An implementation might represent
+the relevant coordinates approximately as:
+
+#+begin_example
+semantic operation           :checkout/place-order
+command identity             cmd-77
+execution identity           exec-19
+transport-request identity   http-204
+resource-instance identity   timeout-51
+executable plan identity     checkout-plan-v3
+admitted assembly generation assembly-A12
+domain object identity       order-483
+#+end_example
+
+The names and representation are illustrative; the independence is not. If the
+HTTP connection fails before an outcome arrives, a retry may create =http-205=
+while preserving =cmd-77=. A new concrete execution may have a new execution
+identity while still attempting to resolve the same command. Replacing a timer
+or fetch creates a new resource instance without implying a new Order. Deploying
+a new admitted assembly does not itself create a new command or change the
+Order's identity.
+
+Collapsing those coordinates into one universal generation would make it harder
+to answer the questions the identities exist to answer: whether a late callback
+is stale, whether a retry repeats intent, whether a plan is compatible, and
+which authoritative object the operation concerns.
+
 Operation identity is *preserved* through realization: it cannot be silently
 erased or substituted. Reserve *monotonic* for a stated ordering or information-
 growth relation. In particular, preventing retired work from restoring obsolete
@@ -1858,6 +2044,42 @@ it.
 
 Do not create a second source of truth merely to make one layer easier to
 implement.
+
+The benefit is easiest to see in ordinary view code. Suppose a HumanHelp
+request card wants to expose the semantic Claim operation. A desirable
+authoring shape should be compact enough to resemble:
+
+#+begin_src clojure
+(request-card
+  request
+  {:actions
+   [(gesso/bind :request/claim
+      {:request-id (:request/id request)})]})
+#+end_src
+
+This is not a required API. It illustrates the desired ownership of information:
+the application states which semantic operation the affordance means and
+supplies its domain arguments.
+
+If Gesso already owns the projected plan, command schema, transport contract,
+artifact identity, and trusted server realization, ordinary view code should
+not have to restate all of them:
+
+#+begin_src clojure
+;; Illustrative shape to avoid as an ordinary authoring path.
+{:operation :request/claim
+ :plan-name "claim-helper-v7"
+ :route "/app/claim"
+ :http-method :post
+ :browser-command-param "__gesso_live_optimistic_command"
+ :artifact "gesso-live-a12.js"
+ :settlement :request/claimed}
+#+end_src
+
+Those duplicated values create opportunities for individually plausible pieces
+to disagree. Derivation or explicit checked correspondence lets application
+code state semantic intent once while keeping genuinely independent physical
+choices explicit where they really are choices.
 #+LATEX: \newpage
 *** Fail at the earliest legitimate boundary
 
@@ -1883,6 +2105,40 @@ Examples of build/application-preflight failures include:
 - managed fragment with no permitted initial acquisition;
 - authoritative successor with no permitted reacquisition path.
 
+HumanHelp can make these boundaries look deceptively similar to a user even
+though the system learns about them at different times.
+
+If the application declares =:request/claim= but no trusted route or projected
+plan exists, construction already has enough information to reject the
+application. Waiting for somebody to click the button would only delay a known
+contradiction.
+
+If a Reassign control requires a concrete target helper, the static application
+may be valid while one particular render lacks the required target. That
+contradiction belongs at the render/pre-serialization boundary rather than at
+startup.
+
+If Alice was authorized when the card rendered but her Membership is revoked
+before she clicks Claim, neither startup nor rendering could have known the
+future fact. The trusted invocation must re-establish current authorization and
+reject or recover according to the declared semantics.
+
+#+begin_example
+missing Claim realization
+    -> construction / startup rejection
+
+Reassign render lacks required concrete target
+    -> render-time rejection or explicit unavailability
+
+Alice loses current authorization after render
+    -> trusted runtime authorization failure
+#+end_example
+
+"Fail early" therefore means the earliest boundary that actually possesses the
+necessary evidence, not forcing every possible failure into static analysis.
+The last case leads directly to the runtime-only conditions below: they are not
+weaker correctness concerns, only facts whose decisive evidence exists later.
+
 *** Runtime-only conditions and required recovery
 
 Some facts relevant to an execution can be established only at runtime. Examples
@@ -1903,6 +2159,40 @@ Runtime-only establishment does not place these conditions outside the
 application's correctness model. The distinction is between knowing before
 execution whether a condition will occur and knowing before execution that the
 application has a coherent response if it does occur.
+
+A seat-reservation race shows why both halves matter. Suppose an authoritative
+page shows Seat 12 as available at time =T1=. Alice hesitates, and Bob reserves
+the seat at =T2= before Alice presses =Reserve=.
+
+No useful preflight can prove that Seat 12 will remain available between render
+and click. Trying to make that dynamic fact static would either be impossible or
+would merely move the race somewhere else. What construction can require is a
+coherent response when the trusted authoritative operation checks current
+state:
+
+#+begin_example
+render at T1
+    Seat 12 available
+        |
+Bob reserves at T2
+        |
+Alice submits Reserve
+        |
+trusted authoritative operation checks current state
+        |
+        +--> still available
+        |       -> commit Alice's reservation
+        |
+        +--> no longer available
+                -> typed rejection / current authoritative reacquisition
+#+end_example
+
+The rejection branch is part of the application's declared correctness story
+even though no static checker predicted that Alice would encounter it. A stale
+button cannot manufacture success merely because it was legitimate when first
+rendered. Seat 12 is only one instance of the broader rule: dynamic uncertainty
+may remain dynamic while the application's permitted response to it is still
+part of the design.
 
 Where a declared operation or workflow can encounter a runtime condition that
 invalidates its premises, removes a participant required for progress, or would
@@ -2152,6 +2442,13 @@ and admission vocabulary established in Part I. The definitions do not require
 a universal persisted fact graph, a new runtime class for every concept, or a
 single global revision coordinate.
 
+The distinctions below become easier to follow when they are allowed to recur
+in ordinary application situations. HumanHelp Requests, a store checkout, an
+expense approval, a seat reservation, and a collaborative editor will therefore
+appear repeatedly. They are not additional normative models. They are concrete
+ways to ask whether the semantic distinctions remain intelligible when several
+real concerns overlap at once.
+
 ** Values and evolving values
 
 A value may be a singular immutable value:
@@ -2226,6 +2523,39 @@ actor displayed representation of fact
 
 These are distinct events and relationships.
 
+A HumanHelp board makes those distinctions visible without any exotic machinery.
+Suppose Request R is unclaimed when Alice and Bob both load their boards. Alice
+claims R, the authoritative Request transition commits, and Alice's next
+authoritative projection shows the claimed state. Bob's tab, however, may still
+show the previously adopted unclaimed representation until it receives an
+advisory and performs whatever acquisition/adoption policy the application
+permits.
+
+#+begin_example
+Request R unclaimed
+    |
+Alice submits Claim
+    |
+authoritative Request transition commits
+    |
+Alice acquires claimed R
+    |
+Bob receives advisory that relevant authority changed
+    |
+Bob still displays his previously adopted projection
+    |
+permitted Refresh / acquisition
+    |
+Bob acquires the newer authoritative projection
+#+end_example
+
+Nothing in this sequence requires the system to pretend there was one universal
+instant at which every representation became "the current value." The domain
+transition, database visibility, Alice's acquisition, Bob's advisory knowledge,
+and Bob's later adopted representation are related but distinct. The rest of
+this part gives names to those distinctions so later choreography and runtime
+rules can refer to the one they actually mean.
+
 *** Conceptual fact graph versus required persistence
 
 The semantic model may reason in terms of facts and relations among facts
@@ -2299,6 +2629,31 @@ distinctions not established by that shape. Ordinary immutable values may still
 use ordinary value equality when the enclosing contract makes it sufficient.
 Gesso must not mistake matching schemas or encodings for equality of authority,
 provenance, subject, observation scope, or admission status.
+
+An expense-approval application gives a compact example. The browser might
+submit:
+
+#+begin_src clojure
+{:employee-id 42
+ :department :engineering}
+#+end_src
+
+while a trusted authoritative employee lookup independently yields an equal
+Clojure value. Malli may correctly say that both values have the same shape.
+Ordinary Clojure equality may correctly say that their contents are equal. Yet
+the browser proposal and the authoritative observation do not have the same
+provenance, and only the latter can justify a rule that specifically requires an
+authoritative employee record.
+
+A desirable application-facing API should make that difference natural rather
+than requiring every caller to manually decorate ordinary maps with framework
+plumbing. For example, application code might pass an employee value obtained
+through a trusted model observation into a checked approval operation, while a
+form-decoded map remains merely proposed input until the relevant boundary admits
+it. The exact API is deliberately left open; the semantic requirement is that
+content equality cannot perform the admission step. The following distinction
+between representation, category, and admission exists precisely to prevent that
+substitution.
 
 *** Representation, semantic category, and admission
 :PROPERTIES:
@@ -2511,6 +2866,34 @@ A browser may wake after a deployment.
 
 The fact that an event arrived later in wall-clock time does not by itself make
 the event semantically newer or authorized to mutate current state.
+
+A seat-reservation race puts several of these dimensions on one timeline. Alice
+may have observed Seat 12 as available from an authoritative read through
+frontier =X83=. Bob reserves it in a later transaction visible through =X88=.
+The reservation may be domain-effective at 14:02, while an SSE advisory reaches
+Alice at 14:02:05 and a callback from an older request happens to fire at
+14:02:06.
+
+#+begin_example
+domain fact:
+    Seat 12 available -> Seat 12 reserved
+
+authoritative database progression:
+    X83 -> X88
+
+Alice's acquired knowledge before refresh:
+    justified through X83 for the seat projection she observed
+
+physical delivery:
+    advisory arrives after Bob's commit
+    an older callback may arrive even later
+#+end_example
+
+The late callback wins no semantic contest merely by having the newest wall-clock
+timestamp. Likewise, =X88= does not mean every domain fact is "version 88," and
+Alice's older knowledge does not mean the database itself reverted. This is the
+practical reason the next section refuses to compress these dimensions into one
+revision integer.
 
 #+LATEX: \newpage
 *** Do not collapse dimensions into one revision integer
@@ -2768,6 +3151,28 @@ correlation or realization information; neither substitutes for those decisions.
 Changing a browser tab, transport connection, or physical host must not silently
 carry permissions into a different principal or authority scope.
 
+A collaborative editor makes the separation less abstract. Alice may act as the
+=:editor= role for document D. Her authenticated principal is =[:user Alice]=,
+one browser tab is actor =C1=, and the semantic authority for committed document
+state is associated with D rather than with whichever web node happens to answer.
+A save might first reach node A and a retry after node loss might reach node C:
+
+#+begin_example
+role                 :editor
+principal            [:user Alice]
+browser actor         [:client C1]
+semantic authority    [:authority :document D]
+first host            [:web-node A]
+retry host            [:web-node C]
+#+end_example
+
+Changing A to C does not manufacture a new principal or a new document authority.
+Opening a second browser tab, on the other hand, can create another actor with
+different local knowledge while preserving Alice's principal. Revoking Alice's
+editing permission changes the authorization question even if actor C1 and host C
+remain exactly the same. These are the sorts of independent changes that a
+generic =server-id= or =user-id= cannot faithfully represent.
+
 ** Logical identity and physical realization
 :PROPERTIES:
 :CUSTOM_ID: req-logical-physical-identity
@@ -2813,6 +3218,32 @@ continuity-capture identity may be a specialized instance of it. Listing these
 categories does not require multiple independent tokens for the same instance.
 The representation must preserve whichever distinctions the admission contract
 actually uses.
+
+A single checkout click shows why this inventory of identities is not merely
+terminological bookkeeping. Suppose Alice presses =Place order= once:
+
+#+begin_example
+semantic operation           :checkout/place-order
+semantic command             cmd-77
+protocol execution           exec-19
+transport request            http-204
+resource instance            timeout-51
+projected/executable plan     checkout-plan-v3
+admitted assembly generation assembly-A12
+domain object, once created   order-483
+#+end_example
+
+If =http-204= is lost and the operation's retry contract permits another attempt,
+=http-205= may carry the same =cmd-77=. A new protocol execution might also be
+created without changing the command's logical intent. Replacing a timeout or
+fetch resource creates a new resource instance without creating a new order. A
+deployment may move the same admitted assembly between hosts without changing
+any of those operation identities.
+
+The useful question is therefore never simply "is the id the same?" It is
+"which identity is this, and which correspondence does this boundary require?"
+The following subsections separate the identities so later runtime checks can ask
+that narrower question.
 
 #+LATEX: \newpage
 
@@ -2950,6 +3381,35 @@ Resource instance identity answers a narrow question:
 Does this event belong to the currently admitted instance of this replaceable
 resource?
 #+end_quote
+
+A seat-list refresh is a common browser example. Refresh A starts for the
+logical target =:seat-list= using resource instance =r41=. Before A completes,
+navigation or HTMX replacement reconstructs the seat list and Refresh B starts
+for the same logical target using =r42=. B completes first and installs the
+current authoritative seat projection. A then completes late.
+
+#+begin_example
+logical target :seat-list
+    |
+Refresh A owns r41
+    |
+component replaced
+    |
+Refresh B owns r42
+    |
+B installs current authoritative result
+    |
+A callback arrives carrying r41
+    |
+    X  r41 no longer owns installation rights
+#+end_example
+
+The logical target is intentionally the same throughout; otherwise replacement
+would not be useful. The resource-instance identity is what prevents a callback
+from the replaced realization from borrowing the new realization's rights. The
+command, authoritative basis, or execution may or may not also have changed, so
+resource identity must remain a narrow check rather than a universal freshness
+number.
 
 A resource-instance generation counter, scoped epoch, opaque token, UUID,
 object identity, or another suitable mechanism may represent resource-instance
@@ -3104,6 +3564,27 @@ unrelated command execution. A shared event must not be assigned to whichever
 execution happens to be current. An execution-private callback must not become
 shared merely because its execution was retired.
 
+HumanHelp provides both kinds of event at once. Bob's board may be idle when a
+Live subscription reports that relevant Request authority changed. That advisory
+can be admitted through the board/subscription coordination scope even though no
+Claim execution is currently running. Conversely, a late callback from Bob's
+retired Claim execution cannot be admitted merely because the same board is still
+on screen.
+
+#+begin_example
+shared board advisory
+    -> checked against subscription / fragment coordination owner
+    -> may create advisory debt
+
+late private Claim callback
+    -> checked against retired Claim execution/resource ownership
+    -> rejected
+#+end_example
+
+This contrast is why "current execution" cannot be the universal owner of every
+asynchronous browser event. The event class determines which semantic owner and
+correspondence rules are relevant.
+
 The declaration of an event as shared is part of the checked contract. An
 untrusted field such as =:shared? true= cannot select weaker admission rules.
 Shared admission permits only the declared shared transition; it does not
@@ -3163,6 +3644,28 @@ A browser may propose values such as:
 - transport data required to correlate a request with a server-side operation.
 
 Proposal is not authority.
+
+For example, a malicious HumanHelp browser can add a =Claim= button to its DOM,
+change a local role label from =:requester= to =:helper=, and submit a perfectly
+well-shaped command for Request R. None of those acts should be interesting to
+the authority boundary beyond supplying a proposal to evaluate. Trusted code
+still binds the authenticated principal, resolves =:request/claim= through the
+current application, rereads the relevant Request and Membership state, and
+applies the model's current authorization rule.
+
+A desirable wire-level request may therefore be small enough to express intent:
+
+#+begin_src clojure
+{:command-id C42
+ :operation :request/claim
+ :arguments {:request-id R}
+ :observed-basis X17}
+#+end_src
+
+while omitting any pretense that a client-supplied =:role :helper= would grant
+helper authority. The exact envelope remains an implementation choice; the
+security point is that the browser can propose the operation without being asked
+to certify the premises that trusted code must establish.
 
 *** What the browser may not establish by assertion
 
@@ -3374,6 +3877,30 @@ It is:
 Before this actor performs behavior that depends on fact F, what justifies that
 the actor knows F?
 #+end_quote
+
+An expense approval can accumulate one decision from several knowledge paths.
+Suppose a manager is handling expense E for $800. The manager projection may
+enter with the authenticated principal as trusted input knowledge, receive the
+expense identifier and submitted amount through the declared workflow, observe
+the current approval policy authoritatively, and deterministically derive that
+Finance review is required. It can then communicate the declared review request
+to Finance.
+
+#+begin_example
+authenticated manager principal     provenance: input
+expense E and submitted amount      provenance: communicated or authoritative,
+                                    according to the declared workflow
+current approval threshold          provenance: authoritative
+needs-finance?                      provenance: derived
+review request received by Finance  provenance: communicated
+#+end_example
+
+The final boolean =needs-finance?= could be represented by the same =true= in all
+of these worlds, but the checker cares about how the manager became justified in
+using it. If the threshold came from an untrusted form field instead of the
+declared authoritative policy observation, running the same comparison function
+does not repair the provenance. The following knowledge categories describe
+those justification paths rather than the shape of the resulting values.
 
 *** Input knowledge
 
@@ -3660,6 +4187,39 @@ Receipt of the advisory does not by itself choose when the application adopts
 new content. Acquisition may follow an explicit user action, a declared
 automatic policy, or another admitted trigger. Any convergence claim that relies
 on such a trigger must name it among its liveness premises.
+
+This is exactly the distinction HumanHelp's board behavior is intended to make
+visible. Alice creates Request R and the model commits it. Bob's Live
+subscription may then justify only the advisory proposition that relevant board
+authority changed. His existing adopted board need not suddenly contain R, and
+the advisory itself need not disclose R's protected contents. Instead the UI can
+show a changed or glowing Refresh control.
+
+When Bob explicitly Refreshes, the application performs an authorized
+authoritative acquisition for the board scope. If that acquisition includes R
+and the product policy permits its adoption, Bob can then know and display R with
+authoritative provenance.
+
+#+begin_example
+Alice commits Request R
+    |
+Bob receives Live advisory
+    |
+Bob knows: relevant authority may have advanced
+    |
+Bob still has his previously adopted board projection
+    |
+Bob activates Refresh
+    |
+authorized authoritative board acquisition
+    |
+Bob adopts R if the returned scope and product policy permit it
+#+end_example
+
+The example separates three things that a simplistic "push update" model would
+collapse: knowledge that something may have changed, permission to acquire the
+new authoritative projection, and policy permission to adopt that projection
+into visible application state.
 
 *** Observation scope and selective incorporation
 
@@ -4020,6 +4580,23 @@ At minimum:
 - =:derived=;
 - =:asserted=.
 
+An approval workflow shows why agreement is narrower than "both sides have the
+same map." A manager and Finance may both justifiably agree that Expense E
+requires Finance review while possessing different surrounding knowledge. The
+manager may know private employee context that Finance never receives; Finance
+may independently observe a current budget fact the manager never needs. Their
+agreement can be scoped to a proposition such as:
+
+#+begin_example
+Expense E requires Finance review under policy P
+#+end_example
+
+That proposition might be established by a declared message, by compatible
+authoritative observations, or by a checked derivation from facts each side is
+justified in using. The protocol does not need to manufacture agreement on the
+rest of either actor's state. This scoped reading is what allows agreement to
+coexist with privacy and role-specific knowledge.
+
 *** Communicated agreement
 
 Communication can establish agreement on the communicated value.
@@ -4228,6 +4805,18 @@ maximum scalar token.
 
 A correct application may intentionally preserve that distinction.
 
+Returning to the HumanHelp board, Alice can already have adopted Request R while
+Bob knows only that newer relevant authority is available. It would be wrong to
+call the two boards equal, but it would also be wrong to call the system
+incoherent merely because Bob has not yet chosen Refresh. Alice and Bob may still
+agree on older Requests through their previous common authoritative observations,
+while Bob carries outstanding advisory debt for a newer board scope. Once Bob
+performs the permitted acquisition, the common frontier for the relevant board
+facts can advance without replaying every intermediate invalidation.
+
+The useful frontier is therefore the strongest scoped proposition each actor is
+justified in treating as shared, not the largest integer either actor has seen.
+
 *** Convergence does not require replay of every intermediate change
 
 A browser offline from X17 through X900 need not replay every invalidation
@@ -4378,6 +4967,37 @@ client or one persistent server process per conceptual workflow.
 
 The global description may be realized by short-lived projections that interact
 through durable authoritative facts.
+
+
+A small expense-approval flow makes this concrete. Suppose an employee submits an
+expense, a manager may approve it, and Finance participates only when the
+declared policy requires additional review. The global description can say:
+
+#+begin_example
+employee submits Expense E
+        |
+        v
+expense authority records :submitted
+        |
+        v
+manager evaluates the declared approval rule
+        |
+        +--> ordinary approval
+        |
+        `--> finance review when required
+#+end_example
+
+That is one distributed semantic interaction, but it does not require one runtime
+object sitting above the employee browser, manager browser, Finance browser, and
+authoritative model and telling each of them what to do next. The employee
+projection needs only employee behavior and knowledge. The manager projection
+needs the facts and actions relevant to the manager. Finance needs no local
+continuation at all until a path is selected in which Finance participates.
+
+The example is useful because one global specification can explain several local
+programs without turning those programs into copies of the whole global state.
+The projections remain related by the choreography even when they execute at
+different times, on different hosts, and with different knowledge.
 
 *** Choreography is specification, not a hidden coordinator
 
@@ -4552,6 +5172,50 @@ physical/application layers, production enforcement of those checks, and
 independent capability acceptance. Closure results retain their actual assurance
 classification rather than automatically becoming semantic theorems.
 
+
+HumanHelp's Claim action gives the distinction a concrete shape. The Claim
+choreography can be internally valid: the helper has the required entry
+knowledge, the trusted side re-establishes the principal and current authority,
+the Request model owns the authoritative transition, and the projected
+continuations are legal. Yet a particular application build can still omit the
+Claim button entirely or package an old browser artifact containing no
+realization of that plan.
+
+In that case the choreography has not become invalid. The application has failed
+a different claim: the required user capability is not realized by the assembled
+production path.
+
+The reverse failure is equally possible. A hand-written route may happen to
+perform a Request mutation successfully even though it is not the realization of
+the declared Claim choreography. HTTP success then demonstrates neither
+choreography validity nor production enforcement of the semantic path.
+
+Using the same Claim story for both cases keeps the boundary sharp:
+
+#+begin_example
+valid Claim choreography
+        |
+        X  missing view / plan / artifact / route join
+        |
+        v
+required HumanHelp capability is absent
+#+end_example
+
+and:
+
+#+begin_example
+ad-hoc POST route mutates Request
+        |
+        X  no admitted Claim choreography path
+        |
+        v
+mutation happened, but the claimed Gesso realization was bypassed
+#+end_example
+
+The examples therefore do not add another kind of validity. They show why
+choreography validity, application closure, production enforcement, and product
+capability acceptance remain separately reviewable.
+
 *** Construction must fail when the contradiction is already knowable
 
 Choreography construction and verification must reject known contradictions at
@@ -4605,6 +5269,30 @@ one semantic declaration
     +--> derived/validated transport requirements
     +--> derived diagnostics
 #+end_example
+
+
+For ordinary application code, this principle should make a semantic operation
+feel smaller rather than larger. A Request card might eventually contain
+something as compact as:
+
+#+begin_src clojure
+(request-card
+  request
+  {:actions
+   [(gesso/bind :request/claim
+      {:request-id (:request/id request)})]})
+#+end_src
+
+The syntax is deliberately provisional. The important point is what the
+application author did *not* repeat. The view did not manually invent a browser
+plan name, command-wire field, route identity, server registry key, or model
+operation alias. Those are either derived from the semantic declaration or are
+independent physical choices whose correspondence is checked elsewhere.
+
+If a future authoring API instead requires five manually synchronized names to
+express this one Claim intent, the example should be treated as design pressure
+against that API. The semantic requirement is single ownership of the intent,
+not commitment to the particular =gesso/bind= spelling shown here.
 
 This principle does not collapse all layers into one macro.  It reduces
 duplicated sources of semantic truth while preserving explicit architectural
@@ -4706,6 +5394,39 @@ structure from the choreography body.
 
 The exact Clojure syntax remains tentative. These semantics are the intended
 contract.
+
+
+The difference from an ordinary function type is easier to see in an approval
+operation. A host-language signature such as:
+
+#+begin_example
+Expense -> ApprovalResult
+#+end_example
+
+says nothing about who is entitled to act, who knows the Expense, whether the
+manager observed the current policy, or what a browser may provisionally show
+while the authoritative operation is unresolved.
+
+A plausible application-facing declaration might therefore be smaller than the
+normalized contract while still naming its external commitments:
+
+#+begin_src clojure
+(defoperation approve-expense
+  {:operation :expense/approve
+   :actor :manager
+   :requires [:authenticated-manager
+              :current-expense
+              :current-approval-policy]
+   :authoritative :expense/approve
+   :outcomes #{:approved :rejected :needs-finance}})
+#+end_src
+
+Gesso might elaborate that declaration into richer semantic data containing the
+role, principal, knowledge, provenance, authority, continuation, and settlement
+obligations described above. The exact macro and keys are not normative. The
+example exists to show why the final semantic operation is richer than
+=Expense -> ApprovalResult= while ordinary application code should still be
+allowed to remain declaration-first.
 
 #+LATEX: \newpage
 *** Operation identity is semantic, not transport identity
@@ -4946,6 +5667,39 @@ This separation lets Gesso reason strongly about operation identity and
 distributed protocol structure without pretending to statically prove current
 business facts that can change between render and commit.
 
+
+Imagine that both Alice and Bob saw a HumanHelp Request while each was an active
+helper, so both browsers rendered a Claim affordance. Before Alice clicks, her
+Membership is withdrawn. Bob remains eligible.
+
+Nothing about the old button on Alice's screen turns that earlier eligibility
+into a reservation:
+
+#+begin_example
+T1
+    Alice authorized
+    Bob authorized
+    both render Claim
+
+T2
+    Alice Membership withdrawn
+
+T3
+    Alice clicks Claim
+        -> trusted side re-establishes current principal and policy
+        -> reject
+
+    Bob clicks Claim
+        -> trusted side re-establishes current principal and policy
+        -> may proceed
+#+end_example
+
+The semantic operation =:request/claim= existed throughout. The choreography may
+also permit a helper to attempt it from that state. What changed was the dynamic
+premise for this concrete principal. The example therefore separates operation
+availability from current authorization without requiring the browser to predict
+future model state.
+
 *** Malformed operation type versus wrong business policy
 
 The unified design distinguishes structural/type malformedness from product
@@ -5007,6 +5761,31 @@ checking, including:
 
 This is one of the central reasons Choreo needs a semantic type/knowledge layer
 richer than ordinary function typing.
+
+
+The same issue appears in expense approval without requiring an ill-typed rule.
+Suppose the application has a perfectly valid rule:
+
+#+begin_src clojure
+(and (= (:expense/status expense) :submitted)
+     (= (:employee/risk-band employee) :ordinary))
+#+end_src
+
+The server-side approval authority may know both the Expense and the current
+Employee risk band. A manager browser, however, may have received only the
+Expense amount and status. Projecting the same rule into that browser at that
+point would be invalid even though every operator and field reference type
+checks.
+
+There are several coherent repairs, depending on product intent: communicate an
+authorized risk-band fact, perform an authoritative observation that establishes
+the required fact, move the decision to the trusted authority, or change the
+local behavior so the manager never needs that discriminator. What Gesso must
+not do is silently insert =:employee/risk-band= into the browser context because
+the rule would otherwise be convenient to execute there.
+
+This is why "the rule is valid" and "this actor may evaluate the rule here"
+remain separate judgments.
 
 *** Operation declarations should remain inspectable data
 
@@ -5162,6 +5941,40 @@ choreographic admissibility
 
 A success at one layer cannot be silently promoted into a stronger proposition
 owned by a later layer.
+
+
+A checkout command makes the separation tangible. The browser can submit a map
+that passes an ordinary schema:
+
+#+begin_src clojure
+{:cart-id #uuid "00000000-0000-0000-0000-000000000042"
+ :action :checkout/place-order}
+#+end_src
+
+Malli can establish that the UUID and enum values have the expected shape. It
+cannot establish that the HTTP request is currently authenticated as the
+customer who owns that cart, that the cart observation is authoritative, or that
+the model still permits checkout.
+
+Those stronger premises arise at their own boundaries:
+
+#+begin_example
+valid command shape
+        |
+        v
+trusted principal binding
+        |
+        v
+authorized/current cart observation
+        |
+        v
+authoritative checkout operation
+#+end_example
+
+The same bytes can therefore be a perfectly valid =PlaceOrderCommand=
+representation and still be rejected as a concrete operation. Treating schema
+success as authorization would erase exactly the semantic layers the
+choreographic operation contract is meant to expose.
 
 The same rule applies when a stronger semantic category happens to use a nominal
 host-language representation.  Malli may validate the fields inside an
@@ -5425,6 +6238,33 @@ client supplied -> trusted principal identity
 Projection preserves or weakens claims according to explicit semantics; it does
 not strengthen them by serialization.
 
+
+The checkout case supplies a particularly dangerous temptation. After Alice
+presses =Place order=, the payment authority may know that the payment was
+accepted while Alice's browser is still waiting. It would make the projected UI
+easy to write if the browser projection simply contained =:payment/accepted?=
+from the start and branched on it.
+
+That is exactly what projection cannot do:
+
+#+begin_example
+payment authority knows :accepted
+        |
+        X  projector copies fact into browser because UI wants it
+        |
+browser renders "Paid"
+#+end_example
+
+The browser may render that branch only after an admitted knowledge path exists,
+for example a declared settlement communication or an authorized authoritative
+Order observation establishing the relevant current fact. If the response is
+lost, the browser may instead remain uncertain and follow the recovery semantics
+defined by the operation.
+
+The example turns "projection cannot create knowledge" into an application
+constraint: generated convenience data is not a substitute for a provenance
+path.
+
 *** Behavior-sensitive choice is the central branch rule
 
 A role needs to know a choice only when its observable local behavior depends on
@@ -5444,6 +6284,43 @@ not learn the branch solely because R appears somewhere inside both branches.
 
 If they diverge, the projector/verifier must establish a valid knowledge path
 before the divergence.
+
+
+An expense-approval branch shows why the rule is about *behavior* rather than
+syntactic mention. Suppose the global choreography says:
+
+#+begin_example
+employee submits Expense E
+        |
+manager knows E.amount and current approval policy
+        |
+        +-- if ordinary manager approval is sufficient
+        |       manager may approve
+        |
+        `-- if finance review is required
+                Finance must review E
+#+end_example
+
+The manager must know enough to choose the branch because the manager's next
+semantic behavior differs. Finance does not need to learn the branch before the
+choice merely because Finance is named in one continuation. If the Finance
+continuation is selected, Finance must then receive or authoritatively observe
+the facts required for its own behavior.
+
+Now suppose the employee receives the same generic "expense submitted" state in
+both continuations and performs no different local action. The employee need not
+learn the internal manager-versus-Finance discriminator merely to mirror the
+global syntax.
+
+Likewise, a notification service that sends the same receipt in both branches
+does not need the private approval threshold just because both branches contain
+a notification step. If one branch instead requires a different notification,
+then the service needs enough justified information to distinguish those
+continuations before the messages diverge.
+
+This is the practical meaning of behavior-sensitive projection: knowledge is
+introduced where local semantics require it, not broadcast until every role can
+reconstruct the entire global decision tree.
 
 **** Supported equivalence and conservative rejection
 
@@ -5525,6 +6402,42 @@ This matters deeply for Gesso's web architecture because durable business facts
 often rendezvous naturally through model authority and reread rather than
 long-lived direct participant messaging.
 
+
+HumanHelp's board is the useful counterexample to a message-centric projector.
+When Alice creates Request R, Bob does not need a durable participant message
+whose semantic content is "Alice created R" in order eventually to learn the new
+Request. The durable Request fact already lives at model authority.
+
+A normal realization can instead be:
+
+#+begin_example
+Alice creates R
+        |
+Request authority commits R
+        |
+Bob receives advisory invalidation
+        |
+Bob has not adopted R yet
+        |
+product policy / explicit Refresh permits acquisition
+        |
+Bob authoritatively rereads the board projection
+        |
+Bob learns and adopts R
+#+end_example
+
+The advisory event is useful coordination, but the authoritative observation is
+the knowledge-producing path for the Request contents. Inserting a direct
+Alice-to-Bob choreography message merely because Alice's action affects Bob
+would add delivery and recovery obligations without adding semantic value.
+
+The opposite case also exists. An ephemeral collaboration message such as
+"Bob is typing" may have meaning precisely because Alice receives that message;
+there may be no durable authoritative fact to reread later. Projection must
+preserve that communication. The framework therefore treats communication as a
+knowledge mechanism to preserve when required, not as either a universal
+requirement or an implementation smell.
+
 *** Local executable guards belong in the executable projection
 
 Proof derivations and global proof trees do not belong in the production
@@ -5558,6 +6471,25 @@ admission check or supply missing runtime facts.
 
 The production machine must never depend on an optional proof sidecar to decide
 a transition.
+
+
+A mundane browser timer illustrates the split. Suppose an optimistic checkout
+execution owns a timeout resource. The local executable plan may need a guard
+equivalent to:
+
+#+begin_example
+accept timeout event only if
+    timeout resource I still belongs to execution E
+#+end_example
+
+If the execution has already settled and retired I, a late physical timer
+callback is rejected by that runtime guard. The browser does not need the proof
+tree that established the guard's sufficiency; it needs only the executable
+predicate and the identities against which the concrete event is admitted.
+
+Keeping the proof out of the browser therefore does not mean deleting the
+runtime condition the proof was about. It means lowering the semantic
+requirement to the small executable guard needed by the projected machine.
 
 *** Projection failure should identify the missing justification
 
@@ -5748,6 +6680,37 @@ must define its own:
 
 It is not silently inherited from ordinary Choreo.
 
+
+The expense-approval story can be read literally here. On Monday, Employee E
+submits Expense X and the authoritative model records =:approval/pending=. The
+employee closes the laptop. The web node that handled the submission is
+redeployed overnight. On Thursday, Manager M opens the application and sees X
+through a current authorized projection.
+
+Nothing important requires Thursday's browser or server process to resurrect
+Monday's execution object:
+
+#+begin_example
+Monday execution E1
+    submit X
+    commit :approval/pending
+    terminate
+
+authoritative Expense X survives
+
+Thursday execution E2
+    Manager M observes X as pending
+    re-establish current principal and policy
+    approve or escalate
+    terminate
+#+end_example
+
+The business process is continuous because Expense X and its authoritative
+state are continuous. The protocol executions are allowed to be different.
+This is not merely an optimization for process memory; it is a semantic choice
+that keeps durable business truth in the model rather than in the lifetime of a
+particular runtime.
+
 *** Durable model state is the normal rendezvous point
 
 For long workflows, authoritative state provides a stable rendezvous point
@@ -5780,6 +6743,18 @@ A durable business fact may outlive the executable plan that originally
 produced it.
 
 That is normal.
+
+
+For example, Expense X may have been created under application assembly A12 and
+remain =:approval/pending= across a deployment to A13. A manager acting after the
+deployment need not resume A12's browser or server execution. A13 may begin a
+new choreography from the still-valid authoritative pending fact.
+
+If A13 merely changes browser-plan encoding, that is chiefly a runtime
+compatibility question. If A13 changes the persisted meaning of
+=:approval/pending= itself, however, the model has a separate interpretation or
+migration problem. Treating those two changes as the same kind of "stale plan"
+would confuse durable domain compatibility with executable compatibility.
 
 What cannot be assumed is that a suspended *runtime execution* from an older
 deployment remains compatible forever.

@@ -67,6 +67,37 @@ client or one persistent server process per conceptual workflow.
 The global description may be realized by short-lived projections that interact
 through durable authoritative facts.
 
+
+A small expense-approval flow makes this concrete. Suppose an employee submits an
+expense, a manager may approve it, and Finance participates only when the
+declared policy requires additional review. The global description can say:
+
+#+begin_example
+employee submits Expense E
+        |
+        v
+expense authority records :submitted
+        |
+        v
+manager evaluates the declared approval rule
+        |
+        +--> ordinary approval
+        |
+        `--> finance review when required
+#+end_example
+
+That is one distributed semantic interaction, but it does not require one runtime
+object sitting above the employee browser, manager browser, Finance browser, and
+authoritative model and telling each of them what to do next. The employee
+projection needs only employee behavior and knowledge. The manager projection
+needs the facts and actions relevant to the manager. Finance needs no local
+continuation at all until a path is selected in which Finance participates.
+
+The example is useful because one global specification can explain several local
+programs without turning those programs into copies of the whole global state.
+The projections remain related by the choreography even when they execute at
+different times, on different hosts, and with different knowledge.
+
 *** Choreography is specification, not a hidden coordinator
 
 The global choreography is the semantic specification of allowed distributed
@@ -240,6 +271,50 @@ physical/application layers, production enforcement of those checks, and
 independent capability acceptance. Closure results retain their actual assurance
 classification rather than automatically becoming semantic theorems.
 
+
+HumanHelp's Claim action gives the distinction a concrete shape. The Claim
+choreography can be internally valid: the helper has the required entry
+knowledge, the trusted side re-establishes the principal and current authority,
+the Request model owns the authoritative transition, and the projected
+continuations are legal. Yet a particular application build can still omit the
+Claim button entirely or package an old browser artifact containing no
+realization of that plan.
+
+In that case the choreography has not become invalid. The application has failed
+a different claim: the required user capability is not realized by the assembled
+production path.
+
+The reverse failure is equally possible. A hand-written route may happen to
+perform a Request mutation successfully even though it is not the realization of
+the declared Claim choreography. HTTP success then demonstrates neither
+choreography validity nor production enforcement of the semantic path.
+
+Using the same Claim story for both cases keeps the boundary sharp:
+
+#+begin_example
+valid Claim choreography
+        |
+        X  missing view / plan / artifact / route join
+        |
+        v
+required HumanHelp capability is absent
+#+end_example
+
+and:
+
+#+begin_example
+ad-hoc POST route mutates Request
+        |
+        X  no admitted Claim choreography path
+        |
+        v
+mutation happened, but the claimed Gesso realization was bypassed
+#+end_example
+
+The examples therefore do not add another kind of validity. They show why
+choreography validity, application closure, production enforcement, and product
+capability acceptance remain separately reviewable.
+
 *** Construction must fail when the contradiction is already knowable
 
 Choreography construction and verification must reject known contradictions at
@@ -293,6 +368,30 @@ one semantic declaration
     +--> derived/validated transport requirements
     +--> derived diagnostics
 #+end_example
+
+
+For ordinary application code, this principle should make a semantic operation
+feel smaller rather than larger. A Request card might eventually contain
+something as compact as:
+
+#+begin_src clojure
+(request-card
+  request
+  {:actions
+   [(gesso/bind :request/claim
+      {:request-id (:request/id request)})]})
+#+end_src
+
+The syntax is deliberately provisional. The important point is what the
+application author did *not* repeat. The view did not manually invent a browser
+plan name, command-wire field, route identity, server registry key, or model
+operation alias. Those are either derived from the semantic declaration or are
+independent physical choices whose correspondence is checked elsewhere.
+
+If a future authoring API instead requires five manually synchronized names to
+express this one Claim intent, the example should be treated as design pressure
+against that API. The semantic requirement is single ownership of the intent,
+not commitment to the particular =gesso/bind= spelling shown here.
 
 This principle does not collapse all layers into one macro.  It reduces
 duplicated sources of semantic truth while preserving explicit architectural
@@ -394,6 +493,39 @@ structure from the choreography body.
 
 The exact Clojure syntax remains tentative. These semantics are the intended
 contract.
+
+
+The difference from an ordinary function type is easier to see in an approval
+operation. A host-language signature such as:
+
+#+begin_example
+Expense -> ApprovalResult
+#+end_example
+
+says nothing about who is entitled to act, who knows the Expense, whether the
+manager observed the current policy, or what a browser may provisionally show
+while the authoritative operation is unresolved.
+
+A plausible application-facing declaration might therefore be smaller than the
+normalized contract while still naming its external commitments:
+
+#+begin_src clojure
+(defoperation approve-expense
+  {:operation :expense/approve
+   :actor :manager
+   :requires [:authenticated-manager
+              :current-expense
+              :current-approval-policy]
+   :authoritative :expense/approve
+   :outcomes #{:approved :rejected :needs-finance}})
+#+end_src
+
+Gesso might elaborate that declaration into richer semantic data containing the
+role, principal, knowledge, provenance, authority, continuation, and settlement
+obligations described above. The exact macro and keys are not normative. The
+example exists to show why the final semantic operation is richer than
+=Expense -> ApprovalResult= while ordinary application code should still be
+allowed to remain declaration-first.
 
 #+LATEX: \newpage
 *** Operation identity is semantic, not transport identity
@@ -634,6 +766,39 @@ This separation lets Gesso reason strongly about operation identity and
 distributed protocol structure without pretending to statically prove current
 business facts that can change between render and commit.
 
+
+Imagine that both Alice and Bob saw a HumanHelp Request while each was an active
+helper, so both browsers rendered a Claim affordance. Before Alice clicks, her
+Membership is withdrawn. Bob remains eligible.
+
+Nothing about the old button on Alice's screen turns that earlier eligibility
+into a reservation:
+
+#+begin_example
+T1
+    Alice authorized
+    Bob authorized
+    both render Claim
+
+T2
+    Alice Membership withdrawn
+
+T3
+    Alice clicks Claim
+        -> trusted side re-establishes current principal and policy
+        -> reject
+
+    Bob clicks Claim
+        -> trusted side re-establishes current principal and policy
+        -> may proceed
+#+end_example
+
+The semantic operation =:request/claim= existed throughout. The choreography may
+also permit a helper to attempt it from that state. What changed was the dynamic
+premise for this concrete principal. The example therefore separates operation
+availability from current authorization without requiring the browser to predict
+future model state.
+
 *** Malformed operation type versus wrong business policy
 
 The unified design distinguishes structural/type malformedness from product
@@ -695,6 +860,31 @@ checking, including:
 
 This is one of the central reasons Choreo needs a semantic type/knowledge layer
 richer than ordinary function typing.
+
+
+The same issue appears in expense approval without requiring an ill-typed rule.
+Suppose the application has a perfectly valid rule:
+
+#+begin_src clojure
+(and (= (:expense/status expense) :submitted)
+     (= (:employee/risk-band employee) :ordinary))
+#+end_src
+
+The server-side approval authority may know both the Expense and the current
+Employee risk band. A manager browser, however, may have received only the
+Expense amount and status. Projecting the same rule into that browser at that
+point would be invalid even though every operator and field reference type
+checks.
+
+There are several coherent repairs, depending on product intent: communicate an
+authorized risk-band fact, perform an authoritative observation that establishes
+the required fact, move the decision to the trusted authority, or change the
+local behavior so the manager never needs that discriminator. What Gesso must
+not do is silently insert =:employee/risk-band= into the browser context because
+the rule would otherwise be convenient to execute there.
+
+This is why "the rule is valid" and "this actor may evaluate the rule here"
+remain separate judgments.
 
 *** Operation declarations should remain inspectable data
 
@@ -850,6 +1040,40 @@ choreographic admissibility
 
 A success at one layer cannot be silently promoted into a stronger proposition
 owned by a later layer.
+
+
+A checkout command makes the separation tangible. The browser can submit a map
+that passes an ordinary schema:
+
+#+begin_src clojure
+{:cart-id #uuid "00000000-0000-0000-0000-000000000042"
+ :action :checkout/place-order}
+#+end_src
+
+Malli can establish that the UUID and enum values have the expected shape. It
+cannot establish that the HTTP request is currently authenticated as the
+customer who owns that cart, that the cart observation is authoritative, or that
+the model still permits checkout.
+
+Those stronger premises arise at their own boundaries:
+
+#+begin_example
+valid command shape
+        |
+        v
+trusted principal binding
+        |
+        v
+authorized/current cart observation
+        |
+        v
+authoritative checkout operation
+#+end_example
+
+The same bytes can therefore be a perfectly valid =PlaceOrderCommand=
+representation and still be rejected as a concrete operation. Treating schema
+success as authorization would erase exactly the semantic layers the
+choreographic operation contract is meant to expose.
 
 The same rule applies when a stronger semantic category happens to use a nominal
 host-language representation.  Malli may validate the fields inside an
@@ -1113,6 +1337,33 @@ client supplied -> trusted principal identity
 Projection preserves or weakens claims according to explicit semantics; it does
 not strengthen them by serialization.
 
+
+The checkout case supplies a particularly dangerous temptation. After Alice
+presses =Place order=, the payment authority may know that the payment was
+accepted while Alice's browser is still waiting. It would make the projected UI
+easy to write if the browser projection simply contained =:payment/accepted?=
+from the start and branched on it.
+
+That is exactly what projection cannot do:
+
+#+begin_example
+payment authority knows :accepted
+        |
+        X  projector copies fact into browser because UI wants it
+        |
+browser renders "Paid"
+#+end_example
+
+The browser may render that branch only after an admitted knowledge path exists,
+for example a declared settlement communication or an authorized authoritative
+Order observation establishing the relevant current fact. If the response is
+lost, the browser may instead remain uncertain and follow the recovery semantics
+defined by the operation.
+
+The example turns "projection cannot create knowledge" into an application
+constraint: generated convenience data is not a substitute for a provenance
+path.
+
 *** Behavior-sensitive choice is the central branch rule
 
 A role needs to know a choice only when its observable local behavior depends on
@@ -1132,6 +1383,43 @@ not learn the branch solely because R appears somewhere inside both branches.
 
 If they diverge, the projector/verifier must establish a valid knowledge path
 before the divergence.
+
+
+An expense-approval branch shows why the rule is about *behavior* rather than
+syntactic mention. Suppose the global choreography says:
+
+#+begin_example
+employee submits Expense E
+        |
+manager knows E.amount and current approval policy
+        |
+        +-- if ordinary manager approval is sufficient
+        |       manager may approve
+        |
+        `-- if finance review is required
+                Finance must review E
+#+end_example
+
+The manager must know enough to choose the branch because the manager's next
+semantic behavior differs. Finance does not need to learn the branch before the
+choice merely because Finance is named in one continuation. If the Finance
+continuation is selected, Finance must then receive or authoritatively observe
+the facts required for its own behavior.
+
+Now suppose the employee receives the same generic "expense submitted" state in
+both continuations and performs no different local action. The employee need not
+learn the internal manager-versus-Finance discriminator merely to mirror the
+global syntax.
+
+Likewise, a notification service that sends the same receipt in both branches
+does not need the private approval threshold just because both branches contain
+a notification step. If one branch instead requires a different notification,
+then the service needs enough justified information to distinguish those
+continuations before the messages diverge.
+
+This is the practical meaning of behavior-sensitive projection: knowledge is
+introduced where local semantics require it, not broadcast until every role can
+reconstruct the entire global decision tree.
 
 **** Supported equivalence and conservative rejection
 
@@ -1213,6 +1501,42 @@ This matters deeply for Gesso's web architecture because durable business facts
 often rendezvous naturally through model authority and reread rather than
 long-lived direct participant messaging.
 
+
+HumanHelp's board is the useful counterexample to a message-centric projector.
+When Alice creates Request R, Bob does not need a durable participant message
+whose semantic content is "Alice created R" in order eventually to learn the new
+Request. The durable Request fact already lives at model authority.
+
+A normal realization can instead be:
+
+#+begin_example
+Alice creates R
+        |
+Request authority commits R
+        |
+Bob receives advisory invalidation
+        |
+Bob has not adopted R yet
+        |
+product policy / explicit Refresh permits acquisition
+        |
+Bob authoritatively rereads the board projection
+        |
+Bob learns and adopts R
+#+end_example
+
+The advisory event is useful coordination, but the authoritative observation is
+the knowledge-producing path for the Request contents. Inserting a direct
+Alice-to-Bob choreography message merely because Alice's action affects Bob
+would add delivery and recovery obligations without adding semantic value.
+
+The opposite case also exists. An ephemeral collaboration message such as
+"Bob is typing" may have meaning precisely because Alice receives that message;
+there may be no durable authoritative fact to reread later. Projection must
+preserve that communication. The framework therefore treats communication as a
+knowledge mechanism to preserve when required, not as either a universal
+requirement or an implementation smell.
+
 *** Local executable guards belong in the executable projection
 
 Proof derivations and global proof trees do not belong in the production
@@ -1246,6 +1570,25 @@ admission check or supply missing runtime facts.
 
 The production machine must never depend on an optional proof sidecar to decide
 a transition.
+
+
+A mundane browser timer illustrates the split. Suppose an optimistic checkout
+execution owns a timeout resource. The local executable plan may need a guard
+equivalent to:
+
+#+begin_example
+accept timeout event only if
+    timeout resource I still belongs to execution E
+#+end_example
+
+If the execution has already settled and retired I, a late physical timer
+callback is rejected by that runtime guard. The browser does not need the proof
+tree that established the guard's sufficiency; it needs only the executable
+predicate and the identities against which the concrete event is admitted.
+
+Keeping the proof out of the browser therefore does not mean deleting the
+runtime condition the proof was about. It means lowering the semantic
+requirement to the small executable guard needed by the projected machine.
 
 *** Projection failure should identify the missing justification
 
@@ -1436,6 +1779,37 @@ must define its own:
 
 It is not silently inherited from ordinary Choreo.
 
+
+The expense-approval story can be read literally here. On Monday, Employee E
+submits Expense X and the authoritative model records =:approval/pending=. The
+employee closes the laptop. The web node that handled the submission is
+redeployed overnight. On Thursday, Manager M opens the application and sees X
+through a current authorized projection.
+
+Nothing important requires Thursday's browser or server process to resurrect
+Monday's execution object:
+
+#+begin_example
+Monday execution E1
+    submit X
+    commit :approval/pending
+    terminate
+
+authoritative Expense X survives
+
+Thursday execution E2
+    Manager M observes X as pending
+    re-establish current principal and policy
+    approve or escalate
+    terminate
+#+end_example
+
+The business process is continuous because Expense X and its authoritative
+state are continuous. The protocol executions are allowed to be different.
+This is not merely an optimization for process memory; it is a semantic choice
+that keeps durable business truth in the model rather than in the lifetime of a
+particular runtime.
+
 *** Durable model state is the normal rendezvous point
 
 For long workflows, authoritative state provides a stable rendezvous point
@@ -1468,6 +1842,18 @@ A durable business fact may outlive the executable plan that originally
 produced it.
 
 That is normal.
+
+
+For example, Expense X may have been created under application assembly A12 and
+remain =:approval/pending= across a deployment to A13. A manager acting after the
+deployment need not resume A12's browser or server execution. A13 may begin a
+new choreography from the still-valid authoritative pending fact.
+
+If A13 merely changes browser-plan encoding, that is chiefly a runtime
+compatibility question. If A13 changes the persisted meaning of
+=:approval/pending= itself, however, the model has a separate interpretation or
+migration problem. Treating those two changes as the same kind of "stale plan"
+would confuse durable domain compatibility with executable compatibility.
 
 What cannot be assumed is that a suspended *runtime execution* from an older
 deployment remains compatible forever.

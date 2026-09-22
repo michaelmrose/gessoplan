@@ -9,6 +9,13 @@ and admission vocabulary established in Part I. The definitions do not require
 a universal persisted fact graph, a new runtime class for every concept, or a
 single global revision coordinate.
 
+The distinctions below become easier to follow when they are allowed to recur
+in ordinary application situations. HumanHelp Requests, a store checkout, an
+expense approval, a seat reservation, and a collaborative editor will therefore
+appear repeatedly. They are not additional normative models. They are concrete
+ways to ask whether the semantic distinctions remain intelligible when several
+real concerns overlap at once.
+
 ** Values and evolving values
 
 A value may be a singular immutable value:
@@ -83,6 +90,39 @@ actor displayed representation of fact
 
 These are distinct events and relationships.
 
+A HumanHelp board makes those distinctions visible without any exotic machinery.
+Suppose Request R is unclaimed when Alice and Bob both load their boards. Alice
+claims R, the authoritative Request transition commits, and Alice's next
+authoritative projection shows the claimed state. Bob's tab, however, may still
+show the previously adopted unclaimed representation until it receives an
+advisory and performs whatever acquisition/adoption policy the application
+permits.
+
+#+begin_example
+Request R unclaimed
+    |
+Alice submits Claim
+    |
+authoritative Request transition commits
+    |
+Alice acquires claimed R
+    |
+Bob receives advisory that relevant authority changed
+    |
+Bob still displays his previously adopted projection
+    |
+permitted Refresh / acquisition
+    |
+Bob acquires the newer authoritative projection
+#+end_example
+
+Nothing in this sequence requires the system to pretend there was one universal
+instant at which every representation became "the current value." The domain
+transition, database visibility, Alice's acquisition, Bob's advisory knowledge,
+and Bob's later adopted representation are related but distinct. The rest of
+this part gives names to those distinctions so later choreography and runtime
+rules can refer to the one they actually mean.
+
 *** Conceptual fact graph versus required persistence
 
 The semantic model may reason in terms of facts and relations among facts
@@ -156,6 +196,31 @@ distinctions not established by that shape. Ordinary immutable values may still
 use ordinary value equality when the enclosing contract makes it sufficient.
 Gesso must not mistake matching schemas or encodings for equality of authority,
 provenance, subject, observation scope, or admission status.
+
+An expense-approval application gives a compact example. The browser might
+submit:
+
+#+begin_src clojure
+{:employee-id 42
+ :department :engineering}
+#+end_src
+
+while a trusted authoritative employee lookup independently yields an equal
+Clojure value. Malli may correctly say that both values have the same shape.
+Ordinary Clojure equality may correctly say that their contents are equal. Yet
+the browser proposal and the authoritative observation do not have the same
+provenance, and only the latter can justify a rule that specifically requires an
+authoritative employee record.
+
+A desirable application-facing API should make that difference natural rather
+than requiring every caller to manually decorate ordinary maps with framework
+plumbing. For example, application code might pass an employee value obtained
+through a trusted model observation into a checked approval operation, while a
+form-decoded map remains merely proposed input until the relevant boundary admits
+it. The exact API is deliberately left open; the semantic requirement is that
+content equality cannot perform the admission step. The following distinction
+between representation, category, and admission exists precisely to prevent that
+substitution.
 
 *** Representation, semantic category, and admission
 :PROPERTIES:
@@ -368,6 +433,34 @@ A browser may wake after a deployment.
 
 The fact that an event arrived later in wall-clock time does not by itself make
 the event semantically newer or authorized to mutate current state.
+
+A seat-reservation race puts several of these dimensions on one timeline. Alice
+may have observed Seat 12 as available from an authoritative read through
+frontier =X83=. Bob reserves it in a later transaction visible through =X88=.
+The reservation may be domain-effective at 14:02, while an SSE advisory reaches
+Alice at 14:02:05 and a callback from an older request happens to fire at
+14:02:06.
+
+#+begin_example
+domain fact:
+    Seat 12 available -> Seat 12 reserved
+
+authoritative database progression:
+    X83 -> X88
+
+Alice's acquired knowledge before refresh:
+    justified through X83 for the seat projection she observed
+
+physical delivery:
+    advisory arrives after Bob's commit
+    an older callback may arrive even later
+#+end_example
+
+The late callback wins no semantic contest merely by having the newest wall-clock
+timestamp. Likewise, =X88= does not mean every domain fact is "version 88," and
+Alice's older knowledge does not mean the database itself reverted. This is the
+practical reason the next section refuses to compress these dimensions into one
+revision integer.
 
 #+LATEX: \newpage
 *** Do not collapse dimensions into one revision integer
@@ -625,6 +718,28 @@ correlation or realization information; neither substitutes for those decisions.
 Changing a browser tab, transport connection, or physical host must not silently
 carry permissions into a different principal or authority scope.
 
+A collaborative editor makes the separation less abstract. Alice may act as the
+=:editor= role for document D. Her authenticated principal is =[:user Alice]=,
+one browser tab is actor =C1=, and the semantic authority for committed document
+state is associated with D rather than with whichever web node happens to answer.
+A save might first reach node A and a retry after node loss might reach node C:
+
+#+begin_example
+role                 :editor
+principal            [:user Alice]
+browser actor         [:client C1]
+semantic authority    [:authority :document D]
+first host            [:web-node A]
+retry host            [:web-node C]
+#+end_example
+
+Changing A to C does not manufacture a new principal or a new document authority.
+Opening a second browser tab, on the other hand, can create another actor with
+different local knowledge while preserving Alice's principal. Revoking Alice's
+editing permission changes the authorization question even if actor C1 and host C
+remain exactly the same. These are the sorts of independent changes that a
+generic =server-id= or =user-id= cannot faithfully represent.
+
 ** Logical identity and physical realization
 :PROPERTIES:
 :CUSTOM_ID: req-logical-physical-identity
@@ -670,6 +785,32 @@ continuity-capture identity may be a specialized instance of it. Listing these
 categories does not require multiple independent tokens for the same instance.
 The representation must preserve whichever distinctions the admission contract
 actually uses.
+
+A single checkout click shows why this inventory of identities is not merely
+terminological bookkeeping. Suppose Alice presses =Place order= once:
+
+#+begin_example
+semantic operation           :checkout/place-order
+semantic command             cmd-77
+protocol execution           exec-19
+transport request            http-204
+resource instance            timeout-51
+projected/executable plan     checkout-plan-v3
+admitted assembly generation assembly-A12
+domain object, once created   order-483
+#+end_example
+
+If =http-204= is lost and the operation's retry contract permits another attempt,
+=http-205= may carry the same =cmd-77=. A new protocol execution might also be
+created without changing the command's logical intent. Replacing a timeout or
+fetch resource creates a new resource instance without creating a new order. A
+deployment may move the same admitted assembly between hosts without changing
+any of those operation identities.
+
+The useful question is therefore never simply "is the id the same?" It is
+"which identity is this, and which correspondence does this boundary require?"
+The following subsections separate the identities so later runtime checks can ask
+that narrower question.
 
 #+LATEX: \newpage
 
@@ -807,6 +948,35 @@ Resource instance identity answers a narrow question:
 Does this event belong to the currently admitted instance of this replaceable
 resource?
 #+end_quote
+
+A seat-list refresh is a common browser example. Refresh A starts for the
+logical target =:seat-list= using resource instance =r41=. Before A completes,
+navigation or HTMX replacement reconstructs the seat list and Refresh B starts
+for the same logical target using =r42=. B completes first and installs the
+current authoritative seat projection. A then completes late.
+
+#+begin_example
+logical target :seat-list
+    |
+Refresh A owns r41
+    |
+component replaced
+    |
+Refresh B owns r42
+    |
+B installs current authoritative result
+    |
+A callback arrives carrying r41
+    |
+    X  r41 no longer owns installation rights
+#+end_example
+
+The logical target is intentionally the same throughout; otherwise replacement
+would not be useful. The resource-instance identity is what prevents a callback
+from the replaced realization from borrowing the new realization's rights. The
+command, authoritative basis, or execution may or may not also have changed, so
+resource identity must remain a narrow check rather than a universal freshness
+number.
 
 A resource-instance generation counter, scoped epoch, opaque token, UUID,
 object identity, or another suitable mechanism may represent resource-instance
@@ -961,6 +1131,27 @@ unrelated command execution. A shared event must not be assigned to whichever
 execution happens to be current. An execution-private callback must not become
 shared merely because its execution was retired.
 
+HumanHelp provides both kinds of event at once. Bob's board may be idle when a
+Live subscription reports that relevant Request authority changed. That advisory
+can be admitted through the board/subscription coordination scope even though no
+Claim execution is currently running. Conversely, a late callback from Bob's
+retired Claim execution cannot be admitted merely because the same board is still
+on screen.
+
+#+begin_example
+shared board advisory
+    -> checked against subscription / fragment coordination owner
+    -> may create advisory debt
+
+late private Claim callback
+    -> checked against retired Claim execution/resource ownership
+    -> rejected
+#+end_example
+
+This contrast is why "current execution" cannot be the universal owner of every
+asynchronous browser event. The event class determines which semantic owner and
+correspondence rules are relevant.
+
 The declaration of an event as shared is part of the checked contract. An
 untrusted field such as =:shared? true= cannot select weaker admission rules.
 Shared admission permits only the declared shared transition; it does not
@@ -1020,6 +1211,28 @@ A browser may propose values such as:
 - transport data required to correlate a request with a server-side operation.
 
 Proposal is not authority.
+
+For example, a malicious HumanHelp browser can add a =Claim= button to its DOM,
+change a local role label from =:requester= to =:helper=, and submit a perfectly
+well-shaped command for Request R. None of those acts should be interesting to
+the authority boundary beyond supplying a proposal to evaluate. Trusted code
+still binds the authenticated principal, resolves =:request/claim= through the
+current application, rereads the relevant Request and Membership state, and
+applies the model's current authorization rule.
+
+A desirable wire-level request may therefore be small enough to express intent:
+
+#+begin_src clojure
+{:command-id C42
+ :operation :request/claim
+ :arguments {:request-id R}
+ :observed-basis X17}
+#+end_src
+
+while omitting any pretense that a client-supplied =:role :helper= would grant
+helper authority. The exact envelope remains an implementation choice; the
+security point is that the browser can propose the operation without being asked
+to certify the premises that trusted code must establish.
 
 *** What the browser may not establish by assertion
 
@@ -1231,6 +1444,30 @@ It is:
 Before this actor performs behavior that depends on fact F, what justifies that
 the actor knows F?
 #+end_quote
+
+An expense approval can accumulate one decision from several knowledge paths.
+Suppose a manager is handling expense E for $800. The manager projection may
+enter with the authenticated principal as trusted input knowledge, receive the
+expense identifier and submitted amount through the declared workflow, observe
+the current approval policy authoritatively, and deterministically derive that
+Finance review is required. It can then communicate the declared review request
+to Finance.
+
+#+begin_example
+authenticated manager principal     provenance: input
+expense E and submitted amount      provenance: communicated or authoritative,
+                                    according to the declared workflow
+current approval threshold          provenance: authoritative
+needs-finance?                      provenance: derived
+review request received by Finance  provenance: communicated
+#+end_example
+
+The final boolean =needs-finance?= could be represented by the same =true= in all
+of these worlds, but the checker cares about how the manager became justified in
+using it. If the threshold came from an untrusted form field instead of the
+declared authoritative policy observation, running the same comparison function
+does not repair the provenance. The following knowledge categories describe
+those justification paths rather than the shape of the resulting values.
 
 *** Input knowledge
 
@@ -1517,6 +1754,39 @@ Receipt of the advisory does not by itself choose when the application adopts
 new content. Acquisition may follow an explicit user action, a declared
 automatic policy, or another admitted trigger. Any convergence claim that relies
 on such a trigger must name it among its liveness premises.
+
+This is exactly the distinction HumanHelp's board behavior is intended to make
+visible. Alice creates Request R and the model commits it. Bob's Live
+subscription may then justify only the advisory proposition that relevant board
+authority changed. His existing adopted board need not suddenly contain R, and
+the advisory itself need not disclose R's protected contents. Instead the UI can
+show a changed or glowing Refresh control.
+
+When Bob explicitly Refreshes, the application performs an authorized
+authoritative acquisition for the board scope. If that acquisition includes R
+and the product policy permits its adoption, Bob can then know and display R with
+authoritative provenance.
+
+#+begin_example
+Alice commits Request R
+    |
+Bob receives Live advisory
+    |
+Bob knows: relevant authority may have advanced
+    |
+Bob still has his previously adopted board projection
+    |
+Bob activates Refresh
+    |
+authorized authoritative board acquisition
+    |
+Bob adopts R if the returned scope and product policy permit it
+#+end_example
+
+The example separates three things that a simplistic "push update" model would
+collapse: knowledge that something may have changed, permission to acquire the
+new authoritative projection, and policy permission to adopt that projection
+into visible application state.
 
 *** Observation scope and selective incorporation
 
@@ -1877,6 +2147,23 @@ At minimum:
 - =:derived=;
 - =:asserted=.
 
+An approval workflow shows why agreement is narrower than "both sides have the
+same map." A manager and Finance may both justifiably agree that Expense E
+requires Finance review while possessing different surrounding knowledge. The
+manager may know private employee context that Finance never receives; Finance
+may independently observe a current budget fact the manager never needs. Their
+agreement can be scoped to a proposition such as:
+
+#+begin_example
+Expense E requires Finance review under policy P
+#+end_example
+
+That proposition might be established by a declared message, by compatible
+authoritative observations, or by a checked derivation from facts each side is
+justified in using. The protocol does not need to manufacture agreement on the
+rest of either actor's state. This scoped reading is what allows agreement to
+coexist with privacy and role-specific knowledge.
+
 *** Communicated agreement
 
 Communication can establish agreement on the communicated value.
@@ -2084,6 +2371,18 @@ knowledge relation; it does not require either state to be represented by one
 maximum scalar token.
 
 A correct application may intentionally preserve that distinction.
+
+Returning to the HumanHelp board, Alice can already have adopted Request R while
+Bob knows only that newer relevant authority is available. It would be wrong to
+call the two boards equal, but it would also be wrong to call the system
+incoherent merely because Bob has not yet chosen Refresh. Alice and Bob may still
+agree on older Requests through their previous common authoritative observations,
+while Bob carries outstanding advisory debt for a newer board scope. Once Bob
+performs the permitted acquisition, the common frontier for the relevant board
+facts can advance without replaying every intermediate invalidation.
+
+The useful frontier is therefore the strongest scoped proposition each actor is
+justified in treating as shared, not the largest integer either actor has seen.
 
 *** Convergence does not require replay of every intermediate change
 
