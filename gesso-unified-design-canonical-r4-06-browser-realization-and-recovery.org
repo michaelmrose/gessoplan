@@ -148,6 +148,365 @@ This architecture is a correctness requirement, not merely a code-style
 preference. It deliberately preserves HTMX as a useful declarative runtime
 instead of turning it into a transport primitive beneath a Gesso reimplementation.
 
+
+A concrete HumanHelp Claim interaction shows how little semantic authority the
+HTMX listener layer actually needs.
+
+Assume Part V emitted a Claim =ExecutablePlan= and the adapter has admitted an
+execution:
+
+#+begin_src clojure
+(def E42
+  #uuid "e4200000-0000-0000-0000-000000000042")
+
+(def C42
+  #uuid "c4200000-0000-0000-0000-000000000042")
+
+(def H1
+  #uuid "h1000000-0000-0000-0000-000000000001")
+
+(def claim-runtime
+  {:execution/id E42
+
+   :command/id C42
+
+   :plan/id :plan/request-claim
+
+   :compatibility/id :humanhelp-live-v12
+
+   :machine/state :pending
+
+   :target
+   {:logical-id :request-card
+    :request/id R}
+
+   :resources
+   {:transport
+    {:transport-request/id H1
+     :owner [:execution E42]
+     :status :active}
+
+    :timeout
+    {:timer/id :claim-settlement
+     :resource-instance/id
+     #uuid "a1000000-0000-0000-0000-000000000007"
+     :owner [:execution E42]
+     :status :active}}
+
+   :projection
+   {:authority :provisional
+    :request/id R
+    :request/status :claiming
+    :command/id C42}})
+#+end_src
+
+The rendered button may still use ordinary declarative HTMX:
+
+#+begin_src html
+<button
+  class="gesso-action gesso-action--primary"
+  hx-post="/gesso/op/request-claim"
+  hx-swap="none"
+  data-gesso-execution="e42..."
+  data-gesso-command="c42..."
+  data-gesso-plan="plan/request-claim">
+  Claiming...
+</button>
+#+end_src
+
+The exact attributes are illustrative. They are correlation handles installed by
+an admitted realization, not authority assertions supplied by arbitrary client
+bytes.
+
+A thin listener normalizes =htmx:beforeRequest=:
+
+#+begin_src clojure
+(defn on-htmx-before-request!
+  [adapter raw-event]
+
+  (let [normalized
+        {:event :htmx/before-request
+
+         :execution-id
+         (correlation/execution-id raw-event)
+
+         :transport-request-id
+         (correlation/transport-request-id raw-event)
+
+         :target-id
+         (correlation/logical-target raw-event)}]
+
+    (dispatch-adapter-event!
+      adapter
+      normalized)))
+#+end_src
+
+The pure adapter decides whether this physical request is still the request that
+the semantic execution owns:
+
+#+begin_src clojure
+(defn admit-before-request
+  [state event]
+
+  (cond
+    (not=
+      (:execution/id state)
+      (:execution-id event))
+    {:result :rejected
+     :diagnosis :stale-execution
+     :effects
+     [[:htmx/cancel-request
+       {:transport-request-id
+        (:transport-request-id event)}]]}
+
+    (not=
+      (get-in state
+        [:resources :transport :transport-request/id])
+      (:transport-request-id event))
+    {:result :rejected
+     :diagnosis :wrong-transport-resource
+     :effects
+     [[:htmx/cancel-request
+       {:transport-request-id
+        (:transport-request-id event)}]]}
+
+    (not=
+      :active
+      (get-in state
+        [:resources :transport :status]))
+    {:result :rejected
+     :diagnosis :retired-transport-resource
+     :effects
+     [[:htmx/cancel-request
+       {:transport-request-id
+        (:transport-request-id event)}]]}
+
+    :else
+    {:result :accepted
+     :state state
+     :effects
+     [[:htmx/allow-request
+       {:transport-request-id
+        (:transport-request-id event)}]]}))
+#+end_src
+
+The imperative shell does not reinterpret that answer:
+
+#+begin_src clojure
+(defn interpret-htmx-disposition!
+  [raw-event effect]
+
+  (case (first effect)
+
+    :htmx/allow-request
+    ;; No special action is needed. HTMX continues normally.
+    nil
+
+    :htmx/cancel-request
+    (.preventDefault raw-event)
+
+    :htmx/allow-swap
+    nil
+
+    :htmx/cancel-swap
+    (.preventDefault raw-event)))
+#+end_src
+
+Suppose the server commits the Claim and returns a response that causes an
+authoritative Request-card acquisition or settlement envelope. Before any
+protected semantic swap is accepted, the relevant lifecycle observation is
+normalized:
+
+#+begin_src clojure
+(defn on-htmx-before-swap!
+  [adapter raw-event]
+
+  (dispatch-adapter-event!
+    adapter
+    {:event :htmx/before-swap
+
+     :execution-id
+     (correlation/execution-id raw-event)
+
+     :transport-request-id
+     (correlation/transport-request-id raw-event)
+
+     :target-id
+     (correlation/logical-target raw-event)
+
+     :settlement
+     (response/decode-gesso-settlement
+       raw-event)}))
+#+end_src
+
+The adapter can reject a stale response *before* it mutates protected
+presentation:
+
+#+begin_src clojure
+(defn admit-before-swap
+  [state event]
+
+  (let [settlement
+        (:settlement event)]
+
+    (cond
+      (not=
+        (:execution/id state)
+        (:execution-id event))
+      {:result :rejected
+       :diagnosis :stale-execution
+       :effects
+       [[:htmx/cancel-swap
+         {:transport-request-id
+          (:transport-request-id event)}]]}
+
+      (not=
+        (:command/id state)
+        (:command/id settlement))
+      {:result :rejected
+       :diagnosis :wrong-command
+       :effects
+       [[:htmx/cancel-swap
+         {:transport-request-id
+          (:transport-request-id event)}]]}
+
+      (not
+        (settlement/trusted-envelope?
+          settlement))
+      {:result :rejected
+       :diagnosis :malformed-or-untrusted-settlement
+       :effects
+       [[:htmx/cancel-swap
+         {:transport-request-id
+          (:transport-request-id event)}]
+        [:execution/retire
+         {:execution-id
+          (:execution/id state)
+          :reason :invalid-settlement}]]}
+
+      :else
+      {:result :accepted
+       :state
+       (-> state
+           ;; Winning settlement revokes timeout authority first.
+           (assoc-in
+             [:resources :timeout :status]
+             :retired)
+
+           (assoc
+             :machine/state :settling))
+
+       :effects
+       [[:timer/cancel
+         {:resource-instance/id
+          (get-in state
+            [:resources
+             :timeout
+             :resource-instance/id])}]
+
+        [:htmx/allow-swap
+         {:transport-request-id
+          (:transport-request-id event)}]]})))
+#+end_src
+
+After HTMX performs its ordinary supported swap, =htmx:afterSwap= confirms the
+physical lifecycle step:
+
+#+begin_src clojure
+(defn on-htmx-after-swap!
+  [adapter raw-event]
+
+  (dispatch-adapter-event!
+    adapter
+    {:event :htmx/after-swap
+
+     :execution-id
+     (correlation/execution-id raw-event)
+
+     :transport-request-id
+     (correlation/transport-request-id raw-event)
+
+     :target-id
+     (correlation/logical-target raw-event)}))
+#+end_src
+
+The transition core may then advance the execution or record that physical
+realization completed. It is not the listener's job to decide that Claim
+succeeded merely because a DOM mutation occurred.
+
+A failure callback follows the same route:
+
+#+begin_src clojure
+(defn on-htmx-send-error!
+  [adapter raw-event]
+
+  (dispatch-adapter-event!
+    adapter
+    {:event :http/failed
+
+     :execution-id
+     (correlation/execution-id raw-event)
+
+     :transport-request-id
+     (correlation/transport-request-id raw-event)
+
+     :error
+     (browser/raw-request-error raw-event)}))
+#+end_src
+
+If authoritative disposition is unknown, the semantic transition may retire the
+local transport and enter reconciliation:
+
+#+begin_src clojure
+(defn handle-http-failed
+  [state event]
+
+  (if
+    (and
+      (= (:execution/id state)
+         (:execution-id event))
+      (=
+        (get-in state
+          [:resources :transport :transport-request/id])
+        (:transport-request-id event)))
+
+    {:result :accepted
+
+     :state
+     (-> state
+         (assoc-in
+           [:resources :transport :status]
+           :retired)
+
+         (assoc
+           :machine/state
+           :outcome-unknown
+
+           :command-knowledge
+           {:command/id (:command/id state)
+            :disposition :unknown}))
+
+     :effects
+     [[:recovery/request-authoritative-acquisition
+       {:projection :request/card
+        :request/id R}]]}
+
+    {:result :rejected
+     :diagnosis :stale-or-unknown-request
+     :state state
+     :effects []}))
+#+end_src
+
+The example is intentionally mundane. Its point is that HTMX is still doing
+HTMX work: starting the request, receiving the response, parsing it, and
+performing the supported swap. Gesso contributes narrow semantic gates and
+correlation around lifecycle points where protected state could otherwise be
+mutated by stale or incompatible work.
+
+Nothing in the listener layer decides Request policy, current authorization,
+command disposition, or which execution "probably" owns a response. Those
+decisions remain in the semantic adapter and trusted server/model boundaries.
+
 *** HTMX integration contract
 
 HTMX is a trusted external runtime, not a Gesso effect implementation.
@@ -239,6 +598,151 @@ the admitted serialized step or validate its still-current permit/ownership at
 the last required boundary before mutation. A delayed effect queued while E1
 was current cannot install obsolete DOM after E1 retires merely because its
 later completion callback would be rejected.
+
+
+The difference between rejecting a late callback and preventing a late *effect*
+is subtle enough to deserve its own example.
+
+Suppose E1 receives a valid settlement and AdapterStep emits an abstract effect
+to install authoritative Request content:
+
+#+begin_src clojure
+(def emitted-effect
+  [:dom/install-authoritative
+   {:permit
+    {:permit/id P1
+     :owner [:execution E1]
+     :resource-instance/id I1}
+
+    :target [:request-card R]
+
+    :observation
+    {:provenance :authoritative
+     :basis :X60
+     :request
+     {:request/id R
+      :request/status :claimed
+      :request/helper-id Alice}}}])
+#+end_src
+
+The imperative shell queues the physical DOM work, but before the queue runs,
+E1 is retired and E2 becomes the current owner of the same logical target:
+
+#+begin_src clojure
+(def adapter-state
+  {:owners
+   {[:request-card R]
+    {:owner [:execution E2]
+     :resource-instance/id I2}}
+
+   :permits
+   {P1
+    {:owner [:execution E1]
+     :resource-instance/id I1
+     :status :revoked}}})
+#+end_src
+
+It is not enough for the eventual *completion callback* of E1's DOM work to be
+rejected. The mutation itself must not happen after its permit expired.
+
+A narrow physical boundary check can validate a permit that was created by the
+semantic adapter:
+
+#+begin_src clojure
+(defn permit-current?
+  [adapter-state permit target]
+
+  (let [permit-state
+        (get-in adapter-state
+          [:permits (:permit/id permit)])
+
+        current-owner
+        (get-in adapter-state
+          [:owners target])]
+
+    (and
+      (= :active
+         (:status permit-state))
+
+      (= (:owner permit-state)
+         (:owner permit))
+
+      (=
+        (:resource-instance/id permit-state)
+        (:resource-instance/id permit))
+
+      (= current-owner
+         {:owner (:owner permit)
+          :resource-instance/id
+          (:resource-instance/id permit)}))))
+#+end_src
+
+The effect shell may then refuse the delayed mutation:
+
+#+begin_src clojure
+(defn perform-authoritative-install!
+  [browser adapter-state
+   [_ {:keys [permit target observation]}]]
+
+  (if
+    (permit-current?
+      adapter-state
+      permit
+      target)
+
+    (do
+      (dom/replace-target!
+        browser
+        target
+        (views/render observation))
+
+      {:physical/status :installed})
+
+    {:physical/status :suppressed
+     :reason :expired-semantic-permit}))
+#+end_src
+
+Crucially, the shell did not decide *which execution should own the target*.
+That decision was already present in adapter state and in permit P1. The shell
+only checked whether the adapter-issued permit remained applicable at the last
+boundary before physical mutation.
+
+If a browser primitive cannot provide a usable check before a protected
+mutation, then that primitive cannot support the corresponding Gesso invariant
+without a different realization strategy.
+
+This closes a race that callback-only designs miss:
+
+#+begin_example
+semantic event admitted for E1
+    |
+abstract DOM effect queued
+    |
+E1 retires / E2 takes target
+    |
+old queued DOM mutation runs
+    |
+completion callback rejected
+
+too late -- protected DOM was already corrupted
+#+end_example
+
+The required ordering is instead:
+
+#+begin_example
+semantic event admitted for E1
+    |
+effect receives adapter-issued permit P1
+    |
+E1 retires -> P1 revoked
+    |
+physical mutation reaches last protected boundary
+    |
+P1 no longer current -> mutation suppressed
+#+end_example
+
+That is the browser-side meaning of "an admission decision must not outlive its
+applicability."
 
 This is a boundary check, not permission for the shell to independently decide
 ownership. The adapter owns the permit and its validity rule. Physical handles
@@ -522,6 +1026,350 @@ A successor response may independently satisfy an obligation that arrived after
 the request began. In that case a redundant read is unnecessary, but coverage
 must be established from the returned observation rather than assumed from
 completion order.
+
+
+A complete HumanHelp Refresh race makes the coordinator contract easier to
+inspect.
+
+Start with Bob's board at X17 and one advisory O1:
+
+#+begin_src clojure
+(def board-runtime
+  {:owner
+   {:fragment/id :request-board
+    :resource-instance/id
+    #uuid "b1000000-0000-0000-0000-000000000001"}
+
+   :projection
+   {:kind :request/board
+    :organization-id O
+    :coverage :complete-authorized-membership}
+
+   :adopted
+   {:basis :X17
+    :requests [R1 R2]}
+
+   :requirements
+   [{:requirement/id :O1
+     :kind :newer-authority-available
+     :minimum-basis :X18
+     :scope
+     {:kind :request/board
+      :organization-id O
+      :coverage :complete-authorized-membership}
+     :requires :acquire-and-adopt}]
+
+   :active nil
+   :queued nil})
+#+end_src
+
+Bob presses Refresh. The application policy permits an acquisition now:
+
+#+begin_src clojure
+(defn start-refresh
+  [state acquisition-id]
+  (when (:active state)
+    (throw
+      (ex-info
+        "Logical acquisition already active."
+        {:error/type :fragment/acquisition-already-active})))
+
+  (assoc state
+    :active
+    {:acquisition/id acquisition-id
+
+     :resource-instance/id
+     #uuid "b2000000-0000-0000-0000-000000000010"
+
+     :captured-requirements
+     (:requirements state)
+
+     :scope
+     (:projection state)
+
+     :permission
+     {:kind :explicit-refresh
+      :granted? true}}
+
+    :queued nil))
+
+(def A1
+  (start-refresh
+    board-runtime
+    :A1))
+#+end_src
+
+While A1 is in flight, Alice creates another Request and Bob receives advisory
+O2 requiring authority through X20:
+
+#+begin_src clojure
+(def O2
+  {:requirement/id :O2
+   :kind :newer-authority-available
+   :minimum-basis :X20
+   :scope
+   {:kind :request/board
+    :organization-id O
+    :coverage :complete-authorized-membership}
+   :requires :acquire-and-adopt})
+#+end_src
+
+The coordinator must preserve it:
+
+#+begin_src clojure
+(defn on-advisory
+  [state requirement]
+
+  (let [state*
+        (update state
+          :requirements
+          requirement/combine-preserving-scope
+          requirement)]
+
+    ;; This HumanHelp policy does not grant new acquisition permission solely
+    ;; because an advisory arrived.
+    (if
+      (and
+        (:active state*)
+        (get-in state*
+          [:active :permission :granted?]))
+
+      ;; A queued slot may remember that follow-up work could be useful,
+      ;; but it does not claim the active response will cover it.
+      (assoc state*
+        :queued
+        {:reason :requirement-arrived-while-active
+         :requirements
+         (:requirements state*)})
+
+      state*)))
+
+(def A1-plus-O2
+  (on-advisory
+    A1
+    O2))
+#+end_src
+
+Suppose A1 returns a complete authorized board observation at X18:
+
+#+begin_src clojure
+(def A1-response
+  {:event :acquisition/completed
+
+   :owner
+   {:fragment/id :request-board
+    :resource-instance/id
+    #uuid "b1000000-0000-0000-0000-000000000001"}
+
+   :acquisition/id :A1
+
+   :resource-instance/id
+   #uuid "b2000000-0000-0000-0000-000000000010"
+
+   :observation
+   {:provenance :authoritative
+
+    :scope
+    {:kind :request/board
+     :organization-id O
+     :coverage :complete-authorized-membership}
+
+    :basis :X18
+
+    :requests [R1 R2 R3]}})
+#+end_src
+
+Admission checks both the fragment owner and concrete acquisition resource:
+
+#+begin_src clojure
+(defn current-acquisition?
+  [state event]
+  (and
+    (= (:owner state)
+       (:owner event))
+
+    (=
+      (get-in state
+        [:active :acquisition/id])
+      (:acquisition/id event))
+
+    (=
+      (get-in state
+        [:active :resource-instance/id])
+      (:resource-instance/id event))))
+
+(defn admitted-acquisition-response?
+  [state event]
+  (and
+    (current-acquisition?
+      state
+      event)
+
+    (scope/compatible?
+      (get-in state
+        [:active :scope])
+      (get-in event
+        [:observation :scope]))
+
+    (observation/authoritative?
+      (:observation event))))
+#+end_src
+
+Discharge is computed from the actual observation:
+
+#+begin_src clojure
+(defn complete-fragment-acquisition
+  [state event]
+
+  (if-not
+    (admitted-acquisition-response?
+      state
+      event)
+
+    {:result :rejected
+     :state state
+     :diagnosis :stale-or-incompatible-acquisition}
+
+    (let [observation
+          (:observation event)
+
+          [covered outstanding]
+          ((juxt filter remove)
+           #(advisory/satisfied-by?
+              %
+              observation)
+           (:requirements state))]
+
+      {:result :accepted
+
+       :state
+       (-> state
+           (assoc
+             :adopted
+             {:basis (:basis observation)
+              :requests (:requests observation)}
+
+             :requirements
+             (vec outstanding)
+
+             :active nil)
+
+           (assoc
+             :queued
+             (when
+               (seq outstanding)
+               {:reason :outstanding-requirements
+                :requirements
+                (vec outstanding)})))
+
+       :discharged
+       (mapv :requirement/id
+             covered)})))
+#+end_src
+
+For X18, only O1 is discharged:
+
+#+begin_src clojure
+(def after-A1
+  (complete-fragment-acquisition
+    A1-plus-O2
+    A1-response))
+
+(get-in after-A1
+  [:state :adopted :basis])
+;; => :X18
+
+(:discharged after-A1)
+;; => [:O1]
+
+(mapv
+  :requirement/id
+  (get-in after-A1
+    [:state :requirements]))
+;; => [:O2]
+#+end_src
+
+The coordinator can now show the Refresh indicator again or retain whatever
+product-specific "newer Requests available" presentation corresponds to O2.
+What it may *not* do is infer a second automatic read merely because the queue
+slot is nonempty if HumanHelp policy requires a new explicit Refresh.
+
+Now consider the opposite case. Suppose A1's actual authoritative response is
+through X21 because the database acquisition naturally covered O2 as well:
+
+#+begin_src clojure
+(def A1-response-X21
+  (assoc-in A1-response
+    [:observation :basis]
+    :X21))
+
+(def after-A1-X21
+  (complete-fragment-acquisition
+    A1-plus-O2
+    A1-response-X21))
+
+(get-in after-A1-X21
+  [:state :requirements])
+;; => []
+
+(:discharged after-A1-X21)
+;; => [:O1 :O2]
+#+end_src
+
+No redundant successor read is needed. The newer requirement was not considered
+covered merely because it arrived before completion; it was covered because the
+actual returned observation satisfied it.
+
+The physical-request race remains separate. Suppose A1 is logically retired and
+A2 begins, but the browser cannot successfully abort A1's underlying fetch:
+
+#+begin_src clojure
+(def A2-state
+  (-> (get after-A1 :state)
+      (assoc
+        :active
+        {:acquisition/id :A2
+         :resource-instance/id
+         #uuid "b2000000-0000-0000-0000-000000000011"
+         :scope
+         {:kind :request/board
+          :organization-id O
+          :coverage :complete-authorized-membership}
+         :permission
+         {:kind :explicit-refresh
+          :granted? true}})))
+
+(def late-A1
+  (assoc A1-response
+    :observation
+    (assoc (:observation A1-response)
+      :basis :X22)))
+#+end_src
+
+The late response is still stale because ownership changed:
+
+#+begin_src clojure
+(current-acquisition?
+  A2-state
+  late-A1)
+;; => false
+
+(complete-fragment-acquisition
+  A2-state
+  late-A1)
+;; =>
+{:result :rejected
+ :diagnosis :stale-or-incompatible-acquisition
+ :state A2-state}
+#+end_src
+
+A later database basis does not restore the retired physical request's
+installation rights.
+
+This is exactly why the coordinator's claimed bound is about *logical*
+acquisitions. The browser may temporarily contain physical remnants of A1 and
+A2 simultaneously, but only the current admitted acquisition can install into
+the managed fragment.
 
 **** Mechanical checking and concrete correspondence
 
@@ -1047,6 +1895,283 @@ Specific cross-version migrations may be defined for high-value cases only when 
 
 The safe baseline is authoritative reacquisition.
 
+
+A sleeping checkout tab gives the recovery sequence enough detail to see why
+arbitrary machine migration is unnecessary.
+
+Suppose the browser suspended while command C77 was outcome-unknown under plan
+P7:
+
+#+begin_src clojure
+(def sleeping-runtime
+  {:plan
+   {:plan/id :checkout/place-order-P7
+    :representation/version 2
+    :compatibility/id :store-live-v7
+    :assembly/generation :A12}
+
+   :execution
+   {:execution/id
+    #uuid "c1000000-0000-0000-0000-000000000007"
+
+    :command/id
+    #uuid "c7700000-0000-0000-0000-000000000077"
+
+    :state :outcome-unknown
+
+    :resources
+    {:retry-timer
+     {:resource-instance/id
+      #uuid "c2000000-0000-0000-0000-000000000031"
+      :status :active}}
+
+    :projection
+    {:authority :provisional
+     :order/status :submitting}}})
+#+end_src
+
+While the tab sleeps, deployment A13 introduces P8. The plan bytes may still be
+parseable, but the continuation contract is incompatible:
+
+#+begin_src clojure
+(def current-server-contract
+  {:assembly/generation :A13
+
+   :supported
+   {:plan-representation #{3}
+    :compatibility #{:store-live-v8}
+    :wire-protocol #{:gesso-wire-v8}}
+
+   :operations
+   {:checkout/place-order
+    {:semantic/version 5}}})
+#+end_src
+
+The wake path asks a semantic compatibility predicate, not merely the EDN parser:
+
+#+begin_src clojure
+(defn compatible-continuation?
+  [runtime server]
+
+  (and
+    (contains?
+      (get-in server
+        [:supported :plan-representation])
+      (get-in runtime
+        [:plan :representation/version]))
+
+    (contains?
+      (get-in server
+        [:supported :compatibility])
+      (get-in runtime
+        [:plan :compatibility/id]))
+
+    (=
+      (get-in runtime
+        [:operation :semantic/version])
+      (get-in server
+        [:operations
+         :checkout/place-order
+         :semantic/version]))))
+#+end_src
+
+Assume it returns false. Recovery first revokes old semantic ownership:
+
+#+begin_src clojure
+(defn retire-incompatible-execution
+  [runtime]
+
+  (-> runtime
+      (assoc-in
+        [:execution :status]
+        :retired)
+
+      (assoc-in
+        [:execution :retired-reason]
+        :incompatible-plan)
+
+      (update-in
+        [:execution :resources]
+        (fn [resources]
+          (into {}
+            (map
+              (fn [[k resource]]
+                [k
+                 (assoc resource
+                   :status :retired
+                   :callback-rights :revoked)]))
+            resources)))
+
+      (assoc
+        :recovery
+        {:state :needs-current-authority
+         :preserved-command
+         (get-in runtime
+           [:execution :command/id])})))
+#+end_src
+
+Physical timer cancellation happens afterward:
+
+#+begin_src clojure
+(defn cleanup-retired-runtime!
+  [browser runtime]
+
+  (doseq [[_ resource]
+          (get-in runtime
+            [:execution :resources])]
+
+    (try
+      (physical/cancel-resource!
+        browser
+        resource)
+
+      (catch Throwable t
+        (diagnostics/report!
+          {:error/type :cleanup/failed
+           :resource resource
+           :cause t}))))
+
+  runtime)
+#+end_src
+
+If the browser later receives the old retry timer callback, the callback is
+powerless because its resource instance was semantically retired even if
+physical cancellation failed:
+
+#+begin_src clojure
+(def old-timer-event
+  {:event :timer/fired
+
+   :execution-id
+   #uuid "c1000000-0000-0000-0000-000000000007"
+
+   :resource-instance
+   #uuid "c2000000-0000-0000-0000-000000000031"})
+
+(admit-async-event
+  retired-runtime
+  old-timer-event)
+;; =>
+{:result :rejected
+ :diagnosis :stale-resource}
+#+end_src
+
+Recovery then re-establishes current authentication and reads authority:
+
+#+begin_src clojure
+(defn recover-checkout!
+  [{:keys [session] :as ctx}
+   retired-runtime]
+
+  (let [principal
+        (auth/current-principal!
+          session)
+
+        command-id
+        (get-in retired-runtime
+          [:recovery :preserved-command])
+
+        command-resolution
+        (order-model/resolve-command
+          ctx
+          {:principal principal
+           :command-id command-id})
+
+        current-cart-or-order
+        (order-model/read-current-recovery-view
+          ctx
+          {:principal principal
+           :command-id command-id})]
+
+    {:principal principal
+
+     :command-resolution
+     command-resolution
+
+     :authoritative-view
+     current-cart-or-order
+
+     :current-plan
+     (artifact/require-current-plan!
+       ctx
+       :checkout/place-order)}))
+#+end_src
+
+There are several legitimate outcomes.
+
+If durable command evidence establishes that C77 committed:
+
+#+begin_src clojure
+{:command-resolution
+ {:command/id C77
+  :disposition :committed
+  :order/id O900}
+
+ :authoritative-view
+ {:order/id O900
+  :order/status :placed}
+
+ :current-plan
+ {:plan/id :checkout/place-order-P8
+  :compatibility/id :store-live-v8}}
+#+end_src
+
+the new runtime can instantiate an authoritative settled presentation under P8.
+
+If current Order state is known but command attribution is not:
+
+#+begin_src clojure
+{:command-resolution
+ {:command/id C77
+  :disposition :unknown}
+
+ :authoritative-view
+ {:order/id O900
+  :order/status :placed}
+
+ :current-plan
+ {:plan/id :checkout/place-order-P8
+  :compatibility/id :store-live-v8}}
+#+end_src
+
+the browser can still render current authoritative Order state while preserving
+the fact that C77's causal disposition is unresolved.
+
+If no current compatible artifact can be loaded:
+
+#+begin_src clojure
+{:recovery/state :unavailable
+ :reason :current-plan-unavailable
+ :retry
+ {:policy :explicit-backoff
+  :after-ms 5000}}
+#+end_src
+
+the runtime must not fall back to P7 merely because it still has the bytes.
+
+The example also exposes the principal-change boundary. If the tab slept as
+Alice and wakes after Bob has authenticated in the same browser profile, P7's
+old protected observations and subscriptions do not become Bob's:
+
+#+begin_src clojure
+(when-not
+  (=
+    (:principal sleeping-runtime)
+    (auth/current-principal session))
+
+  (recovery/retire-protected-scopes!
+    sleeping-runtime
+    {:reason :principal-changed}))
+#+end_src
+
+The new principal acquires a new authorized projection through the normal trusted
+read path.
+
+The safe recovery goal is therefore intentionally modest: recover current
+authority under a current compatible plan. Preserving arbitrary suspended local
+machine detail is optional future functionality, not a prerequisite for robust
+deployment recovery.
+
 *** Same command may survive when execution cannot
 
 A semantic command and its current projected execution have different identity.
@@ -1411,6 +2536,269 @@ An old settlement may inform a current command-resolution process only through
 its separately admitted command-evidence path; it does not resume the retired
 execution whose private callback was rejected.
 
+
+Three callbacks arriving at the same browser can demonstrate why owner class
+must be resolved before event admission.
+
+Assume execution E1 has been retired and replaced by E2:
+
+#+begin_src clojure
+(def browser-state
+  {:executions
+   {E1
+    {:status :retired
+     :command/id C42
+     :resources
+     {:timeout
+      {:resource-instance/id I1
+       :status :retired}}}
+
+    E2
+    {:status :active
+     :command/id C77
+     :resources
+     {:transport
+      {:resource-instance/id I2
+       :status :active}}}}
+
+   :shared
+   {:board-subscription
+    {:subscription/id S2
+     :status :active
+     :scope
+     {:organization-id O
+      :projection :request/board}}}
+
+   :command-resolution
+   {C42
+    {:status :awaiting-evidence}}})
+#+end_src
+
+First, E1's timeout fires late:
+
+#+begin_src clojure
+(def late-timeout
+  {:event/class :execution-private
+
+   :event :timer/fired
+
+   :owner
+   [:execution E1]
+
+   :resource-instance/id I1
+
+   :timer/id :claim-settlement})
+#+end_src
+
+The event is stale because its declared owner and resource are retired:
+
+#+begin_src clojure
+(admit-event
+  browser-state
+  late-timeout)
+;; =>
+{:result :rejected
+ :diagnosis :stale
+ :owner [:execution E1]
+ :resource-instance/id I1}
+#+end_src
+
+The adapter may log that result, but it cannot reinterpret the callback as
+belonging to E2 merely because both executions touched the same Request card.
+
+Second, the current shared board subscription delivers an advisory while no
+command execution is relevant:
+
+#+begin_src clojure
+(def board-advisory
+  {:event/class :shared
+
+   :event :live/invalidated
+
+   :owner
+   [:subscription S2]
+
+   :scope
+   {:organization-id O
+    :projection :request/board}
+
+   :requirement
+   {:kind :newer-authority-available
+    :minimum-basis :X90}})
+#+end_src
+
+That event can be admitted through the subscription owner:
+
+#+begin_src clojure
+(defn admit-shared-subscription-event
+  [state event]
+
+  (let [[_ subscription-id]
+        (:owner event)
+
+        current
+        (get-in state
+          [:shared :board-subscription])]
+
+    (cond
+      (not=
+        (:subscription/id current)
+        subscription-id)
+      {:result :rejected
+       :diagnosis :stale-subscription}
+
+      (not=
+        :active
+        (:status current))
+      {:result :rejected
+       :diagnosis :retired-shared-owner}
+
+      (not
+        (scope/compatible?
+          (:scope current)
+          (:scope event)))
+      {:result :rejected
+       :diagnosis :wrong-shared-scope}
+
+      :else
+      {:result :accepted
+       :effects
+       [[:fragment/record-advisory
+         {:requirement
+          (:requirement event)}]]})))
+
+(admit-shared-subscription-event
+  browser-state
+  board-advisory)
+;; => accepted
+#+end_src
+
+No fake execution ID is needed.
+
+Third, suppose a trusted settlement response for old command C42 arrives after E1
+retired. It contains useful command-specific evidence:
+
+#+begin_src clojure
+(def late-command-evidence
+  {:event/class :command-evidence
+
+   :event :command/result-observed
+
+   :command/id C42
+
+   :evidence
+   {:source :trusted-settlement
+    :disposition :committed
+    :request
+    {:request/id R
+     :request/status :claimed
+     :request/helper-id Alice}}})
+#+end_src
+
+It must *not* be admitted as E1's private continuation:
+
+#+begin_src clojure
+(admit-execution-private-event
+  browser-state
+  (assoc late-command-evidence
+    :owner [:execution E1]))
+;; => rejected :stale
+#+end_src
+
+But the separately declared command-resolution owner may consume it:
+
+#+begin_src clojure
+(defn admit-command-evidence
+  [state event]
+
+  (let [command-id
+        (:command/id event)
+
+        resolver
+        (get-in state
+          [:command-resolution command-id])]
+
+    (cond
+      (nil? resolver)
+      {:result :rejected
+       :diagnosis :unknown-command-resolution-owner}
+
+      (not
+        (command-evidence/trusted?
+          (:evidence event)))
+      {:result :rejected
+       :diagnosis :untrusted-command-evidence}
+
+      :else
+      {:result :accepted
+
+       :state
+       (assoc-in state
+         [:command-resolution command-id]
+         {:status :resolved
+          :evidence (:evidence event)})
+
+       :effects
+       [[:recovery/reconcile-current-presentation
+         {:command-id command-id
+          :evidence (:evidence event)}]]})))
+
+(admit-command-evidence
+  browser-state
+  late-command-evidence)
+;; => accepted
+#+end_src
+
+Useful information survived retirement. E1's transition rights did not.
+
+The common conceptual gate can therefore begin with classification:
+
+#+begin_src clojure
+(defn admit-event
+  [state event]
+
+  (case (:event/class event)
+
+    :execution-private
+    (admit-execution-private-event
+      state
+      event)
+
+    :shared
+    (admit-shared-subscription-event
+      state
+      event)
+
+    :command-evidence
+    (admit-command-evidence
+      state
+      event)
+
+    {:result :rejected
+     :diagnosis :unknown-event-class}))
+#+end_src
+
+This is more precise than a generic =current-generation?= check. The same
+physical target can host execution-private work, fragment-level coordination,
+and command-resolution evidence with different semantic owners and different
+admission rules.
+
+It also prevents a dangerous fallback:
+
+#+begin_src clojure
+;; Forbidden:
+(or
+  (admit-execution-private-event state event)
+  ;; "maybe it was shared?"
+  (admit-shared-subscription-event
+    state
+    (assoc event
+      :event/class :shared)))
+#+end_src
+
+A rejected private callback does not earn a second chance by relabeling itself.
+The event class and owner are part of the declared integration contract.
+
 *** Unknown, stale, duplicate, and incompatible are distinct diagnoses
 
 All may result in "do not resume the machine," but they describe different
@@ -1622,6 +3010,245 @@ or ownership supersession has since been established. It must not admit unrelate
 remote membership merely because a filter changed.
 
 This keeps filtering/view semantics separate from entity existence semantics.
+
+
+A HumanHelp board can exercise all four states -- present, authoritatively
+absent, not yet acquired, and failed acquisition -- with the same Request ID.
+
+Assume Bob currently displays Request R17 because his adopted authoritative board
+contained it:
+
+#+begin_src clojure
+(def bob-board
+  {:projection
+   {:kind :request/board
+    :organization-id O
+    :filter :open-for-helper
+    :coverage :complete-authorized-membership}
+
+   :adopted
+   {:basis :X100
+
+    :members
+    {R17
+     {:status :present
+      :value
+      {:request/id R17
+       :request/status :open
+       :request/title "Move a cabinet"}
+      :provenance :authoritative}}}})
+#+end_src
+
+Alice later completes R17. A complete authorized reacquisition of the *same
+projection* may return an explicit absence result:
+
+#+begin_src clojure
+(def board-result-X105
+  {:provenance :authoritative
+
+   :basis :X105
+
+   :scope
+   {:kind :request/board
+    :organization-id O
+    :filter :open-for-helper
+    :coverage :complete-authorized-membership}
+
+   :members
+   {R17
+    {:status :absent
+     :reason :does-not-match-projection}
+
+    R22
+    {:status :present
+     :value
+     {:request/id R22
+      :request/status :open
+      :request/title "Need help installing shelves"}}}})
+#+end_src
+
+That gives the adapter authority to remove R17 from the *open-for-helper board*:
+
+#+begin_src clojure
+(defn install-member-outcome
+  [board request-id outcome observation]
+
+  (case (:status outcome)
+
+    :present
+    (assoc-in board
+      [:adopted :members request-id]
+      {:status :present
+       :value (:value outcome)
+       :provenance :authoritative
+       :basis (:basis observation)})
+
+    :absent
+    (assoc-in board
+      [:adopted :members request-id]
+      {:status :absent
+       :reason (:reason outcome)
+       :provenance :authoritative
+       :basis (:basis observation)
+       :scope (:scope observation)})
+
+    (throw
+      (ex-info
+        "Unsupported projection-member outcome."
+        {:outcome outcome}))))
+
+(def after-X105
+  (install-member-outcome
+    bob-board
+    R17
+    (get-in board-result-X105
+      [:members R17])
+    board-result-X105))
+#+end_src
+
+The DOM effect can then remove the card:
+
+#+begin_src clojure
+[[:dom/remove-authoritative-member
+  {:target [:request-card R17]
+   :reason :authoritative-projection-absence
+   :basis :X105
+   :scope
+   {:kind :request/board
+    :organization-id O
+    :filter :open-for-helper}}]]
+#+end_src
+
+This does *not* prove that Request R17 ceased to exist. Bob may still be allowed
+to open a different "completed Requests" projection where R17 is present:
+
+#+begin_src clojure
+(def completed-board-result
+  {:provenance :authoritative
+
+   :basis :X105
+
+   :scope
+   {:kind :request/board
+    :organization-id O
+    :filter :completed-by-helper
+    :coverage :complete-authorized-membership}
+
+   :members
+   {R17
+    {:status :present
+     :value
+     {:request/id R17
+      :request/status :completed
+      :request/title "Move a cabinet"}}}})
+#+end_src
+
+The two observations are compatible because their scopes differ.
+
+Now contrast authoritative absence with "not yet acquired." A freshly mounted
+details panel might start as:
+
+#+begin_src clojure
+{:projection
+ {:kind :request/details
+  :request/id R17}
+
+ :acquisition
+ {:status :not-started}
+
+ :content
+ {:status :not-yet-acquired}}
+#+end_src
+
+An empty DOM container at this point conveys no negative domain fact.
+
+Contrast both with a failed read:
+
+#+begin_src clojure
+{:projection
+ {:kind :request/details
+  :request/id R17}
+
+ :acquisition
+ {:status :failed
+  :error :network-unreachable}
+
+ :content
+ {:status :unknown}}
+#+end_src
+
+The network error does not authorize removal or a "Request does not exist"
+message.
+
+A server may also return an authorization failure:
+
+#+begin_src clojure
+{:projection
+ {:kind :request/details
+  :request/id R17}
+
+ :acquisition
+ {:status :rejected
+  :reason :not-authorized}
+
+ :content
+ {:status :not-disclosed}}
+#+end_src
+
+That is still not authoritative absence of R17. It establishes that this
+principal may not acquire that protected projection under the current policy.
+
+Finally, suppose an optimistic local workflow had provisionally inserted R30
+into the open board but the authoritative complete board says R30 is absent from
+that projection:
+
+#+begin_src clojure
+(def provisional-R30
+  {:request/id R30
+   :authority :provisional
+   :command/id C99
+   :request/status :creating})
+
+(def authoritative-R30-absence
+  {:status :absent
+   :provenance :authoritative
+   :basis :X110
+   :scope
+   {:kind :request/board
+    :organization-id O
+    :filter :open-for-helper
+    :coverage :complete-authorized-membership}})
+#+end_src
+
+Installing that absence retires the obsolete provisional presence for the
+covered projection:
+
+#+begin_src clojure
+(defn install-authoritative-absence
+  [runtime request-id absence]
+
+  (-> runtime
+      (assoc-in
+        [:members request-id]
+        absence)
+
+      (update
+        :provisional
+        dissoc
+        request-id)
+
+      (update
+        :resources
+        retire-resources-owned-by
+        [:provisional-request request-id])))
+#+end_src
+
+A late callback from C99 cannot reinsert the card merely because its DOM node or
+snapshot still exists.
+
+This example is why an absence outcome needs provenance, scope, and acquisition
+completeness just as a present value does. "Nothing is here" is only a semantic
+fact when an authoritative projection actually established that negative result.
 
 ** Failure, liveness, and convergence
 

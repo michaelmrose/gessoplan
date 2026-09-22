@@ -422,6 +422,261 @@ operation declaration
 Where two independent physical choices really do exist, they remain separate
 and the assembly checks their correspondence.
 
+
+A HumanHelp Claim realization can make the intended authoring direction concrete.
+The application should not begin by hand-writing one enormous assembly map. Each
+source owner exports the facts it genuinely owns.
+
+The Request choreography namespace owns semantic operation identity and projected
+requirements:
+
+#+begin_src clojure
+(ns net.humanhelp.site.model.request.choreo)
+
+(def claim
+  {:operation/id :request/claim
+
+   :roles
+   {:helper
+    {:principal :user
+     :actor :client}
+
+    :request-authority
+    {:authority :request}}
+
+   :input
+   [:map
+    [:request/id uuid?]]
+
+   :browser
+   {:role :helper
+    :plan :plan/request-claim
+    :provisional :request/claiming}
+
+   :server
+   {:required-capabilities
+    #{:authenticated-principal
+      :transaction
+      :clock
+      :authoritative-request-read}}
+
+   :effect
+   {:authority :request-authority
+    :model-operation :request/claim}
+
+   :settlement
+   {:accepted
+    {:reacquire :request/card}
+
+    :rejected
+    {:reacquire :request/card}
+
+    :unknown
+    {:recover :request/reconcile-claim}}})
+#+end_src
+
+The component owns the fact that one rendered affordance invokes the operation:
+
+#+begin_src clojure
+(ns net.humanhelp.example.components.request-card)
+
+(defn declaration []
+  {:view/id :request/card
+
+   :semantic-affordances
+   {:claim
+    {:operation :request/claim
+     :args
+     [:map
+      [:request/id uuid?]]}}})
+#+end_src
+
+The route namespace owns physical dispatch:
+
+#+begin_src clojure
+(ns net.humanhelp.example.routes)
+
+(def routes
+  [{:route/id :route/request-claim
+
+    :method :post
+
+    :template
+    "/app/requests/:request-id/claim"
+
+    :semantic-operation
+    :request/claim
+
+    :trusted-server-capability
+    :server/request-claim}])
+#+end_src
+
+The trusted server integration owns the implementation capability it provides:
+
+#+begin_src clojure
+(ns net.humanhelp.example.server.request)
+
+(def operations
+  {:server/request-claim
+   {:semantic-operation :request/claim
+
+    :handler #'claim-handler
+
+    :model-operation :request/claim
+
+    :supplies
+    #{:authenticated-principal
+      :transaction
+      :clock
+      :authoritative-request-read}}})
+#+end_src
+
+The Live/acquisition integration owns the authoritative projection that closes
+the return path:
+
+#+begin_src clojure
+(ns net.humanhelp.example.live.request)
+
+(def projections
+  {:request/card
+   {:projection/id :request/card
+
+    :authority :request
+
+    :scope
+    [:map
+     [:request/id uuid?]]
+
+    :initial-acquisition
+    :route/request-card
+
+    :reread
+    :route/request-card
+
+    :progression
+    :xtdb/snapshot}})
+#+end_src
+
+Browser construction owns the supported plan compiler/build entrypoint, not a
+second manually maintained operation registry:
+
+#+begin_src clojure
+(ns net.humanhelp.example.browser)
+
+(def browser
+  {:plans
+   {:source :derive-from-application-assembly}
+
+   :artifact
+   {:output "resources/public/gesso-live.js"
+
+    :builder
+    #'build-current-browser-artifact!}})
+#+end_src
+
+The canonical application constructor composes those exported declarations:
+
+#+begin_src clojure
+(ns net.humanhelp.example.application)
+
+(defn application-assembly
+  [config]
+  (gesso.application/assemble
+    {:application/id :humanhelp/example
+
+     :operations
+     [request.choreo/claim
+      request.choreo/create
+      request.choreo/cancel]
+
+     :views
+     [(request-card/declaration)
+      (request-board/declaration)]
+
+     :routes
+     routes/routes
+
+     :server-operations
+     request.server/operations
+
+     :acquisitions
+     request.live/projections
+
+     :browser
+     browser/browser
+
+     :capability-providers
+     (server/capability-providers
+       config)
+
+     :lifecycle
+     (application/lifecycle-declarations
+       config)}))
+#+end_src
+
+No source owner is recopied into a test-only registry. Tests call the same
+constructor with fixture configuration:
+
+#+begin_src clojure
+(def test-assembly
+  (application-assembly
+    {:environment :test
+     :db test-db
+     :clock fixed-clock
+     :artifact-path test-artifact-path}))
+#+end_src
+
+The constructor can normalize those declarations into a graph:
+
+#+begin_src clojure
+(def normalized
+  (gesso.application/normalize
+    (application-assembly config)))
+
+(select-keys normalized
+  [:application/id
+   :semantic-identity
+   :operations
+   :plans
+   :routes
+   :server-operations
+   :acquisitions
+   :capability-providers])
+#+end_src
+
+The exact public API is provisional. The design pressure is not: semantic facts
+are authored at their real owners, the assembly derives what can be derived, and
+independent physical choices remain visible as edges that must correspond.
+
+A structurally dangerous alternative would duplicate the same Claim identity in
+several unrelated maps:
+
+#+begin_src clojure
+;; Avoid: six independently authored statements about one semantic intent.
+
+(def view-config
+  {:claim-op "claim"})
+
+(def browser-config
+  {:claim-plan "request-claim-plan-v14"})
+
+(def route-config
+  {:claim-route "/requests/:id/claim"})
+
+(def server-config
+  {:claim-handler "claim-handler"})
+
+(def model-config
+  {:claim-op "request/claim"})
+
+(def test-config
+  {:expected-op "request-claim"})
+#+end_src
+
+All six strings can look reasonable while disagreeing. The assembly model exists
+to make that class of application defect mechanically visible rather than a
+cross-namespace archaeology exercise.
+
 *** Assembly construction is closed-world for declared registries
 
 Where the application claims a registry is closed, unknown members are errors.
@@ -539,6 +794,360 @@ An ordinary authoritative read may have no optimistic provisional projection.
 
 The assembly representation should express operation-specific requirements
 rather than inventing fake nodes solely to satisfy one universal pipeline.
+
+
+Following one Claim affordance all the way through the graph makes the closure
+boundary much less abstract.
+
+A normalized operation realization could look approximately like:
+
+#+begin_src clojure
+(def claim-realization
+  {:operation :request/claim
+
+   :nodes
+   {:affordance
+    {:node/id :view/request-card.claim
+     :kind :rendered-affordance
+     :source
+     {:ns 'net.humanhelp.example.components.request-card
+      :component :request-card
+      :slot :claim}}
+
+    :operation
+    {:node/id :op/request-claim
+     :kind :semantic-operation
+     :identity :request/claim}
+
+    :trajectory
+    {:node/id :choreo/request-claim.helper
+     :kind :choreography-trajectory
+     :role :helper}
+
+    :plan
+    {:node/id :plan/request-claim
+     :kind :browser-executable-plan
+     :identity :plan/request-claim}
+
+    :artifact
+    {:node/id :artifact/gesso-live
+     :kind :browser-artifact
+     :exact-identity
+     "sha256:artifact-A12"}
+
+    :transport
+    {:node/id :transport/request-claim
+     :kind :http-transport
+     :method :post
+     :route-template
+     "/app/requests/:request-id/claim"}
+
+    :route
+    {:node/id :route/request-claim
+     :kind :trusted-route
+     :method :post
+     :route-template
+     "/app/requests/:request-id/claim"}
+
+    :server
+    {:node/id :server/request-claim
+     :kind :trusted-server-operation
+     :identity :server/request-claim}
+
+    :model
+    {:node/id :model/request-claim
+     :kind :authoritative-model-operation
+     :identity :request/claim}
+
+    :settlement
+    {:node/id :settlement/request-claim
+     :kind :typed-settlement
+     :outcomes
+     #{:accepted :rejected :unknown}}
+
+    :acquisition
+    {:node/id :acquire/request-card
+     :kind :authoritative-acquisition
+     :projection :request/card}
+
+    :render
+    {:node/id :render/request-card
+     :kind :renderable-authoritative-projection
+     :projection :request/card}}})
+#+end_src
+
+The edges are the actual obligations:
+
+#+begin_src clojure
+(def claim-edges
+  [{:edge/id :claim/affordance->operation
+    :kind :affordance-realizes-operation
+    :from :view/request-card.claim
+    :to :op/request-claim}
+
+   {:edge/id :claim/operation->trajectory
+    :kind :operation-admitted-by-choreography
+    :from :op/request-claim
+    :to :choreo/request-claim.helper}
+
+   {:edge/id :claim/trajectory->plan
+    :kind :projection-correspondence
+    :from :choreo/request-claim.helper
+    :to :plan/request-claim}
+
+   {:edge/id :claim/plan->artifact
+    :kind :artifact-contains-exact-plan
+    :from :plan/request-claim
+    :to :artifact/gesso-live}
+
+   {:edge/id :claim/plan->transport
+    :kind :plan-emits-transport
+    :from :plan/request-claim
+    :to :transport/request-claim}
+
+   {:edge/id :claim/transport->route
+    :kind :physical-dispatch-correspondence
+    :from :transport/request-claim
+    :to :route/request-claim}
+
+   {:edge/id :claim/route->server
+    :kind :trusted-dispatch
+    :from :route/request-claim
+    :to :server/request-claim}
+
+   {:edge/id :claim/server->model
+    :kind :delegates-to-model-operation
+    :from :server/request-claim
+    :to :model/request-claim}
+
+   {:edge/id :claim/model->settlement
+    :kind :typed-outcome-correspondence
+    :from :model/request-claim
+    :to :settlement/request-claim}
+
+   {:edge/id :claim/settlement->acquisition
+    :kind :permits-authoritative-reacquisition
+    :from :settlement/request-claim
+    :to :acquire/request-card}
+
+   {:edge/id :claim/acquisition->render
+    :kind :projection-renderable
+    :from :acquire/request-card
+    :to :render/request-card}])
+#+end_src
+
+A checker can retain evidence for each edge rather than return one boolean:
+
+#+begin_src clojure
+(def checked-claim
+  (mapv
+    (fn [edge]
+      (application/check-edge
+        normalized-assembly
+        edge))
+    claim-edges))
+
+(first checked-claim)
+;; =>
+{:edge/id :claim/affordance->operation
+ :kind :affordance-realizes-operation
+
+ :from
+ {:node/id :view/request-card.claim
+  :source
+  {:ns 'net.humanhelp.example.components.request-card
+   :component :request-card
+   :slot :claim}}
+
+ :to
+ {:node/id :op/request-claim
+  :identity :request/claim}
+
+ :evidence
+ {:class :assembly-verified
+  :checker :gesso.application/affordance-operation-edge
+  :inputs
+  {:declared-operation :request/claim
+   :known-operations #{...}}}
+
+ :status :accepted}
+#+end_src
+
+Another edge may depend on exact artifact correspondence:
+
+#+begin_src clojure
+{:edge/id :claim/plan->artifact
+ :kind :artifact-contains-exact-plan
+
+ :from
+ {:plan/id :plan/request-claim
+  :manifest/id :browser-manifest-M17}
+
+ :to
+ {:artifact/id :artifact/gesso-live
+  :receipt/id :artifact-receipt-R17
+  :artifact-digest "sha256:artifact-A12"}
+
+ :evidence
+ {:class :assembly-verified
+  :relation
+  :manifest-artifact-exact-currentness}
+
+ :status :accepted}
+#+end_src
+
+And the route-to-server edge may explicitly retain what is *not* proven:
+
+#+begin_src clojure
+{:edge/id :claim/route->server
+ :kind :trusted-dispatch
+
+ :from
+ {:route/id :route/request-claim}
+
+ :to
+ {:server-operation :server/request-claim}
+
+ :evidence
+ {:class :assembly-verified
+  :relation :router-dispatch-binding}
+
+ :remaining-premises
+ [{:class :trusted
+   :proposition
+   :router-obeys-declared-dispatch}
+
+  {:class :tested
+   :proposition
+   :handler-body-corresponds-to-declared-server-operation}]
+
+ :status :accepted}
+#+end_src
+
+That last report deliberately does not promote structural binding into a theorem
+about arbitrary handler code.
+
+Now break one edge at a time.
+
+If the generated artifact omits the plan:
+
+#+begin_src clojure
+(def broken-artifact
+  (assoc-in normalized-assembly
+    [:browser :artifact :contained-plans]
+    #{:plan/request-create
+      :plan/request-refresh}))
+
+(application/check-operation
+  broken-artifact
+  :request/claim)
+;; =>
+{:status :rejected
+ :error/kind :missing-browser-plan
+ :failed-edge :claim/plan->artifact
+ :operation :request/claim
+ :required :plan/request-claim
+ :available
+ #{:plan/request-create
+   :plan/request-refresh}}
+#+end_src
+
+If the route points to Cancel instead of Claim:
+
+#+begin_src clojure
+(def wrong-route
+  (assoc-in normalized-assembly
+    [:routes :route/request-claim
+     :semantic-operation]
+    :request/cancel))
+
+(application/check-operation
+  wrong-route
+  :request/claim)
+;; =>
+{:status :rejected
+ :error/kind :server-operation-mismatch
+ :failed-edge :claim/transport->route
+ :expected :request/claim
+ :actual :request/cancel}
+#+end_src
+
+If the trusted execution lacks the required clock:
+
+#+begin_src clojure
+(def no-clock
+  (update-in normalized-assembly
+    [:server-operations
+     :server/request-claim
+     :supplied-capabilities]
+    disj
+    :clock))
+
+(application/check-operation
+  no-clock
+  :request/claim)
+;; =>
+{:status :rejected
+ :error/kind :missing-server-capability
+ :operation :request/claim
+ :required :clock
+ :provider :server/request-claim}
+#+end_src
+
+If mutation can settle but there is no legal Request-card reread:
+
+#+begin_src clojure
+(def no-reacquisition
+  (update normalized-assembly
+    :acquisitions
+    dissoc
+    :request/card))
+
+(application/check-operation
+  no-reacquisition
+  :request/claim)
+;; =>
+{:status :rejected
+ :error/kind :missing-authoritative-reread
+ :failed-edge :claim/settlement->acquisition
+ :projection :request/card}
+#+end_src
+
+These failures all concern the same semantic operation, but they belong to
+different graph edges and therefore different local repairs.
+
+A closed operation report can preserve that structure:
+
+#+begin_src clojure
+{:operation :request/claim
+
+ :status :preflight-closed
+
+ :edges
+ {:accepted 11
+  :rejected 0
+  :open 0}
+
+ :runtime-premises
+ #{:authenticated-principal
+   :current-request
+   :current-membership
+   :current-organization}
+
+ :assurance
+ {:choreography :kernel-checked
+  :application-path :assembly-verified
+  :current-authorization :runtime-enforced
+  :browser-integration :tested}}
+#+end_src
+
+The dynamic premises are not "open edges." Closure says the application has a
+structural place to obtain and enforce them when execution occurs. Whether Alice
+is currently authorized remains a runtime/model question.
+
+This is the practical payoff of making =ApplicationAssembly= a graph rather
+than a pile of checks: the same Claim operation can be inspected end-to-end and
+each contradiction names the relation that actually failed.
 
 Where two realization values have the same ordinary Clojure representation but
 different semantic status, shape alone is not evidence that they are
@@ -1037,6 +1646,263 @@ startup may proceed
 
 A manually remembered side command whose omission merely causes subtle browser
 failure is not an adequate final workflow.
+
+
+A concrete build pipeline shows how manifest identity and exact artifact identity
+can remain acyclic.
+
+Suppose the normalized application assembly requires three browser plans:
+
+#+begin_src clojure
+(def browser-manifest-input
+  {:manifest/version 1
+
+   :application/id :humanhelp/example
+
+   :assembly/semantic-identity
+   "sha256:semantic-assembly-44ae"
+
+   :compiler
+   {:gesso/projector-version 12
+    :cljs-target :browser}
+
+   :required-plans
+   [{:plan/id :plan/request-create
+     :operation :request/create
+     :compatibility :humanhelp-live-v12}
+
+    {:plan/id :plan/request-claim
+     :operation :request/claim
+     :compatibility :humanhelp-live-v12}
+
+    {:plan/id :plan/request-refresh
+     :operation :board/refresh
+     :compatibility :humanhelp-live-v12}]})
+#+end_src
+
+The manifest identity is computed over normalized semantic/build inputs:
+
+#+begin_src clojure
+(def manifest-id
+  (artifact/digest
+    {:algorithm :sha-256
+     :encoding :canonical-edn-v1
+     :value browser-manifest-input}))
+
+(def browser-manifest
+  (assoc browser-manifest-input
+    :manifest/id manifest-id))
+#+end_src
+
+Projection emits the exact executable payloads required by that manifest:
+
+#+begin_src clojure
+(def projected-plans
+  (into {}
+    (map
+      (fn [{:plan/keys [id]}]
+        [id
+         (projector/emit-executable-plan
+           normalized-assembly
+           id)]))
+    (:required-plans browser-manifest)))
+#+end_src
+
+The browser builder then emits JavaScript and computes an exact content identity
+over the actual served bytes:
+
+#+begin_src clojure
+(defn build-browser-artifact!
+  [{:keys [manifest plans output-path]}]
+
+  (let [javascript-bytes
+        (cljs-build/compile-gesso-runtime!
+          {:plans plans
+           :output-path output-path})
+
+        artifact-digest
+        (artifact/digest-bytes
+          {:algorithm :sha-256
+           :bytes javascript-bytes})
+
+        receipt
+        {:receipt/version 1
+
+         :manifest/id
+         (:manifest/id manifest)
+
+         :artifact/path
+         output-path
+
+         :artifact/digest
+         artifact-digest
+
+         :plan-digests
+         (into {}
+           (map
+             (fn [[plan-id plan]]
+               [plan-id
+                (artifact/digest
+                  {:algorithm :sha-256
+                   :encoding :canonical-edn-v1
+                   :value plan})]))
+           plans)}]
+
+    (write-receipt!
+      (str output-path ".receipt.edn")
+      receipt)
+
+    receipt))
+#+end_src
+
+The receipt is detached from the bytes whose digest it records, so there is no
+self-hash cycle.
+
+Startup compares the current manifest, current projected payloads, receipt, and
+served artifact:
+
+#+begin_src clojure
+(defn check-browser-artifact-currentness
+  [{:keys [manifest plans artifact-path receipt]}]
+
+  (let [actual-bytes
+        (read-bytes artifact-path)
+
+        actual-artifact-digest
+        (artifact/digest-bytes
+          {:algorithm :sha-256
+           :bytes actual-bytes})
+
+        expected-plan-digests
+        (into {}
+          (map
+            (fn [[plan-id plan]]
+              [plan-id
+               (artifact/digest
+                 {:algorithm :sha-256
+                  :encoding :canonical-edn-v1
+                  :value plan})]))
+          plans)]
+
+    (cond
+      (not=
+        (:manifest/id manifest)
+        (:manifest/id receipt))
+      {:status :rejected
+       :error/kind :stale-browser-artifact
+       :reason :manifest-mismatch
+       :current-manifest
+       (:manifest/id manifest)
+       :receipt-manifest
+       (:manifest/id receipt)}
+
+      (not=
+        expected-plan-digests
+        (:plan-digests receipt))
+      {:status :rejected
+       :error/kind :artifact-content-mismatch
+       :reason :projected-plan-set-mismatch
+       :expected expected-plan-digests
+       :receipt (:plan-digests receipt)}
+
+      (not=
+        actual-artifact-digest
+        (:artifact/digest receipt))
+      {:status :rejected
+       :error/kind :artifact-content-mismatch
+       :reason :served-bytes-do-not-match-receipt
+       :expected (:artifact/digest receipt)
+       :actual actual-artifact-digest}
+
+      :else
+      {:status :accepted
+       :manifest/id (:manifest/id manifest)
+       :artifact/digest actual-artifact-digest})))
+#+end_src
+
+Now suppose the developer adds =:request/reassign= to the application assembly:
+
+#+begin_src clojure
+(def changed-manifest-input
+  (update browser-manifest-input
+    :required-plans
+    conj
+    {:plan/id :plan/request-reassign
+     :operation :request/reassign
+     :compatibility :humanhelp-live-v12}))
+
+(def changed-manifest-id
+  (artifact/digest
+    {:algorithm :sha-256
+     :encoding :canonical-edn-v1
+     :value changed-manifest-input}))
+#+end_src
+
+The old receipt still names the previous manifest:
+
+#+begin_src clojure
+(check-browser-artifact-currentness
+  {:manifest
+   (assoc changed-manifest-input
+     :manifest/id changed-manifest-id)
+
+   :plans changed-projected-plans
+
+   :artifact-path
+   "resources/public/gesso-live.js"
+
+   :receipt old-receipt})
+;; =>
+{:status :rejected
+ :error/kind :stale-browser-artifact
+ :reason :manifest-mismatch
+ :current-manifest changed-manifest-id
+ :receipt-manifest old-manifest-id}
+#+end_src
+
+The application does not begin serving and hope nobody clicks Reassign.
+
+A supported development command can make the normal path explicit:
+
+#+begin_src clojure
+(defn prepare-application-generation!
+  [config]
+
+  (let [assembly
+        (application-assembly config)
+
+        normalized
+        (gesso.application/normalize assembly)
+
+        manifest
+        (browser/derive-manifest normalized)
+
+        plans
+        (browser/project-required-plans
+          normalized
+          manifest)
+
+        receipt
+        (browser/build-browser-artifact!
+          {:manifest manifest
+           :plans plans
+           :output-path
+           "resources/public/gesso-live.js"})
+
+        preflight
+        (gesso.application/preflight
+          {:assembly normalized
+           :browser-manifest manifest
+           :browser-artifact-receipt receipt})]
+
+    (gesso.application/admit-generation!
+      preflight)))
+#+end_src
+
+This still leaves stale already-running browsers to Part VI's compatibility and
+recovery rules. Exact startup currentness answers a different question: whether
+the artifact the *new generation intends to serve* is exactly the artifact
+constructed from its required plan set.
 
 *** No test-only artifact surrogate
 
@@ -1991,6 +2857,278 @@ Dynamic render checking must run before prohibited output is delivered. It
 does not automatically precede an authoritative model operation performed
 earlier in request handling and cannot roll back a transaction already committed.
 
+
+A Request card can demonstrate why startup closure and concrete render closure
+need the same assembly but occur at different times.
+
+Assume startup has already admitted an assembly containing a valid Reassign
+operation:
+
+#+begin_src clojure
+{:operation/id :request/reassign
+
+ :input
+ [:map
+  [:request/id uuid?]
+  [:helper/id uuid?]]
+
+ :plan :plan/request-reassign
+
+ :route :route/request-reassign
+
+ :server-operation :server/request-reassign}
+#+end_src
+
+Whether a particular Request card can expose Reassign depends on the concrete
+helper target selected by application preparation.
+
+A correct structured render might produce:
+
+#+begin_src clojure
+(def prepared-card
+  {:view/id :request/card
+
+   :request
+   {:request/id R
+    :request/status :claimed
+    :request/helper-id Alice}
+
+   :actions
+   {:reassign
+    {:operation :request/reassign
+
+     :args
+     {:request/id R
+      :helper/id Bob}
+
+     :realization
+     {:plan :plan/request-reassign}}}})
+#+end_src
+
+Before HTML serialization, the response constructor checks the concrete semantic
+surface against the generation that will realize it:
+
+#+begin_src clojure
+(defn semantic-response
+  [ctx structured-view]
+
+  (let [generation
+        (:admitted-assembly-generation ctx)
+
+        checked
+        (gesso.render/check-surface!
+          generation
+          structured-view)]
+
+    (-> checked
+        views/render-hiccup
+        html/serialize
+        ring/html-response)))
+#+end_src
+
+Now introduce the kind of defect that static assembly cannot see: the concrete
+render omits =:helper/id=.
+
+#+begin_src clojure
+(def malformed-card
+  (update-in prepared-card
+    [:actions :reassign :args]
+    dissoc
+    :helper/id))
+
+(gesso.render/check-surface!
+  admitted-generation
+  malformed-card)
+;; =>
+{:error/type :gesso.application/render-error
+ :error/kind :incomplete-operation-arguments
+ :operation :request/reassign
+ :view :request/card
+ :missing #{:helper/id}
+ :available #{:request/id}}
+#+end_src
+
+The invalid enabled control never reaches the browser.
+
+A different defect erases semantic identity while keeping the physical route:
+
+#+begin_src clojure
+(def anonymous-action
+  [:form
+   {:hx-post
+    (str "/app/requests/" R "/reassign")}
+
+   [:input
+    {:type "hidden"
+     :name "helper-id"
+     :value Bob}]
+
+   [:button
+    {:type "submit"}
+    "Reassign"]])
+#+end_src
+
+The effective-action analyzer resolves method/template using the same normalized
+route semantics the application dispatches through:
+
+#+begin_src clojure
+(def effective
+  (gesso.render/effective-action
+    admitted-generation
+    anonymous-action))
+
+effective
+;; =>
+{:method :post
+ :concrete-path
+ (str "/app/requests/" R "/reassign")
+
+ :matched-route
+ :route/request-reassign
+
+ :route-template
+ "/app/requests/:request-id/reassign"
+
+ :assembled-semantic-operation
+ :request/reassign
+
+ :rendered-semantic-operation
+ nil}
+#+end_src
+
+That is rejected as semantic identity erasure:
+
+#+begin_src clojure
+(gesso.render/check-effective-action!
+  admitted-generation
+  effective)
+;; =>
+{:error/type :gesso.application/render-error
+ :error/kind :anonymous-semantic-route
+ :method :post
+ :route-template
+ "/app/requests/:request-id/reassign"
+ :operation :request/reassign
+ :rendered-semantic-operation nil}
+#+end_src
+
+Moving =hx-post= to an ancestor form does not avoid the check because effective
+dispatch, not one attribute location, is what matters.
+
+By contrast, an ordinary search form on an unassembled ordinary route remains
+ordinary HTMX:
+
+#+begin_src clojure
+[:form
+ {:hx-get "/app/request-search"
+  :hx-target "#request-board"}
+
+ [:input
+  {:name "q"
+   :value "cabinet"}]]
+#+end_src
+
+If =GET /app/request-search= is not a semantic-operation route, there is no need
+to invent a Choreo operation just to satisfy the checker.
+
+The post-commit response case is deliberately different. Suppose a valid Claim
+command commits successfully:
+
+#+begin_src clojure
+(def mutation-result
+  {:outcome :committed
+   :command/id C42
+   :request
+   {:request/id R
+    :request/status :claimed
+    :request/helper-id Alice}
+   :basis :X81})
+#+end_src
+
+While building the response, a bug constructs a malformed *different* affordance
+for Cancel:
+
+#+begin_src clojure
+(def malformed-response-view
+  {:view/id :request/card
+
+   :request (:request mutation-result)
+
+   :actions
+   {:cancel
+    {:operation :request/cancel
+     ;; required request/id accidentally missing
+     :args {}}}})
+#+end_src
+
+Render preflight rejects the response:
+
+#+begin_src clojure
+(semantic-response
+  ctx
+  malformed-response-view)
+;; throws before HTML delivery:
+{:error/kind :incomplete-operation-arguments
+ :operation :request/cancel
+ :missing #{:request/id}}
+#+end_src
+
+That exception does not retroactively turn the already committed Claim into a
+rejection.
+
+The request boundary must retain the known mutation result for settlement or
+recovery:
+
+#+begin_src clojure
+(defn handle-claim-request
+  [ctx command]
+
+  (let [result
+        (request/claim
+          ctx
+          command)]
+
+    (try
+      (semantic-response
+        ctx
+        (request-card/prepare
+          ctx
+          (:request result)))
+
+      (catch clojure.lang.ExceptionInfo render-error
+
+        (recovery/respond-after-committed-render-failure
+          ctx
+          {:command command
+           :authoritative-result result
+           :render-error render-error})))))
+#+end_src
+
+A suitable recovery response might carry trusted settlement metadata instructing
+the client to perform authoritative reacquisition rather than claim the mutation
+failed:
+
+#+begin_src clojure
+{:http/status 500
+
+ :gesso/settlement
+ {:command/id C42
+  :authoritative-outcome :committed
+  :presentation-outcome :response-render-failed
+  :recover
+  {:kind :authoritative-reacquisition
+   :projection :request/card
+   :request/id R}}}
+#+end_src
+
+The exact transport is provisional. The semantic distinction is not.
+
+This is why production-path tests need to state whether they are proving
+"malformed output was not delivered" or "protected mutation did not occur."
+Static assembly defects should normally prevent serving entirely. Dynamic
+render defects must prevent prohibited output. Neither boundary is allowed to
+invent a different authoritative history.
+
 Command/protocol admission and model guards must reject invalid invocation
 before the protected action. If a valid mutation commits but constructing its
 response reveals a malformed affordance, rendering fails without reclassifying
@@ -2172,6 +3310,260 @@ preflight mandatory
 server permitted only after success
 #+end_example
 
+
+A native lifecycle composition can make that dependency explicit without asking
+the application author to remember preflight ordering manually.
+
+The exact Biff 2 API remains subject to the selected release contract, but the
+shape should resemble one stable module per lifecycle owner:
+
+#+begin_src clojure
+(def config-module
+  {:biff.core/id
+   :humanhelp/config
+
+   :biff.core/start
+   (fn [ctx]
+     {:config
+      (load-config ctx)})})
+
+(def xtdb-module
+  {:biff.core/id
+   :humanhelp/xtdb
+
+   :biff.core/start
+   (fn [ctx]
+     {:db
+      (start-xtdb!
+        (:config ctx))})
+
+   :biff.core/stop
+   (fn [_ctx {:keys [db]}]
+     (stop-xtdb! db))})
+
+(def gesso-preflight-module
+  {:biff.core/id
+   :gesso/application-preflight
+
+   :biff.core/start
+   (fn [ctx]
+     (let [candidate
+           (prepare-application-generation!
+             ctx)]
+
+       {:admitted-generation
+        candidate}))})
+
+(def live-module
+  {:biff.core/id
+   :humanhelp/gesso-live
+
+   :biff.core/start
+   (fn [ctx]
+     {:live-runtime
+      (gesso.live/start!
+        {:generation
+         (:admitted-generation ctx)
+         :db (:db ctx)})})
+
+   :biff.core/stop
+   (fn [_ctx {:keys [live-runtime]}]
+     (gesso.live/stop!
+       live-runtime))})
+
+(def web-module
+  {:biff.core/id
+   :humanhelp/web
+
+   :biff.core/start
+   (fn [ctx]
+     (let [generation
+           (:admitted-generation ctx)
+
+           handler
+           (gesso.application/checked-handler
+             generation
+             (routes/application-handler
+               ctx))]
+
+       {:server
+        (aleph/start-server!
+          handler
+          {:port
+           (get-in ctx
+             [:config :port])})}))
+
+   :biff.core/stop
+   (fn [_ctx {:keys [server]}]
+     (.close server))})
+#+end_src
+
+The supported Gesso application start function can enforce the required partial
+order itself:
+
+#+begin_src clojure
+(defn start-humanhelp!
+  [system modules]
+
+  (gesso.application/start!
+    {:system system
+
+     :modules modules
+
+     :application
+     #'application-assembly
+
+     :requires
+     {:before-serving
+      #{:humanhelp/config
+        :humanhelp/xtdb
+        :gesso/application-preflight}
+
+      :serving
+      :humanhelp/web}
+
+     :ordered
+     [:humanhelp/config
+      :humanhelp/xtdb
+      :gesso/application-preflight
+      :humanhelp/gesso-live
+      :humanhelp/web]}))
+#+end_src
+
+If the browser artifact is stale, preflight fails before =:humanhelp/web= starts:
+
+#+begin_src clojure
+(with-redefs
+  [browser/current-receipt
+   stale-receipt]
+
+  (start-humanhelp!
+    system
+    modules))
+;; =>
+{:startup/status :failed
+
+ :primary-error
+ {:error/kind :stale-browser-artifact
+  :current-manifest :M18
+  :artifact-manifest :M17}
+
+ :started-modules
+ [:humanhelp/config
+  :humanhelp/xtdb]
+
+ :never-started
+ [:humanhelp/gesso-live
+  :humanhelp/web]}
+#+end_src
+
+Lifecycle cleanup still accounts for modules that did start:
+
+#+begin_src clojure
+{:cleanup
+ [{:module :humanhelp/xtdb
+   :status :stopped}
+
+  {:module :humanhelp/config
+   :status :no-stop-required}]}
+#+end_src
+
+The important externally observable fact is that the Aleph application listener
+never started.
+
+The same boundary helps development reload remain coherent. Suppose A12 is
+currently serving and source changes produce candidate A13:
+
+#+begin_src clojure
+(def current
+  {:generation/id :A12
+   :status :serving})
+
+(def candidate
+  (prepare-application-generation!
+    changed-source-context))
+#+end_src
+
+Candidate construction happens before activation:
+
+#+begin_src clojure
+(defn activate-candidate!
+  [runtime candidate]
+
+  (when-not
+    (= :accepted
+       (:preflight/status candidate))
+    (throw
+      (ex-info
+        "Candidate generation is not admitted."
+        {:error/type :application/candidate-not-admitted
+         :candidate candidate})))
+
+  (let [old
+        (:current-generation runtime)]
+
+    (-> runtime
+        ;; Atomic/serialized activation boundary conceptually swaps the
+        ;; generation used by new requests.
+        (assoc
+          :current-generation
+          candidate)
+
+        (update
+          :retiring-generations
+          conj
+          old))))
+#+end_src
+
+A request that began under A12 keeps an A12 generation reference:
+
+#+begin_src clojure
+(def request-context
+  {:request/id H77
+   :generation/ref :A12})
+
+;; Later source reload activates A13.
+;; This request still resolves routes, prepared operations, and render checks
+;; through its admitted A12 bindings unless an explicit checked transition is
+;; defined.
+#+end_src
+
+New requests use A13:
+
+#+begin_src clojure
+{:request/id H78
+ :generation/ref :A13}
+#+end_src
+
+Long-lived browser continuations are not silently mutated into A13; Part VI's
+compatibility/recovery contract decides whether they may continue, must retire,
+or reacquire under the new realization.
+
+If A13 fails preflight:
+
+#+begin_src clojure
+{:candidate :A13
+ :preflight/status :rejected
+ :error/kind :missing-server-capability}
+#+end_src
+
+the runtime may keep the still-valid A12 serving generation:
+
+#+begin_src clojure
+{:current-generation :A12
+ :candidate
+ {:generation/id :A13
+  :status :rejected}}
+#+end_src
+
+What it cannot expose is a half-A13 application with A13 routes, A12 browser
+artifact, and stale A12 preflight evidence.
+
+This example is why "assembly generation" is useful as a scoped identity. It
+binds the coherent application realization admitted for serving; it is not a
+universal freshness number and does not replace command, execution, resource,
+deployment, or artifact identities.
+
 *** Native lifecycle modules are preferred over compatibility shims
 
 Gesso-owned and application-owned lifecycle integration should use the official
@@ -2342,6 +3734,328 @@ Conceptually useful queries include:
 These names are illustrative only.
 
 The capability is normative.
+
+
+For a closed HumanHelp Claim operation, an explanation should be rich enough
+that a developer does not need to grep the repository to reconstruct the path.
+
+An illustrative query:
+
+#+begin_src clojure
+(gesso.application/explain-operation
+  admitted-generation
+  :request/claim)
+#+end_src
+
+could produce structured data resembling:
+
+#+begin_src clojure
+{:operation
+ {:id :request/claim
+  :source
+  {:ns 'net.humanhelp.site.model.request.choreo
+   :var 'claim}
+
+  :role :helper
+
+  :semantic-status
+  {:class :kernel-checked
+   :certificate
+   :cert/request-claim-v12}}
+
+ :exposure
+ [{:view :request/card
+   :slot :claim
+   :source
+   {:ns
+    'net.humanhelp.example.components.request-card
+    :var 'request-card}
+   :status :assembly-verified}]
+
+ :browser
+ {:plan
+  {:id :plan/request-claim
+   :status :assembly-verified}
+
+  :manifest
+  {:id :M18
+   :status :assembly-verified}
+
+  :artifact
+  {:path "resources/public/gesso-live.js"
+   :digest "sha256:..."
+   :receipt :R18
+   :status :assembly-verified}}
+
+ :transport
+ {:method :post
+  :route-template
+  "/app/requests/:request-id/claim"
+  :route :route/request-claim
+  :status :assembly-verified}
+
+ :trusted-server
+ {:operation :server/request-claim
+
+  :source
+  {:ns 'net.humanhelp.example.server.request
+   :var 'claim-handler}
+
+  :required-capabilities
+  #{:authenticated-principal
+    :transaction
+    :clock
+    :authoritative-request-read}
+
+  :supplied-capabilities
+  #{:authenticated-principal
+    :transaction
+    :clock
+    :authoritative-request-read}
+
+  :closure-status :assembly-verified
+
+  :runtime-premises
+  #{:current-principal
+    :current-membership
+    :current-request
+    :current-organization}}
+
+ :model
+ {:operation :request/claim
+  :source
+  {:ns 'net.humanhelp.site.model.request.core
+   :var 'claim}
+
+  :authority :request}
+
+ :settlement
+ {:outcomes
+  #{:accepted :rejected :unknown}
+
+  :status :assembly-verified}
+
+ :acquisition
+ {:projection :request/card
+
+  :initial
+  :route/request-card
+
+  :reread
+  :route/request-card
+
+  :progression :xtdb/snapshot
+
+  :status :assembly-verified}
+
+ :assurance
+ {:semantic-operation :kernel-checked
+  :application-closure :assembly-verified
+  :startup-enforcement :runtime-enforced
+  :current-authorization :runtime-enforced
+  :htmx-integration :tested
+  :router-correctness :trusted}
+
+ :assembly
+ {:generation :A13
+  :status :preflight-closed}}
+#+end_src
+
+That output is valuable even when everything is green because it preserves
+source ownership and evidence classification.
+
+The same query on an incomplete candidate should expose open obligations rather
+than fabricate a near match.
+
+Suppose the route exists, but the trusted server operation no longer declares
+=:clock=:
+
+#+begin_src clojure
+(gesso.application/explain-operation
+  broken-candidate
+  :request/claim)
+;; =>
+{:operation
+ {:id :request/claim}
+
+ :assembly
+ {:generation :candidate-A14
+  :status :rejected}
+
+ :open-obligations
+ [{:obligation/id
+   :request-claim/server-clock
+
+   :edge
+   [:server/request-claim
+    :requires-capability
+    :clock]
+
+   :introduced-by
+   {:operation :request/claim
+    :source
+    {:ns 'net.humanhelp.site.model.request.choreo
+     :var 'claim}}
+
+   :expected
+   {:capability :clock}
+
+   :provider
+   {:id :server/request-claim
+    :declared
+    #{:authenticated-principal
+      :transaction
+      :authoritative-request-read}}
+
+   :error/kind
+   :missing-server-capability}]}
+#+end_src
+
+A repair tool can suggest what is mechanically known without changing execution:
+
+#+begin_src clojure
+{:suggestions
+ [{:kind :inspect-provider
+   :source
+   {:ns 'net.humanhelp.example.server.request
+    :var 'operations}}
+
+  {:kind :available-capability-provider
+   :capability :clock
+   :provider :application/system-clock}]}
+#+end_src
+
+The suggestion does not automatically bind the clock. Only source correction and
+new assembly admission can do that.
+
+An unknown operation can likewise show near names diagnostically:
+
+#+begin_src clojure
+(gesso.application/check-rendered-operation
+  admitted-generation
+  {:operation :request/claime
+   :source
+   {:view :request/card
+    :slot :claim}})
+;; =>
+{:error/type :gesso.application/render-error
+ :error/kind :unknown-operation
+ :operation :request/claime
+
+ :known
+ #{:request/claim
+   :request/create
+   :request/cancel
+   :request/reassign}
+
+ :near
+ [:request/claim]
+
+ :auto-corrected? false}
+#+end_src
+
+The machinery can also distinguish a structural error from a dynamic denial.
+If Alice is no longer authorized to Claim R, the explanation of the assembly
+remains closed:
+
+#+begin_src clojure
+(gesso.application/explain-operation
+  admitted-generation
+  :request/claim)
+;; =>
+{:assembly
+ {:status :preflight-closed}
+ ...}
+#+end_src
+
+The invocation can still return a runtime/model outcome:
+
+#+begin_src clojure
+(request/claim
+  current-runtime-context
+  {:request-id R
+   :helper-id Alice
+   :command-id C42})
+;; =>
+{:outcome :rejected
+ :reason :membership-inactive}
+#+end_src
+
+A diagnostic that rewrote that as =:application-assembly-corrupted= would be
+actively misleading.
+
+For a complex operation, explanation can expose the graph itself:
+
+#+begin_src clojure
+(gesso.application/explain-path
+  admitted-generation
+  :request/claim)
+;; =>
+[{:from :view/request-card.claim
+  :edge :affordance-realizes-operation
+  :to :op/request-claim
+  :status :accepted}
+
+ {:from :op/request-claim
+  :edge :operation-admitted-by-choreography
+  :to :choreo/request-claim.helper
+  :status :accepted}
+
+ {:from :choreo/request-claim.helper
+  :edge :projection-correspondence
+  :to :plan/request-claim
+  :status :accepted}
+
+ {:from :plan/request-claim
+  :edge :artifact-contains-exact-plan
+  :to :artifact/gesso-live
+  :status :accepted}
+
+ {:from :artifact/gesso-live
+  :edge :emits-transport
+  :to :transport/request-claim
+  :status :accepted}
+
+ {:from :transport/request-claim
+  :edge :dispatches-to-route
+  :to :route/request-claim
+  :status :accepted}
+
+ {:from :route/request-claim
+  :edge :trusted-dispatch
+  :to :server/request-claim
+  :status :accepted}
+
+ {:from :server/request-claim
+  :edge :delegates-to-model-operation
+  :to :model/request-claim
+  :status :accepted}
+
+ {:from :model/request-claim
+  :edge :typed-settlement
+  :to :settlement/request-claim
+  :status :accepted}
+
+ {:from :settlement/request-claim
+  :edge :authoritative-reacquisition
+  :to :acquire/request-card
+  :status :accepted}
+
+ {:from :acquire/request-card
+  :edge :renderable-projection
+  :to :render/request-card
+  :status :accepted}]
+#+end_src
+
+The value of such an explanation is not that application runtime should carry a
+large graph on every request. The graph is construction and diagnostic evidence.
+It lets humans, tests, and future proof tooling inspect the same realization that
+startup actually admitted.
+
+That shared inspectable object is the opposite of the failure mode this part is
+trying to eliminate: a working-looking application whose browser, route, server,
+model, and test layers each tell a slightly different story about what operation
+is supposedly happening.
 
 *** Explain exposed operations
 

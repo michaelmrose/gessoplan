@@ -558,6 +558,412 @@ argument specified in Part I.
 Certified construction is a sequence of semantic boundaries rather than a flag
 added to arbitrary data.
 
+
+A HumanHelp Claim rule can be followed through those boundaries without asking
+the application author to write proof terms by hand.
+
+Suppose the author writes a pleasant rule against certified domain names:
+
+#+begin_src clojure
+(defrule claimable?
+  {:inputs
+   {:request :humanhelp/Request
+    :membership :humanhelp/Membership
+    :organization :humanhelp/Organization}
+
+   :returns :boolean}
+
+  (and
+    (= request.status :open)
+
+    (= membership.status :active)
+
+    (= membership.organization-id
+       request.organization-id)
+
+    organization.claiming-enabled?))
+#+end_src
+
+At this point the form is still a *raw declaration*. It is useful source data,
+but downstream certified construction must not consume it merely because it
+came from =defrule=.
+
+Normalization resolves the semantic names and removes irrelevant authoring
+variation:
+
+#+begin_src clojure
+(def normalized-claimable
+  {:term/kind :rule
+
+   :rule/id :request/claimable?
+
+   :inputs
+   {:request
+    {:semantic-type :humanhelp/Request}
+
+    :membership
+    {:semantic-type :humanhelp/Membership}
+
+    :organization
+    {:semantic-type :humanhelp/Organization}}
+
+   :returns
+   :gesso/Boolean
+
+   :body
+   [:and
+
+    [:= 
+     [:field :request :request/status]
+     [:enum :request.status/open]]
+
+    [:= 
+     [:field :membership :membership/status]
+     [:enum :membership.status/active]]
+
+    [:=
+     [:field :membership :membership/organization-id]
+     [:field :request :request/organization-id]]
+
+    [:field
+     :organization
+     :organization/claiming-enabled?]]
+
+   :dependencies
+   {:request-schema
+    :semantic/request-schema-S17
+
+    :membership-schema
+    :semantic/membership-schema-M11
+
+    :organization-schema
+    :semantic/organization-schema-O9}
+
+   :normalization/version 4})
+#+end_src
+
+Formatting differences in the author's source need not change this normalized
+term. Changing =request.status= to a different semantic field does.
+
+Elaboration can then resolve the operator/type structure and propose the
+derivations it expects will be needed:
+
+#+begin_src clojure
+(def elaborated-claimable
+  {:subject
+   normalized-claimable
+
+   :resolved-fields
+   {[:request :request/status]
+    {:type :humanhelp/RequestStatus
+     :presence :required}
+
+    [:membership :membership/status]
+    {:type :humanhelp/MembershipStatus
+     :presence :required}
+
+    [:membership :membership/organization-id]
+    {:type :humanhelp/OrganizationId
+     :presence :required}
+
+    [:request :request/organization-id]
+    {:type :humanhelp/OrganizationId
+     :presence :required}
+
+    [:organization :organization/claiming-enabled?]
+    {:type :gesso/Boolean
+     :presence :required}}
+
+   :proposed-derivations
+   [{:goal
+     [:well-typed
+      [:= 
+       [:field :request :request/status]
+       [:enum :request.status/open]]]
+
+     :proof
+     [:eq-same-type
+      [:field-type
+       :request
+       :request/status
+       :humanhelp/RequestStatus]
+
+      [:enum-member
+       :request.status/open
+       :humanhelp/RequestStatus]]}
+
+    {:goal
+     [:well-typed
+      [:=
+       [:field :membership :membership/status]
+       [:enum :membership.status/active]]]
+
+     :proof
+     [:eq-same-type
+      [:field-type
+       :membership
+       :membership/status
+       :humanhelp/MembershipStatus]
+
+      [:enum-member
+       :membership.status/active
+       :humanhelp/MembershipStatus]]}
+
+    {:goal
+     [:well-typed
+      [:=
+       [:field :membership :membership/organization-id]
+       [:field :request :request/organization-id]]]
+
+     :proof
+     [:eq-same-type
+      [:field-type
+       :membership
+       :membership/organization-id
+       :humanhelp/OrganizationId]
+
+      [:field-type
+       :request
+       :request/organization-id
+       :humanhelp/OrganizationId]]}
+
+    {:goal
+     [:well-typed
+      [:field
+       :organization
+       :organization/claiming-enabled?]]
+
+     :proof
+     [:field-type
+      :organization
+      :organization/claiming-enabled?
+      :gesso/Boolean]}]})
+#+end_src
+
+The elaborator's proposed list is not itself the definition of "all obligations
+that matter." The rule checker independently derives the required coverage from
+the normalized subject and certification profile:
+
+#+begin_src clojure
+(def required-obligations
+  (rule-checker/required-obligations
+    {:subject normalized-claimable
+     :profile :gesso/rules-v1}))
+;; =>
+[{:obligation/id :claimable/body-total
+  :goal
+  [:returns
+   :request/claimable?
+   :gesso/Boolean]}
+
+ {:obligation/id :claimable/status-equality
+  :goal
+  [:well-typed
+   [:= 
+    [:field :request :request/status]
+    [:enum :request.status/open]]]}
+
+ {:obligation/id :claimable/membership-equality
+  :goal
+  [:well-typed
+   [:= 
+    [:field :membership :membership/status]
+    [:enum :membership.status/active]]]}
+
+ {:obligation/id :claimable/organization-id-equality
+  :goal
+  [:well-typed
+   [:=
+    [:field :membership :membership/organization-id]
+    [:field :request :request/organization-id]]]}
+
+ {:obligation/id :claimable/claiming-enabled-boolean
+  :goal
+  [:well-typed
+   [:field
+    :organization
+    :organization/claiming-enabled?]]}
+
+ {:obligation/id :claimable/all-input-fields-resolved
+  :goal
+  [:all-field-references-resolved
+   :request/claimable?]}]
+#+end_src
+
+The checker can now compare coverage:
+
+#+begin_src clojure
+(def coverage
+  (obligation/check-coverage
+    {:required required-obligations
+     :proposed
+     (:proposed-derivations
+      elaborated-claimable)}))
+
+coverage
+;; =>
+{:status :incomplete
+ :missing
+ [{:obligation/id :claimable/body-total
+   ...}
+  {:obligation/id :claimable/all-input-fields-resolved
+   ...}]}
+#+end_src
+
+That does not mean the rule is false. It means the elaborator did not yet supply
+all evidence required for this artifact class.
+
+A corrected elaborator output can add those derivations:
+
+#+begin_src clojure
+(def complete-derivations
+  (concat
+    (:proposed-derivations
+     elaborated-claimable)
+
+    [{:goal
+      [:all-field-references-resolved
+       :request/claimable?]
+
+      :proof
+      [:closed-field-walk
+       {:subject-id :request/claimable?
+        :resolved
+        #{[:request :request/status]
+          [:membership :membership/status]
+          [:membership :membership/organization-id]
+          [:request :request/organization-id]
+          [:organization :organization/claiming-enabled?]}}]}
+
+     {:goal
+      [:returns
+       :request/claimable?
+       :gesso/Boolean]
+
+      :proof
+      [:and-returns-boolean
+       [:expression-returns-boolean
+        0]
+       [:expression-returns-boolean
+        1]
+       [:expression-returns-boolean
+        2]
+       [:expression-returns-boolean
+        3]]}]))
+#+end_src
+
+The proof kernel checks each derivation against already admitted semantic
+interfaces:
+
+#+begin_src clojure
+(def checked
+  (proof.kernel/check-all
+    {:subject normalized-claimable
+
+     :dependencies
+     {:request-schema
+      verified-request-schema
+
+      :membership-schema
+      verified-membership-schema
+
+      :organization-schema
+      verified-organization-schema}
+
+     :required-obligations
+     required-obligations
+
+     :derivations
+     complete-derivations}))
+
+checked
+;; =>
+{:status :accepted
+
+ :covered
+ #{:claimable/body-total
+   :claimable/status-equality
+   :claimable/membership-equality
+   :claimable/organization-id-equality
+   :claimable/claiming-enabled-boolean
+   :claimable/all-input-fields-resolved}
+
+ :guarantees
+ #{[:rule/well-typed :request/claimable?]
+   [:rule/returns
+    :request/claimable?
+    :gesso/Boolean]}}
+#+end_src
+
+Only then does the certificate issuer produce an admitted rule-set value:
+
+#+begin_src clojure
+(def verified-claim-rules
+  (certificate/issue-rule-set!
+    {:subject
+     normalized-claimable
+
+     :semantic-id
+     (semantic/id
+       normalized-claimable)
+
+     :dependencies
+     {:request-schema
+      (certificate/semantic-id
+        verified-request-schema)
+
+      :membership-schema
+      (certificate/semantic-id
+        verified-membership-schema)
+
+      :organization-schema
+      (certificate/semantic-id
+        verified-organization-schema)}
+
+     :checker
+     {:profile :gesso/rules-v1
+      :kernel/version 3}
+
+     :checked-result
+     checked}))
+#+end_src
+
+Downstream APIs accept that admitted product, not a raw map that merely resembles
+its serialized certificate:
+
+#+begin_src clojure
+(operation/verify
+  raw-claim-operation
+  {:rule-set
+   verified-claim-rules})
+;; => permitted to continue
+
+(operation/verify
+  raw-claim-operation
+  {:rule-set
+   {:semantic-id
+    (certificate/semantic-id
+      verified-claim-rules)
+
+    :valid? true
+
+    :guarantees
+    #{[:rule/well-typed
+       :request/claimable?]}}})
+;; =>
+{:error/type :certification/unadmitted-dependency
+ :expected :VerifiedRuleSet
+ :supplied :raw-map}
+#+end_src
+
+The ordinary HumanHelp developer still wrote the first =defrule=, not the proof
+objects. Gesso normalized, elaborated, generated the required obligation set,
+constructed/checks derivations, and issued the admitted artifact.
+
+That is the practical meaning of "declaration-first" certification: the proof
+machinery is substantial, but the authoring surface does not require the
+application developer to manually reproduce it.
+
 *** Raw declaration
 
 A raw declaration is ordinary application/framework input before the relevant
@@ -958,6 +1364,437 @@ graph/relationships   rules
 HumanHelp source ownership remains governed by the production model boundaries
 defined earlier; this diagram describes semantic dependency, not necessarily
 source-file load order.
+
+
+A concrete Claim dependency closure can preserve that ownership while still
+producing one compositional proof DAG.
+
+The schema certificates export only schema facts:
+
+#+begin_src clojure
+(def request-schema-interface
+  {:interface/kind :schema
+
+   :semantic-id
+   :semantic/request-schema-S17
+
+   :types
+   {:humanhelp/Request
+    {:fields
+     {:request/id
+      {:type :humanhelp/RequestId
+       :presence :required}
+
+      :request/status
+      {:type :humanhelp/RequestStatus
+       :presence :required}
+
+      :request/organization-id
+      {:type :humanhelp/OrganizationId
+       :presence :required}
+
+      :request/helper-id
+      {:type
+       [:optional :humanhelp/UserId]
+       :presence :required}}}
+
+    :humanhelp/RequestStatus
+    {:kind :closed-enum
+     :variants
+     #{:request.status/open
+       :request.status/claimed
+       :request.status/on-the-way
+       :request.status/completed
+       :request.status/cancelled}}}})
+
+(def organization-schema-interface
+  {:interface/kind :schema
+
+   :semantic-id
+   :semantic/organization-schema-O9
+
+   :types
+   {:humanhelp/Organization
+    {:fields
+     {:organization/id
+      {:type :humanhelp/OrganizationId
+       :presence :required}
+
+      :organization/claiming-enabled?
+      {:type :gesso/Boolean
+       :presence :required}}}}})
+#+end_src
+
+Domain certificates may add refinements and declared application assumptions:
+
+#+begin_src clojure
+(def organization-domain-interface
+  {:interface/kind :domain
+
+   :semantic-id
+   :semantic/organization-domain-O14
+
+   :dependencies
+   {:schema
+    :semantic/organization-schema-O9}
+
+   :guarantees
+   #{[:field/boolean
+      :humanhelp/Organization
+      :organization/claiming-enabled?]
+
+     [:policy/input-available
+      :request/claimable?
+      :organization/claiming-enabled?]}
+
+   :assumptions
+   #{{:assumption/id
+      :humanhelp/organization-policy-source-trusted
+
+      :class
+      :trusted-model-contract
+
+      :proposition
+      [:model/read-current-organization
+       :returns-current-policy-state]}}})
+#+end_src
+
+The Membership relationship certificate can state path/cardinality semantics
+without pretending that path existence is authorization:
+
+#+begin_src clojure
+(def membership-relationship-interface
+  {:interface/kind :relationship
+
+   :semantic-id
+   :semantic/membership-rel-R8
+
+   :guarantees
+   #{[:relationship
+      :membership/user
+      {:from :humanhelp/Membership
+       :to :humanhelp/User
+       :cardinality :exactly-one}]
+
+     [:relationship
+      :membership/organization
+      {:from :humanhelp/Membership
+       :to :humanhelp/Organization
+       :cardinality :exactly-one}]}
+
+   :does-not-guarantee
+   #{:authorization
+     :current-database-conformance}})
+#+end_src
+
+The verified Claim rule set consumes those public interfaces:
+
+#+begin_src clojure
+(def claim-rule-certificate
+  {:certificate/kind :rule-set
+
+   :semantic-id
+   :semantic/claim-rules-C21
+
+   :dependencies
+   {:request-schema
+    :semantic/request-schema-S17
+
+    :membership-schema
+    :semantic/membership-schema-M11
+
+    :organization-domain
+    :semantic/organization-domain-O14
+
+    :membership-relationships
+    :semantic/membership-rel-R8}
+
+   :guarantees
+   #{[:rule/well-typed
+      :request/claimable?]
+
+     [:rule/returns
+      :request/claimable?
+      :gesso/Boolean]}
+
+   :assumptions
+   #{{:assumption/id
+      :humanhelp/organization-policy-source-trusted
+
+      :from
+      :semantic/organization-domain-O14}}})
+#+end_src
+
+The operation certificate adds the public authoritative contract:
+
+#+begin_src clojure
+(def claim-operation-certificate
+  {:certificate/kind :operation
+
+   :semantic-id
+   :semantic/request-claim-op-O31
+
+   :dependencies
+   {:rules
+    :semantic/claim-rules-C21
+
+    :request-schema
+    :semantic/request-schema-S17}
+
+   :interface
+   {:operation :request/claim
+
+    :input
+    [:map
+     [:request/id :humanhelp/RequestId]]
+
+    :runtime-premises
+    #{:authenticated-principal
+      :current-request
+      :current-membership
+      :current-organization}
+
+    :authority
+    :request-authority
+
+    :outcomes
+    #{:accepted
+      :rejected
+      :unknown}}
+
+   :guarantees
+   #{[:operation/outcome-closed
+      :request/claim]
+
+     [:operation/authority-required
+      :request/claim
+      :request-authority]}
+
+   :implementation-assumptions
+   #{{:assumption/id
+      :humanhelp/request-claim-implementation-conforms
+
+      :class
+      :trusted-model-contract
+
+      :binding
+      {:ns
+       'net.humanhelp.site.model.request.core
+
+       :var
+       'claim}
+
+      :proposition
+      [:implementation/conforms
+       :request/claim
+       :semantic/request-claim-op-O31]}}})
+#+end_src
+
+The Choreo certificate depends on that operation interface rather than reaching
+into Request FX:
+
+#+begin_src clojure
+(def claim-choreo-certificate
+  {:certificate/kind :choreography
+
+   :semantic-id
+   :semantic/request-claim-choreo-H12
+
+   :dependencies
+   {:operation
+    :semantic/request-claim-op-O31}
+
+   :guarantees
+   #{[:role/entry-knows
+      :helper
+      :request/id]
+
+     [:authority/non-escalation
+      :helper
+      :request-authority]
+
+     [:settlement/covered
+      :request/claim
+      #{:accepted
+        :rejected
+        :unknown}]
+
+     [:projection/knowledge-sufficient
+      :helper]}})
+#+end_src
+
+The helper projection and executable plan each carry their own correspondence
+claims:
+
+#+begin_src clojure
+(def helper-projection-certificate
+  {:certificate/kind :projection
+
+   :semantic-id
+   :semantic/request-claim-helper-P7
+
+   :dependencies
+   {:choreography
+    :semantic/request-claim-choreo-H12}
+
+   :guarantees
+   #{[:projection/preserves
+      :request-claim/helper
+      :supported-observables-v1]}})
+
+(def executable-plan-certificate
+  {:certificate/kind :executable-plan
+
+   :semantic-id
+   :semantic/request-claim-plan-E5
+
+   :dependencies
+   {:projection
+    :semantic/request-claim-helper-P7}
+
+   :guarantees
+   #{[:lowering/preserves
+      :request-claim/helper
+      :gesso-plan-v3]}
+
+   :implementation-assumptions
+   #{{:assumption/id
+      :gesso/plan-emitter-conforms
+
+      :class :trusted
+
+      :binding
+      {:component :gesso.plan/emitter
+       :version 3}}}})
+#+end_src
+
+Whole-application realization then adds evidence that is *not* automatically a
+proof-kernel theorem:
+
+#+begin_src clojure
+(def claim-assembly-evidence
+  {:artifact/kind :application-realization
+
+   :assembly/generation :A13
+
+   :dependencies
+   {:plan
+    :semantic/request-claim-plan-E5
+
+    :operation
+    :semantic/request-claim-op-O31}
+
+   :claims
+   [{:proposition
+     [:view-affordance/realizes
+      :request/card.claim
+      :request/claim]
+
+     :evidence
+     :assembly-verified}
+
+    {:proposition
+     [:artifact/contains-exact-plan
+      :artifact/gesso-live
+      :semantic/request-claim-plan-E5]
+
+     :evidence
+     :assembly-verified}
+
+    {:proposition
+     [:trusted-route/binds
+      :route/request-claim
+      :server/request-claim]
+
+     :evidence
+     :assembly-verified}
+
+    {:proposition
+     [:server/runtime-enforces
+      :current-authentication
+      :request/claim]
+
+     :evidence
+     :runtime-enforced}
+
+    {:proposition
+     [:htmx-adapter/behaves-as-required
+      :request/claim]
+
+     :evidence
+     :tested}]})
+#+end_src
+
+The root report can now preserve the dependency structure instead of flattening
+everything to =:verified true=:
+
+#+begin_src clojure
+(def claim-root-report
+  {:root
+   {:application :humanhelp/example
+    :assembly/generation :A13
+    :operation :request/claim}
+
+   :semantic-dependencies
+   [:semantic/request-schema-S17
+    :semantic/membership-schema-M11
+    :semantic/organization-schema-O9
+    :semantic/organization-domain-O14
+    :semantic/membership-rel-R8
+    :semantic/claim-rules-C21
+    :semantic/request-claim-op-O31
+    :semantic/request-claim-choreo-H12
+    :semantic/request-claim-helper-P7
+    :semantic/request-claim-plan-E5]
+
+   :claims
+   [{:proposition
+     [:rule/well-typed
+      :request/claimable?]
+     :evidence :kernel-checked}
+
+    {:proposition
+     [:projection/preserves
+      :request-claim/helper
+      :supported-observables-v1]
+     :evidence :kernel-checked}
+
+    {:proposition
+     [:application/path-closed
+      :request/claim]
+     :evidence :assembly-verified}
+
+    {:proposition
+     [:current-principal/re-established
+      :request/claim]
+     :evidence :runtime-enforced}
+
+    {:proposition
+     [:real-chromium/claim-path-exercised]
+     :evidence :tested}]
+
+   :open-assumptions
+   #{{:assumption/id
+      :humanhelp/organization-policy-source-trusted
+      :class :trusted-model-contract}
+
+     {:assumption/id
+      :humanhelp/request-claim-implementation-conforms
+      :class :trusted-model-contract}
+
+     {:assumption/id
+      :browser/htmx-lifecycle-contract
+      :class :runtime-primitive}}})
+#+end_src
+
+A developer inspecting this report can answer both "what depends on
+Organization semantics?" and "which Claim facts are still trusted rather than
+proved?" without confusing either question with whether Alice is currently
+authorized at runtime.
+
+That is the compositional benefit: each layer inherits exactly the public
+guarantees it needs and carries forward the assumptions that have not actually
+been discharged.
 
 *** Schema certificate
 
@@ -1604,6 +2441,294 @@ The ordinary dependency chain stops there.
 Later stages do not receive permission to keep using C1/H1/P1 simply because
 their own serialized bytes have not changed.
 
+
+The HumanHelp Claim chain gives a concrete example of how that staleness should
+propagate through an otherwise successful cache.
+
+Assume Organization domain version O14 exports:
+
+#+begin_src clojure
+(def organization-domain-O14
+  {:semantic-id
+   :semantic/organization-domain-O14
+
+   :guarantees
+   #{[:field/boolean
+      :organization/claiming-enabled?]
+
+     [:policy/input-available
+      :request/claimable?
+      :organization/claiming-enabled?]}})
+#+end_src
+
+Claim rules C21 were certified against exactly that interface:
+
+#+begin_src clojure
+(def claim-rules-C21
+  {:semantic-id
+   :semantic/claim-rules-C21
+
+   :dependencies
+   {:organization-domain
+    :semantic/organization-domain-O14}
+
+   :guarantees
+   #{[:rule/well-typed
+      :request/claimable?]}})
+#+end_src
+
+Now the application intentionally evolves Organization policy. Instead of a
+boolean field, the certified semantic interface becomes a closed policy enum:
+
+#+begin_src clojure
+(def organization-domain-O15
+  {:semantic-id
+   :semantic/organization-domain-O15
+
+   :guarantees
+   #{[:field/type
+      :organization/claim-policy
+      :humanhelp/ClaimPolicy]
+
+     [:enum/variants
+      :humanhelp/ClaimPolicy
+      #{:claim-policy/open
+        :claim-policy/helpers-only
+        :claim-policy/closed}]}})
+#+end_src
+
+The change may be a perfectly coherent product evolution. O15 is not
+"malformed."
+
+But old C21 explicitly depends on O14:
+
+#+begin_src clojure
+(certification/compose
+  {:artifact claim-rules-C21
+
+   :dependencies
+   {:organization-domain
+    verified-organization-domain-O15}})
+;; =>
+{:status :rejected
+
+ :error/type
+ :certification/semantic-dependency-mismatch
+
+ :artifact
+ :semantic/claim-rules-C21
+
+ :dependency
+ :organization-domain
+
+ :expected
+ :semantic/organization-domain-O14
+
+ :supplied
+ :semantic/organization-domain-O15}
+#+end_src
+
+The cache may still physically contain C21, operation O31, choreography H12,
+projection P7, and plan E5:
+
+#+begin_src clojure
+(def cache
+  {:semantic/claim-rules-C21
+   cached-C21
+
+   :semantic/request-claim-op-O31
+   cached-O31
+
+   :semantic/request-claim-choreo-H12
+   cached-H12
+
+   :semantic/request-claim-helper-P7
+   cached-P7
+
+   :semantic/request-claim-plan-E5
+   cached-E5})
+#+end_src
+
+Their presence is not permission to admit them into the new closure.
+
+A dependency-aware cache lookup can require the current normalized dependency
+set:
+
+#+begin_src clojure
+(defn reusable?
+  [cached
+   {:keys [subject
+           dependencies
+           checker-profile]}]
+
+  (and
+    (=
+      (:subject-semantic-id cached)
+      (semantic/id subject))
+
+    (=
+      (:dependency-semantic-ids cached)
+      (into {}
+        (map
+          (fn [[k certified]]
+            [k
+             (certificate/semantic-id
+               certified)]))
+        dependencies))
+
+    (=
+      (:checker-profile cached)
+      checker-profile)
+
+    (certificate/admissible?
+      cached)))
+#+end_src
+
+The lookup for C21 now fails:
+
+#+begin_src clojure
+(reusable?
+  cached-C21
+  {:subject
+   current-claim-rules-source
+
+   :dependencies
+   {:organization-domain
+    verified-organization-domain-O15}
+
+   :checker-profile
+   :gesso/rules-v1})
+;; => false
+#+end_src
+
+Gesso re-elaborates Claim rules against O15. The old source itself may no longer
+typecheck because it still references =organization.claiming-enabled?=:
+
+#+begin_src clojure
+(check-rule
+  '(and
+     (= request.status :open)
+     (= membership.status :active)
+     organization.claiming-enabled?)
+
+  {:organization-domain
+   verified-organization-domain-O15})
+;; =>
+{:status :rejected
+
+ :error/type
+ :certification/unknown-field
+
+ :field
+ :organization/claiming-enabled?
+
+ :available
+ #{:organization/claim-policy}}
+#+end_src
+
+The developer repairs the rule:
+
+#+begin_src clojure
+(defrule claimable?
+  {:inputs
+   {:request :humanhelp/Request
+    :membership :humanhelp/Membership
+    :organization :humanhelp/Organization}}
+
+  (and
+    (= request.status :open)
+
+    (= membership.status :active)
+
+    (contains?
+      #{:claim-policy/open
+        :claim-policy/helpers-only}
+      organization.claim-policy)))
+#+end_src
+
+Certification produces a new rule identity C22:
+
+#+begin_src clojure
+{:certificate/kind :rule-set
+
+ :semantic-id
+ :semantic/claim-rules-C22
+
+ :dependencies
+ {:organization-domain
+  :semantic/organization-domain-O15}
+
+ :guarantees
+ #{[:rule/well-typed
+    :request/claimable?]}}
+#+end_src
+
+Any downstream artifact whose *semantic interface* actually depends on the
+changed rule set must now be rebuilt or recertified:
+
+#+begin_example
+organization O15
+    |
+claim rules C22
+    |
+claim operation O32
+    |
+claim choreography H13
+    |
+helper projection P8
+    |
+executable plan E6
+#+end_example
+
+This does not mean every implementation artifact in HumanHelp must change. A CSS
+file, an unrelated Search view, or a Request serialization helper may be
+unaffected.
+
+Nor does it mean every change to Organization source forces O15. If the source
+change is only a comment or a local helper refactor and normalization still
+produces exactly the O14 semantic interface, the semantic ID may remain O14 and
+contract-level downstream proofs can be reused.
+
+Implementation evidence is narrower. Suppose the Organization semantic
+interface remains O14 but the implementation function behind its trusted model
+contract changes:
+
+#+begin_src clojure
+{:semantic-interface
+ :semantic/organization-domain-O14
+
+ :implementation-binding
+ {:before
+  {:ns 'net.humanhelp.site.model.organization.core
+   :var 'current
+   :implementation-digest "sha256:impl-44"}
+
+  :after
+  {:ns 'net.humanhelp.site.model.organization.core
+   :var 'current
+   :implementation-digest "sha256:impl-45"}}}
+#+end_src
+
+Rule/choreography derivations depending only on O14 can remain valid, while
+implementation-conformance or production test evidence attached to
+="sha256:impl-44"= cannot simply be copied to ="sha256:impl-45"=.
+
+That is the reuse model this section is aiming for:
+
+#+begin_example
+semantic interface unchanged
+    -> semantic derivations may be reusable
+
+implementation binding changed
+    -> implementation evidence may need renewal
+
+semantic interface changed
+    -> dependent semantic certificates do not compose until checked again
+#+end_example
+
+Caching follows the proof DAG rather than source-file timestamps and follows
+implementation identities for claims that actually concern implementation.
+
 *** Compatibility must be earned
 
 Exact semantic identity is the safe initial rule.
@@ -1879,6 +3004,289 @@ does not inspect.
 
 The proof kernel accepts or rejects the proof term independently of the elaborator's
 claim that the term is valid.
+
+
+A deliberately buggy elaborator makes that fault-containment boundary concrete.
+
+Suppose a HumanHelp helper projection contains this branch:
+
+#+begin_src clojure
+(branch
+  (= request.private-review :approved)
+
+  (then
+    (enable :request/claim))
+
+  (else
+    (disable :request/claim)))
+#+end_src
+
+The normalized projection state says the helper knows only:
+
+#+begin_src clojure
+{:role :helper
+
+ :program-point :request-card/claim-branch
+
+ :knowledge
+ #{[:request/id R]
+   [:request/status R :open]}
+
+ :provenance
+ {[:request/id R]
+  :authoritative
+
+  [:request/status R :open]
+  :authoritative}}
+#+end_src
+
+There is no premise establishing =request.private-review=.
+
+A buggy elaborator might nevertheless generate:
+
+#+begin_src clojure
+{:goal
+ [:knows
+  :helper
+  [:request/private-review R]
+  :request-card/claim-branch]
+
+ :proof
+ [:knowledge-from-global-syntax
+  {:role :helper
+   :field :request/private-review
+   :reason
+   "field appears in choreography branch"}]
+
+ :elaborator/status :valid}
+#+end_src
+
+The kernel does not recognize =:knowledge-from-global-syntax= as an inference
+rule:
+
+#+begin_src clojure
+(proof.kernel/check
+  kernel-context
+  buggy-proof)
+;; =>
+{:status :rejected
+
+ :error/type
+ :proof/unknown-inference-rule
+
+ :rule
+ :knowledge-from-global-syntax
+
+ :goal
+ [:knows
+  :helper
+  [:request/private-review R]
+  :request-card/claim-branch]}
+#+end_src
+
+A subtler bug uses a real rule with a missing premise:
+
+#+begin_src clojure
+(def forged-observation-proof
+  {:goal
+   [:knows
+    :helper
+    [:request/private-review R]
+    :request-card/claim-branch]
+
+   :proof
+   [:knowledge-from-authoritative-observation
+
+    ;; Required premise 1:
+    [:observation/scope-covers
+     :request-card-observation
+     [:request/private-review R]]
+
+    ;; Required premise 2 should establish that the helper admitted
+    ;; request-card-observation. The elaborator accidentally omits it.
+    ]})
+#+end_src
+
+The kernel can reject the malformed application of the inference rule:
+
+#+begin_src clojure
+(proof.kernel/check
+  kernel-context
+  forged-observation-proof)
+;; =>
+{:status :rejected
+
+ :error/type
+ :proof/missing-premise
+
+ :rule
+ :knowledge-from-authoritative-observation
+
+ :required-premise
+ [:observation/admitted-by
+  :helper
+  :request-card-observation]
+
+ :goal
+ [:knows
+  :helper
+  [:request/private-review R]
+  :request-card/claim-branch]}
+#+end_src
+
+Now consider a different elaborator bug: instead of constructing an invalid
+derivation, it quietly omits the troublesome branch from the obligation list.
+
+The normalized choreography still contains two reachable branches:
+
+#+begin_src clojure
+(def normalized-claim-choreo
+  {:states
+   {:card
+    {:branches
+     [{:branch/id :ordinary
+       :guard
+       [:= request.private-review :approved]
+       :next :claim-enabled}
+
+      {:branch/id :not-approved
+       :guard
+       [:not
+        [:= request.private-review :approved]]
+       :next :claim-disabled}]}}})
+#+end_src
+
+The buggy elaborator proposes coverage only for =:ordinary=:
+
+#+begin_src clojure
+(def proposed
+  {:obligations
+   [{:obligation/id
+     :branch/ordinary-discriminator-known
+
+     :subject
+     [:state :card
+      :branch :ordinary]
+
+     :goal
+     [:knows
+      :helper
+      [:request/private-review R]
+      :card]}]
+
+   :derivations
+   [...]})
+#+end_src
+
+If the checker accepted only the volunteered list, removing an obligation could
+make certification easier.
+
+Instead the artifact-class checker derives required coverage from the normalized
+subject:
+
+#+begin_src clojure
+(def required
+  (choreo-checker/required-obligations
+    {:subject normalized-claim-choreo
+     :profile :gesso/choreo-v4}))
+;; =>
+[{:obligation/id
+  :branch/ordinary-discriminator-known
+  :subject
+  [:state :card
+   :branch :ordinary]
+  ...}
+
+ {:obligation/id
+  :branch/not-approved-discriminator-known
+  :subject
+  [:state :card
+   :branch :not-approved]
+  ...}
+
+ {:obligation/id
+  :state/card-continuations-typed
+  ...}
+
+ {:obligation/id
+  :state/card-terminal-resource-accounting
+  ...}]
+#+end_src
+
+Coverage checking fails before any certificate is issued:
+
+#+begin_src clojure
+(obligation/check-coverage
+  {:required required
+   :proposed
+   (:obligations proposed)})
+;; =>
+{:status :rejected
+
+ :error/type
+ :certification/unresolved-obligation
+
+ :missing
+ [{:obligation/id
+   :branch/not-approved-discriminator-known}
+
+  {:obligation/id
+   :state/card-continuations-typed}
+
+  {:obligation/id
+   :state/card-terminal-resource-accounting}]}
+#+end_src
+
+There is a third correspondence failure the proof kernel alone cannot catch.
+Suppose a valid certificate was produced for normalized subject S1, then a buggy
+lowering stage emits an executable plan from different subject S2 while copying
+S1's certificate identity:
+
+#+begin_src clojure
+(def certified-projection
+  {:subject/id :projection-S1
+   :certificate :cert-P1})
+
+(def emitted-plan
+  {:plan/id :plan-request-claim
+   :claimed-source :projection-S1
+
+   ;; Bug: executable branch actually came from S2.
+   :states
+   (lower
+     projection-S2)})
+#+end_src
+
+The derivation in =:cert-P1= may be perfectly valid for S1. The relevant
+projection-to-plan correspondence checker must reject the mismatch:
+
+#+begin_src clojure
+(plan-checker/check-correspondence
+  {:certified-projection
+   certified-projection
+
+   :plan
+   emitted-plan})
+;; =>
+{:status :rejected
+
+ :error/type
+ :certification/executable-correspondence-failed
+
+ :certified-subject
+ :projection-S1
+
+ :emitted-from
+ :projection-S2}
+#+end_src
+
+This is why the proof kernel is deliberately *small*, not omnipotent. It catches
+invalid derivations under its logic. Obligation coverage catches omitted
+judgments. Correspondence checkers bind proved subjects to author syntax,
+projection, and executable artifacts.
+
+Together they make a large elaborator/compiler less dangerous without pretending
+that one tiny kernel checks every implementation boundary in the system.
 
 *** Dedicated semantic checkers may coexist with the proof kernel
 
@@ -2211,6 +3619,341 @@ successful outcome above. An expected unsupported-feature rejection may pass
 its explicit negative case; it does not demonstrate support for that feature.
 A score over mutants is evidence about that corpus, not a soundness theorem.
 
+
+The corpus can be organized as data so every mutant records the baseline,
+isolated change, expected boundary, and diagnostic before the test runs.
+
+For example:
+
+#+begin_src clojure
+(def certification-mutants
+  [{:mutant/id
+    :request-schema/remove-status
+
+    :baseline
+    :humanhelp/request-claim
+
+    :mutate
+    (fn [program]
+      (update-in program
+        [:request-schema
+         :types
+         :humanhelp/Request
+         :fields]
+        dissoc
+        :request/status))
+
+    :affected
+    [:rule/reference
+     :request/claimable?
+     :request/status]
+
+    :expect
+    {:result :rejected
+     :boundary :rule-set/check
+     :error/type
+     :certification/unknown-field}}
+
+   {:mutant/id
+    :organization/stale-domain-certificate
+
+    :baseline
+    :humanhelp/request-claim
+
+    :mutate
+    (fn [program]
+      (assoc program
+        :organization-domain
+        organization-domain-O15
+        :claim-rules-certificate
+        cached-C21))
+
+    :affected
+    [:dependency
+     :claim-rules
+     :organization-domain]
+
+    :expect
+    {:result :rejected
+     :boundary :certificate/compose
+     :error/type
+     :certification/semantic-dependency-mismatch}}
+
+   {:mutant/id
+    :choreo/remove-helper-knowledge
+
+    :baseline
+    :humanhelp/request-claim
+
+    :mutate
+    (fn [program]
+      (update-in program
+        [:claim-choreo
+         :entry
+         :helper
+         :knowledge]
+        disj
+        :request/id))
+
+    :affected
+    [:projection
+     :helper
+     :request/id]
+
+    :expect
+    {:result :rejected
+     :boundary :choreo/check
+     :error/type
+     :certification/knowledge-not-established}}
+
+   {:mutant/id
+    :certificate/forge-valid-map
+
+    :baseline
+    :humanhelp/request-claim
+
+    :mutate
+    (fn [program]
+      (assoc program
+        :claim-rules-certificate
+        {:certificate/kind :rule-set
+         :semantic-id
+         :semantic/claim-rules-C21
+         :valid? true
+         :guarantees
+         #{[:rule/well-typed
+            :request/claimable?]}}))
+
+    :affected
+    [:admission
+     :VerifiedRuleSet]
+
+    :expect
+    {:result :rejected
+     :boundary :rule-set/admission
+     :error/type
+     :certification/unadmitted-dependency}}
+
+   {:mutant/id
+    :projection/wrong-choreo-identity
+
+    :baseline
+    :humanhelp/request-claim
+
+    :mutate
+    (fn [program]
+      (assoc-in program
+        [:helper-projection
+         :dependencies
+         :choreography]
+        :semantic/request-create-choreo-H3))
+
+    :affected
+    [:projection
+     :request-claim/helper]
+
+    :expect
+    {:result :rejected
+     :boundary :projection/compose
+     :error/type
+     :certification/semantic-dependency-mismatch}}
+
+   {:mutant/id
+    :assembly/remove-transport-edge
+
+    :baseline
+    :humanhelp/request-claim
+
+    :mutate
+    (fn [program]
+      (update-in program
+        [:application-assembly
+         :routes]
+        dissoc
+        :route/request-claim))
+
+    :affected
+    [:application
+     :request/claim
+     :transport]
+
+    :expect
+    {:result :rejected
+     :boundary :application/preflight
+     :error/type
+     :application/missing-transport}}
+
+   {:mutant/id
+    :product-policy/change-manager-limit
+
+    :baseline
+    :expense/approval
+
+    :mutate
+    (fn [program]
+      (assoc-in program
+        [:policy :manager-limit]
+        5000M))
+
+    :affected
+    [:application-policy
+     :expense/manager-limit]
+
+    :expect
+    {:result :accepted-by-design
+     :reason
+     :coherent-product-policy-change}}])
+#+end_src
+
+The runner builds a fresh baseline for every case so mutants cannot contaminate
+one another:
+
+#+begin_src clojure
+(defn run-mutant!
+  [{:mutant/keys [id]
+    :keys [baseline mutate expect]}]
+
+  (let [program
+        (fixtures/fresh-certified-program
+          baseline)
+
+        mutated
+        (mutate program)
+
+        result
+        (certification/run-through-supported-boundaries
+          mutated)]
+
+    {:mutant/id id
+
+     :expected expect
+
+     :actual
+     (select-keys result
+       [:result
+        :boundary
+        :error/type])
+
+     :pass?
+     (mutation/expected?
+       expect
+       result)}))
+#+end_src
+
+A test asserts the predeclared classification:
+
+#+begin_src clojure
+(deftest certification-mutation-corpus
+  (doseq [mutant
+          certification-mutants]
+
+    (testing
+      (name
+        (:mutant/id mutant))
+
+      (let [report
+            (run-mutant!
+              mutant)]
+
+        (is
+          (:pass? report)
+          (pr-str report))))))
+#+end_src
+
+The same runner executes the positive baseline through the same supported path:
+
+#+begin_src clojure
+(defn verify-positive-control!
+  [baseline]
+
+  (let [program
+        (fixtures/fresh-certified-program
+          baseline)
+
+        result
+        (certification/run-through-supported-boundaries
+          program)]
+
+    (when-not
+      (= :accepted
+         (:result result))
+      (throw
+        (ex-info
+          "Positive certification control failed."
+          {:baseline baseline
+           :result result})))
+
+    result))
+#+end_src
+
+That catches the useless checker that rejects every input.
+
+The runner also distinguishes infrastructure failure from semantic rejection:
+
+#+begin_src clojure
+{:result :incomplete-test
+
+ :mutant/id
+ :projection/wrong-choreo-identity
+
+ :reason
+ :checker-timeout
+
+ :counted-as
+ :neither-accepted-nor-rejected}
+#+end_src
+
+A timeout cannot be relabeled as "mutant killed."
+
+A detailed corpus report can preserve first-enforcing-boundary evidence:
+
+#+begin_src clojure
+{:corpus
+ :humanhelp/request-claim-v1
+
+ :baseline
+ {:status :accepted}
+
+ :mutants
+ [{:mutant/id
+   :request-schema/remove-status
+
+   :expected
+   {:result :rejected
+    :boundary :rule-set/check
+    :error/type
+    :certification/unknown-field}
+
+   :actual
+   {:result :rejected
+    :boundary :rule-set/check
+    :error/type
+    :certification/unknown-field}
+
+   :prohibited-artifact
+   :VerifiedClaimRules
+
+   :constructed?
+   false}
+
+  {:mutant/id
+   :product-policy/change-manager-limit
+
+   :expected
+   {:result :accepted-by-design}
+
+   :actual
+   {:result :accepted}
+
+   :classification
+   :application-truth}]}
+#+end_src
+
+The corpus can therefore demonstrate something more useful than a raw kill
+percentage: malformed changes are rejected at their intended boundaries, valid
+controls still construct, and coherent product-policy changes remain outside the
+framework's attempt to infer human intent.
+
 ** HumanHelp proof DAG and compositional pilot
 :PROPERTIES:
 :CUSTOM_ID: req-humanhelp-certification-pilot
@@ -2417,6 +4160,385 @@ obligations. The compositional milestone requires both in their proper scopes.
 The goal is not merely "green."
 
 The goal is inspectable inheritance of guarantees through a real application.
+
+
+A successful Claim pilot can make that inheritance inspectable as one root
+artifact rather than a collection of prose claims.
+
+An illustrative root report might look like:
+
+#+begin_src clojure
+(def humanhelp-claim-root
+  {:report/version 1
+
+   :root
+   {:application/id
+    :humanhelp/example
+
+    :assembly/generation
+    :A13
+
+    :operation
+    :request/claim
+
+    :certification/profile
+    :gesso/compositional-v1}
+
+   :normalized-subjects
+   {:request-schema
+    :semantic/request-schema-S17
+
+    :membership-schema
+    :semantic/membership-schema-M11
+
+    :organization-schema
+    :semantic/organization-schema-O9
+
+    :organization-domain
+    :semantic/organization-domain-O14
+
+    :membership-relationships
+    :semantic/membership-rel-R8
+
+    :claim-rules
+    :semantic/claim-rules-C21
+
+    :claim-operation
+    :semantic/request-claim-op-O31
+
+    :claim-choreography
+    :semantic/request-claim-choreo-H12
+
+    :helper-projection
+    :semantic/request-claim-helper-P7
+
+    :executable-plan
+    :semantic/request-claim-plan-E5}
+
+   :certificates
+   [{:kind :schema
+     :subject
+     :semantic/request-schema-S17
+     :status :admitted}
+
+    {:kind :schema
+     :subject
+     :semantic/membership-schema-M11
+     :status :admitted}
+
+    {:kind :schema
+     :subject
+     :semantic/organization-schema-O9
+     :status :admitted}
+
+    {:kind :domain
+     :subject
+     :semantic/organization-domain-O14
+     :status :admitted}
+
+    {:kind :relationship
+     :subject
+     :semantic/membership-rel-R8
+     :status :admitted}
+
+    {:kind :rule-set
+     :subject
+     :semantic/claim-rules-C21
+     :status :admitted}
+
+    {:kind :operation
+     :subject
+     :semantic/request-claim-op-O31
+     :status :admitted}
+
+    {:kind :choreography
+     :subject
+     :semantic/request-claim-choreo-H12
+     :status :admitted}
+
+    {:kind :projection
+     :subject
+     :semantic/request-claim-helper-P7
+     :status :admitted}
+
+    {:kind :executable-plan
+     :subject
+     :semantic/request-claim-plan-E5
+     :status :admitted}]
+
+   :checked-guarantees
+   [{:proposition
+     [:rule/well-typed
+      :request/claimable?]
+
+     :evidence
+     {:class :kernel-checked
+      :certificate
+      :semantic/claim-rules-C21}}
+
+    {:proposition
+     [:operation/outcomes-closed
+      :request/claim
+      #{:accepted
+        :rejected
+        :unknown}]
+
+     :evidence
+     {:class :kernel-checked
+      :certificate
+      :semantic/request-claim-op-O31}}
+
+    {:proposition
+     [:helper/branch-knowledge-sufficient
+      :request/claim]
+
+     :evidence
+     {:class :kernel-checked
+      :certificate
+      :semantic/request-claim-choreo-H12}}
+
+    {:proposition
+     [:projection/preserves
+      :request-claim/helper
+      :supported-observables-v1]
+
+     :evidence
+     {:class :kernel-checked
+      :certificate
+      :semantic/request-claim-helper-P7}}
+
+    {:proposition
+     [:lowering/preserves
+      :request-claim/helper
+      :gesso-plan-v3]
+
+     :evidence
+     {:class :kernel-checked
+      :certificate
+      :semantic/request-claim-plan-E5}}]
+
+   :application-realization
+   [{:proposition
+     [:view/exposes
+      :request/card.claim
+      :request/claim]
+
+     :evidence
+     {:class :assembly-verified
+      :assembly/generation :A13}}
+
+    {:proposition
+     [:browser-artifact/contains
+      :semantic/request-claim-plan-E5]
+
+     :evidence
+     {:class :assembly-verified
+      :artifact-digest
+      "sha256:artifact-A13"}}
+
+    {:proposition
+     [:transport/routes
+      :request/claim
+      :route/request-claim]
+
+     :evidence
+     {:class :assembly-verified
+      :assembly/generation :A13}}
+
+    {:proposition
+     [:server/binds-model-op
+      :server/request-claim
+      :request/claim]
+
+     :evidence
+     {:class :assembly-verified
+      :assembly/generation :A13}}
+
+    {:proposition
+     [:settlement/permits
+      :request/card
+      :authoritative-reacquisition]
+
+     :evidence
+     {:class :assembly-verified
+      :assembly/generation :A13}}]
+
+   :runtime-premises
+   [{:proposition
+     [:invocation/has-current
+      :authenticated-principal]
+
+     :evidence
+     {:class :runtime-enforced
+      :boundary
+      :server/request-claim}}
+
+    {:proposition
+     [:invocation/has-current
+      :membership]
+
+     :evidence
+     {:class :runtime-enforced
+      :boundary
+      :server/request-claim}}
+
+    {:proposition
+     [:invocation/has-current
+      :request]
+
+     :evidence
+     {:class :runtime-enforced
+      :boundary
+      :server/request-claim}}
+
+    {:proposition
+     [:invocation/has-current
+      :organization]
+
+     :evidence
+     {:class :runtime-enforced
+      :boundary
+      :server/request-claim}}]
+
+   :trusted-assumptions
+   [{:assumption/id
+     :humanhelp/request-claim-implementation-conforms
+
+     :class
+     :trusted-model-contract
+
+     :binding
+     {:ns
+      'net.humanhelp.site.model.request.core
+
+      :var
+      'claim}}
+
+    {:assumption/id
+     :humanhelp/organization-read-contract
+
+     :class
+     :trusted-model-contract}
+
+    {:assumption/id
+     :xtdb/transaction-semantics
+
+     :class
+     :runtime-primitive}
+
+    {:assumption/id
+     :browser/htmx-lifecycle-contract
+
+     :class
+     :runtime-primitive}]
+
+   :operational-evidence
+   [{:proposition
+     [:production-startup/enforces
+      :application-preflight]
+
+     :evidence
+     {:class :runtime-enforced
+      :test
+      :humanhelp/preflight-startup}}
+
+    {:proposition
+     [:real-chromium/two-client-claim
+      :exercised]
+
+     :evidence
+     {:class :tested
+      :suite
+      :humanhelp/chromium-multiclient}}
+
+    {:proposition
+     [:creator-local-vs-remote-advisory
+      :exercised]
+
+     :evidence
+     {:class :tested
+      :suite
+      :humanhelp/chromium-selective-adoption}}]
+
+   :unresolved
+   []
+
+   :status
+   :accepted})
+#+end_src
+
+A report with =:status :accepted= is meaningful only because the requested
+compositional profile defines which certificate classes and obligations must be
+closed. It does not mean every trusted assumption has been turned into a theorem.
+
+The report also makes partial progress explicit. For example, before checked
+operation-implementation conformance exists:
+
+#+begin_src clojure
+{:proposition
+ [:implementation/conforms
+  :request/claim
+  :semantic/request-claim-op-O31]
+
+ :evidence
+ {:class :trusted-model-contract
+  :binding
+  {:ns
+   'net.humanhelp.site.model.request.core
+   :var
+   'claim}}}
+#+end_src
+
+Later work may replace that trusted premise with stronger evidence without
+changing the semantic operation itself.
+
+Likewise, a future external formalization may establish a theorem about the
+canonical proof rules:
+
+#+begin_src clojure
+{:proposition
+ [:proof-kernel/rule-sound
+  :knowledge-from-authoritative-observation]
+
+ :evidence
+ {:class :externally-theorem-checked
+  :formalization :lean/gesso-kernel-v1}}
+#+end_src
+
+That theorem joins the root assurance story at its actual scope. It does not
+retroactively prove HTMX, XTDB, the Claim implementation body, or current Alice
+authorization.
+
+Finally, the report remains connected to Part VIII's real proving surface:
+
+#+begin_src clojure
+{:application-evidence
+ {:control
+  {:view :request/card
+   :slot :claim
+   :operation :request/claim}
+
+  :production-model
+  {:ns
+   'net.humanhelp.site.model.request.core
+   :var
+   'claim}
+
+  :authoritative-reacquisition
+  {:projection :request/card}
+
+  :browser-scenario
+  :humanhelp/chromium-two-helper-claim}}
+#+end_src
+
+An isolated toy proof lacking those application edges cannot substitute for this
+root. Conversely, a green browser test cannot fill in a missing rule, Choreo, or
+projection certificate.
+
+The compositional milestone is precisely the point where both stories meet:
+certified semantic inheritance reaches the real application assembly, while
+operational evidence remains honestly classified at the boundaries that still
+depend on runtime enforcement, trusted implementations, and tests.
 
 ** Developer experience and acceptance examples
 

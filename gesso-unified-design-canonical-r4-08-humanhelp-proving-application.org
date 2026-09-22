@@ -299,6 +299,376 @@ The exact namespace/function names may evolve.
 
 The ownership direction must not.
 
+
+The topology becomes more useful when read as an actual vertical slice rather
+than only as namespace arrows. The following code is intentionally incomplete in
+application breadth but substantial enough to show which layer owns which kind
+of decision.
+
+The production Request model owns the domain transition:
+
+#+begin_src clojure
+(ns net.humanhelp.site.model.request.core
+  (:require
+   [net.humanhelp.site.model.request.domain :as domain]
+   [net.humanhelp.site.model.request.fx :as request.fx]))
+
+(def ClaimCommand
+  [:map
+   [:request-id uuid?]
+   [:helper-id uuid?]
+   [:command-id uuid?]])
+
+(defn claim
+  [ctx command]
+  (m/assert ClaimCommand command)
+  (request.fx/run-claim
+    ctx
+    command))
+#+end_src
+
+Its domain layer owns the business rule:
+
+#+begin_src clojure
+(ns net.humanhelp.site.model.request.domain)
+
+(defn claim-decision
+  [{:keys [request membership organization helper-id]}]
+  (cond
+    (not= :open
+          (:request/status request))
+    {:decision :rejected
+     :reason :request-not-open}
+
+    (not= :active
+          (:membership/status membership))
+    {:decision :rejected
+     :reason :membership-inactive}
+
+    (not=
+      (:request/organization-id request)
+      (:membership/organization-id membership))
+    {:decision :rejected
+     :reason :wrong-organization}
+
+    (not
+      (organization/allows-claim?
+        organization
+        membership
+        request))
+    {:decision :rejected
+     :reason :organization-policy}
+
+    :else
+    {:decision :allowed
+     :transition
+     {:request/id (:request/id request)
+      :request/status :claimed
+      :request/helper-id helper-id}}))
+#+end_src
+
+The production choreography owns distributed use of that public model operation,
+not a copy of the rule:
+
+#+begin_src clojure
+(ns net.humanhelp.site.model.request.choreo
+  (:require
+   [gesso.choreo :as choreo]
+   [net.humanhelp.site.model.request.core :as request]))
+
+(def claim
+  (choreo/operation
+    {:operation/id :request/claim
+
+     :actor :helper
+
+     :input
+     [:map
+      [:request/id uuid?]]
+
+     :runtime-premises
+     #{:authenticated-principal
+       :current-request
+       :current-membership
+       :current-organization}
+
+     :provisional
+     {:projection :request/claiming}
+
+     :effect
+     {:authority :request-authority
+      :invoke request/claim}
+
+     :settlement
+     {:accepted
+      {:reacquire :request/card}
+
+      :rejected
+      {:reacquire :request/card}
+
+      :unknown
+      {:recover :request/reconcile-claim}}}))
+#+end_src
+
+The temporary proving UI binds a real control to that operation:
+
+#+begin_src clojure
+(ns net.humanhelp.example.components.request-card.core
+  (:require
+   [gesso.view :as gesso.view]))
+
+(defn request-card
+  [{:keys [request actions]}]
+
+  [:article.request-card
+   {:data-request-id
+    (:request/id request)}
+
+   [:header
+    [:h3
+     (:request/title request)]
+
+    [:span.request-status
+     (name
+       (:request/status request))]]
+
+   [:p
+    (:request/summary request)]
+
+   (when-let [claim
+              (:claim actions)]
+     (gesso.view/action
+       {:binding claim
+        :class "request-card__claim"
+        :pending-label "Claiming..."}
+       "Claim"))])
+#+end_src
+
+Preparation decides whether Claim is semantically available and supplies a bound
+operation rather than forcing the view to reimplement claim policy:
+
+#+begin_src clojure
+(ns net.humanhelp.example.board
+  (:require
+   [gesso.prepare :as gesso.prepare]
+   [net.humanhelp.site.model.request.choreo :as request.choreo]))
+
+(defn prepare-request-card
+  [ctx request]
+
+  {:request
+   (select-keys request
+     [:request/id
+      :request/title
+      :request/summary
+      :request/status
+      :request/helper-id])
+
+   :actions
+   {:claim
+    (when
+      (= :open
+         (:request/status request))
+
+      (gesso.prepare/bind
+        ctx
+        request.choreo/claim
+        {:request/id
+         (:request/id request)}))}})
+#+end_src
+
+The example route is a physical realization owned by the example application:
+
+#+begin_src clojure
+(ns net.humanhelp.example.routes)
+
+(def routes
+  [{:route/id :route/request-claim
+    :method :post
+    :template "/app/requests/:request-id/claim"
+    :semantic-operation :request/claim
+    :trusted-capability :server/request-claim}
+
+   {:route/id :route/request-card
+    :method :get
+    :template "/app/requests/:request-id"
+    :projection :request/card}
+
+   {:route/id :route/request-board
+    :method :get
+    :template "/app/requests"
+    :projection :request/board}])
+#+end_src
+
+The trusted protocol integration owns principal rebinding and the current
+runtime/model premises:
+
+#+begin_src clojure
+(ns net.humanhelp.example.optimistic
+  (:require
+   [gesso.server :as gesso.server]
+   [net.humanhelp.site.model.membership.core :as membership]
+   [net.humanhelp.site.model.organization.core :as organization]
+   [net.humanhelp.site.model.request.core :as request]))
+
+(defn claim-handler
+  [{:keys [db session] :as ctx}
+   ring-request]
+
+  (let [binding
+        (gesso.server/require-binding!
+          ctx
+          :route/request-claim)
+
+        command
+        (gesso.server/decode-command!
+          binding
+          ring-request)
+
+        principal
+        (auth/current-principal!
+          session)
+
+        request*
+        (request/require-current!
+          ctx
+          (:request/id command))
+
+        membership*
+        (membership/require-current!
+          ctx
+          {:user-id
+           (:user/id principal)
+
+           :organization-id
+           (:request/organization-id
+            request*)})
+
+        organization*
+        (organization/require-current!
+          ctx
+          (:request/organization-id
+           request*))]
+
+    (gesso.server/invoke!
+      binding
+      (assoc ctx
+        :principal principal
+        :current-request request*
+        :current-membership membership*
+        :current-organization organization*)
+      command)))
+#+end_src
+
+The model operation then runs below that trusted boundary:
+
+#+begin_src clojure
+(request/claim
+  trusted-ctx
+  {:request-id R
+   :helper-id Alice
+   :command-id C42})
+;; =>
+{:outcome :committed
+ :request
+ {:request/id R
+  :request/status :claimed
+  :request/helper-id Alice}
+ :basis :X24
+ :command-id C42}
+#+end_src
+
+The creator/initiator settlement path can return correlated authoritative
+evidence:
+
+#+begin_src clojure
+{:gesso/settlement
+ {:operation :request/claim
+  :command/id C42
+  :outcome :accepted
+  :authoritative
+  {:projection :request/card
+   :basis :X24
+   :request
+   {:request/id R
+    :request/status :claimed
+    :request/helper-id Alice}}}}
+#+end_src
+
+The Live publication path carries only advisory information needed by other
+clients:
+
+#+begin_src clojure
+{:live/event :request-authority-advanced
+
+ :scope
+ {:projection :request/board
+  :organization-id O}
+
+ :requirement
+ {:kind :newer-relevant-authority
+  :minimum-basis :X24}}
+#+end_src
+
+Bob's browser does not install Request content from that payload. It records an
+outstanding advisory and later obtains canonical content through the authorized
+board acquisition route.
+
+Finally, the canonical HumanHelp assembly composes those declarations:
+
+#+begin_src clojure
+(ns net.humanhelp.example.application-preflight)
+
+(defn application
+  [config]
+
+  (gesso.application/assemble
+    {:application/id
+     :humanhelp/example
+
+     :operations
+     [request.choreo/create
+      request.choreo/claim
+      request.choreo/unclaim
+      request.choreo/on-the-way
+      request.choreo/complete
+      request.choreo/cancel
+      request.choreo/reassign]
+
+     :views
+     [(request-card/declaration)
+      (request-board/declaration)]
+
+     :routes
+     routes/routes
+
+     :server-operations
+     optimistic/server-operations
+
+     :acquisitions
+     live/acquisitions
+
+     :browser
+     browser/declaration
+
+     :capability-providers
+     (server/capability-providers
+       config)
+
+     :lifecycle
+     (runtime/lifecycle
+       config)}))
+#+end_src
+
+The exact forms are provisional, but the vertical ownership is not. The example
+UI never becomes the owner of Request eligibility, and production model code
+never needs to know that the proving surface happens to use HTMX buttons,
+Refresh glow, or a temporary example namespace.
+
+That is what makes HumanHelp useful as a proving application rather than merely
+a demo: the browser can exercise the entire stack without moving domain
+authority upward into the integration layer.
+
 *** Global application points at the proving UI during this stage
 
 The application startup used to test the Gesso/HumanHelp integration must route
@@ -1867,6 +2237,422 @@ The same rule applies when B receives a correlated lifecycle result for an
 already-admitted Request while an unrelated remote creation remains awaiting
 Refresh.
 
+
+The selective-adoption rule is easier to trust when expressed as executable
+state rather than as a verbal exception.
+
+Assume Browser B has already adopted a complete authorized board through P17:
+
+#+begin_src clojure
+(def B0
+  {:actor [:client :B]
+   :principal Bob
+
+   :projection
+   {:kind :request/board
+    :organization-id O
+    :coverage :complete-authorized-membership}
+
+   :adopted
+   {:basis :P17
+    :members
+    {R1
+     {:request/id R1
+      :request/status :open
+      :request/title "Move a dresser"}
+
+     R2
+     {:request/id R2
+      :request/status :open
+      :request/title "Install a light"}}}
+
+   :advisory
+   {:requirements []}
+
+   :presentation
+   {:search ""
+    :sort :newest
+    :visibility :available}})
+#+end_src
+
+Browser A creates remote Request R at P18:
+
+#+begin_src clojure
+(def create-R-result-for-A
+  {:operation :request/create
+   :command/id C18
+   :outcome :accepted
+
+   :authoritative
+   {:basis :P18
+    :scope
+    {:projection :request/card
+     :request/id R}
+
+    :request
+    {:request/id R
+     :request/status :open
+     :request/title "Need help moving a cabinet"
+     :request/customer-id Alice}}})
+#+end_src
+
+A may incorporate that correlated result immediately into A's own board under
+the declared creator-local rule:
+
+#+begin_src clojure
+(defn incorporate-local-created-request
+  [board result]
+
+  (let [request
+        (get-in result
+          [:authoritative :request])]
+
+    (-> board
+        (assoc-in
+          [:adopted :members
+           (:request/id request)]
+          request)
+
+        ;; The board has not thereby become a complete P18 board snapshot.
+        ;; We retain the complete-board basis separately.
+        (assoc-in
+          [:local-correlated
+           (:request/id request)]
+          {:basis
+           (get-in result
+             [:authoritative :basis])
+
+           :source
+           [:command
+            (:command/id result)]})))))
+#+end_src
+
+B instead receives an advisory:
+
+#+begin_src clojure
+(def advisory-R
+  {:live/event :request-authority-advanced
+
+   :scope
+   {:kind :request/board
+    :organization-id O
+    :coverage :complete-authorized-membership}
+
+   :requirement
+   {:requirement/id :remote-R
+    :kind :newer-relevant-authority
+    :minimum-basis :P18
+    :requires :acquire-and-adopt}})
+
+(defn record-board-advisory
+  [board advisory]
+
+  (update-in board
+    [:advisory :requirements]
+    requirement/combine-preserving-scope
+    (:requirement advisory)))
+
+(def B1
+  (record-board-advisory
+    B0
+    advisory-R))
+#+end_src
+
+B1 still has the same adopted membership:
+
+#+begin_src clojure
+(keys
+  (get-in B1
+    [:adopted :members]))
+;; => (R1 R2)
+
+(get-in B1
+  [:advisory :requirements])
+;; =>
+[{:requirement/id :remote-R
+  :minimum-basis :P18
+  :requires :acquire-and-adopt
+  ...}]
+#+end_src
+
+Presentation derives the Refresh indication from real advisory state:
+
+#+begin_src clojure
+(defn refresh-presentation
+  [board]
+
+  (let [pending
+        (count
+          (get-in board
+            [:advisory :requirements]))]
+
+    {:pending pending
+
+     :label
+     (if (pos? pending)
+       (str "Refresh (" pending ")")
+       "Refresh")
+
+     :class
+     (cond-> #{"refresh-button"}
+       (pos? pending)
+       (conj
+         "refresh-button--attention"
+         "refresh-button--pulse"))
+
+     :aria-live-message
+     (when (pos? pending)
+       (str pending
+            " board update"
+            (when-not (= 1 pending)
+              "s")
+            " available."))}))
+#+end_src
+
+Nothing in that rendering decodes Request R from the advisory.
+
+Now B creates local Request S at P19:
+
+#+begin_src clojure
+(def create-S-result-for-B
+  {:operation :request/create
+   :command/id C19
+   :outcome :accepted
+
+   :authoritative
+   {:basis :P19
+    :scope
+    {:projection :request/card
+     :request/id S}
+
+    :request
+    {:request/id S
+     :request/status :open
+     :request/title "Help carry boxes"
+     :request/customer-id Bob}}})
+
+(def B2
+  (incorporate-local-created-request
+    B1
+    create-S-result-for-B))
+#+end_src
+
+The desired state is now intentionally mixed:
+
+#+begin_src clojure
+(keys
+  (get-in B2
+    [:adopted :members]))
+;; => (R1 R2 S)
+
+(mapv
+  :requirement/id
+  (get-in B2
+    [:advisory :requirements]))
+;; => [:remote-R]
+
+(get-in B2
+  [:local-correlated S])
+;; =>
+{:basis :P19
+ :source [:command C19]}
+#+end_src
+
+The fact that S was observed authoritatively at P19 does not admit R. B did not
+perform a complete authorized board read at P19.
+
+Search and sorting run over the adopted/local-correlated membership B actually
+has:
+
+#+begin_src clojure
+(defn visible-board-members
+  [board]
+
+  (->>
+    (vals
+      (get-in board
+        [:adopted :members]))
+
+    (board.presentation/apply-visibility
+      (get-in board
+        [:presentation :visibility]))
+
+    (board.presentation/apply-search
+      (get-in board
+        [:presentation :search]))
+
+    (board.presentation/apply-sort
+      {:mode
+       (get-in board
+         [:presentation :sort])
+
+       :principal
+       (:principal board)})))
+#+end_src
+
+Changing search to =cabinet= does not cause R to appear:
+
+#+begin_src clojure
+(def B3
+  (assoc-in B2
+    [:presentation :search]
+    "cabinet"))
+
+(map :request/id
+     (visible-board-members B3))
+;; => whatever among R1/R2/S matches "cabinet"
+;; never remote R merely because its title would match
+#+end_src
+
+Only explicit Refresh grants this board acquisition under the settled remote
+creation policy:
+
+#+begin_src clojure
+(defn begin-explicit-refresh
+  [board acquisition-id]
+
+  (assoc board
+    :refresh
+    {:acquisition/id acquisition-id
+
+     :permission
+     {:kind :explicit-user-refresh
+      :granted? true}
+
+     :captured-requirements
+     (get-in board
+       [:advisory :requirements])
+
+     :scope
+     (:projection board)}))
+
+(def B4
+  (begin-explicit-refresh
+    B3
+    :refresh-20))
+#+end_src
+
+The trusted server performs an authorized complete-board acquisition:
+
+#+begin_src clojure
+(def refresh-result
+  {:acquisition/id :refresh-20
+
+   :observation
+   {:provenance :authoritative
+
+    :scope
+    {:kind :request/board
+     :organization-id O
+     :coverage :complete-authorized-membership}
+
+    :basis :P20
+
+    :requests
+    [R1-value
+     R2-value
+     R-value
+     S-value]}})
+#+end_src
+
+Installation replaces complete-board membership from the observation while
+preserving compatible local presentation state:
+
+#+begin_src clojure
+(defn install-refreshed-board
+  [board {:keys [observation]}]
+
+  (let [members
+        (into {}
+          (map
+            (juxt :request/id identity))
+          (:requests observation))
+
+        remaining
+        (remove
+          #(advisory/satisfied-by?
+             %
+             observation)
+          (get-in board
+            [:advisory :requirements]))]
+
+    (-> board
+        (assoc
+          :adopted
+          {:basis (:basis observation)
+           :members members})
+
+        (assoc
+          :local-correlated {})
+
+        (assoc-in
+          [:advisory :requirements]
+          (vec remaining))
+
+        (dissoc :refresh))))
+
+(def B5
+  (install-refreshed-board
+    B4
+    refresh-result))
+#+end_src
+
+Now R is legitimately adopted:
+
+#+begin_src clojure
+(contains?
+  (get-in B5
+    [:adopted :members])
+  R)
+;; => true
+
+(get-in B5
+  [:advisory :requirements])
+;; => []
+#+end_src
+
+If a new advisory O2 arrives after Refresh captured its requirements and the
+returned observation covers only through P20 while O2 requires P21, O2 remains:
+
+#+begin_src clojure
+(def O2
+  {:requirement/id :remote-T
+   :minimum-basis :P21
+   :scope
+   (:projection B4)
+   :requires :acquire-and-adopt})
+
+(def B4-with-O2
+  (record-board-advisory
+    B4
+    {:requirement O2}))
+
+(def B5-with-O2
+  (install-refreshed-board
+    B4-with-O2
+    refresh-result))
+
+(mapv
+  :requirement/id
+  (get-in B5-with-O2
+    [:advisory :requirements]))
+;; => [:remote-T]
+#+end_src
+
+The Refresh indicator therefore stays active.
+
+This worked sequence is the HumanHelp-specific proof surface for several generic
+Gesso distinctions at once:
+
+- one object-specific authoritative result does not imply whole-board adoption;
+- advisory knowledge is not Request content;
+- local presentation transforms only admitted membership;
+- explicit acquisition permission remains distinct from knowledge that newer
+  authority exists;
+- advisory discharge follows actual acquisition coverage;
+- local correlated creation and remote selective adoption can coexist without a
+  global "latest revision" shortcut.
+
 *** Explicit Refresh
 :PROPERTIES:
 :CUSTOM_ID: req-humanhelp-refresh-coverage
@@ -2087,6 +2873,301 @@ The precise ordering of presentation transforms is part of HumanHelp UI semantic
 and should be tested.
 
 It must not depend on accidental DOM insertion order.
+
+
+A concrete board presenter can keep these controls substantial enough to test
+without turning them into another domain model.
+
+Suppose the adopted board contains authoritative Request facts already prepared
+for presentation:
+
+#+begin_src clojure
+(def adopted-requests
+  [{:request/id R1
+    :request/title "Move a cabinet"
+    :request/status :open
+    :request/helper-id nil
+    :request/customer-id Alice
+    :request/created-at #inst "2026-09-21T18:00:00Z"
+    :request/terminal? false}
+
+   {:request/id R2
+    :request/title "Install shelves"
+    :request/status :claimed
+    :request/helper-id Bob
+    :request/customer-id Carol
+    :request/created-at #inst "2026-09-21T18:05:00Z"
+    :request/terminal? false}
+
+   {:request/id R3
+    :request/title "Carry boxes"
+    :request/status :completed
+    :request/helper-id Bob
+    :request/customer-id Alice
+    :request/created-at #inst "2026-09-21T17:30:00Z"
+    :request/terminal? true}])
+#+end_src
+
+Local board options can be ordinary immutable presentation data:
+
+#+begin_src clojure
+(def default-options
+  {:search ""
+   :time-order :newest
+   :mine-first? false
+   :unclaimed-first? false
+   :show-terminal? false
+   :open-details #{}})
+#+end_src
+
+Terminal filtering depends on production-prepared =:request/terminal?= rather
+than re-declaring which statuses are terminal in the view:
+
+#+begin_src clojure
+(defn apply-terminal-visibility
+  [requests {:keys [show-terminal?]}]
+
+  (if show-terminal?
+    requests
+    (remove :request/terminal?
+            requests)))
+#+end_src
+
+Search is local over the adopted projection:
+
+#+begin_src clojure
+(defn normalize-search
+  [s]
+  (-> s
+      str/lower-case
+      str/trim))
+
+(defn matches-search?
+  [request query]
+
+  (let [q
+        (normalize-search query)]
+
+    (or
+      (str/blank? q)
+
+      (str/includes?
+        (normalize-search
+          (:request/title request))
+        q))))
+
+(defn apply-search
+  [requests {:keys [search]}]
+  (filter
+    #(matches-search?
+       %
+       search)
+    requests))
+#+end_src
+
+Time ordering is deterministic:
+
+#+begin_src clojure
+(defn created-order
+  [mode]
+
+  (case mode
+    :newest
+    #(compare
+       (:request/created-at %2)
+       (:request/created-at %1))
+
+    :oldest
+    #(compare
+       (:request/created-at %1)
+       (:request/created-at %2))))
+
+(defn apply-time-order
+  [requests {:keys [time-order]}]
+
+  (sort
+    (created-order time-order)
+    requests))
+#+end_src
+
+Mine-first uses the authenticated/principal-relative prepared fact:
+
+#+begin_src clojure
+(defn mine?
+  [principal request]
+
+  (= (:user/id principal)
+     (:request/helper-id request)))
+
+(defn apply-mine-first
+  [principal requests {:keys [mine-first?]}]
+
+  (if-not mine-first?
+    requests
+
+    (sort-by
+      (fn [request]
+        [(if
+           (mine? principal request)
+           0
+           1)])
+      requests)))
+#+end_src
+
+Unclaimed-first similarly uses authoritative claim state:
+
+#+begin_src clojure
+(defn unclaimed?
+  [request]
+  (nil?
+    (:request/helper-id request)))
+
+(defn apply-unclaimed-first
+  [requests {:keys [unclaimed-first?]}]
+
+  (if-not unclaimed-first?
+    requests
+
+    (sort-by
+      (fn [request]
+        [(if
+           (unclaimed? request)
+           0
+           1)])
+      requests)))
+#+end_src
+
+One deterministic pipeline composes them:
+
+#+begin_src clojure
+(defn present-board
+  [{:keys [principal adopted options]}]
+
+  (->> (:requests adopted)
+
+       (apply-terminal-visibility
+         options)
+
+       (apply-search
+         options)
+
+       (apply-time-order
+         options)
+
+       (apply-mine-first
+         principal
+         options)
+
+       (apply-unclaimed-first
+         options)
+
+       vec))
+#+end_src
+
+The exact sort priority is HumanHelp product/view semantics and can be changed
+without becoming a generic Gesso rule. The important property is that one
+declared deterministic pipeline owns it.
+
+Typing in search updates only presentation state:
+
+#+begin_src clojure
+(defn on-search-input
+  [board text]
+
+  (assoc-in board
+    [:options :search]
+    text))
+#+end_src
+
+No authoritative Request is created, deleted, claimed, or acquired by that
+action.
+
+Opening details likewise records local continuity:
+
+#+begin_src clojure
+(defn toggle-details
+  [board request-id]
+
+  (update-in board
+    [:options :open-details]
+    (fn [open]
+      (if
+        (contains? open request-id)
+
+        (disj open request-id)
+
+        (conj open request-id)))))
+#+end_src
+
+When an authoritative same-identity board replacement occurs, local options may
+be retained:
+
+#+begin_src clojure
+(defn replace-authoritative-board
+  [board observation]
+
+  (let [adopted-ids
+        (set
+          (map :request/id
+               (:requests observation)))
+
+        open-details
+        (set/intersection
+          adopted-ids
+          (get-in board
+            [:options :open-details]))]
+
+    (-> board
+        (assoc
+          :adopted
+          {:basis (:basis observation)
+           :requests (:requests observation)})
+
+        (assoc-in
+          [:options :open-details]
+          open-details))))
+#+end_src
+
+If R3 disappears from the newly authorized complete projection, its open-details
+bit is retired. The continuity layer does not recreate R3 merely because the
+old accordion was open.
+
+A rendered board can now be a simple result of adopted authority plus local
+options:
+
+#+begin_src clojure
+(defn board-view
+  [board]
+
+  [:section.request-board
+
+   (board-controls
+     (:options board))
+
+   (refresh-control
+     (:advisory board))
+
+   [:div.request-board__cards
+    (for [request
+          (present-board board)]
+
+      ^{:key
+        (:request/id request)}
+
+      [request-card
+       {:request request
+        :open?
+        (contains?
+          (get-in board
+            [:options :open-details])
+          (:request/id request))}])]])
+#+end_src
+
+This is deliberately a presentation pipeline, not a second Request policy
+engine. It operates over production-backed facts and current adopted membership,
+which is exactly why it is useful for the proving application: Refresh, local
+creation, terminal transitions, and continuity all pressure the same local
+presentation logic without moving domain authority into it.
 
 ** Request details and response flow
 
@@ -2693,6 +3774,359 @@ remote advisory without adoption
 
 because those are intentionally different actor behaviors.
 
+
+A real two-context Playwright scenario should therefore look more like an
+application test than a protocol-unit test.
+
+The following JavaScript is illustrative test code. The important points are
+that it drives the real controls, uses independent authenticated contexts, and
+cross-checks browser-visible state against production model truth.
+
+#+begin_src javascript
+test("creator-local adoption and remote advisory require explicit Refresh",
+  async ({ browser }) => {
+
+    const alice = await browser.newContext();
+    const bob = await browser.newContext();
+
+    const alicePage = await alice.newPage();
+    const bobPage = await bob.newPage();
+
+    const aliceErrors = [];
+    const bobErrors = [];
+
+    for (const [page, errors] of [
+      [alicePage, aliceErrors],
+      [bobPage, bobErrors],
+    ]) {
+      page.on("console", (msg) => {
+        if (msg.type() === "error") {
+          errors.push({
+            kind: "console",
+            text: msg.text(),
+          });
+        }
+      });
+
+      page.on("pageerror", (error) => {
+        errors.push({
+          kind: "pageerror",
+          text: String(error),
+        });
+      });
+
+      page.on("requestfailed", (request) => {
+        errors.push({
+          kind: "requestfailed",
+          url: request.url(),
+          failure: request.failure(),
+        });
+      });
+    }
+
+    await loginAs(alicePage, fixtures.alice);
+    await loginAs(bobPage, fixtures.bob);
+
+    await Promise.all([
+      alicePage.goto(appUrl("/app")),
+      bobPage.goto(appUrl("/app")),
+    ]);
+
+    await expect(
+      alicePage.getByTestId("request-board")
+    ).toBeVisible();
+
+    await expect(
+      bobPage.getByTestId("request-board")
+    ).toBeVisible();
+
+    const bobInitialIds =
+      await visibleRequestIds(bobPage);
+
+    expect(
+      bobInitialIds
+    ).not.toContain(fixtures.newRequestId);
+
+    await alicePage
+      .getByRole("button", { name: "Create Request" })
+      .click();
+
+    await alicePage
+      .getByLabel("Title")
+      .fill("Need help moving a cabinet");
+
+    await alicePage
+      .getByLabel("Description")
+      .fill("Cabinet is upstairs.");
+
+    await alicePage
+      .getByRole("button", { name: "Create" })
+      .click();
+
+    const aliceCreatedCard =
+      alicePage
+        .getByTestId("request-card")
+        .filter({ hasText: "Need help moving a cabinet" });
+
+    await expect(
+      aliceCreatedCard
+    ).toBeVisible();
+
+    const created =
+      await readRequestByTitleFromModel(
+        "Need help moving a cabinet"
+      );
+
+    expect(created).toMatchObject({
+      status: "open",
+      customerId: fixtures.alice.userId,
+    });
+
+    const bobRemoteCard =
+      bobPage
+        .getByTestId("request-card")
+        .filter({ hasText: "Need help moving a cabinet" });
+
+    await expect(
+      bobRemoteCard
+    ).toHaveCount(0);
+
+    await expect(
+      bobPage.getByTestId("refresh-advisory")
+    ).toContainText(/update/i);
+
+    await expect(
+      bobPage.getByRole("button", { name: /Refresh/ })
+    ).toHaveClass(/refresh-button--attention/);
+
+    await bobPage
+      .getByLabel("Search Requests")
+      .fill("cabinet");
+
+    await expect(
+      bobRemoteCard
+    ).toHaveCount(0);
+
+    await bobPage
+      .getByRole("button", { name: "Create Request" })
+      .click();
+
+    await bobPage
+      .getByLabel("Title")
+      .fill("Help carry boxes");
+
+    await bobPage
+      .getByLabel("Description")
+      .fill("Three boxes in garage.");
+
+    await bobPage
+      .getByRole("button", { name: "Create" })
+      .click();
+
+    await bobPage
+      .getByLabel("Search Requests")
+      .fill("");
+
+    await expect(
+      bobPage
+        .getByTestId("request-card")
+        .filter({ hasText: "Help carry boxes" })
+    ).toBeVisible();
+
+    await expect(
+      bobRemoteCard
+    ).toHaveCount(0);
+
+    await expect(
+      bobPage.getByRole("button", { name: /Refresh/ })
+    ).toHaveClass(/refresh-button--attention/);
+
+    await bobPage
+      .getByRole("button", { name: /Refresh/ })
+      .click();
+
+    await expect(
+      bobRemoteCard
+    ).toBeVisible();
+
+    await expect(
+      bobPage.getByRole("button", { name: /^Refresh$/ })
+    ).not.toHaveClass(/refresh-button--attention/);
+
+    const bobBoard =
+      await readAuthorizedBoardFromModel(
+        fixtures.bob.userId
+      );
+
+    expect(
+      bobBoard.map((r) => r.id)
+    ).toContain(created.id);
+
+    expect(aliceErrors).toEqual([]);
+    expect(bobErrors).toEqual([]);
+
+    await alice.close();
+    await bob.close();
+  });
+#+end_src
+
+That test already covers more than "SSE fired." It distinguishes Alice's
+correlated creation result, Bob's advisory knowledge, Bob's unchanged adopted
+membership, and Bob's later explicit authoritative reacquisition.
+
+The Claim concurrency scenario can use the same two contexts:
+
+#+begin_src javascript
+test("two helpers racing Claim resolve through production Request authority",
+  async ({ browser }) => {
+
+    const alice = await authenticatedHelperContext(
+      browser,
+      fixtures.helperAlice
+    );
+
+    const bob = await authenticatedHelperContext(
+      browser,
+      fixtures.helperBob
+    );
+
+    const alicePage = await alice.newPage();
+    const bobPage = await bob.newPage();
+
+    await alicePage.goto(appUrl("/app"));
+    await bobPage.goto(appUrl("/app"));
+
+    const request =
+      await createClaimableRequestFixture();
+
+    await Promise.all([
+      refreshUntilVisible(
+        alicePage,
+        request.id
+      ),
+
+      refreshUntilVisible(
+        bobPage,
+        request.id
+      ),
+    ]);
+
+    const aliceCard =
+      requestCardById(
+        alicePage,
+        request.id
+      );
+
+    const bobCard =
+      requestCardById(
+        bobPage,
+        request.id
+      );
+
+    await expect(
+      aliceCard.getByRole("button", { name: "Claim" })
+    ).toBeVisible();
+
+    await expect(
+      bobCard.getByRole("button", { name: "Claim" })
+    ).toBeVisible();
+
+    await Promise.all([
+      aliceCard
+        .getByRole("button", { name: "Claim" })
+        .click(),
+
+      bobCard
+        .getByRole("button", { name: "Claim" })
+        .click(),
+    ]);
+
+    await Promise.all([
+      expectClaimExecutionSettled(
+        alicePage,
+        request.id
+      ),
+
+      expectClaimExecutionSettled(
+        bobPage,
+        request.id
+      ),
+    ]);
+
+    const authoritative =
+      await readRequestFromModel(
+        request.id
+      );
+
+    expect(
+      authoritative.status
+    ).toBe("claimed");
+
+    expect([
+      fixtures.helperAlice.userId,
+      fixtures.helperBob.userId,
+    ]).toContain(
+      authoritative.helperId
+    );
+
+    expect(
+      authoritative.helperId
+    ).not.toBeNull();
+
+    // The remote-lifecycle adoption policy remains an explicit product
+    // decision. This helper follows the selected fixture policy rather than
+    // choosing auto-adoption inside this example.
+    await reconcileVisibleRequest(
+      alicePage,
+      request.id
+    );
+
+    await reconcileVisibleRequest(
+      bobPage,
+      request.id
+    );
+
+    await expectRequestOwner(
+      alicePage,
+      request.id,
+      authoritative.helperId
+    );
+
+    await expectRequestOwner(
+      bobPage,
+      request.id,
+      authoritative.helperId
+    );
+
+    await alicePage.reload();
+    await bobPage.reload();
+
+    await expectRequestOwner(
+      alicePage,
+      request.id,
+      authoritative.helperId
+    );
+
+    await expectRequestOwner(
+      bobPage,
+      request.id,
+      authoritative.helperId
+    );
+
+    await alice.close();
+    await bob.close();
+  });
+#+end_src
+
+This example deliberately refuses to choose the still-open HumanHelp product
+decision about automatic adoption of remote lifecycle changes. The helper
+=reconcileVisibleRequest= must be implemented according to the selected policy
+once that decision is made.
+
+The important acceptance property is already fixed: two optimistic browsers do
+not create two authoritative histories, and the losing browser does not turn
+its provisional Claim into domain truth.
+
 *** Creator scenario
 
 #+begin_example
@@ -2793,6 +4227,200 @@ Continuity is accepted only as local interaction preservation.
 
 The Request's authoritative state remains independently verifiable.
 
+
+A single browser scenario can exercise these local presentation features against
+stable adopted authority without conflating them with mutation.
+
+#+begin_src javascript
+test("search, sorting, visibility, and details remain local board presentation",
+  async ({ browser }) => {
+
+    const context =
+      await authenticatedHelperContext(
+        browser,
+        fixtures.helperBob
+      );
+
+    const page =
+      await context.newPage();
+
+    const fixture =
+      await seedBoard({
+        requests: [
+          {
+            title: "Move a cabinet",
+            createdAt: "2026-09-21T18:00:00Z",
+            status: "open",
+            helperId: null,
+          },
+          {
+            title: "Install shelves",
+            createdAt: "2026-09-21T18:05:00Z",
+            status: "claimed",
+            helperId: fixtures.helperBob.userId,
+          },
+          {
+            title: "Carry boxes",
+            createdAt: "2026-09-21T17:30:00Z",
+            status: "completed",
+            helperId: fixtures.helperBob.userId,
+          },
+        ],
+      });
+
+    await page.goto(appUrl("/app"));
+
+    await refreshUntilBoardContains(
+      page,
+      fixture.openRequestIds
+    );
+
+    const initialModel =
+      await readAuthorizedBoardFromModel(
+        fixtures.helperBob.userId
+      );
+
+    await page
+      .getByLabel("Search Requests")
+      .fill("cabinet");
+
+    await expect(
+      requestCardByTitle(
+        page,
+        "Move a cabinet"
+      )
+    ).toBeVisible();
+
+    await expect(
+      requestCardByTitle(
+        page,
+        "Install shelves"
+      )
+    ).toHaveCount(0);
+
+    expect(
+      await readAuthorizedBoardFromModel(
+        fixtures.helperBob.userId
+      )
+    ).toEqual(initialModel);
+
+    await page
+      .getByLabel("Search Requests")
+      .fill("");
+
+    await page
+      .getByLabel("Sort order")
+      .selectOption("oldest");
+
+    expect(
+      await visibleRequestTitles(page)
+    ).toEqual([
+      "Move a cabinet",
+      "Install shelves",
+    ]);
+
+    await page
+      .getByLabel("Sort order")
+      .selectOption("newest");
+
+    expect(
+      await visibleRequestTitles(page)
+    ).toEqual([
+      "Install shelves",
+      "Move a cabinet",
+    ]);
+
+    await page
+      .getByLabel("Mine first")
+      .check();
+
+    expect(
+      (await visibleRequestTitles(page))[0]
+    ).toBe("Install shelves");
+
+    await page
+      .getByLabel("Unclaimed first")
+      .check();
+
+    expect(
+      (await visibleRequestTitles(page))[0]
+    ).toBe("Move a cabinet");
+
+    await expect(
+      requestCardByTitle(
+        page,
+        "Carry boxes"
+      )
+    ).toHaveCount(0);
+
+    await page
+      .getByLabel("Show completed Requests")
+      .check();
+
+    await expect(
+      requestCardByTitle(
+        page,
+        "Carry boxes"
+      )
+    ).toBeVisible();
+
+    const afterVisibilityToggle =
+      await readRequestFromModel(
+        fixture.byTitle["Carry boxes"].id
+      );
+
+    expect(
+      afterVisibilityToggle.status
+    ).toBe("completed");
+
+    const cabinetCard =
+      requestCardByTitle(
+        page,
+        "Move a cabinet"
+      );
+
+    await cabinetCard
+      .getByRole("button", { name: /Details/ })
+      .click();
+
+    await expect(
+      cabinetCard.getByTestId("request-details")
+    ).toBeVisible();
+
+    await page
+      .getByRole("button", { name: /^Refresh/ })
+      .click();
+
+    await expect(
+      requestCardByTitle(
+        page,
+        "Move a cabinet"
+      )
+      .getByTestId("request-details")
+    ).toBeVisible();
+
+    await expect(
+      page.getByLabel("Show completed Requests")
+    ).toBeChecked();
+
+    await expect(
+      page.getByLabel("Unclaimed first")
+    ).toBeChecked();
+
+    await context.close();
+  });
+#+end_src
+
+The scenario intentionally checks model truth before and after presentation-only
+interactions. That prevents an implementation from making a test green by
+silently rewriting authoritative Request data to implement filtering or sort
+order.
+
+A separate retirement case should remove an open Request from the authorized
+projection and assert that continuity does *not* resurrect its details DOM. That
+case exercises Part VI's scope and retirement rules rather than merely proving
+that accordion state survives benign replacement.
+
 *** Terminal transition scenario
 
 An operation that makes a Request terminal must yield correct authoritative
@@ -2841,6 +4469,276 @@ This exercises the generic Part VI invariant in the real HumanHelp surface.
 
 HumanHelp also supplies deterministic malformed fixtures that must fail before
 normal user interaction.
+
+
+Those fixtures are most useful when they are mutations of the same production
+assembly constructor rather than a parallel "bad app" representation.
+
+A small helper can produce controlled defects while retaining the rest of the
+real application:
+
+#+begin_src clojure
+(defn production-candidate
+  []
+  (application-preflight/application
+    test-config))
+
+(defn with-controlled-defect
+  [candidate defect]
+  (case defect
+
+    :unknown-operation
+    (assoc-in candidate
+      [:views
+       :request/card
+       :semantic-affordances
+       :claim
+       :operation]
+      :request/claime)
+
+    :missing-browser-plan
+    (update-in candidate
+      [:browser :required-plans]
+      disj
+      :plan/request-claim)
+
+    :wrong-server-operation
+    (assoc-in candidate
+      [:routes :route/request-claim
+       :trusted-capability]
+      :server/request-cancel)
+
+    :missing-clock
+    (update-in candidate
+      [:server-operations
+       :server/request-claim
+       :supplies]
+      disj
+      :clock)
+
+    :missing-board-acquisition
+    (update candidate
+      :acquisitions
+      dissoc
+      :request/board)
+
+    candidate))
+#+end_src
+
+Static defects then pass through the real preflight checker:
+
+#+begin_src clojure
+(deftest missing-claim-plan-fails-production-preflight
+  (let [candidate
+        (with-controlled-defect
+          (production-candidate)
+          :missing-browser-plan)
+
+        result
+        (gesso.application/check
+          candidate)]
+
+    (is (= :rejected
+           (:status result)))
+
+    (is (= :missing-browser-plan
+           (get-in result
+             [:error :kind])))
+
+    (is (= :request/claim
+           (get-in result
+             [:error :operation])))
+
+    (is (= :plan/request-claim
+           (get-in result
+             [:error :required])))))
+#+end_src
+
+The missing capability case likewise uses the actual server declaration:
+
+#+begin_src clojure
+(deftest missing-clock-fails-before-server-start
+  (let [candidate
+        (with-controlled-defect
+          (production-candidate)
+          :missing-clock)]
+
+    (is
+      (thrown-with-msg?
+        clojure.lang.ExceptionInfo
+        #"missing.*clock"
+        (gesso.application/admit-generation!
+          candidate)))
+
+    (is (false?
+          (test-runtime/server-started?)))))
+#+end_src
+
+The stale artifact defect uses the actual artifact-currentness boundary rather
+than merely putting a fake boolean in the assembly:
+
+#+begin_src clojure
+(deftest stale-artifact-bytes-fail-currentness
+  (let [candidate
+        (production-candidate)
+
+        current-manifest
+        (browser/derive-manifest
+          candidate)
+
+        stale-receipt
+        (artifact-fixture/receipt-for
+          previous-manifest)
+
+        served-bytes
+        (artifact-fixture/bytes-for
+          previous-manifest)
+
+        result
+        (browser/check-currentness
+          {:manifest current-manifest
+           :receipt stale-receipt
+           :served-bytes served-bytes})]
+
+    (is (= :rejected
+           (:status result)))
+
+    (is (= :stale-browser-artifact
+           (:error/kind result)))))
+#+end_src
+
+A stronger adversarial fixture copies the *current* manifest identity into stale
+metadata while leaving incompatible bytes:
+
+#+begin_src clojure
+(deftest forged-current-stamp-does-not-certify-stale-bytes
+  (let [current
+        (browser/derive-manifest
+          (production-candidate))
+
+        forged
+        (assoc stale-receipt
+          :manifest/id
+          (:manifest/id current))
+
+        result
+        (browser/check-currentness
+          {:manifest current
+           :receipt forged
+           :served-bytes stale-bytes})]
+
+    (is (= :rejected
+           (:status result)))
+
+    (is (= :artifact-content-mismatch
+           (:error/kind result)))))
+#+end_src
+
+Dynamic rendered-surface defects are introduced later, at the actual render
+boundary, because static preflight does not know the concrete arguments:
+
+#+begin_src clojure
+(deftest anonymous-claim-route-is-rejected-before-serialization
+  (let [generation
+        (fixture/admitted-production-generation)
+
+        malformed
+        [:form
+         {:hx-post
+          (str "/app/requests/"
+               R
+               "/claim")}
+
+         [:button
+          {:type "submit"}
+          "Claim"]]]
+
+    (is
+      (thrown-with-msg?
+        clojure.lang.ExceptionInfo
+        #"anonymous semantic route"
+        (gesso.render/serialize-checked!
+          generation
+          malformed)))
+
+    (is (false?
+          (fixture/output-delivered?)))
+
+    (is (= :open
+           (:request/status
+             (request-model/read-current
+               test-ctx
+               R))))))
+#+end_src
+
+Malformed browser protocol is a different boundary. The route exists, but the
+untrusted client modifies or invents protocol data:
+
+#+begin_src clojure
+(deftest forged-browser-command-cannot-claim-request
+  (let [response
+        (http/post
+          test-server
+          (str "/app/requests/"
+               R
+               "/claim")
+
+          {:headers
+           authenticated-alice-headers
+
+           :form-params
+           {"__gesso_live_optimistic_command"
+            (pr-str
+              {:operation :request/claim
+               :command-id C42
+               :request/id R
+               :principal Mallory
+               :plan :forged-plan})}})]
+
+    (is (= 400
+           (:status response)))
+
+    (is (= :open
+           (:request/status
+             (request-model/read-current
+               test-ctx
+               R))))))
+#+end_src
+
+The trusted boundary does not believe =:principal Mallory= merely because the
+client encoded it, and it does not accept an arbitrary plan identifier as proof
+of an admitted realization.
+
+Finally, every malformed fixture should have a nearby valid control case:
+
+#+begin_src clojure
+(deftest valid-claim-generation-remains-usable
+  (let [generation
+        (fixture/admitted-production-generation)
+
+        page
+        (fixture/render-app
+          generation
+          {:principal Alice})]
+
+    (is (re-find
+          #"request/claim"
+          page))
+
+    (is (= :preflight-closed
+           (:status
+             (gesso.application/report
+               generation))))))
+#+end_src
+
+Rejecting everything would satisfy many negative tests while proving nothing
+about a usable application. The paired valid fixture ensures the enforcement
+boundary is selective rather than accidentally disabling the proving surface.
+
+The same controlled-defect style can cover every row in the structural rejection
+matrix while preserving one crucial property: tests break the actual production
+construction at one declared edge and then observe which real enforcement
+boundary catches it.
 
 *** Unknown semantic operation
 
