@@ -9,13 +9,6 @@ and admission vocabulary established in Part I. The definitions do not require
 a universal persisted fact graph, a new runtime class for every concept, or a
 single global revision coordinate.
 
-The distinctions below become easier to follow when they are allowed to recur
-in ordinary application situations. HumanHelp Requests, a store checkout, an
-expense approval, a seat reservation, and a collaborative editor will therefore
-appear repeatedly. They are not additional normative models. They are concrete
-ways to ask whether the semantic distinctions remain intelligible when several
-real concerns overlap at once.
-
 ** Values and evolving values
 
 A value may be a singular immutable value:
@@ -90,39 +83,6 @@ actor displayed representation of fact
 
 These are distinct events and relationships.
 
-A HumanHelp board makes those distinctions visible without any exotic machinery.
-Suppose Request R is unclaimed when Alice and Bob both load their boards. Alice
-claims R, the authoritative Request transition commits, and Alice's next
-authoritative projection shows the claimed state. Bob's tab, however, may still
-show the previously adopted unclaimed representation until it receives an
-advisory and performs whatever acquisition/adoption policy the application
-permits.
-
-#+begin_example
-Request R unclaimed
-    |
-Alice submits Claim
-    |
-authoritative Request transition commits
-    |
-Alice acquires claimed R
-    |
-Bob receives advisory that relevant authority changed
-    |
-Bob still displays his previously adopted projection
-    |
-permitted Refresh / acquisition
-    |
-Bob acquires the newer authoritative projection
-#+end_example
-
-Nothing in this sequence requires the system to pretend there was one universal
-instant at which every representation became "the current value." The domain
-transition, database visibility, Alice's acquisition, Bob's advisory knowledge,
-and Bob's later adopted representation are related but distinct. The rest of
-this part gives names to those distinctions so later choreography and runtime
-rules can refer to the one they actually mean.
-
 *** Conceptual fact graph versus required persistence
 
 The semantic model may reason in terms of facts and relations among facts
@@ -196,31 +156,6 @@ distinctions not established by that shape. Ordinary immutable values may still
 use ordinary value equality when the enclosing contract makes it sufficient.
 Gesso must not mistake matching schemas or encodings for equality of authority,
 provenance, subject, observation scope, or admission status.
-
-An expense-approval application gives a compact example. The browser might
-submit:
-
-#+begin_src clojure
-{:employee-id 42
- :department :engineering}
-#+end_src
-
-while a trusted authoritative employee lookup independently yields an equal
-Clojure value. Malli may correctly say that both values have the same shape.
-Ordinary Clojure equality may correctly say that their contents are equal. Yet
-the browser proposal and the authoritative observation do not have the same
-provenance, and only the latter can justify a rule that specifically requires an
-authoritative employee record.
-
-A desirable application-facing API should make that difference natural rather
-than requiring every caller to manually decorate ordinary maps with framework
-plumbing. For example, application code might pass an employee value obtained
-through a trusted model observation into a checked approval operation, while a
-form-decoded map remains merely proposed input until the relevant boundary admits
-it. The exact API is deliberately left open; the semantic requirement is that
-content equality cannot perform the admission step. The following distinction
-between representation, category, and admission exists precisely to prevent that
-substitution.
 
 *** Representation, semantic category, and admission
 :PROPERTIES:
@@ -345,6 +280,253 @@ established, the diagnostic identifies it as unknown or unadmitted rather than
 inventing a trustworthy origin from an untrusted tag.
 #+end_quote
 
+
+An expense-approval path shows what that criterion means in application code.
+The following records are only one possible realization; the design does not
+require Gesso to turn every semantic distinction into a record. They are useful
+here because they make the admission boundary visible.
+
+#+begin_src clojure
+(defschema EmployeeValue
+  [:map
+   [:employee/id uuid?]
+   [:employee/department keyword?]
+   [:employee/risk-band
+    [:enum :ordinary :enhanced-review]]])
+
+(defschema ExpenseValue
+  [:map
+   [:expense/id uuid?]
+   [:expense/employee-id uuid?]
+   [:expense/department keyword?]
+   [:expense/amount decimal?]
+   [:expense/status
+    [:enum :draft :submitted :approved :rejected]]])
+
+(defrecord ProposedEmployee
+  [value])
+
+(defrecord ObservedEmployee
+  [value
+   authority
+   basis
+   projection])
+
+(defrecord AdmittedEmployee
+  [value
+   authority
+   basis
+   projection
+   principal])
+
+(defn decode-employee-form
+  [params]
+  (let [value
+        {:employee/id
+         (parse-uuid (:employee-id params))
+
+         :employee/department
+         (keyword (:department params))
+
+         :employee/risk-band
+         (keyword (:risk-band params))}]
+
+    ;; Malli establishes representation shape here.
+    (m/assert EmployeeValue value)
+
+    ;; The browser supplied the data, so shape success does not promote it
+    ;; into authoritative employee knowledge.
+    (->ProposedEmployee value)))
+
+(defn observe-employee!
+  [{:keys [db]} employee-id]
+  (let [{:keys [value basis]}
+        (employee-model/read-current
+          db
+          {:employee-id employee-id
+           :projection :employee/approval-facts})]
+
+    (m/assert EmployeeValue value)
+
+    ;; This value has crossed the model-owned authoritative acquisition
+    ;; boundary, so it carries provenance that the form value does not.
+    (->ObservedEmployee
+      value
+      [:authority :employee employee-id]
+      basis
+      :employee/approval-facts)))
+
+(defn admit-employee-for-approval!
+  [{:keys [principal authorization]}
+   observed]
+
+  (when-not (instance? ObservedEmployee observed)
+    (throw
+      (ex-info
+        "Approval requires an authoritative Employee observation."
+        {:error/type :semantic/wrong-category
+         :expected :employee/observed
+         :supplied
+         (cond
+           (instance? ProposedEmployee observed)
+           :employee/proposed
+
+           (map? observed)
+           :representation/raw-map
+
+           :else
+           :semantic/unknown)})))
+
+  (when-not
+    (authorization/can-observe-employee-for-approval?
+      authorization
+      principal
+      (:authority observed))
+    (throw
+      (ex-info
+        "Principal is not authorized to use this Employee observation."
+        {:error/type :semantic/admission-denied
+         :principal (:user/id principal)
+         :authority (:authority observed)
+         :projection (:projection observed)})))
+
+  (->AdmittedEmployee
+    (:value observed)
+    (:authority observed)
+    (:basis observed)
+    (:projection observed)
+    principal))
+
+(defn approval-context!
+  [{:keys [principal] :as ctx}
+   expense-id]
+
+  (let [expense
+        (expense-model/require-current!
+          ctx
+          expense-id)
+
+        observed-employee
+        (observe-employee!
+          ctx
+          (:expense/employee-id expense))
+
+        admitted-employee
+        (admit-employee-for-approval!
+          ctx
+          observed-employee)]
+
+    {:expense expense
+     :employee admitted-employee
+     :principal principal}))
+#+end_src
+
+Now compare three values that contain the same nested Clojure map:
+
+#+begin_src clojure
+(def browser-proposal
+  (decode-employee-form
+    {:employee-id "98a47a10-0ab8-4a8a-8f61-d4bd598e7729"
+     :department "engineering"
+     :risk-band "ordinary"}))
+
+(def authoritative-observation
+  (observe-employee!
+    ctx
+    #uuid "98a47a10-0ab8-4a8a-8f61-d4bd598e7729"))
+
+(def admitted-observation
+  (admit-employee-for-approval!
+    ctx
+    authoritative-observation))
+
+(= (:value browser-proposal)
+   (:value authoritative-observation)
+   (:value admitted-observation))
+;; => true
+#+end_src
+
+Ordinary value equality is doing its job. The records contain equal domain data.
+The semantic categories answer a different question: what may this value justify
+at this boundary?
+
+A downstream approval rule might intentionally accept only the admitted
+observation:
+
+#+begin_src clojure
+(defn manager-may-approve?
+  [{:keys [expense employee principal]}]
+
+  (when-not (instance? AdmittedEmployee employee)
+    (throw
+      (ex-info
+        "Approval rule requires an admitted Employee observation."
+        {:error/type :semantic/unadmitted-input
+         :expected :employee/admitted-for-approval})))
+
+  (and
+    (= :submitted
+       (:expense/status expense))
+
+    (= (:expense/department expense)
+       (get-in employee [:value :employee/department]))
+
+    (= :ordinary
+       (get-in employee [:value :employee/risk-band]))
+
+    (= (:user/id principal)
+       (:user/id (:principal employee)))))
+#+end_src
+
+The tempting substitution is exactly the one Gesso should make difficult:
+
+#+begin_src clojure
+;; Same inner map. Wrong semantic category.
+
+(manager-may-approve?
+  {:expense expense
+   :employee browser-proposal
+   :principal principal})
+
+;; => rejected before the rule is allowed to consume it
+;; {:error/type :semantic/unadmitted-input
+;;  :expected :employee/admitted-for-approval}
+#+end_src
+
+Serialization makes the distinction sharper. Suppose an admitted observation is
+encoded into HTML or EDN and later returned by the browser:
+
+#+begin_src clojure
+(def wire-value
+  (pr-str
+    {:employee (:value admitted-observation)
+     :basis (:basis admitted-observation)
+     :authority (:authority admitted-observation)
+     :category :employee/admitted-for-approval}))
+
+(def returned
+  (edn/read-string wire-value))
+
+;; This is still client-carried data. The browser was able to alter every field.
+;; Recreating a similarly named record must not restore the old admission.
+(->AdmittedEmployee
+  (:employee returned)
+  (:authority returned)
+  (:basis returned)
+  :employee/approval-facts
+  principal)
+#+end_src
+
+A supported server API should instead either reacquire the authoritative
+Employee or validate a separately defined server-verifiable receipt whose
+contract actually establishes the premise required by the operation.
+
+The lesson is not that records are magical security objects. They are not. The
+lesson is that shape, semantic category, admission, and proof can coincide in
+simple cases but must remain separable when later correctness depends on the
+difference. A good public API should preserve that distinction while hiding most
+of the ceremony from ordinary downstream code.
+
 #+LATEX: \newpage
 
 ** Facts, time, and authoritative progression
@@ -433,34 +615,6 @@ A browser may wake after a deployment.
 
 The fact that an event arrived later in wall-clock time does not by itself make
 the event semantically newer or authorized to mutate current state.
-
-A seat-reservation race puts several of these dimensions on one timeline. Alice
-may have observed Seat 12 as available from an authoritative read through
-frontier =X83=. Bob reserves it in a later transaction visible through =X88=.
-The reservation may be domain-effective at 14:02, while an SSE advisory reaches
-Alice at 14:02:05 and a callback from an older request happens to fire at
-14:02:06.
-
-#+begin_example
-domain fact:
-    Seat 12 available -> Seat 12 reserved
-
-authoritative database progression:
-    X83 -> X88
-
-Alice's acquired knowledge before refresh:
-    justified through X83 for the seat projection she observed
-
-physical delivery:
-    advisory arrives after Bob's commit
-    an older callback may arrive even later
-#+end_example
-
-The late callback wins no semantic contest merely by having the newest wall-clock
-timestamp. Likewise, =X88= does not mean every domain fact is "version 88," and
-Alice's older knowledge does not mean the database itself reverted. This is the
-practical reason the next section refuses to compress these dimensions into one
-revision integer.
 
 #+LATEX: \newpage
 *** Do not collapse dimensions into one revision integer
@@ -718,27 +872,158 @@ correlation or realization information; neither substitutes for those decisions.
 Changing a browser tab, transport connection, or physical host must not silently
 carry permissions into a different principal or authority scope.
 
-A collaborative editor makes the separation less abstract. Alice may act as the
-=:editor= role for document D. Her authenticated principal is =[:user Alice]=,
-one browser tab is actor =C1=, and the semantic authority for committed document
-state is associated with D rather than with whichever web node happens to answer.
-A save might first reach node A and a retry after node loss might reach node C:
 
-#+begin_example
-role                 :editor
-principal            [:user Alice]
-browser actor         [:client C1]
-semantic authority    [:authority :document D]
-first host            [:web-node A]
-retry host            [:web-node C]
-#+end_example
+A collaborative editor makes the categories easier to follow when several of
+them change independently.
 
-Changing A to C does not manufacture a new principal or a new document authority.
-Opening a second browser tab, on the other hand, can create another actor with
-different local knowledge while preserving Alice's principal. Revoking Alice's
-editing permission changes the authorization question even if actor C1 and host C
-remain exactly the same. These are the sorts of independent changes that a
-generic =server-id= or =user-id= cannot faithfully represent.
+Suppose Alice is currently allowed to edit document D. One browser tab opens a
+projected editor actor and later reconnects through another web node:
+
+#+begin_src clojure
+(def editor-session
+  {:semantic/role
+   :editor
+
+   :principal
+   [:user #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]
+
+   :actor
+   [:client #uuid "c1000000-0000-0000-0000-000000000001"]
+
+   :authority
+   [:authority
+    :document
+    #uuid "dddddddd-dddd-dddd-dddd-dddddddddddd"]
+
+   :operation
+   :document/save
+
+   :command
+   #uuid "ca110000-0000-0000-0000-000000000077"
+
+   :execution
+   #uuid "e0000000-0000-0000-0000-000000000019"
+
+   :transport-request
+   #uuid "70000000-0000-0000-0000-000000000204"
+
+   :host
+   [:web-node :A]})
+#+end_src
+
+The first transport attempt disappears before Alice receives a response. The
+operation's retry contract permits another transport attempt through node C:
+
+#+begin_src clojure
+(def retry-session
+  (-> editor-session
+      (assoc
+        :transport-request
+        #uuid "70000000-0000-0000-0000-000000000205"
+
+        :host
+        [:web-node :C])))
+
+(select-keys editor-session
+  [:principal :actor :authority :operation :command :execution])
+;; =>
+;; same values
+
+(select-keys retry-session
+  [:principal :actor :authority :operation :command :execution])
+;; =>
+;; same values
+
+(select-keys editor-session
+  [:transport-request :host])
+;; =>
+;; http attempt 204 on node A
+
+(select-keys retry-session
+  [:transport-request :host])
+;; =>
+;; http attempt 205 on node C
+#+end_src
+
+The host and transport attempt changed. That does not create a new principal,
+document authority, semantic command, or necessarily a new protocol execution.
+
+Now Alice opens a second browser tab:
+
+#+begin_src clojure
+(def second-tab
+  (-> retry-session
+      (assoc
+        :actor
+        [:client #uuid "c2000000-0000-0000-0000-000000000002"]
+
+        :execution
+        #uuid "e0000000-0000-0000-0000-000000000020"
+
+        :transport-request
+        #uuid "70000000-0000-0000-0000-000000000206")))
+
+(= (:principal retry-session)
+   (:principal second-tab))
+;; => true
+
+(= (:actor retry-session)
+   (:actor second-tab))
+;; => false
+
+(= (:authority retry-session)
+   (:authority second-tab))
+;; => true
+#+end_src
+
+The two actors may now hold different local knowledge even though they act for
+the same principal and document authority.
+
+Finally, the Organization revokes Alice's editing permission:
+
+#+begin_src clojure
+(defn admit-editor-operation!
+  [{:keys [authorization]} session]
+  (let [principal (:principal session)
+        authority (:authority session)]
+
+    (when-not
+      (authorization/currently-allows?
+        authorization
+        {:principal principal
+         :role :editor
+         :authority authority
+         :operation (:operation session)})
+      (throw
+        (ex-info
+          "Principal may no longer instantiate the editor role."
+          {:error/type :authorization/role-admission-denied
+           :principal principal
+           :role :editor
+           :authority authority
+           :operation (:operation session)})))
+
+    session))
+
+(admit-editor-operation!
+  revoked-ctx
+  retry-session)
+;; => rejected
+
+(admit-editor-operation!
+  revoked-ctx
+  second-tab)
+;; => rejected
+#+end_src
+
+Neither browser actor had to disappear, and neither host had to change. The
+dynamic authorization relation changed while the principal, actors, authority,
+and physical hosts remained perfectly intelligible.
+
+This is why Gesso benefits from category-specific identity in diagnostics. A
+generic message such as "id mismatch" or "server changed" would obscure the
+actual question: which identity changed, which one stayed stable, and which
+semantic correspondence does the current boundary require?
 
 ** Logical identity and physical realization
 :PROPERTIES:
@@ -786,31 +1071,155 @@ categories does not require multiple independent tokens for the same instance.
 The representation must preserve whichever distinctions the admission contract
 actually uses.
 
-A single checkout click shows why this inventory of identities is not merely
-terminological bookkeeping. Suppose Alice presses =Place order= once:
 
-#+begin_example
-semantic operation           :checkout/place-order
-semantic command             cmd-77
-protocol execution           exec-19
-transport request            http-204
-resource instance            timeout-51
-projected/executable plan     checkout-plan-v3
-admitted assembly generation assembly-A12
-domain object, once created   order-483
-#+end_example
+A checkout operation puts most of those identities into one compact lifecycle.
+The following structure is intentionally verbose so the independence is visible:
 
-If =http-204= is lost and the operation's retry contract permits another attempt,
-=http-205= may carry the same =cmd-77=. A new protocol execution might also be
-created without changing the command's logical intent. Replacing a timeout or
-fetch resource creates a new resource instance without creating a new order. A
-deployment may move the same admitted assembly between hosts without changing
-any of those operation identities.
+#+begin_src clojure
+(def checkout-attempt
+  {:operation/id
+   :checkout/place-order
 
-The useful question is therefore never simply "is the id the same?" It is
-"which identity is this, and which correspondence does this boundary require?"
-The following subsections separate the identities so later runtime checks can ask
-that narrower question.
+   :command/id
+   #uuid "11111111-1111-1111-1111-111111111177"
+
+   :execution/id
+   #uuid "22222222-2222-2222-2222-222222222219"
+
+   :plan/id
+   :plan/checkout-place-order-v3
+
+   :artifact/id
+   "sha256:browser-artifact-A12"
+
+   :assembly/generation
+   :assembly-A12
+
+   :deployment/id
+   :deploy-2026-09-21-1
+
+   :cart/id
+   #uuid "33333333-3333-3333-3333-333333333333"
+
+   :order/id
+   nil
+
+   :transport
+   {:transport-request/id
+    #uuid "44444444-4444-4444-4444-444444444204"
+
+    :resource-instance/id
+    #uuid "55555555-5555-5555-5555-555555555051"
+
+    :host
+    [:web-node :A]}})
+#+end_src
+
+Suppose the request connection disappears before the browser knows whether the
+command committed. A permitted retry might preserve the semantic command while
+replacing the transport attempt and its resource instance:
+
+#+begin_src clojure
+(def retry
+  (-> checkout-attempt
+      (assoc-in
+        [:transport :transport-request/id]
+        #uuid "44444444-4444-4444-4444-444444444205")
+      (assoc-in
+        [:transport :resource-instance/id]
+        #uuid "55555555-5555-5555-5555-555555555052")
+      (assoc-in
+        [:transport :host]
+        [:web-node :C])))
+
+(assert
+  (= (:command/id checkout-attempt)
+     (:command/id retry)))
+
+(assert
+  (= (:execution/id checkout-attempt)
+     (:execution/id retry)))
+
+(assert
+  (not=
+    (get-in checkout-attempt [:transport :transport-request/id])
+    (get-in retry [:transport :transport-request/id])))
+
+(assert
+  (not=
+    (get-in checkout-attempt [:transport :resource-instance/id])
+    (get-in retry [:transport :resource-instance/id])))
+#+end_src
+
+A different recovery strategy might retire the original execution and begin a
+new execution that still tries to reconcile the same command:
+
+#+begin_src clojure
+(def reconciliation-execution
+  (-> retry
+      (assoc
+        :execution/id
+        #uuid "22222222-2222-2222-2222-222222222220")
+      (assoc-in
+        [:transport :transport-request/id]
+        #uuid "44444444-4444-4444-4444-444444444206")
+      (assoc-in
+        [:transport :resource-instance/id]
+        #uuid "55555555-5555-5555-5555-555555555053")))
+
+(assert
+  (= (:command/id retry)
+     (:command/id reconciliation-execution)))
+
+(assert
+  (not=
+    (:execution/id retry)
+    (:execution/id reconciliation-execution)))
+#+end_src
+
+If an authoritative read later finds the created Order, a domain identity enters
+the picture without replacing any of the earlier operation identities:
+
+#+begin_src clojure
+(def reconciled
+  (assoc reconciliation-execution
+    :order/id
+    #uuid "66666666-6666-6666-6666-666666666483"))
+
+{:command (:command/id reconciled)
+ :execution (:execution/id reconciled)
+ :order (:order/id reconciled)}
+;; =>
+;; three different semantic coordinates
+#+end_src
+
+And a deployment may change the admitted assembly or artifact compatibility
+without saying anything about whether command 177 committed:
+
+#+begin_src clojure
+(def after-deploy
+  (-> reconciled
+      (assoc
+        :assembly/generation :assembly-A13
+        :artifact/id "sha256:browser-artifact-A13"
+        :deployment/id :deploy-2026-09-21-2)))
+
+;; This may force a new compatible executable realization.
+;; It does not retroactively create, cancel, or settle the command.
+#+end_src
+
+The point is not that every runtime map must literally contain every field. The
+point is that a design using one generic =generation= or one generic =request-id=
+could not faithfully answer all of these questions:
+
+- is this the same semantic intent?
+- is this the same protocol trajectory?
+- is this the same transport attempt?
+- does this callback belong to the current physical resource?
+- is this browser artifact compatible with the admitted assembly?
+- which Order, if any, was authoritatively created?
+
+The identities exist because those questions have different answers.
 
 #+LATEX: \newpage
 
@@ -949,35 +1358,6 @@ Does this event belong to the currently admitted instance of this replaceable
 resource?
 #+end_quote
 
-A seat-list refresh is a common browser example. Refresh A starts for the
-logical target =:seat-list= using resource instance =r41=. Before A completes,
-navigation or HTMX replacement reconstructs the seat list and Refresh B starts
-for the same logical target using =r42=. B completes first and installs the
-current authoritative seat projection. A then completes late.
-
-#+begin_example
-logical target :seat-list
-    |
-Refresh A owns r41
-    |
-component replaced
-    |
-Refresh B owns r42
-    |
-B installs current authoritative result
-    |
-A callback arrives carrying r41
-    |
-    X  r41 no longer owns installation rights
-#+end_example
-
-The logical target is intentionally the same throughout; otherwise replacement
-would not be useful. The resource-instance identity is what prevents a callback
-from the replaced realization from borrowing the new realization's rights. The
-command, authoritative basis, or execution may or may not also have changed, so
-resource identity must remain a narrow check rather than a universal freshness
-number.
-
 A resource-instance generation counter, scoped epoch, opaque token, UUID,
 object identity, or another suitable mechanism may represent resource-instance
 identity. The representation must provide the properties required by the boundary;
@@ -1065,6 +1445,170 @@ is meaningful only within the declared counter scope and ordering contract;
 identities from different resource or execution scopes cannot be ordered merely
 because both happen to be integers.
 
+
+A browser Refresh race shows how narrow that identity can be in executable code.
+Assume a logical board target remains =:request-board= while HTMX or the Gesso
+adapter replaces the physical fetch/resource used to refresh it.
+
+The runtime might hold state resembling:
+
+#+begin_src clojure
+(def initial-board-runtime
+  {:target
+   :request-board
+
+   :execution/id
+   #uuid "70000000-0000-0000-0000-000000000012"
+
+   :current-resource
+   {:resource-instance/id
+    #uuid "71000000-0000-0000-0000-000000000007"
+
+    :kind :authoritative-acquisition
+
+    :scope
+    {:projection :request/board
+     :organization-id
+     #uuid "72000000-0000-0000-0000-000000000001"}
+
+    :status :in-flight}
+
+   :adopted-basis :B40})
+#+end_src
+
+Before Refresh A completes, the component is reconstructed and starts Refresh B:
+
+#+begin_src clojure
+(def after-replacement
+  (-> initial-board-runtime
+      (assoc
+        :current-resource
+        {:resource-instance/id
+         #uuid "71000000-0000-0000-0000-000000000008"
+
+         :kind :authoritative-acquisition
+
+         :scope
+         {:projection :request/board
+          :organization-id
+          #uuid "72000000-0000-0000-0000-000000000001"}
+
+         :status :in-flight})))
+
+(def refresh-a-result
+  {:event/class :acquisition-complete
+   :target :request-board
+   :execution/id
+   #uuid "70000000-0000-0000-0000-000000000012"
+   :resource-instance/id
+   #uuid "71000000-0000-0000-0000-000000000007"
+   :basis :B41
+   :html "<div>older acquisition</div>"})
+
+(def refresh-b-result
+  {:event/class :acquisition-complete
+   :target :request-board
+   :execution/id
+   #uuid "70000000-0000-0000-0000-000000000012"
+   :resource-instance/id
+   #uuid "71000000-0000-0000-0000-000000000008"
+   :basis :B42
+   :html "<div>current acquisition</div>"})
+#+end_src
+
+A narrow owner check can reject A for exactly the reason that matters:
+
+#+begin_src clojure
+(defn current-resource?
+  [runtime event]
+  (=
+    (get-in runtime
+      [:current-resource :resource-instance/id])
+    (:resource-instance/id event)))
+
+(defn same-execution?
+  [runtime event]
+  (=
+    (:execution/id runtime)
+    (:execution/id event)))
+
+(defn admit-acquisition-completion
+  [runtime event]
+  (cond
+    (not (same-execution? runtime event))
+    {:result :rejected
+     :reason :wrong-execution}
+
+    (not (current-resource? runtime event))
+    {:result :rejected
+     :reason :retired-resource-instance}
+
+    :else
+    {:result :admitted
+     :event event}))
+
+(admit-acquisition-completion
+  after-replacement
+  refresh-a-result)
+;; =>
+;; {:result :rejected
+;;  :reason :retired-resource-instance}
+
+(admit-acquisition-completion
+  after-replacement
+  refresh-b-result)
+;; =>
+;; {:result :admitted
+;;  :event ...}
+#+end_src
+
+Notice what the guard does *not* infer. It does not claim that B42 is universally
+newer than every basis in the application. It does not prove that the returned
+HTML is authorized for some other user. It does not establish that the command
+which caused an invalidation succeeded. It establishes only that this completion
+belongs to the currently admitted resource instance and execution.
+
+A different event class can have a different semantic owner. For example, a
+shared advisory is not execution-private:
+
+#+begin_src clojure
+(def shared-advisory
+  {:event/class :board-advisory
+   :owner
+   {:subscription/id
+    #uuid "73000000-0000-0000-0000-000000000031"
+
+    :scope
+    {:organization-id
+     #uuid "72000000-0000-0000-0000-000000000001"
+     :projection :request/board}}
+
+   :requirement
+   {:kind :authority-may-have-advanced
+    :scope :request/board}})
+
+(defn admit-board-advisory
+  [runtime event]
+  (let [subscription
+        (get-in runtime [:board-subscription :subscription/id])]
+
+    (if (= subscription
+           (get-in event [:owner :subscription/id]))
+      {:result :admitted
+       :transition :record-advisory-requirement}
+      {:result :rejected
+       :reason :wrong-subscription})))
+#+end_src
+
+Assigning that advisory to whichever command execution happens to be current
+would be a category error. Conversely, marking a private callback as
+=:shared? true= in untrusted event data must not bypass the execution/resource
+checks above.
+
+This is the executable consequence of owner-relative admission: first determine
+which declared semantic owner governs the event class, then apply the
+correspondence checks that owner's transition actually needs.
+
 ** Required correspondence checks are semantic gates
 :PROPERTIES:
 :CUSTOM_ID: req-owner-relative-event-admission
@@ -1131,27 +1675,6 @@ unrelated command execution. A shared event must not be assigned to whichever
 execution happens to be current. An execution-private callback must not become
 shared merely because its execution was retired.
 
-HumanHelp provides both kinds of event at once. Bob's board may be idle when a
-Live subscription reports that relevant Request authority changed. That advisory
-can be admitted through the board/subscription coordination scope even though no
-Claim execution is currently running. Conversely, a late callback from Bob's
-retired Claim execution cannot be admitted merely because the same board is still
-on screen.
-
-#+begin_example
-shared board advisory
-    -> checked against subscription / fragment coordination owner
-    -> may create advisory debt
-
-late private Claim callback
-    -> checked against retired Claim execution/resource ownership
-    -> rejected
-#+end_example
-
-This contrast is why "current execution" cannot be the universal owner of every
-asynchronous browser event. The event class determines which semantic owner and
-correspondence rules are relevant.
-
 The declaration of an event as shared is part of the checked contract. An
 untrusted field such as =:shared? true= cannot select weaker admission rules.
 Shared admission permits only the declared shared transition; it does not
@@ -1211,28 +1734,6 @@ A browser may propose values such as:
 - transport data required to correlate a request with a server-side operation.
 
 Proposal is not authority.
-
-For example, a malicious HumanHelp browser can add a =Claim= button to its DOM,
-change a local role label from =:requester= to =:helper=, and submit a perfectly
-well-shaped command for Request R. None of those acts should be interesting to
-the authority boundary beyond supplying a proposal to evaluate. Trusted code
-still binds the authenticated principal, resolves =:request/claim= through the
-current application, rereads the relevant Request and Membership state, and
-applies the model's current authorization rule.
-
-A desirable wire-level request may therefore be small enough to express intent:
-
-#+begin_src clojure
-{:command-id C42
- :operation :request/claim
- :arguments {:request-id R}
- :observed-basis X17}
-#+end_src
-
-while omitting any pretense that a client-supplied =:role :helper= would grant
-helper authority. The exact envelope remains an implementation choice; the
-security point is that the browser can propose the operation without being asked
-to certify the premises that trusted code must establish.
 
 *** What the browser may not establish by assertion
 
@@ -1444,30 +1945,6 @@ It is:
 Before this actor performs behavior that depends on fact F, what justifies that
 the actor knows F?
 #+end_quote
-
-An expense approval can accumulate one decision from several knowledge paths.
-Suppose a manager is handling expense E for $800. The manager projection may
-enter with the authenticated principal as trusted input knowledge, receive the
-expense identifier and submitted amount through the declared workflow, observe
-the current approval policy authoritatively, and deterministically derive that
-Finance review is required. It can then communicate the declared review request
-to Finance.
-
-#+begin_example
-authenticated manager principal     provenance: input
-expense E and submitted amount      provenance: communicated or authoritative,
-                                    according to the declared workflow
-current approval threshold          provenance: authoritative
-needs-finance?                      provenance: derived
-review request received by Finance  provenance: communicated
-#+end_example
-
-The final boolean =needs-finance?= could be represented by the same =true= in all
-of these worlds, but the checker cares about how the manager became justified in
-using it. If the threshold came from an untrusted form field instead of the
-declared authoritative policy observation, running the same comparison function
-does not repair the provenance. The following knowledge categories describe
-those justification paths rather than the shape of the resulting values.
 
 *** Input knowledge
 
@@ -1754,39 +2231,6 @@ Receipt of the advisory does not by itself choose when the application adopts
 new content. Acquisition may follow an explicit user action, a declared
 automatic policy, or another admitted trigger. Any convergence claim that relies
 on such a trigger must name it among its liveness premises.
-
-This is exactly the distinction HumanHelp's board behavior is intended to make
-visible. Alice creates Request R and the model commits it. Bob's Live
-subscription may then justify only the advisory proposition that relevant board
-authority changed. His existing adopted board need not suddenly contain R, and
-the advisory itself need not disclose R's protected contents. Instead the UI can
-show a changed or glowing Refresh control.
-
-When Bob explicitly Refreshes, the application performs an authorized
-authoritative acquisition for the board scope. If that acquisition includes R
-and the product policy permits its adoption, Bob can then know and display R with
-authoritative provenance.
-
-#+begin_example
-Alice commits Request R
-    |
-Bob receives Live advisory
-    |
-Bob knows: relevant authority may have advanced
-    |
-Bob still has his previously adopted board projection
-    |
-Bob activates Refresh
-    |
-authorized authoritative board acquisition
-    |
-Bob adopts R if the returned scope and product policy permit it
-#+end_example
-
-The example separates three things that a simplistic "push update" model would
-collapse: knowledge that something may have changed, permission to acquire the
-new authoritative projection, and policy permission to adopt that projection
-into visible application state.
 
 *** Observation scope and selective incorporation
 
@@ -2147,23 +2591,6 @@ At minimum:
 - =:derived=;
 - =:asserted=.
 
-An approval workflow shows why agreement is narrower than "both sides have the
-same map." A manager and Finance may both justifiably agree that Expense E
-requires Finance review while possessing different surrounding knowledge. The
-manager may know private employee context that Finance never receives; Finance
-may independently observe a current budget fact the manager never needs. Their
-agreement can be scoped to a proposition such as:
-
-#+begin_example
-Expense E requires Finance review under policy P
-#+end_example
-
-That proposition might be established by a declared message, by compatible
-authoritative observations, or by a checked derivation from facts each side is
-justified in using. The protocol does not need to manufacture agreement on the
-rest of either actor's state. This scoped reading is what allows agreement to
-coexist with privacy and role-specific knowledge.
-
 *** Communicated agreement
 
 Communication can establish agreement on the communicated value.
@@ -2372,17 +2799,209 @@ maximum scalar token.
 
 A correct application may intentionally preserve that distinction.
 
-Returning to the HumanHelp board, Alice can already have adopted Request R while
-Bob knows only that newer relevant authority is available. It would be wrong to
-call the two boards equal, but it would also be wrong to call the system
-incoherent merely because Bob has not yet chosen Refresh. Alice and Bob may still
-agree on older Requests through their previous common authoritative observations,
-while Bob carries outstanding advisory debt for a newer board scope. Once Bob
-performs the permitted acquisition, the common frontier for the relevant board
-facts can advance without replaying every intermediate invalidation.
 
-The useful frontier is therefore the strongest scoped proposition each actor is
-justified in treating as shared, not the largest integer either actor has seen.
+HumanHelp's board can represent that distinction explicitly instead of
+overloading one "current revision" slot.
+
+Suppose Alice creates Request R3 while Bob is viewing an adopted board
+containing only R1 and R2. A browser-side semantic state might look like:
+
+#+begin_src clojure
+(def bob-board
+  {:actor
+   [:client
+    #uuid "81000000-0000-0000-0000-000000000002"]
+
+   :principal
+   [:user
+    #uuid "82000000-0000-0000-0000-000000000002"]
+
+   :projection
+   {:kind :request/board
+    :organization-id
+    #uuid "83000000-0000-0000-0000-000000000001"}
+
+   :adopted
+   {:requests
+    [#:request{:id
+               #uuid "84000000-0000-0000-0000-000000000001"
+               :status :open
+               :title "R1"}
+
+     #:request{:id
+               #uuid "84000000-0000-0000-0000-000000000002"
+               :status :open
+               :title "R2"}]
+
+    :observation
+    {:authority [:authority :request-board]
+     :scope
+     {:organization-id
+      #uuid "83000000-0000-0000-0000-000000000001"
+      :projection :request/board}
+     :basis :X17}}
+
+   :advisory
+   {:requirements []}})
+#+end_src
+
+Alice's create operation commits R3 authoritatively. Bob receives an advisory
+whose semantic content is deliberately weaker than the Request itself:
+
+#+begin_src clojure
+(def create-advisory
+  {:event/class :board-advisory
+
+   :scope
+   {:organization-id
+    #uuid "83000000-0000-0000-0000-000000000001"
+    :projection :request/board}
+
+   :requirement
+   {:kind :newer-authority-available
+    :after :X17}})
+
+(defn record-advisory
+  [board advisory]
+  (update-in board
+    [:advisory :requirements]
+    conj
+    (:requirement advisory)))
+
+(def bob-after-advisory
+  (record-advisory
+    bob-board
+    create-advisory))
+
+(get-in bob-after-advisory [:adopted :requests])
+;; =>
+;; still R1 and R2
+
+(get-in bob-after-advisory [:advisory :requirements])
+;; =>
+;; [{:kind :newer-authority-available
+;;   :after :X17}]
+#+end_src
+
+Bob has learned something real: relevant authority may have advanced beyond what
+his adopted board covers. He has *not* thereby learned R3's title, status,
+requester, visibility, or even that one particular Request must appear in his
+authorized projection.
+
+The Refresh action performs a new authoritative acquisition:
+
+#+begin_src clojure
+(defn refresh-board!
+  [{:keys [principal] :as ctx} board]
+  (let [scope
+        (get board :projection)
+
+        {:keys [requests basis authority]}
+        (request-model/read-authorized-board
+          ctx
+          {:principal principal
+           :organization-id (:organization-id scope)
+           :projection (:kind scope)})]
+
+    {:actor (:actor board)
+     :principal principal
+     :projection scope
+
+     :adopted
+     {:requests requests
+      :observation
+      {:authority authority
+       :scope scope
+       :basis basis}}
+
+     ;; Only requirements actually covered by this acquisition may be
+     ;; discharged. The exact progression rule belongs to Part IV.
+     :advisory
+     {:requirements
+      (remove
+        #(covered-by-acquisition?
+           %
+           {:scope scope
+            :basis basis})
+        (get-in board [:advisory :requirements]))}}))
+
+(def bob-after-refresh
+  (refresh-board!
+    current-context
+    bob-after-advisory))
+#+end_src
+
+If Bob is authorized to see R3, the new projection may contain it. If policy or
+privacy excludes R3, Refresh can still be a valid authoritative acquisition
+without leaking it.
+
+Now compare Alice and Bob:
+
+#+begin_src clojure
+(def alice-knowledge
+  {:actor [:client :alice-tab]
+   :request R3
+   :fact [:request/status :open]
+   :provenance :authoritative
+   :basis :X18})
+
+(def bob-before-refresh
+  {:actor [:client :bob-tab]
+   :advisory
+   [:authority-may-have-advanced
+    {:after :X17}]
+   :adopted-basis :X17})
+
+(def bob-after-refresh-knowledge
+  {:actor [:client :bob-tab]
+   :request R3
+   :fact [:request/status :open]
+   :provenance :authoritative
+   :basis :X19})
+#+end_src
+
+Before Refresh, Alice and Bob do not have authoritative agreement on R3's
+current board fact merely because Bob received an SSE event. After Refresh they
+may have scoped authoritative agreement on the fact that R3 is open and belongs
+in Bob's authorized projection, even though they acquired it through different
+requests and potentially different web nodes.
+
+Agreement remains narrower than total-state equality. Alice may also know private
+requester details that Bob is not authorized to receive:
+
+#+begin_src clojure
+(def authority-state
+  {:request/id R3
+   :request/status :open
+   :request/title "Need help moving a cabinet"
+   :request/requester-id Alice
+   :request/requester-phone "+1-555-0100"})
+
+(def alice-projection
+  {:request/id R3
+   :request/status :open
+   :request/title "Need help moving a cabinet"
+   :request/requester-phone "+1-555-0100"})
+
+(def bob-projection
+  {:request/id R3
+   :request/status :open
+   :request/title "Need help moving a cabinet"})
+
+;; Alice and Bob may agree on:
+[:request/id R3]
+[:request/status :open]
+
+;; They need not, and must not, be forced to agree on:
+[:request/requester-phone "+1-555-0100"]
+#+end_src
+
+The example makes the semantic model's use of "frontier" deliberately
+non-global. Bob can owe adoption work for the board projection while already
+holding newer authoritative knowledge about some unrelated Request or account
+setting. Likewise, privacy may make full convergence impossible and undesirable.
+The meaningful question is always: agreement about which proposition, for which
+authority and scope, under which justified observations?
 
 *** Convergence does not require replay of every intermediate change
 

@@ -172,39 +172,133 @@ include:
 Those are framework-recognizable contradictions and should be rejected as
 early and descriptively as feasible.
 
-A mundane expense-approval rule makes the distinction concrete. Suppose the
-company intends managers to approve submitted expenses only below $500, but an
-application author accidentally writes $5,000:
+
+The distinction is easier to see in a small but nontrivial application slice.
+Suppose an expense system models submitted expenses and a current approval
+policy. The following code is illustrative rather than a frozen public API, but
+it shows the amount of semantic structure Gesso should be able to reason about
+without requiring the application author to reproduce framework internals.
 
 #+begin_src clojure
-(rule :expense/manager-may-approve?
+(defschema Money
+  [:decimal
+   {:semantic/type :money
+    :semantic/currency :usd}])
+
+(defschema Expense
+  [:map
+   [:expense/id uuid?]
+   [:expense/employee-id uuid?]
+   [:expense/department keyword?]
+   [:expense/amount Money]
+   [:expense/status
+    [:enum :draft
+           :submitted
+           :approved
+           :rejected
+           :needs-finance]]])
+
+(defschema ApprovalPolicy
+  [:map
+   [:policy/department keyword?]
+   [:policy/manager-limit Money]
+   [:policy/finance-threshold Money]])
+
+(defrule manager-may-approve?
+  {:inputs {:expense Expense
+            :policy ApprovalPolicy}
+   :returns :boolean}
   [:and
-   [:= [:expense/status] :submitted]
-   [:< [:expense/amount] 5000]])
+   [:= [:expense/status :expense] :submitted]
+   [:= [:expense/department :expense]
+       [:policy/department :policy]]
+   [:< [:expense/amount :expense]
+       [:policy/manager-limit :policy]]])
+
+(defrule needs-finance?
+  {:inputs {:expense Expense
+            :policy ApprovalPolicy}
+   :returns :boolean}
+  [:and
+   [:= [:expense/status :expense] :submitted]
+   [:>= [:expense/amount :expense]
+        [:policy/finance-threshold :policy]]])
+
+;; Suppose this is what the Organization actually intends.
+(def accounting-policy
+  {:policy/department :accounting
+   :policy/manager-limit 500M
+   :policy/finance-threshold 500M})
 #+end_src
 
-The exact rule syntax is illustrative. Semantically, this rule is coherent:
-=:expense/status= is compared with a status value and =:expense/amount= with a
-number. Gesso may be able to type-check the rule, carry its dependencies through
-choreography, and execute it faithfully. Nothing in that internal structure can
-reveal that the organization actually intended a $500 limit.
-
-Now change the error:
+Now imagine that the application author accidentally changes only the policy
+data:
 
 #+begin_src clojure
-(rule :expense/manager-may-approve?
-  [:and
-   [:< [:expense/status] 5000]
-   [:= [:expense/amount] :submitted]])
+(def accounting-policy
+  {:policy/department :accounting
+   :policy/manager-limit 5000M
+   :policy/finance-threshold 5000M})
 #+end_src
 
-That is different. A status is being ordered against a number and an amount is
-being compared with a status value. The framework can reject that contradiction
-without knowing the organization's desired approval policy. The expense example
-is deliberately ordinary: the same boundary recurs later when Gesso rejects an
-unknowable branch fact, an impossible authority path, a stale executable
-correspondence, or a browser callback that no longer owns the resource it is
-trying to mutate.
+The program may still be perfectly coherent. =5000M= is a valid monetary value.
+The rule is well typed. The operation may project correctly. The authoritative
+transaction may apply the rule exactly as declared. Gesso has no basis for
+inventing the unstated product intention that the limit should have been
+=500M=.
+
+Contrast that with a malformed rule whose own semantic structure is
+contradictory:
+
+#+begin_src clojure
+(defrule malformed-manager-rule
+  {:inputs {:expense Expense
+            :policy ApprovalPolicy}
+   :returns :boolean}
+  [:and
+   ;; A status enum is not an ordered monetary value.
+   [:< [:expense/status :expense]
+       [:policy/manager-limit :policy]]
+
+   ;; A money value is not a status variant.
+   [:= [:expense/amount :expense]
+       :submitted]])
+#+end_src
+
+A checked rule language has enough information to reject that construction
+before it becomes a choreography or reaches a model operation. A diagnostic
+could identify both the location and the expected semantic categories:
+
+#+begin_src clojure
+{:error/type :gesso.rule/type-error
+ :rule       'malformed-manager-rule
+ :at         [:and 0]
+ :operator   :<
+ :left       {:type [:enum :draft :submitted :approved
+                     :rejected :needs-finance]
+              :source [:expense/status :expense]}
+ :right      {:type :money
+              :source [:policy/manager-limit :policy]}
+ :required   {:operator :<
+              :operands [:ordered :ordered]}}
+
+{:error/type :gesso.rule/type-error
+ :rule       'malformed-manager-rule
+ :at         [:and 1]
+ :operator   :=
+ :left       {:type :money
+              :source [:expense/amount :expense]}
+ :right      {:type [:enum-value :submitted]}
+ :required   {:operator :=
+              :operands [:same-semantic-category
+                         :same-semantic-category]}}
+#+end_src
+
+The difference is the foundational one this document relies on everywhere else.
+The first application can be wrong because humans chose the wrong coherent
+policy. The second is malformed because its own declarations do not compose.
+Later examples apply the same distinction to knowledge, authority, browser
+ownership, application assembly, and proof evidence.
 
 The choreography system should provide the following broad properties:
 
@@ -333,6 +427,170 @@ authorized to claim Request R.
 Those concrete premises still come from trusted authentication, current model
 state, runtime authorization, and other declared runtime boundaries.
 
+
+A fuller HumanHelp Claim slice makes that separation visible in code. The
+application may define a checked rule and semantic operation approximately like
+this:
+
+#+begin_src clojure
+(defschema ClaimInput
+  [:map
+   [:request/id uuid?]])
+
+(defrule claimable?
+  {:inputs {:request Request
+            :membership Membership
+            :organization Organization}
+   :returns :boolean}
+  [:and
+   [:= [:request/status :request] :open]
+   [:= [:membership/status :membership] :active]
+   [:= [:membership/organization-id :membership]
+       [:request/organization-id :request]]
+   [organization-allows?
+    :organization
+    :membership
+    :request]])
+
+(defoperation claim-request
+  {:operation/id :request/claim
+
+   ;; This describes the semantic participant position. It is not a browser
+   ;; assertion that the current user is a helper.
+   :actor :helper
+
+   :input ClaimInput
+
+   :requires
+   [[:knows? :helper [:request/id]]
+    [:runtime-premise :authenticated-principal]
+    [:runtime-premise :current-membership]
+    [:runtime-premise :current-request]
+    [:runtime-premise :current-organization]
+    [:rule claimable?
+     {:request :current-request
+      :membership :current-membership
+      :organization :current-organization}]]
+
+   :authority
+   [:request/claim-authority
+    {:principal :authenticated-principal
+     :request   :current-request}]
+
+   :effect
+   [:model/invoke :request/claim
+    {:request-id [:request/id :current-request]
+     :principal  :authenticated-principal}]
+
+   :settlement
+   {:accepted
+    {:learns [[:request/status :claimed]
+              [:request/helper :authenticated-principal]]
+     :reacquire [:request/card :request/id]}
+
+    :rejected
+    {:learns [:claim/rejected]
+     :reacquire [:request/card :request/id]}
+
+    :unknown
+    {:learns [:claim/outcome-unknown]
+     :recover [:request/reconcile-claim :request/id]}}})
+#+end_src
+
+Verification can establish a structural proposition about that declaration. A
+certificate or checked report might contain evidence resembling:
+
+#+begin_src clojure
+{:certificate/class :gesso/choreography
+ :semantic-object   :request/claim
+ :guarantees
+ [{:proposition
+   [:implies
+    [:execution/reaches :model/invoke :request/claim]
+    [:and
+     [:premise/present :authenticated-principal]
+     [:premise/present :current-membership]
+     [:premise/present :current-request]
+     [:premise/present :current-organization]
+     [:rule/holds :claimable?]]]
+   :evidence :kernel-checked}
+
+  {:proposition
+   [:projection/does-not-create
+    :request/claim-authority]
+   :evidence :kernel-checked}
+
+  {:proposition
+   [:settlement/covered
+    #{:accepted :rejected :unknown}]
+   :evidence :exact-finite-checked}]}
+#+end_src
+
+That is useful evidence about the *plan*. It still cannot answer whether Alice
+may claim Request R now.
+
+A trusted invocation boundary has to establish the concrete runtime premises
+again:
+
+#+begin_src clojure
+(defn invoke-claim!
+  [{:keys [request session db now] :as ctx}
+   {:request/keys [id] :as command}]
+
+  ;; Authentication establishes the principal for this concrete request.
+  (let [principal
+        (auth/current-principal! session)
+
+        ;; These are current authoritative observations, not browser-carried
+        ;; replacements for them.
+        request*
+        (request-model/require-current! db id)
+
+        membership*
+        (membership-model/require-current!
+          db
+          {:user-id (:user/id principal)
+           :organization-id (:request/organization-id request*)})
+
+        organization*
+        (organization-model/require-current!
+          db
+          (:request/organization-id request*))]
+
+    ;; The current concrete authorization is evaluated here.
+    (when-not
+      (claimable?
+        {:request request*
+         :membership membership*
+         :organization organization*})
+      (throw
+        (ex-info
+          "Request is not currently claimable by this principal."
+          {:error/type :request/claim-not-authorized
+           :request/id id
+           :principal (:user/id principal)})))
+
+    ;; Only after those premises hold does the public authoritative model
+    ;; operation receive the request.
+    (request-model/claim!
+      (assoc ctx
+        :biff.fx/now now
+        :principal principal)
+      {:request-id id
+       :helper-id (:user/id principal)})))
+#+end_src
+
+The exact declaration, certificate representation, and handler API are
+illustrative. The separation is not. A checked certificate can justify
+admitting the Claim realization because the realization is constrained to
+require current authority. It cannot itself manufacture Alice's principal,
+Membership, Request state, Organization policy, or present authorization.
+
+This is also why sending the certificate back from the browser would add no
+authority. The browser may carry a reference to the admitted operation or plan,
+but the current trusted premises still belong to the runtime boundary that owns
+them.
+
 #+LATEX: \newpage
 
 Therefore:
@@ -378,46 +636,6 @@ same =ExecutablePlan= with or without a matching read-only sidecar must produce
 the same semantic transitions and abstract effects, modulo diagnostics.
 Evidence explains or justifies why an executable was accepted; it does not
 become a bearer capability or an alternate semantic control path.
-
-HumanHelp's Claim path shows what that separation means in an application.
-Suppose a checked Claim plan has a certificate establishing a structural
-proposition like:
-
-#+begin_quote
-Any admitted execution of this plan may reach the Request claim operation only
-through a path that requires current claim authority for the authenticated
-principal and Request.
-#+end_quote
-
-That certificate can justify admitting the plan into an application assembly.
-It still says nothing about whether Alice, clicking =Claim= at 14:03, is
-currently an eligible helper or whether the Request remains claimable. Those
-premises belong to the concrete execution:
-
-#+begin_example
-checked Claim plan
-    |
-    +--> admitted for execution
-             |
-             v
-Alice clicks Claim
-             |
-             v
-trusted server authenticates Alice
-             |
-             v
-current Membership / Request / Organization facts
-             |
-             v
-current claim authorization
-#+end_example
-
-Putting the certificate into the HTTP request, reproducing its hash, or rendering
-an already-certified button cannot replace those runtime premises. The
-certificate constrains what an admitted plan is allowed to do; it does not make
-the current principal authorized to do it. This is why evidence may justify
-admitting a realization without becoming one of the higher-level facts that the
-realization later consumes.
 
 The dependency direction is intentional:
 
@@ -483,21 +701,6 @@ Examples illustrate the enclosing contract. Their concrete syntax is
 illustrative unless the owning section explicitly defines it as the required
 public or wire representation. Their stated required behavior must still obey
 the normative invariants.
-
-Many examples deliberately show only the smallest application fragment needed
-to make a semantic distinction visible. They may omit unrelated error handling,
-HTML, routing boilerplate, transaction construction, authentication plumbing, or
-proof data. Such omissions are explanatory compression, not alternate runtime
-paths.
-
-Application-facing Clojure sketches also serve as API design probes. They show
-the best current guess at what ordinary use of Gesso should feel like without
-freezing function names, map keys, macros, namespace organization, or other
-syntax that the enclosing requirement does not make normative. If an important
-semantic relationship can be expressed only by making ordinary application code
-manually reproduce internal identities, proof terms, certificate plumbing, or
-runtime bookkeeping, that awkwardness is evidence to reconsider the eventual
-API rather than a reason to canonize the sketch unchanged.
 
 An abbreviated diagram does not waive an authorization, admission, scope,
 ownership, or outcome-attribution condition merely because the diagram omits
@@ -642,55 +845,6 @@ behaviorally successful path can exist while bypassing a checker that the design
 claims is mandatory.  The three claims therefore reinforce one another without
 collapsing into one another.
 
-A single visible HumanHelp =Claim= control makes the separation concrete.
-For declared closure, the question is whether the affordance connects coherently
-to the semantics it names:
-
-#+begin_example
-Claim control
-    |
-:request/claim operation
-    |
-projected plan
-    |
-browser artifact / transport / trusted capability
-    |
-Request model claim operation
-    |
-settlement and permitted authoritative reacquisition
-#+end_example
-
-Production enforcement asks a different question: does the actual rendered
-control and actual server invocation pass through those boundaries? A perfect
-isolated assembly checker establishes little if production renders a handwritten
-=:hx-post= that bypasses the admitted operation path.
-
-Behavioral completeness asks something different again: is there an eligible
-HumanHelp scenario in which a user who should be able to Claim can actually see
-and use the control and reach the required authoritative outcome? Simply
-omitting Claim can leave every remaining assembly edge closed while still
-failing the required product behavior.
-
-The three failures can therefore occur independently:
-
-#+begin_example
-closed graph, Claim omitted
-    -> declared closure may hold
-    -> behavioral completeness fails
-
-Claim works through unchecked handwritten route
-    -> user behavior may appear correct
-    -> production enforcement fails
-
-Claim fully wired but no eligible positive scenario exists
-    -> structural closure may hold
-    -> required usable capability is not established
-#+end_example
-
-HumanHelp makes the distinction visible, but the same reasoning applies to any
-capability whose wiring, enforcement, and actual availability can fail
-independently.
-
 Assembly closure is always relative to declared scope.  Gesso cannot infer an
 application author's missing business intention merely because the remaining
 graph is closed.  Required product behavior therefore needs an acceptance basis
@@ -722,6 +876,153 @@ production path demonstrably enforced
     !=
 all required HumanHelp capabilities present
 #+end_example
+
+
+One Claim implementation can be used to see all three application-level claims
+without inventing three unrelated examples.
+
+Suppose the application assembly describes the supported production pieces as
+data:
+
+#+begin_src clojure
+(def humanhelp-assembly
+  {:assembly/id :humanhelp/web
+
+   :operations
+   {:request/claim
+    {:choreography :request/claim
+     :plan         :plan/request-claim
+     :artifact     :artifact/gesso-live
+     :transport    :http/post
+     :route        :route/request-claim
+     :capability   :server/request-claim
+     :model-op     :request/claim
+     :settlement   :request/claim-settlement
+     :reacquire    :request/card}}
+
+   :views
+   {:request/card
+    {:affordances
+     {:claim
+      {:operation :request/claim
+       :when      :request/claim-visible?}}}}
+
+   :server-capabilities
+   {:server/request-claim
+    {:route    :route/request-claim
+     :model-op :request/claim}}
+
+   :artifacts
+   {:artifact/gesso-live
+    {:contains-plans #{:plan/request-claim}}}})
+#+end_src
+
+A closure checker can establish relationships *inside that declaration*:
+
+#+begin_src clojure
+(assembly/check humanhelp-assembly)
+;; =>
+{:result :accepted
+ :evidence :assembly-verified
+ :closed-edges
+ [[:request/card :claim :request/claim]
+  [:request/claim :plan/request-claim]
+  [:plan/request-claim :artifact/gesso-live]
+  [:request/claim :route/request-claim]
+  [:route/request-claim :server/request-claim]
+  [:server/request-claim :request/claim]
+  [:request/claim :request/claim-settlement]
+  [:request/claim-settlement :request/card]]}
+#+end_src
+
+That still does not establish production enforcement. The actual startup and
+request path must make the admitted assembly unavoidable for the claimed
+supported path. Conceptually, production wiring might look like:
+
+#+begin_src clojure
+(def humanhelp-module
+  {:biff.core/id :humanhelp/web
+
+   :biff.core/start
+   (fn [ctx]
+     ;; Failure prevents the semantic web application from starting.
+     (let [admitted
+           (assembly/admit!
+             {:assembly humanhelp-assembly
+              :artifact (browser/current-artifact ctx)
+              :routes (server/current-route-table ctx)})]
+
+       {:admitted-assembly admitted
+        :handler
+        (-> (routes/build admitted)
+            (wrap-session)
+            (wrap-current-assembly admitted))}))})
+
+(defn claim-handler
+  [ctx request]
+  ;; Route lookup comes from the admitted assembly. The handler does not
+  ;; reconstruct an operation id from arbitrary request fields.
+  (let [binding
+        (assembly/require-route-binding!
+          (:admitted-assembly ctx)
+          :route/request-claim)]
+    (server/invoke-bound-operation!
+      ctx
+      binding
+      request)))
+#+end_src
+
+Now the relevant malformed production fixture is not merely passed to an
+isolated checker. It is sent through the same startup boundary:
+
+#+begin_src clojure
+(deftest stale-artifact-prevents-startup
+  (is
+    (thrown-with-msg?
+      clojure.lang.ExceptionInfo
+      #"browser artifact does not realize admitted plan"
+      (start-humanhelp!
+        (assoc test-ctx
+          :browser-artifact
+          artifact-without-request-claim-plan)))))
+#+end_src
+
+That supplies evidence for production enforcement of this boundary.
+
+Behavioral completeness still needs an independent statement of what the user
+must actually be able to do:
+
+#+begin_src clojure
+(def required-humanhelp-capabilities
+  [{:capability :request/create
+    :eligible-scenario :authenticated-customer
+    :required-outcome :request/created-and-visible-to-creator}
+
+   {:capability :request/claim
+    :eligible-scenario
+    :authenticated-active-helper-sees-open-request
+    :required-outcome
+    :request/claimed-by-helper}
+
+   {:capability :board/refresh
+    :eligible-scenario
+    :helper-has-outstanding-board-advisory
+    :required-outcome
+    :authorized-current-board-adopted}])
+#+end_src
+
+If =:request/claim= is removed from both the view and the assembly, the remaining
+assembly may still be perfectly closed. The independent capability list is what
+prevents that self-consistent omission from being called complete.
+
+Conversely, a hand-written =POST /claim= route may make a browser acceptance test
+appear green while bypassing =assembly/admit!= and the declared Claim operation.
+Behavior happened, but production enforcement of the claimed Gesso boundary was
+not established.
+
+The point of keeping all three claims separate is therefore practical rather
+than terminological: each one catches a different way a plausible application
+can "work" while failing the assurance statement the project intends to make.
 
 *** Operational correctness
 
@@ -810,25 +1111,147 @@ green integration test
 
 A complete assurance argument may require several of them simultaneously.
 
-A store checkout shows what such a mixed argument looks like in one ordinary
-operation. Suppose its =Place order= action is already wired through an admitted
-Gesso plan. A release report might contain claims resembling:
 
-| Proposition | Evidence classification |
-|-------------+-------------------------|
-| the checkout rule is accepted by the selected checked rule system | kernel-checked or another precisely named machine-checked class |
-| this HTTP request is bound to customer Alice | runtime-enforced |
-| the payment provider obeys the external contract Gesso relies upon | trusted external-system premise |
-| this application's Place-order affordance resolves through the declared plan, route, model operation, settlement, and reacquisition path | assembly-verified |
-| Chromium and HTMX realize the expected concrete lifecycle for this artifact | tested implementation-correspondence evidence |
-| retry eventually succeeds after a transient provider outage | conditional on the stated availability/retry assumptions |
+A store checkout provides a useful worked example because one ordinary button
+crosses nearly every assurance class without any one class subsuming the rest.
 
-A green Chromium test does not prove the checkout rule. The rule proof does not
-authenticate Alice. Assembly closure does not prove that the payment provider
-behaved correctly. The complete argument is useful precisely because those
-claims remain separate while supporting one operation together. In other words,
-the checkout does not have one meaningful assurance label; it has a composition
-of claims whose evidence retains its own classification.
+Suppose the semantic operation is declared approximately as:
+
+#+begin_src clojure
+(defoperation place-order
+  {:operation/id :checkout/place-order
+
+   :actor :customer
+
+   :input
+   [:map
+    [:cart/id uuid?]
+    [:checkout/command-id uuid?]]
+
+   :requires
+   [[:runtime-premise :authenticated-customer]
+    [:authoritative :current-cart]
+    [:rule :cart/checkout-eligible? :current-cart]]
+
+   :provisional
+   {:view :checkout/submitting
+    :owned-by :checkout/command-id}
+
+   :effect
+   [:model/invoke :order/place
+    {:cart-id [:cart/id :current-cart]
+     :customer :authenticated-customer
+     :command-id :checkout/command-id}]
+
+   :settlement
+   {:accepted
+    {:learns [:order/placed]
+     :reacquire [:order/by-command :checkout/command-id]}
+
+    :rejected
+    {:learns [:checkout/rejected]
+     :reacquire [:cart/current :cart/id]}
+
+    :unknown
+    {:learns [:checkout/outcome-unknown]
+     :recover [:order/reconcile-command
+               :checkout/command-id]}}})
+#+end_src
+
+A release report for one concrete assembly might preserve evidence instead of
+flattening it:
+
+#+begin_src clojure
+{:subject
+ {:assembly :store/web
+  :operation :checkout/place-order
+  :plan :plan/checkout-place-order
+  :artifact-digest "sha256:..."}
+
+ :claims
+ [{:id :checkout/rule-well-typed
+   :proposition
+   [:rule/well-typed :cart/checkout-eligible?]
+   :evidence
+   {:class :kernel-checked
+    :certificate :cert/cart-checkout-rule}}
+
+  {:id :checkout/principal-bound-at-runtime
+   :proposition
+   [:runtime/binds-current-principal
+    :checkout/place-order]
+   :evidence
+   {:class :runtime-enforced
+    :boundary :server/authenticated-checkout-handler}}
+
+  {:id :checkout/payment-provider-contract
+   :proposition
+   [:provider/acceptance-means
+    :payment-authorized]
+   :evidence
+   {:class :trusted
+    :owner :external/payment-provider
+    :assumption :payment/provider-contract-v4}}
+
+  {:id :checkout/application-path-closed
+   :proposition
+   [:application/closed-path
+    :checkout/place-order]
+   :evidence
+   {:class :assembly-verified
+    :report :assembly/store-web-A12}}
+
+  {:id :checkout/browser-realization-tested
+   :proposition
+   [:implementation-corresponds-in-scenarios
+    :checkout/place-order
+    #{:accepted :rejected :unknown}]
+   :evidence
+   {:class :tested
+    :suite :chromium/checkout-lifecycle}}
+
+  {:id :checkout/retry-eventually-recovers
+   :proposition
+   [:eventually
+    [:checkout/settled-or-reconciled]]
+   :evidence
+   {:class :conditional
+    :premises
+    #{:eventual-provider-availability
+      :eventual-authoritative-read
+      :continued-participant-execution}}}]}
+#+end_src
+
+The report is deliberately heterogeneous. Consider what happens if each claim is
+misread as another:
+
+#+begin_src clojure
+;; Wrong: a theorem about the checked rule does not authenticate this request.
+(when (certificate/valid? :cert/cart-checkout-rule)
+  (treat-request-as-authenticated! request))
+
+;; Wrong: a green Chromium test does not prove the provider contract.
+(when (tests/green? :chromium/checkout-lifecycle)
+  (assume-provider-cannot-lie!))
+
+;; Wrong: assembly closure does not imply eventual provider availability.
+(when (assembly/closed? :store/web)
+  (claim-unconditional-termination!))
+
+;; Wrong: the trusted provider premise does not prove the browser adapter.
+(when (trusted? :payment/provider-contract-v4)
+  (claim-browser-correspondence-proved!))
+#+end_src
+
+The correct composition keeps the propositions separate. A downstream release
+claim may depend on all of them, but the resulting explanation should still be
+able to say exactly which part is mechanically checked, which is dynamically
+enforced, which remains trusted, which is assembly evidence, which is tested,
+and which is conditional on future environmental behavior.
+
+That is what the assurance vocabulary is for. It is not a taxonomy applied after
+the fact; it prevents evidence from silently acquiring a stronger meaning as it
+moves through the application.
 
 The classification belongs to the *claim and its evidence*, not merely to the
 source file, namespace, subsystem, or tool that produced it.  A single
@@ -1691,34 +2114,6 @@ attempt. Domain Request arguments such as HumanHelp's =:request-id= retain their
 domain meaning. Different transport attempts must not be conflated because they
 carry the same command or concern the same domain Request.
 
-A single checkout click makes the independence of these coordinates easier to
-see. Suppose Alice presses =Place order= once. An implementation might represent
-the relevant coordinates approximately as:
-
-#+begin_example
-semantic operation           :checkout/place-order
-command identity             cmd-77
-execution identity           exec-19
-transport-request identity   http-204
-resource-instance identity   timeout-51
-executable plan identity     checkout-plan-v3
-admitted assembly generation assembly-A12
-domain object identity       order-483
-#+end_example
-
-The names and representation are illustrative; the independence is not. If the
-HTTP connection fails before an outcome arrives, a retry may create =http-205=
-while preserving =cmd-77=. A new concrete execution may have a new execution
-identity while still attempting to resolve the same command. Replacing a timer
-or fetch creates a new resource instance without implying a new Order. Deploying
-a new admitted assembly does not itself create a new command or change the
-Order's identity.
-
-Collapsing those coordinates into one universal generation would make it harder
-to answer the questions the identities exist to answer: whether a late callback
-is stale, whether a retry repeats intent, whether a plan is compatible, and
-which authoritative object the operation concerns.
-
 Operation identity is *preserved* through realization: it cannot be silently
 erased or substituted. Reserve *monotonic* for a stated ordering or information-
 growth relation. In particular, preventing retired work from restoring obsolete
@@ -2034,6 +2429,113 @@ operation declaration
 When independently authored values must agree, correspondence must be checked
 explicitly.
 
+
+A Claim card shows what "state semantic intent once" should mean for ordinary
+application code. A plausible public authoring surface could let the operation
+own the semantic declaration and let presentation bind to that identity:
+
+#+begin_src clojure
+(defoperation request-claim
+  {:operation/id :request/claim
+   :actor :helper
+
+   :input
+   [:map
+    [:request/id uuid?]]
+
+   :requires
+   [[:knows? :helper [:request/id]]
+    [:runtime-premise :current-claim-authority]]
+
+   :effect
+   [:model/invoke :request/claim
+    {:request-id :request/id
+     :principal :authenticated-principal}]
+
+   :provisional
+   {:view :request/claiming}
+
+   :settlement
+   {:accepted {:reacquire [:request/card :request/id]}
+    :rejected {:reacquire [:request/card :request/id]}
+    :unknown  {:recover [:request/reconcile-claim :request/id]}}})
+
+(defview request-card
+  [{:request/keys [id status title] :as request}]
+  [:article.request
+   [:h3 title]
+   [:p (name status)]
+
+   (when (= status :open)
+     (gesso/action
+       {:operation :request/claim
+        :args {:request/id id}}
+       "Claim"))])
+#+end_src
+
+From those semantic declarations, Gesso may derive or validate lower-level
+realization data:
+
+#+begin_src clojure
+(project :request/claim)
+;; =>
+{:plan/id :plan/request-claim
+ :operation :request/claim
+ :role :helper
+ :command-schema
+ [:map
+  [:request/id uuid?]
+  [:gesso/command-id uuid?]]
+ :transport-requirement :trusted-semantic-post
+ :settlement
+ {:accepted :request/card
+  :rejected :request/card
+  :unknown :request/reconcile-claim}}
+
+(realize humanhelp-assembly
+  :request/claim)
+;; =>
+{:browser/binding
+ {:operation :request/claim
+  :plan :plan/request-claim}
+
+ :transport/binding
+ {:kind :trusted-semantic-post
+  :route :route/request-claim}
+
+ :server/binding
+ {:capability :server/request-claim
+  :model-op :request/claim}}
+#+end_src
+
+The exact projection and realization representations are open design choices.
+What matters is that the view author did not separately type:
+
+#+begin_src clojure
+;; This is the kind of manually synchronized authoring Gesso should avoid.
+
+[:button
+ {:hx-post "/requests/claim"
+  :data-operation "claim-request"
+  :data-plan "humanhelp-claim-plan-v7"
+  :data-command-param "__gesso_live_optimistic_command"
+  :data-server-handler "claim-handler"
+  :data-model-op "request/claim"}
+ "Claim"]
+#+end_src
+
+That second version contains several strings that all purport to describe one
+semantic intent. Each value can be locally plausible while the collection is
+globally contradictory. A typo can easily produce a path that appears to render
+correctly and even sends an HTTP request while no longer corresponding to the
+declared choreography.
+
+The desirable API therefore pushes complexity inward. Application code states
+the semantic operation and domain arguments; Gesso derives what it owns and
+checks correspondence where an independent physical choice genuinely remains.
+The illustrative =gesso/action= form is not an API commitment. It is a usability
+constraint on whatever public API eventually replaces it.
+
 *** Derive rather than synchronize
 
 Duplication creates programs whose pieces are individually plausible but
@@ -2044,42 +2546,6 @@ it.
 
 Do not create a second source of truth merely to make one layer easier to
 implement.
-
-The benefit is easiest to see in ordinary view code. Suppose a HumanHelp
-request card wants to expose the semantic Claim operation. A desirable
-authoring shape should be compact enough to resemble:
-
-#+begin_src clojure
-(request-card
-  request
-  {:actions
-   [(gesso/bind :request/claim
-      {:request-id (:request/id request)})]})
-#+end_src
-
-This is not a required API. It illustrates the desired ownership of information:
-the application states which semantic operation the affordance means and
-supplies its domain arguments.
-
-If Gesso already owns the projected plan, command schema, transport contract,
-artifact identity, and trusted server realization, ordinary view code should
-not have to restate all of them:
-
-#+begin_src clojure
-;; Illustrative shape to avoid as an ordinary authoring path.
-{:operation :request/claim
- :plan-name "claim-helper-v7"
- :route "/app/claim"
- :http-method :post
- :browser-command-param "__gesso_live_optimistic_command"
- :artifact "gesso-live-a12.js"
- :settlement :request/claimed}
-#+end_src
-
-Those duplicated values create opportunities for individually plausible pieces
-to disagree. Derivation or explicit checked correspondence lets application
-code state semantic intent once while keeping genuinely independent physical
-choices explicit where they really are choices.
 #+LATEX: \newpage
 *** Fail at the earliest legitimate boundary
 
@@ -2105,39 +2571,106 @@ Examples of build/application-preflight failures include:
 - managed fragment with no permitted initial acquisition;
 - authoritative successor with no permitted reacquisition path.
 
-HumanHelp can make these boundaries look deceptively similar to a user even
-though the system learns about them at different times.
 
-If the application declares =:request/claim= but no trusted route or projected
-plan exists, construction already has enough information to reject the
-application. Waiting for somebody to click the button would only delay a known
-contradiction.
+The same HumanHelp Claim slice can fail legitimately at three different times,
+depending on when enough information exists.
 
-If a Reassign control requires a concrete target helper, the static application
-may be valid while one particular render lacks the required target. That
-contradiction belongs at the render/pre-serialization boundary rather than at
-startup.
+A static construction defect can be rejected before the application starts:
 
-If Alice was authorized when the card rendered but her Membership is revoked
-before she clicks Claim, neither startup nor rendering could have known the
-future fact. The trusted invocation must re-establish current authorization and
-reject or recover according to the declared semantics.
+#+begin_src clojure
+(def broken-assembly
+  {:operations
+   {:request/claim
+    {:plan :plan/request-claim
+     :route :route/request-claim}}
+
+   ;; Accidentally generated from an older application assembly.
+   :artifact
+   {:plans #{:plan/request-create
+             :plan/request-refresh}}})
+
+(assembly/admit! broken-assembly)
+;; throws:
+{:error/type :assembly/missing-browser-plan
+ :operation :request/claim
+ :required-plan :plan/request-claim
+ :artifact-plans #{:plan/request-create
+                   :plan/request-refresh}}
+#+end_src
+
+Nothing about a concrete Request or principal is needed to establish that
+contradiction, so runtime is too late.
+
+A rendered-surface defect may depend on concrete view construction. Suppose a
+generic Request-card renderer allows applications to choose actions, but one
+particular rendering asks for =:request/reassign= without supplying the required
+target relationship:
+
+#+begin_src clojure
+(render
+  request-card
+  {:request request
+   :actions
+   [{:operation :request/reassign
+     :args
+     {:request/id (:request/id request)}
+     ;; required :helper/id is absent
+     }]})
+
+;; render preflight rejects before serialization:
+{:error/type :view/operation-arguments-incomplete
+ :view :request/card
+ :operation :request/reassign
+ :missing #{:helper/id}
+ :available #{:request/id}}
+#+end_src
+
+The assembly may contain a perfectly valid Reassign operation. The defect exists
+only in this attempted concrete rendering, so render-time preflight is the
+earliest legitimate boundary.
+
+Finally, current authorization may change after a completely valid render:
+
+#+begin_src clojure
+;; T1: Alice is currently an active helper.
+(html
+  (request-card
+    {:request/id R
+     :request/status :open}))
+;; => contains a valid bound :request/claim affordance
+
+;; T2: Alice's Membership is withdrawn.
+
+;; T3: Alice clicks the still-visible affordance.
+(invoke-claim!
+  current-server-context
+  {:request/id R})
+;; throws:
+{:error/type :request/claim-not-authorized
+ :request/id R
+ :principal Alice}
+#+end_src
+
+Static preflight should not have rejected the application merely because a
+helper can later lose authorization, and rendering should not claim that the
+authorization can never change. The runtime boundary owns that dynamic fact and
+must reject the concrete invocation using current authority.
+
+The three failures therefore form one continuous construction story:
 
 #+begin_example
-missing Claim realization
-    -> construction / startup rejection
+known from declarations
+    -> fail during assembly admission
 
-Reassign render lacks required concrete target
-    -> render-time rejection or explicit unavailability
+known only for a concrete rendered surface
+    -> fail before serialization / exposure
 
-Alice loses current authorization after render
-    -> trusted runtime authorization failure
+known only from current external/model state
+    -> fail at trusted runtime invocation
 #+end_example
 
-"Fail early" therefore means the earliest boundary that actually possesses the
-necessary evidence, not forcing every possible failure into static analysis.
-The last case leads directly to the runtime-only conditions below: they are not
-weaker correctness concerns, only facts whose decisive evidence exists later.
+"Fail early" means the earliest *legitimate* boundary, not the earliest point at
+which the framework could guess.
 
 *** Runtime-only conditions and required recovery
 
@@ -2159,40 +2692,6 @@ Runtime-only establishment does not place these conditions outside the
 application's correctness model. The distinction is between knowing before
 execution whether a condition will occur and knowing before execution that the
 application has a coherent response if it does occur.
-
-A seat-reservation race shows why both halves matter. Suppose an authoritative
-page shows Seat 12 as available at time =T1=. Alice hesitates, and Bob reserves
-the seat at =T2= before Alice presses =Reserve=.
-
-No useful preflight can prove that Seat 12 will remain available between render
-and click. Trying to make that dynamic fact static would either be impossible or
-would merely move the race somewhere else. What construction can require is a
-coherent response when the trusted authoritative operation checks current
-state:
-
-#+begin_example
-render at T1
-    Seat 12 available
-        |
-Bob reserves at T2
-        |
-Alice submits Reserve
-        |
-trusted authoritative operation checks current state
-        |
-        +--> still available
-        |       -> commit Alice's reservation
-        |
-        +--> no longer available
-                -> typed rejection / current authoritative reacquisition
-#+end_example
-
-The rejection branch is part of the application's declared correctness story
-even though no static checker predicted that Alice would encounter it. A stale
-button cannot manufacture success merely because it was legitimate when first
-rendered. Seat 12 is only one instance of the broader rule: dynamic uncertainty
-may remain dynamic while the application's permitted response to it is still
-part of the design.
 
 Where a declared operation or workflow can encounter a runtime condition that
 invalidates its premises, removes a participant required for progress, or would
@@ -2220,6 +2719,105 @@ require that an operation whose rendered premises have become stale is checked
 against current authority and model state and that failure of those premises
 leads through declared rejection, reacquisition, or recovery semantics rather
 than allowing execution to proceed from obsolete state.
+
+
+A seat-reservation operation shows what that requirement can look like as a
+small executable contract rather than a prose-only promise.
+
+#+begin_src clojure
+(defoperation reserve-seat
+  {:operation/id :flight/reserve-seat
+
+   :actor :traveler
+
+   :input
+   [:map
+    [:flight/id uuid?]
+    [:seat/id uuid?]]
+
+   ;; This observation justifies what the traveler saw. It does not reserve the
+   ;; seat or guarantee that the observation remains current until invocation.
+   :entry
+   [[:authoritative-observation
+     :seat/availability
+     {:scope [:flight/id :seat/id]}]]
+
+   :requires
+   [[:runtime-premise :authenticated-traveler]
+    [:runtime-premise :current-seat-state]]
+
+   :effect
+   [:model/invoke :seat/reserve
+    {:flight-id :flight/id
+     :seat-id :seat/id
+     :traveler :authenticated-traveler}]
+
+   :settlement
+   {:accepted
+    {:learns [:seat/reserved-by-self]
+     :reacquire [:flight/seat-map :flight/id]}
+
+    :rejected
+    {:reason-set #{:seat/already-reserved
+                   :seat/no-longer-offered
+                   :traveler/not-eligible}
+     :reacquire [:flight/seat-map :flight/id]}
+
+    :unknown
+    {:recover
+     [:seat/reconcile-reservation
+      {:flight-id :flight/id
+       :seat-id :seat/id
+       :command-id :command/id}]}}})
+#+end_src
+
+The authoritative model operation still guards current state:
+
+#+begin_src clojure
+(defn reserve-seat!
+  [{:keys [db principal now]} {:keys [flight-id seat-id command-id]}]
+
+  (let [seat
+        (seat-model/require-current!
+          db
+          {:flight-id flight-id
+           :seat-id seat-id})]
+
+    (cond
+      (not (traveler/eligible? db principal flight-id))
+      {:outcome :rejected
+       :reason :traveler/not-eligible}
+
+      (= :reserved (:seat/status seat))
+      {:outcome :rejected
+       :reason :seat/already-reserved
+       :current-seat seat}
+
+      (not= :offered (:seat/status seat))
+      {:outcome :rejected
+       :reason :seat/no-longer-offered
+       :current-seat seat}
+
+      :else
+      (seat-model/transact-reservation!
+        {:db db
+         :now now}
+        {:flight-id flight-id
+         :seat-id seat-id
+         :traveler-id (:user/id principal)
+         :command-id command-id}))))
+#+end_src
+
+A valid browser interaction may therefore begin from an authoritative observation
+at =T1= and still receive a typed rejection because Bob reserved the seat at
+=T2=. That rejection does not mean the earlier observation was fraudulent; it
+means the dynamic premise changed before the authoritative operation committed.
+
+Preflight can check that =:rejected= is represented and that its reacquisition
+path exists. It cannot decide in advance which traveler wins the race. The
+example therefore makes the static/runtime boundary operational: dynamic
+uncertainty remains dynamic, while the permitted response to that uncertainty is
+still part of the checked application design.
 
 Loss of a participant is another example. A physical network disconnect does
 not necessarily establish that the participant is semantically unavailable;
@@ -2442,13 +3040,6 @@ and admission vocabulary established in Part I. The definitions do not require
 a universal persisted fact graph, a new runtime class for every concept, or a
 single global revision coordinate.
 
-The distinctions below become easier to follow when they are allowed to recur
-in ordinary application situations. HumanHelp Requests, a store checkout, an
-expense approval, a seat reservation, and a collaborative editor will therefore
-appear repeatedly. They are not additional normative models. They are concrete
-ways to ask whether the semantic distinctions remain intelligible when several
-real concerns overlap at once.
-
 ** Values and evolving values
 
 A value may be a singular immutable value:
@@ -2523,39 +3114,6 @@ actor displayed representation of fact
 
 These are distinct events and relationships.
 
-A HumanHelp board makes those distinctions visible without any exotic machinery.
-Suppose Request R is unclaimed when Alice and Bob both load their boards. Alice
-claims R, the authoritative Request transition commits, and Alice's next
-authoritative projection shows the claimed state. Bob's tab, however, may still
-show the previously adopted unclaimed representation until it receives an
-advisory and performs whatever acquisition/adoption policy the application
-permits.
-
-#+begin_example
-Request R unclaimed
-    |
-Alice submits Claim
-    |
-authoritative Request transition commits
-    |
-Alice acquires claimed R
-    |
-Bob receives advisory that relevant authority changed
-    |
-Bob still displays his previously adopted projection
-    |
-permitted Refresh / acquisition
-    |
-Bob acquires the newer authoritative projection
-#+end_example
-
-Nothing in this sequence requires the system to pretend there was one universal
-instant at which every representation became "the current value." The domain
-transition, database visibility, Alice's acquisition, Bob's advisory knowledge,
-and Bob's later adopted representation are related but distinct. The rest of
-this part gives names to those distinctions so later choreography and runtime
-rules can refer to the one they actually mean.
-
 *** Conceptual fact graph versus required persistence
 
 The semantic model may reason in terms of facts and relations among facts
@@ -2629,31 +3187,6 @@ distinctions not established by that shape. Ordinary immutable values may still
 use ordinary value equality when the enclosing contract makes it sufficient.
 Gesso must not mistake matching schemas or encodings for equality of authority,
 provenance, subject, observation scope, or admission status.
-
-An expense-approval application gives a compact example. The browser might
-submit:
-
-#+begin_src clojure
-{:employee-id 42
- :department :engineering}
-#+end_src
-
-while a trusted authoritative employee lookup independently yields an equal
-Clojure value. Malli may correctly say that both values have the same shape.
-Ordinary Clojure equality may correctly say that their contents are equal. Yet
-the browser proposal and the authoritative observation do not have the same
-provenance, and only the latter can justify a rule that specifically requires an
-authoritative employee record.
-
-A desirable application-facing API should make that difference natural rather
-than requiring every caller to manually decorate ordinary maps with framework
-plumbing. For example, application code might pass an employee value obtained
-through a trusted model observation into a checked approval operation, while a
-form-decoded map remains merely proposed input until the relevant boundary admits
-it. The exact API is deliberately left open; the semantic requirement is that
-content equality cannot perform the admission step. The following distinction
-between representation, category, and admission exists precisely to prevent that
-substitution.
 
 *** Representation, semantic category, and admission
 :PROPERTIES:
@@ -2778,6 +3311,253 @@ established, the diagnostic identifies it as unknown or unadmitted rather than
 inventing a trustworthy origin from an untrusted tag.
 #+end_quote
 
+
+An expense-approval path shows what that criterion means in application code.
+The following records are only one possible realization; the design does not
+require Gesso to turn every semantic distinction into a record. They are useful
+here because they make the admission boundary visible.
+
+#+begin_src clojure
+(defschema EmployeeValue
+  [:map
+   [:employee/id uuid?]
+   [:employee/department keyword?]
+   [:employee/risk-band
+    [:enum :ordinary :enhanced-review]]])
+
+(defschema ExpenseValue
+  [:map
+   [:expense/id uuid?]
+   [:expense/employee-id uuid?]
+   [:expense/department keyword?]
+   [:expense/amount decimal?]
+   [:expense/status
+    [:enum :draft :submitted :approved :rejected]]])
+
+(defrecord ProposedEmployee
+  [value])
+
+(defrecord ObservedEmployee
+  [value
+   authority
+   basis
+   projection])
+
+(defrecord AdmittedEmployee
+  [value
+   authority
+   basis
+   projection
+   principal])
+
+(defn decode-employee-form
+  [params]
+  (let [value
+        {:employee/id
+         (parse-uuid (:employee-id params))
+
+         :employee/department
+         (keyword (:department params))
+
+         :employee/risk-band
+         (keyword (:risk-band params))}]
+
+    ;; Malli establishes representation shape here.
+    (m/assert EmployeeValue value)
+
+    ;; The browser supplied the data, so shape success does not promote it
+    ;; into authoritative employee knowledge.
+    (->ProposedEmployee value)))
+
+(defn observe-employee!
+  [{:keys [db]} employee-id]
+  (let [{:keys [value basis]}
+        (employee-model/read-current
+          db
+          {:employee-id employee-id
+           :projection :employee/approval-facts})]
+
+    (m/assert EmployeeValue value)
+
+    ;; This value has crossed the model-owned authoritative acquisition
+    ;; boundary, so it carries provenance that the form value does not.
+    (->ObservedEmployee
+      value
+      [:authority :employee employee-id]
+      basis
+      :employee/approval-facts)))
+
+(defn admit-employee-for-approval!
+  [{:keys [principal authorization]}
+   observed]
+
+  (when-not (instance? ObservedEmployee observed)
+    (throw
+      (ex-info
+        "Approval requires an authoritative Employee observation."
+        {:error/type :semantic/wrong-category
+         :expected :employee/observed
+         :supplied
+         (cond
+           (instance? ProposedEmployee observed)
+           :employee/proposed
+
+           (map? observed)
+           :representation/raw-map
+
+           :else
+           :semantic/unknown)})))
+
+  (when-not
+    (authorization/can-observe-employee-for-approval?
+      authorization
+      principal
+      (:authority observed))
+    (throw
+      (ex-info
+        "Principal is not authorized to use this Employee observation."
+        {:error/type :semantic/admission-denied
+         :principal (:user/id principal)
+         :authority (:authority observed)
+         :projection (:projection observed)})))
+
+  (->AdmittedEmployee
+    (:value observed)
+    (:authority observed)
+    (:basis observed)
+    (:projection observed)
+    principal))
+
+(defn approval-context!
+  [{:keys [principal] :as ctx}
+   expense-id]
+
+  (let [expense
+        (expense-model/require-current!
+          ctx
+          expense-id)
+
+        observed-employee
+        (observe-employee!
+          ctx
+          (:expense/employee-id expense))
+
+        admitted-employee
+        (admit-employee-for-approval!
+          ctx
+          observed-employee)]
+
+    {:expense expense
+     :employee admitted-employee
+     :principal principal}))
+#+end_src
+
+Now compare three values that contain the same nested Clojure map:
+
+#+begin_src clojure
+(def browser-proposal
+  (decode-employee-form
+    {:employee-id "98a47a10-0ab8-4a8a-8f61-d4bd598e7729"
+     :department "engineering"
+     :risk-band "ordinary"}))
+
+(def authoritative-observation
+  (observe-employee!
+    ctx
+    #uuid "98a47a10-0ab8-4a8a-8f61-d4bd598e7729"))
+
+(def admitted-observation
+  (admit-employee-for-approval!
+    ctx
+    authoritative-observation))
+
+(= (:value browser-proposal)
+   (:value authoritative-observation)
+   (:value admitted-observation))
+;; => true
+#+end_src
+
+Ordinary value equality is doing its job. The records contain equal domain data.
+The semantic categories answer a different question: what may this value justify
+at this boundary?
+
+A downstream approval rule might intentionally accept only the admitted
+observation:
+
+#+begin_src clojure
+(defn manager-may-approve?
+  [{:keys [expense employee principal]}]
+
+  (when-not (instance? AdmittedEmployee employee)
+    (throw
+      (ex-info
+        "Approval rule requires an admitted Employee observation."
+        {:error/type :semantic/unadmitted-input
+         :expected :employee/admitted-for-approval})))
+
+  (and
+    (= :submitted
+       (:expense/status expense))
+
+    (= (:expense/department expense)
+       (get-in employee [:value :employee/department]))
+
+    (= :ordinary
+       (get-in employee [:value :employee/risk-band]))
+
+    (= (:user/id principal)
+       (:user/id (:principal employee)))))
+#+end_src
+
+The tempting substitution is exactly the one Gesso should make difficult:
+
+#+begin_src clojure
+;; Same inner map. Wrong semantic category.
+
+(manager-may-approve?
+  {:expense expense
+   :employee browser-proposal
+   :principal principal})
+
+;; => rejected before the rule is allowed to consume it
+;; {:error/type :semantic/unadmitted-input
+;;  :expected :employee/admitted-for-approval}
+#+end_src
+
+Serialization makes the distinction sharper. Suppose an admitted observation is
+encoded into HTML or EDN and later returned by the browser:
+
+#+begin_src clojure
+(def wire-value
+  (pr-str
+    {:employee (:value admitted-observation)
+     :basis (:basis admitted-observation)
+     :authority (:authority admitted-observation)
+     :category :employee/admitted-for-approval}))
+
+(def returned
+  (edn/read-string wire-value))
+
+;; This is still client-carried data. The browser was able to alter every field.
+;; Recreating a similarly named record must not restore the old admission.
+(->AdmittedEmployee
+  (:employee returned)
+  (:authority returned)
+  (:basis returned)
+  :employee/approval-facts
+  principal)
+#+end_src
+
+A supported server API should instead either reacquire the authoritative
+Employee or validate a separately defined server-verifiable receipt whose
+contract actually establishes the premise required by the operation.
+
+The lesson is not that records are magical security objects. They are not. The
+lesson is that shape, semantic category, admission, and proof can coincide in
+simple cases but must remain separable when later correctness depends on the
+difference. A good public API should preserve that distinction while hiding most
+of the ceremony from ordinary downstream code.
+
 #+LATEX: \newpage
 
 ** Facts, time, and authoritative progression
@@ -2866,34 +3646,6 @@ A browser may wake after a deployment.
 
 The fact that an event arrived later in wall-clock time does not by itself make
 the event semantically newer or authorized to mutate current state.
-
-A seat-reservation race puts several of these dimensions on one timeline. Alice
-may have observed Seat 12 as available from an authoritative read through
-frontier =X83=. Bob reserves it in a later transaction visible through =X88=.
-The reservation may be domain-effective at 14:02, while an SSE advisory reaches
-Alice at 14:02:05 and a callback from an older request happens to fire at
-14:02:06.
-
-#+begin_example
-domain fact:
-    Seat 12 available -> Seat 12 reserved
-
-authoritative database progression:
-    X83 -> X88
-
-Alice's acquired knowledge before refresh:
-    justified through X83 for the seat projection she observed
-
-physical delivery:
-    advisory arrives after Bob's commit
-    an older callback may arrive even later
-#+end_example
-
-The late callback wins no semantic contest merely by having the newest wall-clock
-timestamp. Likewise, =X88= does not mean every domain fact is "version 88," and
-Alice's older knowledge does not mean the database itself reverted. This is the
-practical reason the next section refuses to compress these dimensions into one
-revision integer.
 
 #+LATEX: \newpage
 *** Do not collapse dimensions into one revision integer
@@ -3151,27 +3903,158 @@ correlation or realization information; neither substitutes for those decisions.
 Changing a browser tab, transport connection, or physical host must not silently
 carry permissions into a different principal or authority scope.
 
-A collaborative editor makes the separation less abstract. Alice may act as the
-=:editor= role for document D. Her authenticated principal is =[:user Alice]=,
-one browser tab is actor =C1=, and the semantic authority for committed document
-state is associated with D rather than with whichever web node happens to answer.
-A save might first reach node A and a retry after node loss might reach node C:
 
-#+begin_example
-role                 :editor
-principal            [:user Alice]
-browser actor         [:client C1]
-semantic authority    [:authority :document D]
-first host            [:web-node A]
-retry host            [:web-node C]
-#+end_example
+A collaborative editor makes the categories easier to follow when several of
+them change independently.
 
-Changing A to C does not manufacture a new principal or a new document authority.
-Opening a second browser tab, on the other hand, can create another actor with
-different local knowledge while preserving Alice's principal. Revoking Alice's
-editing permission changes the authorization question even if actor C1 and host C
-remain exactly the same. These are the sorts of independent changes that a
-generic =server-id= or =user-id= cannot faithfully represent.
+Suppose Alice is currently allowed to edit document D. One browser tab opens a
+projected editor actor and later reconnects through another web node:
+
+#+begin_src clojure
+(def editor-session
+  {:semantic/role
+   :editor
+
+   :principal
+   [:user #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]
+
+   :actor
+   [:client #uuid "c1000000-0000-0000-0000-000000000001"]
+
+   :authority
+   [:authority
+    :document
+    #uuid "dddddddd-dddd-dddd-dddd-dddddddddddd"]
+
+   :operation
+   :document/save
+
+   :command
+   #uuid "ca110000-0000-0000-0000-000000000077"
+
+   :execution
+   #uuid "e0000000-0000-0000-0000-000000000019"
+
+   :transport-request
+   #uuid "70000000-0000-0000-0000-000000000204"
+
+   :host
+   [:web-node :A]})
+#+end_src
+
+The first transport attempt disappears before Alice receives a response. The
+operation's retry contract permits another transport attempt through node C:
+
+#+begin_src clojure
+(def retry-session
+  (-> editor-session
+      (assoc
+        :transport-request
+        #uuid "70000000-0000-0000-0000-000000000205"
+
+        :host
+        [:web-node :C])))
+
+(select-keys editor-session
+  [:principal :actor :authority :operation :command :execution])
+;; =>
+;; same values
+
+(select-keys retry-session
+  [:principal :actor :authority :operation :command :execution])
+;; =>
+;; same values
+
+(select-keys editor-session
+  [:transport-request :host])
+;; =>
+;; http attempt 204 on node A
+
+(select-keys retry-session
+  [:transport-request :host])
+;; =>
+;; http attempt 205 on node C
+#+end_src
+
+The host and transport attempt changed. That does not create a new principal,
+document authority, semantic command, or necessarily a new protocol execution.
+
+Now Alice opens a second browser tab:
+
+#+begin_src clojure
+(def second-tab
+  (-> retry-session
+      (assoc
+        :actor
+        [:client #uuid "c2000000-0000-0000-0000-000000000002"]
+
+        :execution
+        #uuid "e0000000-0000-0000-0000-000000000020"
+
+        :transport-request
+        #uuid "70000000-0000-0000-0000-000000000206")))
+
+(= (:principal retry-session)
+   (:principal second-tab))
+;; => true
+
+(= (:actor retry-session)
+   (:actor second-tab))
+;; => false
+
+(= (:authority retry-session)
+   (:authority second-tab))
+;; => true
+#+end_src
+
+The two actors may now hold different local knowledge even though they act for
+the same principal and document authority.
+
+Finally, the Organization revokes Alice's editing permission:
+
+#+begin_src clojure
+(defn admit-editor-operation!
+  [{:keys [authorization]} session]
+  (let [principal (:principal session)
+        authority (:authority session)]
+
+    (when-not
+      (authorization/currently-allows?
+        authorization
+        {:principal principal
+         :role :editor
+         :authority authority
+         :operation (:operation session)})
+      (throw
+        (ex-info
+          "Principal may no longer instantiate the editor role."
+          {:error/type :authorization/role-admission-denied
+           :principal principal
+           :role :editor
+           :authority authority
+           :operation (:operation session)})))
+
+    session))
+
+(admit-editor-operation!
+  revoked-ctx
+  retry-session)
+;; => rejected
+
+(admit-editor-operation!
+  revoked-ctx
+  second-tab)
+;; => rejected
+#+end_src
+
+Neither browser actor had to disappear, and neither host had to change. The
+dynamic authorization relation changed while the principal, actors, authority,
+and physical hosts remained perfectly intelligible.
+
+This is why Gesso benefits from category-specific identity in diagnostics. A
+generic message such as "id mismatch" or "server changed" would obscure the
+actual question: which identity changed, which one stayed stable, and which
+semantic correspondence does the current boundary require?
 
 ** Logical identity and physical realization
 :PROPERTIES:
@@ -3219,31 +4102,155 @@ categories does not require multiple independent tokens for the same instance.
 The representation must preserve whichever distinctions the admission contract
 actually uses.
 
-A single checkout click shows why this inventory of identities is not merely
-terminological bookkeeping. Suppose Alice presses =Place order= once:
 
-#+begin_example
-semantic operation           :checkout/place-order
-semantic command             cmd-77
-protocol execution           exec-19
-transport request            http-204
-resource instance            timeout-51
-projected/executable plan     checkout-plan-v3
-admitted assembly generation assembly-A12
-domain object, once created   order-483
-#+end_example
+A checkout operation puts most of those identities into one compact lifecycle.
+The following structure is intentionally verbose so the independence is visible:
 
-If =http-204= is lost and the operation's retry contract permits another attempt,
-=http-205= may carry the same =cmd-77=. A new protocol execution might also be
-created without changing the command's logical intent. Replacing a timeout or
-fetch resource creates a new resource instance without creating a new order. A
-deployment may move the same admitted assembly between hosts without changing
-any of those operation identities.
+#+begin_src clojure
+(def checkout-attempt
+  {:operation/id
+   :checkout/place-order
 
-The useful question is therefore never simply "is the id the same?" It is
-"which identity is this, and which correspondence does this boundary require?"
-The following subsections separate the identities so later runtime checks can ask
-that narrower question.
+   :command/id
+   #uuid "11111111-1111-1111-1111-111111111177"
+
+   :execution/id
+   #uuid "22222222-2222-2222-2222-222222222219"
+
+   :plan/id
+   :plan/checkout-place-order-v3
+
+   :artifact/id
+   "sha256:browser-artifact-A12"
+
+   :assembly/generation
+   :assembly-A12
+
+   :deployment/id
+   :deploy-2026-09-21-1
+
+   :cart/id
+   #uuid "33333333-3333-3333-3333-333333333333"
+
+   :order/id
+   nil
+
+   :transport
+   {:transport-request/id
+    #uuid "44444444-4444-4444-4444-444444444204"
+
+    :resource-instance/id
+    #uuid "55555555-5555-5555-5555-555555555051"
+
+    :host
+    [:web-node :A]}})
+#+end_src
+
+Suppose the request connection disappears before the browser knows whether the
+command committed. A permitted retry might preserve the semantic command while
+replacing the transport attempt and its resource instance:
+
+#+begin_src clojure
+(def retry
+  (-> checkout-attempt
+      (assoc-in
+        [:transport :transport-request/id]
+        #uuid "44444444-4444-4444-4444-444444444205")
+      (assoc-in
+        [:transport :resource-instance/id]
+        #uuid "55555555-5555-5555-5555-555555555052")
+      (assoc-in
+        [:transport :host]
+        [:web-node :C])))
+
+(assert
+  (= (:command/id checkout-attempt)
+     (:command/id retry)))
+
+(assert
+  (= (:execution/id checkout-attempt)
+     (:execution/id retry)))
+
+(assert
+  (not=
+    (get-in checkout-attempt [:transport :transport-request/id])
+    (get-in retry [:transport :transport-request/id])))
+
+(assert
+  (not=
+    (get-in checkout-attempt [:transport :resource-instance/id])
+    (get-in retry [:transport :resource-instance/id])))
+#+end_src
+
+A different recovery strategy might retire the original execution and begin a
+new execution that still tries to reconcile the same command:
+
+#+begin_src clojure
+(def reconciliation-execution
+  (-> retry
+      (assoc
+        :execution/id
+        #uuid "22222222-2222-2222-2222-222222222220")
+      (assoc-in
+        [:transport :transport-request/id]
+        #uuid "44444444-4444-4444-4444-444444444206")
+      (assoc-in
+        [:transport :resource-instance/id]
+        #uuid "55555555-5555-5555-5555-555555555053")))
+
+(assert
+  (= (:command/id retry)
+     (:command/id reconciliation-execution)))
+
+(assert
+  (not=
+    (:execution/id retry)
+    (:execution/id reconciliation-execution)))
+#+end_src
+
+If an authoritative read later finds the created Order, a domain identity enters
+the picture without replacing any of the earlier operation identities:
+
+#+begin_src clojure
+(def reconciled
+  (assoc reconciliation-execution
+    :order/id
+    #uuid "66666666-6666-6666-6666-666666666483"))
+
+{:command (:command/id reconciled)
+ :execution (:execution/id reconciled)
+ :order (:order/id reconciled)}
+;; =>
+;; three different semantic coordinates
+#+end_src
+
+And a deployment may change the admitted assembly or artifact compatibility
+without saying anything about whether command 177 committed:
+
+#+begin_src clojure
+(def after-deploy
+  (-> reconciled
+      (assoc
+        :assembly/generation :assembly-A13
+        :artifact/id "sha256:browser-artifact-A13"
+        :deployment/id :deploy-2026-09-21-2)))
+
+;; This may force a new compatible executable realization.
+;; It does not retroactively create, cancel, or settle the command.
+#+end_src
+
+The point is not that every runtime map must literally contain every field. The
+point is that a design using one generic =generation= or one generic =request-id=
+could not faithfully answer all of these questions:
+
+- is this the same semantic intent?
+- is this the same protocol trajectory?
+- is this the same transport attempt?
+- does this callback belong to the current physical resource?
+- is this browser artifact compatible with the admitted assembly?
+- which Order, if any, was authoritatively created?
+
+The identities exist because those questions have different answers.
 
 #+LATEX: \newpage
 
@@ -3382,35 +4389,6 @@ Does this event belong to the currently admitted instance of this replaceable
 resource?
 #+end_quote
 
-A seat-list refresh is a common browser example. Refresh A starts for the
-logical target =:seat-list= using resource instance =r41=. Before A completes,
-navigation or HTMX replacement reconstructs the seat list and Refresh B starts
-for the same logical target using =r42=. B completes first and installs the
-current authoritative seat projection. A then completes late.
-
-#+begin_example
-logical target :seat-list
-    |
-Refresh A owns r41
-    |
-component replaced
-    |
-Refresh B owns r42
-    |
-B installs current authoritative result
-    |
-A callback arrives carrying r41
-    |
-    X  r41 no longer owns installation rights
-#+end_example
-
-The logical target is intentionally the same throughout; otherwise replacement
-would not be useful. The resource-instance identity is what prevents a callback
-from the replaced realization from borrowing the new realization's rights. The
-command, authoritative basis, or execution may or may not also have changed, so
-resource identity must remain a narrow check rather than a universal freshness
-number.
-
 A resource-instance generation counter, scoped epoch, opaque token, UUID,
 object identity, or another suitable mechanism may represent resource-instance
 identity. The representation must provide the properties required by the boundary;
@@ -3498,6 +4476,170 @@ is meaningful only within the declared counter scope and ordering contract;
 identities from different resource or execution scopes cannot be ordered merely
 because both happen to be integers.
 
+
+A browser Refresh race shows how narrow that identity can be in executable code.
+Assume a logical board target remains =:request-board= while HTMX or the Gesso
+adapter replaces the physical fetch/resource used to refresh it.
+
+The runtime might hold state resembling:
+
+#+begin_src clojure
+(def initial-board-runtime
+  {:target
+   :request-board
+
+   :execution/id
+   #uuid "70000000-0000-0000-0000-000000000012"
+
+   :current-resource
+   {:resource-instance/id
+    #uuid "71000000-0000-0000-0000-000000000007"
+
+    :kind :authoritative-acquisition
+
+    :scope
+    {:projection :request/board
+     :organization-id
+     #uuid "72000000-0000-0000-0000-000000000001"}
+
+    :status :in-flight}
+
+   :adopted-basis :B40})
+#+end_src
+
+Before Refresh A completes, the component is reconstructed and starts Refresh B:
+
+#+begin_src clojure
+(def after-replacement
+  (-> initial-board-runtime
+      (assoc
+        :current-resource
+        {:resource-instance/id
+         #uuid "71000000-0000-0000-0000-000000000008"
+
+         :kind :authoritative-acquisition
+
+         :scope
+         {:projection :request/board
+          :organization-id
+          #uuid "72000000-0000-0000-0000-000000000001"}
+
+         :status :in-flight})))
+
+(def refresh-a-result
+  {:event/class :acquisition-complete
+   :target :request-board
+   :execution/id
+   #uuid "70000000-0000-0000-0000-000000000012"
+   :resource-instance/id
+   #uuid "71000000-0000-0000-0000-000000000007"
+   :basis :B41
+   :html "<div>older acquisition</div>"})
+
+(def refresh-b-result
+  {:event/class :acquisition-complete
+   :target :request-board
+   :execution/id
+   #uuid "70000000-0000-0000-0000-000000000012"
+   :resource-instance/id
+   #uuid "71000000-0000-0000-0000-000000000008"
+   :basis :B42
+   :html "<div>current acquisition</div>"})
+#+end_src
+
+A narrow owner check can reject A for exactly the reason that matters:
+
+#+begin_src clojure
+(defn current-resource?
+  [runtime event]
+  (=
+    (get-in runtime
+      [:current-resource :resource-instance/id])
+    (:resource-instance/id event)))
+
+(defn same-execution?
+  [runtime event]
+  (=
+    (:execution/id runtime)
+    (:execution/id event)))
+
+(defn admit-acquisition-completion
+  [runtime event]
+  (cond
+    (not (same-execution? runtime event))
+    {:result :rejected
+     :reason :wrong-execution}
+
+    (not (current-resource? runtime event))
+    {:result :rejected
+     :reason :retired-resource-instance}
+
+    :else
+    {:result :admitted
+     :event event}))
+
+(admit-acquisition-completion
+  after-replacement
+  refresh-a-result)
+;; =>
+;; {:result :rejected
+;;  :reason :retired-resource-instance}
+
+(admit-acquisition-completion
+  after-replacement
+  refresh-b-result)
+;; =>
+;; {:result :admitted
+;;  :event ...}
+#+end_src
+
+Notice what the guard does *not* infer. It does not claim that B42 is universally
+newer than every basis in the application. It does not prove that the returned
+HTML is authorized for some other user. It does not establish that the command
+which caused an invalidation succeeded. It establishes only that this completion
+belongs to the currently admitted resource instance and execution.
+
+A different event class can have a different semantic owner. For example, a
+shared advisory is not execution-private:
+
+#+begin_src clojure
+(def shared-advisory
+  {:event/class :board-advisory
+   :owner
+   {:subscription/id
+    #uuid "73000000-0000-0000-0000-000000000031"
+
+    :scope
+    {:organization-id
+     #uuid "72000000-0000-0000-0000-000000000001"
+     :projection :request/board}}
+
+   :requirement
+   {:kind :authority-may-have-advanced
+    :scope :request/board}})
+
+(defn admit-board-advisory
+  [runtime event]
+  (let [subscription
+        (get-in runtime [:board-subscription :subscription/id])]
+
+    (if (= subscription
+           (get-in event [:owner :subscription/id]))
+      {:result :admitted
+       :transition :record-advisory-requirement}
+      {:result :rejected
+       :reason :wrong-subscription})))
+#+end_src
+
+Assigning that advisory to whichever command execution happens to be current
+would be a category error. Conversely, marking a private callback as
+=:shared? true= in untrusted event data must not bypass the execution/resource
+checks above.
+
+This is the executable consequence of owner-relative admission: first determine
+which declared semantic owner governs the event class, then apply the
+correspondence checks that owner's transition actually needs.
+
 ** Required correspondence checks are semantic gates
 :PROPERTIES:
 :CUSTOM_ID: req-owner-relative-event-admission
@@ -3564,27 +4706,6 @@ unrelated command execution. A shared event must not be assigned to whichever
 execution happens to be current. An execution-private callback must not become
 shared merely because its execution was retired.
 
-HumanHelp provides both kinds of event at once. Bob's board may be idle when a
-Live subscription reports that relevant Request authority changed. That advisory
-can be admitted through the board/subscription coordination scope even though no
-Claim execution is currently running. Conversely, a late callback from Bob's
-retired Claim execution cannot be admitted merely because the same board is still
-on screen.
-
-#+begin_example
-shared board advisory
-    -> checked against subscription / fragment coordination owner
-    -> may create advisory debt
-
-late private Claim callback
-    -> checked against retired Claim execution/resource ownership
-    -> rejected
-#+end_example
-
-This contrast is why "current execution" cannot be the universal owner of every
-asynchronous browser event. The event class determines which semantic owner and
-correspondence rules are relevant.
-
 The declaration of an event as shared is part of the checked contract. An
 untrusted field such as =:shared? true= cannot select weaker admission rules.
 Shared admission permits only the declared shared transition; it does not
@@ -3644,28 +4765,6 @@ A browser may propose values such as:
 - transport data required to correlate a request with a server-side operation.
 
 Proposal is not authority.
-
-For example, a malicious HumanHelp browser can add a =Claim= button to its DOM,
-change a local role label from =:requester= to =:helper=, and submit a perfectly
-well-shaped command for Request R. None of those acts should be interesting to
-the authority boundary beyond supplying a proposal to evaluate. Trusted code
-still binds the authenticated principal, resolves =:request/claim= through the
-current application, rereads the relevant Request and Membership state, and
-applies the model's current authorization rule.
-
-A desirable wire-level request may therefore be small enough to express intent:
-
-#+begin_src clojure
-{:command-id C42
- :operation :request/claim
- :arguments {:request-id R}
- :observed-basis X17}
-#+end_src
-
-while omitting any pretense that a client-supplied =:role :helper= would grant
-helper authority. The exact envelope remains an implementation choice; the
-security point is that the browser can propose the operation without being asked
-to certify the premises that trusted code must establish.
 
 *** What the browser may not establish by assertion
 
@@ -3877,30 +4976,6 @@ It is:
 Before this actor performs behavior that depends on fact F, what justifies that
 the actor knows F?
 #+end_quote
-
-An expense approval can accumulate one decision from several knowledge paths.
-Suppose a manager is handling expense E for $800. The manager projection may
-enter with the authenticated principal as trusted input knowledge, receive the
-expense identifier and submitted amount through the declared workflow, observe
-the current approval policy authoritatively, and deterministically derive that
-Finance review is required. It can then communicate the declared review request
-to Finance.
-
-#+begin_example
-authenticated manager principal     provenance: input
-expense E and submitted amount      provenance: communicated or authoritative,
-                                    according to the declared workflow
-current approval threshold          provenance: authoritative
-needs-finance?                      provenance: derived
-review request received by Finance  provenance: communicated
-#+end_example
-
-The final boolean =needs-finance?= could be represented by the same =true= in all
-of these worlds, but the checker cares about how the manager became justified in
-using it. If the threshold came from an untrusted form field instead of the
-declared authoritative policy observation, running the same comparison function
-does not repair the provenance. The following knowledge categories describe
-those justification paths rather than the shape of the resulting values.
 
 *** Input knowledge
 
@@ -4187,39 +5262,6 @@ Receipt of the advisory does not by itself choose when the application adopts
 new content. Acquisition may follow an explicit user action, a declared
 automatic policy, or another admitted trigger. Any convergence claim that relies
 on such a trigger must name it among its liveness premises.
-
-This is exactly the distinction HumanHelp's board behavior is intended to make
-visible. Alice creates Request R and the model commits it. Bob's Live
-subscription may then justify only the advisory proposition that relevant board
-authority changed. His existing adopted board need not suddenly contain R, and
-the advisory itself need not disclose R's protected contents. Instead the UI can
-show a changed or glowing Refresh control.
-
-When Bob explicitly Refreshes, the application performs an authorized
-authoritative acquisition for the board scope. If that acquisition includes R
-and the product policy permits its adoption, Bob can then know and display R with
-authoritative provenance.
-
-#+begin_example
-Alice commits Request R
-    |
-Bob receives Live advisory
-    |
-Bob knows: relevant authority may have advanced
-    |
-Bob still has his previously adopted board projection
-    |
-Bob activates Refresh
-    |
-authorized authoritative board acquisition
-    |
-Bob adopts R if the returned scope and product policy permit it
-#+end_example
-
-The example separates three things that a simplistic "push update" model would
-collapse: knowledge that something may have changed, permission to acquire the
-new authoritative projection, and policy permission to adopt that projection
-into visible application state.
 
 *** Observation scope and selective incorporation
 
@@ -4580,23 +5622,6 @@ At minimum:
 - =:derived=;
 - =:asserted=.
 
-An approval workflow shows why agreement is narrower than "both sides have the
-same map." A manager and Finance may both justifiably agree that Expense E
-requires Finance review while possessing different surrounding knowledge. The
-manager may know private employee context that Finance never receives; Finance
-may independently observe a current budget fact the manager never needs. Their
-agreement can be scoped to a proposition such as:
-
-#+begin_example
-Expense E requires Finance review under policy P
-#+end_example
-
-That proposition might be established by a declared message, by compatible
-authoritative observations, or by a checked derivation from facts each side is
-justified in using. The protocol does not need to manufacture agreement on the
-rest of either actor's state. This scoped reading is what allows agreement to
-coexist with privacy and role-specific knowledge.
-
 *** Communicated agreement
 
 Communication can establish agreement on the communicated value.
@@ -4805,17 +5830,209 @@ maximum scalar token.
 
 A correct application may intentionally preserve that distinction.
 
-Returning to the HumanHelp board, Alice can already have adopted Request R while
-Bob knows only that newer relevant authority is available. It would be wrong to
-call the two boards equal, but it would also be wrong to call the system
-incoherent merely because Bob has not yet chosen Refresh. Alice and Bob may still
-agree on older Requests through their previous common authoritative observations,
-while Bob carries outstanding advisory debt for a newer board scope. Once Bob
-performs the permitted acquisition, the common frontier for the relevant board
-facts can advance without replaying every intermediate invalidation.
 
-The useful frontier is therefore the strongest scoped proposition each actor is
-justified in treating as shared, not the largest integer either actor has seen.
+HumanHelp's board can represent that distinction explicitly instead of
+overloading one "current revision" slot.
+
+Suppose Alice creates Request R3 while Bob is viewing an adopted board
+containing only R1 and R2. A browser-side semantic state might look like:
+
+#+begin_src clojure
+(def bob-board
+  {:actor
+   [:client
+    #uuid "81000000-0000-0000-0000-000000000002"]
+
+   :principal
+   [:user
+    #uuid "82000000-0000-0000-0000-000000000002"]
+
+   :projection
+   {:kind :request/board
+    :organization-id
+    #uuid "83000000-0000-0000-0000-000000000001"}
+
+   :adopted
+   {:requests
+    [#:request{:id
+               #uuid "84000000-0000-0000-0000-000000000001"
+               :status :open
+               :title "R1"}
+
+     #:request{:id
+               #uuid "84000000-0000-0000-0000-000000000002"
+               :status :open
+               :title "R2"}]
+
+    :observation
+    {:authority [:authority :request-board]
+     :scope
+     {:organization-id
+      #uuid "83000000-0000-0000-0000-000000000001"
+      :projection :request/board}
+     :basis :X17}}
+
+   :advisory
+   {:requirements []}})
+#+end_src
+
+Alice's create operation commits R3 authoritatively. Bob receives an advisory
+whose semantic content is deliberately weaker than the Request itself:
+
+#+begin_src clojure
+(def create-advisory
+  {:event/class :board-advisory
+
+   :scope
+   {:organization-id
+    #uuid "83000000-0000-0000-0000-000000000001"
+    :projection :request/board}
+
+   :requirement
+   {:kind :newer-authority-available
+    :after :X17}})
+
+(defn record-advisory
+  [board advisory]
+  (update-in board
+    [:advisory :requirements]
+    conj
+    (:requirement advisory)))
+
+(def bob-after-advisory
+  (record-advisory
+    bob-board
+    create-advisory))
+
+(get-in bob-after-advisory [:adopted :requests])
+;; =>
+;; still R1 and R2
+
+(get-in bob-after-advisory [:advisory :requirements])
+;; =>
+;; [{:kind :newer-authority-available
+;;   :after :X17}]
+#+end_src
+
+Bob has learned something real: relevant authority may have advanced beyond what
+his adopted board covers. He has *not* thereby learned R3's title, status,
+requester, visibility, or even that one particular Request must appear in his
+authorized projection.
+
+The Refresh action performs a new authoritative acquisition:
+
+#+begin_src clojure
+(defn refresh-board!
+  [{:keys [principal] :as ctx} board]
+  (let [scope
+        (get board :projection)
+
+        {:keys [requests basis authority]}
+        (request-model/read-authorized-board
+          ctx
+          {:principal principal
+           :organization-id (:organization-id scope)
+           :projection (:kind scope)})]
+
+    {:actor (:actor board)
+     :principal principal
+     :projection scope
+
+     :adopted
+     {:requests requests
+      :observation
+      {:authority authority
+       :scope scope
+       :basis basis}}
+
+     ;; Only requirements actually covered by this acquisition may be
+     ;; discharged. The exact progression rule belongs to Part IV.
+     :advisory
+     {:requirements
+      (remove
+        #(covered-by-acquisition?
+           %
+           {:scope scope
+            :basis basis})
+        (get-in board [:advisory :requirements]))}}))
+
+(def bob-after-refresh
+  (refresh-board!
+    current-context
+    bob-after-advisory))
+#+end_src
+
+If Bob is authorized to see R3, the new projection may contain it. If policy or
+privacy excludes R3, Refresh can still be a valid authoritative acquisition
+without leaking it.
+
+Now compare Alice and Bob:
+
+#+begin_src clojure
+(def alice-knowledge
+  {:actor [:client :alice-tab]
+   :request R3
+   :fact [:request/status :open]
+   :provenance :authoritative
+   :basis :X18})
+
+(def bob-before-refresh
+  {:actor [:client :bob-tab]
+   :advisory
+   [:authority-may-have-advanced
+    {:after :X17}]
+   :adopted-basis :X17})
+
+(def bob-after-refresh-knowledge
+  {:actor [:client :bob-tab]
+   :request R3
+   :fact [:request/status :open]
+   :provenance :authoritative
+   :basis :X19})
+#+end_src
+
+Before Refresh, Alice and Bob do not have authoritative agreement on R3's
+current board fact merely because Bob received an SSE event. After Refresh they
+may have scoped authoritative agreement on the fact that R3 is open and belongs
+in Bob's authorized projection, even though they acquired it through different
+requests and potentially different web nodes.
+
+Agreement remains narrower than total-state equality. Alice may also know private
+requester details that Bob is not authorized to receive:
+
+#+begin_src clojure
+(def authority-state
+  {:request/id R3
+   :request/status :open
+   :request/title "Need help moving a cabinet"
+   :request/requester-id Alice
+   :request/requester-phone "+1-555-0100"})
+
+(def alice-projection
+  {:request/id R3
+   :request/status :open
+   :request/title "Need help moving a cabinet"
+   :request/requester-phone "+1-555-0100"})
+
+(def bob-projection
+  {:request/id R3
+   :request/status :open
+   :request/title "Need help moving a cabinet"})
+
+;; Alice and Bob may agree on:
+[:request/id R3]
+[:request/status :open]
+
+;; They need not, and must not, be forced to agree on:
+[:request/requester-phone "+1-555-0100"]
+#+end_src
+
+The example makes the semantic model's use of "frontier" deliberately
+non-global. Bob can owe adoption work for the board projection while already
+holding newer authoritative knowledge about some unrelated Request or account
+setting. Likewise, privacy may make full convergence impossible and undesirable.
+The meaningful question is always: agreement about which proposition, for which
+authority and scope, under which justified observations?
 
 *** Convergence does not require replay of every intermediate change
 
@@ -4969,35 +6186,253 @@ The global description may be realized by short-lived projections that interact
 through durable authoritative facts.
 
 
-A small expense-approval flow makes this concrete. Suppose an employee submits an
-expense, a manager may approve it, and Finance participates only when the
-declared policy requires additional review. The global description can say:
+A substantial expense-approval slice shows what "global description" means here.
+The following syntax is illustrative, but the separation among declared roles,
+authoritative observation, branching, communication, and authoritative effects
+is the intended semantic pressure.
 
-#+begin_example
-employee submits Expense E
-        |
-        v
-expense authority records :submitted
-        |
-        v
-manager evaluates the declared approval rule
-        |
-        +--> ordinary approval
-        |
-        `--> finance review when required
-#+end_example
+First, assume the application already owns ordinary domain schemas and public
+model operations:
 
-That is one distributed semantic interaction, but it does not require one runtime
-object sitting above the employee browser, manager browser, Finance browser, and
-authoritative model and telling each of them what to do next. The employee
-projection needs only employee behavior and knowledge. The manager projection
-needs the facts and actions relevant to the manager. Finance needs no local
-continuation at all until a path is selected in which Finance participates.
+#+begin_src clojure
+(defschema Expense
+  [:map
+   [:expense/id uuid?]
+   [:expense/employee-id uuid?]
+   [:expense/department keyword?]
+   [:expense/amount decimal?]
+   [:expense/status
+    [:enum :draft
+           :submitted
+           :awaiting-finance
+           :approved
+           :rejected]]])
 
-The example is useful because one global specification can explain several local
-programs without turning those programs into copies of the whole global state.
-The projections remain related by the choreography even when they execute at
-different times, on different hosts, and with different knowledge.
+(defschema ApprovalPolicy
+  [:map
+   [:policy/department keyword?]
+   [:policy/manager-limit decimal?]
+   [:policy/finance-required-at decimal?]])
+
+(defrule needs-finance?
+  {:inputs {:expense Expense
+            :policy ApprovalPolicy}
+   :returns :boolean}
+  [:>=
+   [:expense/amount :expense]
+   [:policy/finance-required-at :policy]])
+
+(defoperation manager-approve
+  {:operation/id :expense/manager-approve
+   :actor :manager
+   :effect
+   [:model/invoke :expense/approve-as-manager]})
+
+(defoperation escalate-to-finance
+  {:operation/id :expense/escalate-to-finance
+   :actor :manager
+   :effect
+   [:model/invoke :expense/mark-awaiting-finance]})
+
+(defoperation finance-approve
+  {:operation/id :expense/finance-approve
+   :actor :finance
+   :effect
+   [:model/invoke :expense/approve-as-finance]})
+#+end_src
+
+One global choreography can then describe how those operations relate:
+
+#+begin_src clojure
+(defchoreo expense-approval
+  {:roles
+   {:employee
+    {:principal :user
+     :actor :client}
+
+    :manager
+    {:principal :user
+     :actor :client}
+
+    :finance
+    {:principal :user
+     :actor :client}
+
+    :expense-authority
+    {:authority :expense}}
+
+   :inputs
+   {:expense-id
+    {:schema :uuid
+     :known-by #{:employee}
+     :provenance :input}}}
+
+  (employee
+    (send manager
+      [:expense/submitted
+       {:expense-id expense-id}]))
+
+  (manager
+    ;; The manager is not allowed to branch merely because the employee sent
+    ;; an Expense id. The branch depends on current authoritative facts.
+    (observe expense-authority
+      [:expense/current expense-id]
+      -> expense)
+
+    (observe expense-authority
+      [:expense/current-policy
+       (:expense/department expense)]
+      -> policy)
+
+    (branch
+      (needs-finance?
+        {:expense expense
+         :policy policy})
+
+      (then
+        (invoke expense-authority
+          escalate-to-finance
+          {:expense-id expense-id})
+
+        (send finance
+          [:expense/finance-review-required
+           {:expense-id expense-id}]))
+
+      (else
+        (invoke expense-authority
+          manager-approve
+          {:expense-id expense-id}))))
+
+  (finance
+    ;; This local behavior exists only on the selected Finance branch.
+    (on [:expense/finance-review-required
+         {:keys [expense-id]}]
+
+      (observe expense-authority
+        [:expense/current expense-id]
+        -> expense)
+
+      (invoke expense-authority
+        finance-approve
+        {:expense-id expense-id}))))
+#+end_src
+
+The global form is not intended to run forever as one omniscient process. It is
+a specification from which local behavior can be derived.
+
+A manager projection might contain only what the manager needs:
+
+#+begin_src clojure
+(defprojected expense-approval-manager
+  {:role :manager
+   :from expense-approval}
+
+  (state :waiting-for-submission
+    (on-message
+      [:expense/submitted
+       {:keys [expense-id]}]
+
+      (goto :load-authority
+        {:expense-id expense-id})))
+
+  (state :load-authority
+    (observe
+      [:expense/current :expense-id]
+      -> :expense)
+
+    (observe
+      [:expense/current-policy
+       [:expense/department :expense]]
+      -> :policy)
+
+    (goto :choose-path))
+
+  (state :choose-path
+    (if
+      (needs-finance?
+        {:expense :expense
+         :policy :policy})
+
+      (then
+        (invoke
+          :expense/escalate-to-finance
+          {:expense-id :expense-id})
+
+        (send
+          :finance
+          [:expense/finance-review-required
+           {:expense-id :expense-id}])
+
+        (terminate :escalated))
+
+      (else
+        (invoke
+          :expense/manager-approve
+          {:expense-id :expense-id})
+
+        (terminate :approved-by-manager)))))
+#+end_src
+
+The Finance projection is smaller because Finance has no behavior until the
+selected branch communicates the review requirement:
+
+#+begin_src clojure
+(defprojected expense-approval-finance
+  {:role :finance
+   :from expense-approval}
+
+  (state :waiting-for-review
+    (on-message
+      [:expense/finance-review-required
+       {:keys [expense-id]}]
+
+      (goto :load-expense
+        {:expense-id expense-id})))
+
+  (state :load-expense
+    (observe
+      [:expense/current :expense-id]
+      -> :expense)
+
+    (goto :approve))
+
+  (state :approve
+    (invoke
+      :expense/finance-approve
+      {:expense-id :expense-id})
+
+    (terminate :approved-by-finance)))
+#+end_src
+
+The employee projection can be smaller still:
+
+#+begin_src clojure
+(defprojected expense-approval-employee
+  {:role :employee
+   :from expense-approval}
+
+  (state :ready
+    (emit
+      [:expense/submitted
+       {:expense-id :expense-id}])
+
+    (terminate :submitted)))
+#+end_src
+
+Several design points are visible at once.
+
+The manager projection contains the branch because the manager's behavior
+actually differs. Finance does not receive the branch discriminator in advance;
+it receives only the message that justifies its local participation. The
+employee does not learn the internal manager-versus-Finance choice because this
+particular choreography gives the employee no divergent local behavior after
+submission.
+
+The projections are therefore smaller than the global specification without
+being independent handwritten workflows. Their legal traces remain related to
+the global choreography, and any knowledge used locally has to come from the
+entry contract, communication, authoritative observation, deterministic
+derivation, or another declared provenance path.
 
 *** Choreography is specification, not a hidden coordinator
 
@@ -5172,50 +6607,6 @@ physical/application layers, production enforcement of those checks, and
 independent capability acceptance. Closure results retain their actual assurance
 classification rather than automatically becoming semantic theorems.
 
-
-HumanHelp's Claim action gives the distinction a concrete shape. The Claim
-choreography can be internally valid: the helper has the required entry
-knowledge, the trusted side re-establishes the principal and current authority,
-the Request model owns the authoritative transition, and the projected
-continuations are legal. Yet a particular application build can still omit the
-Claim button entirely or package an old browser artifact containing no
-realization of that plan.
-
-In that case the choreography has not become invalid. The application has failed
-a different claim: the required user capability is not realized by the assembled
-production path.
-
-The reverse failure is equally possible. A hand-written route may happen to
-perform a Request mutation successfully even though it is not the realization of
-the declared Claim choreography. HTTP success then demonstrates neither
-choreography validity nor production enforcement of the semantic path.
-
-Using the same Claim story for both cases keeps the boundary sharp:
-
-#+begin_example
-valid Claim choreography
-        |
-        X  missing view / plan / artifact / route join
-        |
-        v
-required HumanHelp capability is absent
-#+end_example
-
-and:
-
-#+begin_example
-ad-hoc POST route mutates Request
-        |
-        X  no admitted Claim choreography path
-        |
-        v
-mutation happened, but the claimed Gesso realization was bypassed
-#+end_example
-
-The examples therefore do not add another kind of validity. They show why
-choreography validity, application closure, production enforcement, and product
-capability acceptance remain separately reviewable.
-
 *** Construction must fail when the contradiction is already knowable
 
 Choreography construction and verification must reject known contradictions at
@@ -5270,33 +6661,248 @@ one semantic declaration
     +--> derived diagnostics
 #+end_example
 
-
-For ordinary application code, this principle should make a semantic operation
-feel smaller rather than larger. A Request card might eventually contain
-something as compact as:
-
-#+begin_src clojure
-(request-card
-  request
-  {:actions
-   [(gesso/bind :request/claim
-      {:request-id (:request/id request)})]})
-#+end_src
-
-The syntax is deliberately provisional. The important point is what the
-application author did *not* repeat. The view did not manually invent a browser
-plan name, command-wire field, route identity, server registry key, or model
-operation alias. Those are either derived from the semantic declaration or are
-independent physical choices whose correspondence is checked elsewhere.
-
-If a future authoring API instead requires five manually synchronized names to
-express this one Claim intent, the example should be treated as design pressure
-against that API. The semantic requirement is single ownership of the intent,
-not commitment to the particular =gesso/bind= spelling shown here.
-
 This principle does not collapse all layers into one macro.  It reduces
 duplicated sources of semantic truth while preserving explicit architectural
 boundaries.
+
+
+HumanHelp's Claim action gives a useful target for that authoring principle
+because the same semantic intent must eventually appear in a view, browser plan,
+transport, trusted handler, model operation, settlement, and authoritative
+reacquisition path.
+
+A declaration-first surface might begin with one semantic operation:
+
+#+begin_src clojure
+(defoperation request-claim
+  {:operation/id :request/claim
+
+   :roles
+   {:helper
+    {:principal :user
+     :actor :client}
+
+    :request-authority
+    {:authority :request}}
+
+   :input
+   [:map
+    [:request/id uuid?]]
+
+   :entry
+   [[:known-by :helper [:request/id]]
+    [:provenance [:request/id] :input]]
+
+   :runtime-premises
+   [[:authenticated-principal :helper]
+    [:current-membership :helper]
+    [:current-request :request/id]
+    [:current-organization
+     [:request/organization-id :current-request]]
+    [:current-claim-authority
+     {:principal :authenticated-principal
+      :request :current-request}]]
+
+   :provisional
+   {:role :helper
+    :projection :request/claiming}
+
+   :effect
+   [:invoke :request-authority
+    :request/claim
+    {:request-id :request/id
+     :principal :authenticated-principal}]
+
+   :settlement
+   {:accepted
+    {:reacquire
+     [:request/card :request/id]}
+
+    :rejected
+    {:reacquire
+     [:request/card :request/id]}
+
+    :unknown
+    {:recover
+     [:request/reconcile-claim
+      {:request-id :request/id
+       :command-id :command/id}]}}})
+#+end_src
+
+The view should be able to refer to that semantic operation without duplicating
+its lower-level names:
+
+#+begin_src clojure
+(defview request-card
+  [{:request/keys [id title status] :as request}]
+  [:article.request-card
+   {:data-request-id id}
+
+   [:h3 title]
+   [:p.status (name status)]
+
+   (when (= status :open)
+     (gesso/action
+       {:operation :request/claim
+        :args {:request/id id}}
+       "Claim"))])
+#+end_src
+
+Projection may elaborate the operation into a helper-local executable plan:
+
+#+begin_src clojure
+(project-operation request-claim
+  {:role :helper})
+;; =>
+{:plan/id :plan/request-claim
+
+ :operation/id :request/claim
+
+ :entry
+ {:known
+  #{[:request/id]}
+
+  :runtime-required
+  #{:authenticated-principal
+    :current-membership
+    :current-request
+    :current-organization
+    :current-claim-authority}}
+
+ :command
+ {:schema
+  [:map
+   [:request/id uuid?]
+   [:gesso/command-id uuid?]]
+
+  :transport
+  :trusted-semantic-post}
+
+ :provisional
+ {:projection :request/claiming
+  :owned-by :gesso/command-id}
+
+ :settlement
+ {:accepted
+  {:action :authoritative-reacquire
+   :projection :request/card}
+
+  :rejected
+  {:action :authoritative-reacquire
+   :projection :request/card}
+
+  :unknown
+  {:action :reconcile-command
+   :operation :request/reconcile-claim}}}
+#+end_src
+
+The assembly can then choose a physical route and trusted capability while
+checking that they realize the semantic operation:
+
+#+begin_src clojure
+(bind-operation
+  humanhelp-assembly
+  {:operation :request/claim
+
+   :view
+   {:projection :request/card
+    :affordance :claim}
+
+   :browser
+   {:plan :plan/request-claim}
+
+   :transport
+   {:kind :http/post
+    :route :route/request-claim}
+
+   :server
+   {:capability :server/request-claim}
+
+   :model
+   {:operation :request/claim}})
+#+end_src
+
+The trusted handler still establishes dynamic premises rather than trusting the
+browser's view of the world:
+
+#+begin_src clojure
+(defn request-claim-handler
+  [{:keys [db session] :as ctx} request]
+
+  (let [binding
+        (assembly/require-current-binding!
+          (:admitted-assembly ctx)
+          :route/request-claim)
+
+        command
+        (server/decode-bound-command!
+          binding
+          request)
+
+        principal
+        (auth/current-principal!
+          session)
+
+        request*
+        (request-model/require-current!
+          db
+          (:request/id command))
+
+        membership*
+        (membership-model/require-current!
+          db
+          {:user-id (:user/id principal)
+           :organization-id
+           (:request/organization-id request*)})
+
+        organization*
+        (organization-model/require-current!
+          db
+          (:request/organization-id request*))]
+
+    (claim-policy/require-authorized!
+      {:principal principal
+       :request request*
+       :membership membership*
+       :organization organization*})
+
+    (server/invoke-bound-model-operation!
+      binding
+      (assoc ctx
+        :principal principal)
+      {:request-id (:request/id request*)
+       :helper-id (:user/id principal)
+       :command-id (:gesso/command-id command)})))
+#+end_src
+
+The syntax in all four blocks is provisional. The design pressure is not.
+
+The application author should not have to synchronize:
+
+#+begin_src clojure
+;; Avoid this style of duplicated semantic naming.
+
+{:button-operation "claim"
+ :button-plan "claim-v9"
+ :hx-post "/requests/claim"
+ :wire-command "__gesso_live_optimistic_command"
+ :handler-var 'humanhelp.routes/claim
+ :server-capability "claim-handler"
+ :model-op "request/claim"
+ :settlement-fragment "request-card"}
+#+end_src
+
+when those values are all consequences of one declared semantic operation.
+Where the physical route or capability name genuinely remains independently
+authored, assembly construction should check its correspondence rather than
+hoping the strings stay synchronized.
+
+This example also makes choreography validity and whole-application realization
+visibly different. The =request-claim= choreography can be valid while the
+=:request/card= view omits the affordance, while the current browser artifact
+omits =:plan/request-claim=, or while the route is not bound into the current
+assembly. Those are application-realization failures, not reasons to weaken the
+operation contract.
 
 #+LATEX: \newpage
 ** Choreographic operation types
@@ -5394,39 +7000,6 @@ structure from the choreography body.
 
 The exact Clojure syntax remains tentative. These semantics are the intended
 contract.
-
-
-The difference from an ordinary function type is easier to see in an approval
-operation. A host-language signature such as:
-
-#+begin_example
-Expense -> ApprovalResult
-#+end_example
-
-says nothing about who is entitled to act, who knows the Expense, whether the
-manager observed the current policy, or what a browser may provisionally show
-while the authoritative operation is unresolved.
-
-A plausible application-facing declaration might therefore be smaller than the
-normalized contract while still naming its external commitments:
-
-#+begin_src clojure
-(defoperation approve-expense
-  {:operation :expense/approve
-   :actor :manager
-   :requires [:authenticated-manager
-              :current-expense
-              :current-approval-policy]
-   :authoritative :expense/approve
-   :outcomes #{:approved :rejected :needs-finance}})
-#+end_src
-
-Gesso might elaborate that declaration into richer semantic data containing the
-role, principal, knowledge, provenance, authority, continuation, and settlement
-obligations described above. The exact macro and keys are not normative. The
-example exists to show why the final semantic operation is richer than
-=Expense -> ApprovalResult= while ordinary application code should still be
-allowed to remain declaration-first.
 
 #+LATEX: \newpage
 *** Operation identity is semantic, not transport identity
@@ -5667,39 +7240,6 @@ This separation lets Gesso reason strongly about operation identity and
 distributed protocol structure without pretending to statically prove current
 business facts that can change between render and commit.
 
-
-Imagine that both Alice and Bob saw a HumanHelp Request while each was an active
-helper, so both browsers rendered a Claim affordance. Before Alice clicks, her
-Membership is withdrawn. Bob remains eligible.
-
-Nothing about the old button on Alice's screen turns that earlier eligibility
-into a reservation:
-
-#+begin_example
-T1
-    Alice authorized
-    Bob authorized
-    both render Claim
-
-T2
-    Alice Membership withdrawn
-
-T3
-    Alice clicks Claim
-        -> trusted side re-establishes current principal and policy
-        -> reject
-
-    Bob clicks Claim
-        -> trusted side re-establishes current principal and policy
-        -> may proceed
-#+end_example
-
-The semantic operation =:request/claim= existed throughout. The choreography may
-also permit a helper to attempt it from that state. What changed was the dynamic
-premise for this concrete principal. The example therefore separates operation
-availability from current authorization without requiring the browser to predict
-future model state.
-
 *** Malformed operation type versus wrong business policy
 
 The unified design distinguishes structural/type malformedness from product
@@ -5761,31 +7301,6 @@ checking, including:
 
 This is one of the central reasons Choreo needs a semantic type/knowledge layer
 richer than ordinary function typing.
-
-
-The same issue appears in expense approval without requiring an ill-typed rule.
-Suppose the application has a perfectly valid rule:
-
-#+begin_src clojure
-(and (= (:expense/status expense) :submitted)
-     (= (:employee/risk-band employee) :ordinary))
-#+end_src
-
-The server-side approval authority may know both the Expense and the current
-Employee risk band. A manager browser, however, may have received only the
-Expense amount and status. Projecting the same rule into that browser at that
-point would be invalid even though every operator and field reference type
-checks.
-
-There are several coherent repairs, depending on product intent: communicate an
-authorized risk-band fact, perform an authoritative observation that establishes
-the required fact, move the decision to the trusted authority, or change the
-local behavior so the manager never needs that discriminator. What Gesso must
-not do is silently insert =:employee/risk-band= into the browser context because
-the rule would otherwise be convenient to execute there.
-
-This is why "the rule is valid" and "this actor may evaluate the rule here"
-remain separate judgments.
 
 *** Operation declarations should remain inspectable data
 
@@ -5941,40 +7456,6 @@ choreographic admissibility
 
 A success at one layer cannot be silently promoted into a stronger proposition
 owned by a later layer.
-
-
-A checkout command makes the separation tangible. The browser can submit a map
-that passes an ordinary schema:
-
-#+begin_src clojure
-{:cart-id #uuid "00000000-0000-0000-0000-000000000042"
- :action :checkout/place-order}
-#+end_src
-
-Malli can establish that the UUID and enum values have the expected shape. It
-cannot establish that the HTTP request is currently authenticated as the
-customer who owns that cart, that the cart observation is authoritative, or that
-the model still permits checkout.
-
-Those stronger premises arise at their own boundaries:
-
-#+begin_example
-valid command shape
-        |
-        v
-trusted principal binding
-        |
-        v
-authorized/current cart observation
-        |
-        v
-authoritative checkout operation
-#+end_example
-
-The same bytes can therefore be a perfectly valid =PlaceOrderCommand=
-representation and still be rejected as a concrete operation. Treating schema
-success as authorization would erase exactly the semantic layers the
-choreographic operation contract is meant to expose.
 
 The same rule applies when a stronger semantic category happens to use a nominal
 host-language representation.  Malli may validate the fields inside an
@@ -6238,33 +7719,6 @@ client supplied -> trusted principal identity
 Projection preserves or weakens claims according to explicit semantics; it does
 not strengthen them by serialization.
 
-
-The checkout case supplies a particularly dangerous temptation. After Alice
-presses =Place order=, the payment authority may know that the payment was
-accepted while Alice's browser is still waiting. It would make the projected UI
-easy to write if the browser projection simply contained =:payment/accepted?=
-from the start and branched on it.
-
-That is exactly what projection cannot do:
-
-#+begin_example
-payment authority knows :accepted
-        |
-        X  projector copies fact into browser because UI wants it
-        |
-browser renders "Paid"
-#+end_example
-
-The browser may render that branch only after an admitted knowledge path exists,
-for example a declared settlement communication or an authorized authoritative
-Order observation establishing the relevant current fact. If the response is
-lost, the browser may instead remain uncertain and follow the recovery semantics
-defined by the operation.
-
-The example turns "projection cannot create knowledge" into an application
-constraint: generated convenience data is not a substitute for a provenance
-path.
-
 *** Behavior-sensitive choice is the central branch rule
 
 A role needs to know a choice only when its observable local behavior depends on
@@ -6286,41 +7740,185 @@ If they diverge, the projector/verifier must establish a valid knowledge path
 before the divergence.
 
 
-An expense-approval branch shows why the rule is about *behavior* rather than
-syntactic mention. Suppose the global choreography says:
+A richer expense example shows why "behavior-sensitive" is the important word.
+
+Suppose the global choreography has three relevant continuations after the
+manager observes the Expense and current policy:
+
+#+begin_src clojure
+(defchoreo expense-decision
+  {:roles
+   {:manager {:principal :user}
+    :finance {:principal :user}
+    :notifier {:principal [:service :notifications]}
+    :expense-authority {:authority :expense}}}
+
+  (manager
+    (observe expense-authority
+      [:expense/current expense-id]
+      -> expense)
+
+    (observe expense-authority
+      [:expense/current-policy
+       (:expense/department expense)]
+      -> policy)
+
+    (branch
+      (needs-finance?
+        {:expense expense
+         :policy policy})
+
+      (then
+        (invoke expense-authority
+          :expense/mark-awaiting-finance
+          {:expense-id expense-id})
+
+        (send finance
+          [:expense/finance-review-required
+           {:expense-id expense-id}])
+
+        (send notifier
+          [:expense/status-notification
+           {:expense-id expense-id
+            :status :submitted}]))
+
+      (else
+        (invoke expense-authority
+          :expense/approve-as-manager
+          {:expense-id expense-id})
+
+        (send notifier
+          [:expense/status-notification
+           {:expense-id expense-id
+            :status :submitted}])))))
+#+end_src
+
+The notifier performs the same semantic action in both branches with the same
+payload. It does not need the manager's private threshold or the boolean
+=needs-finance?= merely because the global source contains a branch around the
+notification.
+
+A projected notifier machine can therefore be independent of that
+discriminator:
+
+#+begin_src clojure
+(defprojected expense-decision-notifier
+  {:role :notifier}
+
+  (state :waiting
+    (on-message
+      [:expense/status-notification
+       {:keys [expense-id status]}]
+
+      (notify-user!
+        {:expense-id expense-id
+         :status status})
+
+      (terminate :sent)))
+#+end_src
+
+Finance is different. Its behavior exists only in one continuation, so it needs
+a knowledge-producing path before it can act. The selected branch communicates
+exactly such a path:
+
+#+begin_src clojure
+(defprojected expense-decision-finance
+  {:role :finance}
+
+  (state :waiting
+    (on-message
+      [:expense/finance-review-required
+       {:keys [expense-id]}]
+
+      (goto :load-authority
+        {:expense-id expense-id})))
+
+  (state :load-authority
+    (observe
+      [:expense/current :expense-id]
+      -> :expense)
+
+    (goto :review))
+
+  (state :review
+    (invoke
+      :expense/finance-approve
+      {:expense-id :expense-id})
+
+    (terminate :approved)))
+#+end_src
+
+Now consider a tempting but invalid projection:
+
+#+begin_src clojure
+(defprojected invalid-finance-projection
+  {:role :finance}
+
+  (state :waiting
+    ;; No message was received.
+    ;; No authoritative observation established this discriminator.
+    ;; It simply appeared because the projector knew the global branch.
+    (if :needs-finance?
+      (goto :review)
+      (terminate :not-needed)))
+
+  (state :review
+    (invoke
+      :expense/finance-approve
+      {:expense-id :expense-id})))
+#+end_src
+
+The global verifier knows =:needs-finance?=. Finance does not. The projector
+cannot smuggle the fact into Finance merely because it would make the generated
+machine easier.
+
+An alternative global design could legitimately omit the direct manager-to-
+Finance message if Finance can learn the required condition through authority.
+For example, the manager could commit durable =:awaiting-finance= state and
+Finance could later enter a new short choreography through an authorized queue
+observation:
+
+#+begin_src clojure
+(defchoreo finance-review-from-authority
+  {:roles
+   {:finance {:principal :user}
+    :expense-authority {:authority :expense}}}
+
+  (finance
+    (observe expense-authority
+      [:expense/pending-finance-queue
+       {:principal :authenticated-finance-user}]
+      -> pending)
+
+    (for-each [expense pending]
+      (invoke expense-authority
+        :expense/finance-approve
+        {:expense-id (:expense/id expense)}))))
+#+end_src
+
+That version has a different knowledge path, not weaker semantics. Finance knows
+the relevant fact because the authoritative queue observation establishes it.
+
+The two legal designs expose a general principle:
 
 #+begin_example
-employee submits Expense E
-        |
-manager knows E.amount and current approval policy
-        |
-        +-- if ordinary manager approval is sufficient
-        |       manager may approve
-        |
-        `-- if finance review is required
-                Finance must review E
+global branch fact
+    |
+    +--> communicated to the role that needs it
+    |
+    `--> established by an equivalent authorized authoritative observation
+
+but never:
+
+global branch fact
+    |
+    `--> silently copied into a local projection
 #+end_example
 
-The manager must know enough to choose the branch because the manager's next
-semantic behavior differs. Finance does not need to learn the branch before the
-choice merely because Finance is named in one continuation. If the Finance
-continuation is selected, Finance must then receive or authoritatively observe
-the facts required for its own behavior.
-
-Now suppose the employee receives the same generic "expense submitted" state in
-both continuations and performs no different local action. The employee need not
-learn the internal manager-versus-Finance discriminator merely to mirror the
-global syntax.
-
-Likewise, a notification service that sends the same receipt in both branches
-does not need the private approval threshold just because both branches contain
-a notification step. If one branch instead requires a different notification,
-then the service needs enough justified information to distinguish those
-continuations before the messages diverge.
-
-This is the practical meaning of behavior-sensitive projection: knowledge is
-introduced where local semantics require it, not broadcast until every role can
-reconstruct the entire global decision tree.
+Behavior-sensitive projection therefore controls both *how much* knowledge is
+distributed and *when* it must exist. A role whose local behavior is equivalent
+across branches does not need the discriminator. A role whose behavior diverges
+needs an admissible knowledge path before the first divergent action.
 
 **** Supported equivalence and conservative rejection
 
@@ -6403,40 +8001,189 @@ often rendezvous naturally through model authority and reread rather than
 long-lived direct participant messaging.
 
 
-HumanHelp's board is the useful counterexample to a message-centric projector.
-When Alice creates Request R, Bob does not need a durable participant message
-whose semantic content is "Alice created R" in order eventually to learn the new
-Request. The durable Request fact already lives at model authority.
+HumanHelp Request publication and a collaborative typing indicator provide a
+useful contrast because they look superficially similar in a browser while
+having different semantic recovery requirements.
 
-A normal realization can instead be:
+For a newly created HumanHelp Request, the durable fact already belongs to
+Request authority:
 
-#+begin_example
-Alice creates R
-        |
-Request authority commits R
-        |
-Bob receives advisory invalidation
-        |
-Bob has not adopted R yet
-        |
-product policy / explicit Refresh permits acquisition
-        |
-Bob authoritatively rereads the board projection
-        |
-Bob learns and adopts R
-#+end_example
+#+begin_src clojure
+(defoperation create-request
+  {:operation/id :request/create
+   :actor :customer
 
-The advisory event is useful coordination, but the authoritative observation is
-the knowledge-producing path for the Request contents. Inserting a direct
-Alice-to-Bob choreography message merely because Alice's action affects Bob
-would add delivery and recovery obligations without adding semantic value.
+   :effect
+   [:model/invoke :request/create
+    {:customer :authenticated-principal
+     :request :request/draft}]
 
-The opposite case also exists. An ephemeral collaboration message such as
-"Bob is typing" may have meaning precisely because Alice receives that message;
-there may be no durable authoritative fact to reread later. Projection must
-preserve that communication. The framework therefore treats communication as a
-knowledge mechanism to preserve when required, not as either a universal
-requirement or an implementation smell.
+   :settlement
+   {:accepted
+    {:creator-reacquire
+     [:request/card :created-request-id]
+
+     :remote-advisory
+     {:scope
+      [:request/board :organization-id]
+
+      :requirement
+      :newer-relevant-authority-available}}}})
+#+end_src
+
+After the authoritative commit, other clients need not receive the entire
+Request directly from the creator's execution. A shared advisory can merely
+record that newer relevant authority may be available:
+
+#+begin_src clojure
+(defn handle-board-advisory
+  [board-runtime advisory]
+
+  (if
+    (board-subscription/owns?
+      (:subscription board-runtime)
+      advisory)
+
+    (update
+      board-runtime
+      :advisory-requirements
+      conj
+      (:requirement advisory))
+
+    board-runtime))
+#+end_src
+
+Bob may continue displaying his adopted board until the product's explicit
+Refresh/adoption policy permits reacquisition:
+
+#+begin_src clojure
+(defn refresh-request-board!
+  [{:keys [principal] :as ctx}
+   board-runtime]
+
+  (let [{:keys [requests basis scope]}
+        (request-model/read-board
+          ctx
+          {:principal principal
+           :organization-id
+           (get-in board-runtime
+             [:projection :organization-id])})]
+
+    (-> board-runtime
+        (assoc
+          :adopted
+          {:requests requests
+           :basis basis
+           :scope scope})
+
+        (update
+          :advisory-requirements
+          #(remove
+             (fn [requirement]
+               (progression/covered-by?
+                 {:requirement requirement
+                  :acquisition
+                  {:basis basis
+                   :scope scope}}))
+             %)))))
+#+end_src
+
+The advisory does not need to carry the new Request title, requester, lifecycle
+state, or every intermediate board mutation. The durable authoritative model is
+the rendezvous point.
+
+Now compare a collaborative editor's typing indicator:
+
+#+begin_src clojure
+(defmessage typing-indicator
+  {:message/id :document/typing
+
+   :from :editor
+   :to :peer-editor
+
+   :payload
+   [:map
+    [:document/id uuid?]
+    [:actor/id uuid?]
+    [:typing? boolean?]]
+
+   :delivery
+   {:durability :ephemeral
+    :ordering :best-effort
+    :replay :none}
+
+   :semantics
+   {:expires-after-ms 3000}})
+#+end_src
+
+A projected peer machine may legitimately react to the received message itself:
+
+#+begin_src clojure
+(defprojected peer-typing-projection
+  {:role :peer-editor}
+
+  (state :idle
+    (on-message
+      [:document/typing
+       {:keys [document/id actor/id typing?]}]
+
+      (when typing?
+        (effect
+          [:ui/show-typing-indicator
+           {:document/id id
+            :actor/id actor/id}]))
+
+      (acquire-resource
+        {:kind :timer
+         :purpose :typing-expiry
+         :after-ms 3000}
+        -> expiry-timer)
+
+      (goto :showing
+        {:document/id id
+         :actor/id actor/id
+         :timer expiry-timer})))
+
+  (state :showing
+    (on-resource
+      :timer-expired
+      {:resource :timer}
+
+      (effect
+        [:ui/hide-typing-indicator
+         {:document/id :document/id
+          :actor/id :actor/id}])
+
+      (terminate :expired))))
+#+end_src
+
+If Alice never receives Bob's typing message, an authoritative reread two
+minutes later cannot reconstruct the semantic event in any useful sense. There
+may be no durable =:typing=true= fact to query, and replaying it after expiry
+would be wrong.
+
+The two cases therefore require different projection behavior:
+
+#+begin_src clojure
+{:request/create
+ {:durable-truth :request-authority
+  :remote-coordination :advisory
+  :recovery :authoritative-reread}}
+
+{:document/typing
+ {:durable-truth nil
+  :remote-coordination :direct-ephemeral-message
+  :recovery :none
+  :expiry :local-resource}}
+#+end_src
+
+A projector that inserts direct participant messages for every durable model
+change over-specifies delivery and recovery. A projector that replaces every
+message with "just reread later" destroys genuinely ephemeral semantics.
+
+Communication is therefore neither sacred nor suspicious. It is one declared
+knowledge path among several, and the correct projection preserves whichever
+path the application's semantics actually require.
 
 *** Local executable guards belong in the executable projection
 
@@ -6471,25 +8218,6 @@ admission check or supply missing runtime facts.
 
 The production machine must never depend on an optional proof sidecar to decide
 a transition.
-
-
-A mundane browser timer illustrates the split. Suppose an optimistic checkout
-execution owns a timeout resource. The local executable plan may need a guard
-equivalent to:
-
-#+begin_example
-accept timeout event only if
-    timeout resource I still belongs to execution E
-#+end_example
-
-If the execution has already settled and retired I, a late physical timer
-callback is rejected by that runtime guard. The browser does not need the proof
-tree that established the guard's sufficiency; it needs only the executable
-predicate and the identities against which the concrete event is admitted.
-
-Keeping the proof out of the browser therefore does not mean deleting the
-runtime condition the proof was about. It means lowering the semantic
-requirement to the small executable guard needed by the projected machine.
 
 *** Projection failure should identify the missing justification
 
@@ -6681,35 +8409,210 @@ must define its own:
 It is not silently inherited from ordinary Choreo.
 
 
-The expense-approval story can be read literally here. On Monday, Employee E
-submits Expense X and the authoritative model records =:approval/pending=. The
-employee closes the laptop. The web node that handled the submission is
-redeployed overnight. On Thursday, Manager M opens the application and sees X
-through a current authorized projection.
+The expense example can be extended across several days without adding a
+suspended process.
 
-Nothing important requires Thursday's browser or server process to resurrect
-Monday's execution object:
+On Monday, the employee submits Expense E. A short choreography validates the
+submission and commits durable pending state:
 
-#+begin_example
-Monday execution E1
-    submit X
-    commit :approval/pending
-    terminate
+#+begin_src clojure
+(defchoreo submit-expense
+  {:roles
+   {:employee {:principal :user}
+    :expense-authority {:authority :expense}}}
 
-authoritative Expense X survives
+  (employee
+    (invoke expense-authority
+      :expense/submit
+      {:expense-id expense-id
+       :employee :authenticated-principal})
 
-Thursday execution E2
-    Manager M observes X as pending
-    re-establish current principal and policy
-    approve or escalate
-    terminate
-#+end_example
+    (observe expense-authority
+      [:expense/current expense-id]
+      -> expense)
 
-The business process is continuous because Expense X and its authoritative
-state are continuous. The protocol executions are allowed to be different.
-This is not merely an optimization for process memory; it is a semantic choice
-that keeps durable business truth in the model rather than in the lifetime of a
-particular runtime.
+    (assert
+      [:= (:expense/status expense)
+          :submitted])
+
+    (terminate :submitted)))
+#+end_src
+
+The public model operation owns the durable transition:
+
+#+begin_src clojure
+(defn submit-expense!
+  [{:keys [db principal now]}
+   {:keys [expense-id]}]
+
+  (let [expense
+        (expense-model/require-current!
+          db
+          expense-id)]
+
+    (when-not
+      (= (:expense/employee-id expense)
+         (:user/id principal))
+      (throw
+        (ex-info
+          "Only the owning employee may submit this expense."
+          {:error/type :expense/not-owner
+           :expense/id expense-id
+           :principal (:user/id principal)})))
+
+    (when-not
+      (= :draft (:expense/status expense))
+      (throw
+        (ex-info
+          "Expense is not in a submittable state."
+          {:error/type :expense/not-submittable
+           :expense/id expense-id
+           :status (:expense/status expense)})))
+
+    (expense-model/transact!
+      db
+      {:expense/id expense-id
+       :expense/status :submitted
+       :expense/submitted-at now})))
+#+end_src
+
+Execution E1 can now terminate. There is no correctness benefit in keeping the
+employee's server process resident until a manager responds.
+
+On Thursday, a manager opens an approval queue and authoritatively observes the
+pending Expense:
+
+#+begin_src clojure
+(defchoreo review-submitted-expense
+  {:roles
+   {:manager {:principal :user}
+    :expense-authority {:authority :expense}}}
+
+  (manager
+    (observe expense-authority
+      [:expense/pending-for-manager
+       {:principal :authenticated-principal}]
+      -> pending-expenses)
+
+    (choose expense-id
+      :from pending-expenses)
+
+    (observe expense-authority
+      [:expense/current expense-id]
+      -> expense)
+
+    (observe expense-authority
+      [:expense/current-policy
+       (:expense/department expense)]
+      -> policy)
+
+    (branch
+      (needs-finance?
+        {:expense expense
+         :policy policy})
+
+      (then
+        (invoke expense-authority
+          :expense/mark-awaiting-finance
+          {:expense-id expense-id})
+
+        (terminate :awaiting-finance))
+
+      (else
+        (invoke expense-authority
+          :expense/approve-as-manager
+          {:expense-id expense-id})
+
+        (terminate :approved)))))
+#+end_src
+
+This is a new execution E2 with its own current principal, observations,
+execution identity, resource ownership, and compatible plan.
+
+Friday's Finance review can be yet another execution:
+
+#+begin_src clojure
+(defchoreo review-finance-expense
+  {:roles
+   {:finance {:principal :user}
+    :expense-authority {:authority :expense}}}
+
+  (finance
+    (observe expense-authority
+      [:expense/pending-for-finance
+       {:principal :authenticated-principal}]
+      -> queue)
+
+    (choose expense-id
+      :from queue)
+
+    (observe expense-authority
+      [:expense/current expense-id]
+      -> expense)
+
+    (invoke expense-authority
+      :expense/approve-as-finance
+      {:expense-id expense-id})
+
+    (terminate :approved)))
+#+end_src
+
+The domain history links the executions:
+
+#+begin_src clojure
+{:expense/id E
+ :expense/status-history
+ [{:status :draft
+   :effective-at monday-08-00}
+
+  {:status :submitted
+   :effective-at monday-09-12
+   :caused-by {:command C1
+               :operation :expense/submit}}
+
+  {:status :awaiting-finance
+   :effective-at thursday-14-20
+   :caused-by {:command C2
+               :operation :expense/mark-awaiting-finance}}
+
+  {:status :approved
+   :effective-at friday-10-03
+   :caused-by {:command C3
+               :operation :expense/approve-as-finance}}]}
+#+end_src
+
+The runtime identities need not form one persistent chain:
+
+#+begin_src clojure
+{:monday
+ {:execution E1
+  :command C1
+  :principal employee-P
+  :plan :plan/submit-expense-A12}}
+
+{:thursday
+ {:execution E2
+  :command C2
+  :principal manager-M
+  :plan :plan/review-expense-A13}}
+
+{:friday
+ {:execution E3
+  :command C3
+  :principal finance-F
+  :plan :plan/finance-review-A13}}
+#+end_src
+
+The business process is continuous because authoritative Expense state is
+continuous under the model's semantics. The protocol executions are separate
+because each period of activity has its own current participants, authorization,
+knowledge, resources, and executable compatibility.
+
+A future durable-workflow facility could choose to preserve suspended execution
+state across days, but that would be an additional semantic facility with
+explicit persistence and migration rules. Ordinary Choreo does not need to
+pretend that Monday's process remained asleep somewhere in order for Friday's
+approval to be part of the same business story.
 
 *** Durable model state is the normal rendezvous point
 
@@ -6743,18 +8646,6 @@ A durable business fact may outlive the executable plan that originally
 produced it.
 
 That is normal.
-
-
-For example, Expense X may have been created under application assembly A12 and
-remain =:approval/pending= across a deployment to A13. A manager acting after the
-deployment need not resume A12's browser or server execution. A13 may begin a
-new choreography from the still-valid authoritative pending fact.
-
-If A13 merely changes browser-plan encoding, that is chiefly a runtime
-compatibility question. If A13 changes the persisted meaning of
-=:approval/pending= itself, however, the model has a separate interpretation or
-migration problem. Treating those two changes as the same kind of "stale plan"
-would confuse durable domain compatibility with executable compatibility.
 
 What cannot be assumed is that a suspended *runtime execution* from an older
 deployment remains compatible forever.
@@ -7351,6 +9242,289 @@ boundary.
 #+end_quote
 
 
+HumanHelp Claim can make that dependency direction concrete without requiring
+Choreo to know how Request persistence is implemented. A plausible public model
+contract might look like this:
+
+#+begin_src clojure
+(ns net.humanhelp.site.model.request.core
+  (:require
+   [net.humanhelp.site.model.request.domain :as domain]
+   [net.humanhelp.site.model.request.fx :as request.fx]))
+
+(def ClaimCommand
+  [:map
+   [:request-id uuid?]
+   [:helper-id uuid?]
+   [:command-id uuid?]])
+
+(def ClaimOutcome
+  [:multi {:dispatch :outcome}
+   [:committed
+    [:map
+     [:outcome [:= :committed]]
+     [:request Request]
+     [:command-id uuid?]]]
+
+   [:rejected
+    [:map
+     [:outcome [:= :rejected]]
+     [:reason
+      [:enum
+       :request-not-open
+       :membership-inactive
+       :organization-disallows-claim]]
+     [:request Request]
+     [:command-id uuid?]]]
+
+   [:already-incorporated
+    [:map
+     [:outcome [:= :already-incorporated]]
+     [:request Request]
+     [:command-id uuid?]]]
+
+   [:commit-unknown
+    [:map
+     [:outcome [:= :commit-unknown]]
+     [:command-id uuid?]]]])
+
+(def claim-contract
+  {:operation/id :request/claim
+
+   :input ClaimCommand
+
+   :outcome ClaimOutcome
+
+   :authority
+   [:authority :request]
+
+   :atomicity
+   :one-authoritative-transition
+
+   :requires
+   #{:authenticated-principal
+     :current-request
+     :current-membership
+     :current-organization}
+
+   :effects
+   {:authoritative
+    #{:request/claim-transition}
+
+    :after-commit
+    #{:request/live-invalidation
+      :request/settlement}}})
+
+(defn claim
+  "Public Request semantic operation.
+
+   The caller supplies trusted runtime context plus the semantic command.
+   The implementation below this boundary may change without requiring
+   choreography callers to understand its transaction plan."
+  [ctx command]
+  (m/assert ClaimCommand command)
+  (request.fx/run-claim ctx command))
+#+end_src
+
+The choreography depends on that public contract:
+
+#+begin_src clojure
+(ns net.humanhelp.site.model.request.choreo
+  (:require
+   [gesso.choreo.core :as choreo]
+   [net.humanhelp.site.model.request.core :as request]))
+
+(defn claim-request
+  [{:keys [request-id helper-id command-id]}]
+  (choreo/at
+    :request-authority
+
+    (choreo/invoke
+      {:operation :request/claim
+       :contract request/claim-contract}
+
+      (fn [ctx]
+        (request/claim
+          ctx
+          {:request-id request-id
+           :helper-id helper-id
+           :command-id command-id})))))
+#+end_src
+
+Nothing in that choreography needs to know whether the model uses one query,
+five queries, an XTDB transaction function, a Biff FX pipeline, or a future
+implementation with different private staging data.
+
+Below =request.core=, the selected realization may be considerably richer. The
+following FX-like pipeline is illustrative rather than a commitment to exact
+Biff syntax, but it preserves the required value-flow shape: invocation input is
+explicit, each state receives the previous state's output explicitly, and
+ambient context carries capabilities rather than accumulating arbitrary
+business data.
+
+#+begin_src clojure
+(ns net.humanhelp.site.model.request.fx
+  (:require
+   [com.biffweb :as biff]
+   [net.humanhelp.site.model.membership.core :as membership]
+   [net.humanhelp.site.model.organization.core :as organization]
+   [net.humanhelp.site.model.request.domain :as domain]
+   [net.humanhelp.site.model.request.persistence :as persistence]))
+
+(def claim-pipeline
+  {:start
+   (fn [ctx command]
+     {:state :load-authority
+      :command command})
+
+   :load-authority
+   (fn [ctx {:keys [command]}]
+     (let [request
+           (persistence/read-request
+             ctx
+             (:request-id command))
+
+           membership
+           (membership/current-for-user
+             ctx
+             {:user-id (:helper-id command)
+              :organization-id
+              (:request/organization-id request)})
+
+           organization
+           (organization/current
+             ctx
+             (:request/organization-id request))]
+
+       {:state :prepare
+        :command command
+        :request request
+        :membership membership
+        :organization organization}))
+
+   :prepare
+   (fn [ctx {:keys [command
+                    request
+                    membership
+                    organization]}]
+
+     (let [decision
+           (domain/claim-decision
+             {:request request
+              :membership membership
+              :organization organization
+              :helper-id (:helper-id command)})]
+
+       (if (= :allowed (:decision decision))
+         {:state :commit
+          :command command
+          :prepared
+          (persistence/prepare-claim
+            {:request request
+             :membership membership
+             :organization organization
+             :helper-id (:helper-id command)
+             :command-id (:command-id command)})}
+
+         {:state :done
+          :result
+          {:outcome :rejected
+           :reason (:reason decision)
+           :request request
+           :command-id (:command-id command)}})))
+
+   :commit
+   (fn [ctx {:keys [command prepared]}]
+     (let [result
+           (persistence/commit-prepared-claim!
+             ctx
+             prepared)]
+
+       (case (:commit/status result)
+         :committed
+         {:state :after-commit
+          :command command
+          :commit result}
+
+         :rejected
+         {:state :reload-after-rejection
+          :command command
+          :commit result}
+
+         :unknown
+         {:state :done
+          :result
+          {:outcome :commit-unknown
+           :command-id (:command-id command)}})))
+
+   :reload-after-rejection
+   (fn [ctx {:keys [command]}]
+     {:state :done
+      :result
+      {:outcome :rejected
+       :reason :authoritative-precondition-changed
+       :request
+       (persistence/read-request
+         ctx
+         (:request-id command))
+       :command-id (:command-id command)}})
+
+   :after-commit
+   (fn [ctx {:keys [command commit]}]
+     ;; Publication is after the authoritative transition.
+     ;; Failure here must not be translated into "claim failed".
+     (let [publication
+           (persistence/publish-claim-consequence!
+             ctx
+             {:request-id (:request-id command)
+              :command-id (:command-id command)
+              :basis (:commit/basis commit)})]
+
+       {:state :done
+        :result
+        {:outcome :committed
+         :request (:request commit)
+         :command-id (:command-id command)
+         :publication publication}}))
+
+   :done
+   (fn [_ctx {:keys [result]}]
+     result)})
+
+(defn run-claim
+  [ctx command]
+  (biff/run-state-machine
+    ctx
+    claim-pipeline
+    command))
+#+end_src
+
+The private pipeline may be replaced later without changing the public meaning
+of =request/claim=. Conversely, the choreography must not reach down and call a
+private state directly:
+
+#+begin_src clojure
+;; Forbidden architectural shortcut.
+
+(ns net.humanhelp.site.model.request.choreo
+  (:require
+   [net.humanhelp.site.model.request.fx :as request.fx]))
+
+(defn claim-request [ctx command]
+  ;; This bypasses the public semantic operation and couples choreography
+  ;; directly to one FX realization.
+  ((:commit request.fx/claim-pipeline)
+   ctx
+   {:command command
+    :prepared (:client-supplied-prepared-plan command)}))
+#+end_src
+
+That shortcut would make private transaction staging part of the distributed
+protocol even though =request.core= never promised it. The public model boundary
+exists precisely so Choreo can coordinate one stable semantic operation while
+the authoritative implementation remains free to be sophisticated underneath.
+
+
 #+LATEX: \newpage
 
 ** Atomic authoritative transitions
@@ -7602,6 +9776,206 @@ performed close together. The operation must establish the snapshot or other
 compatibility relation required by its invariant and preserve the required
 premises through commit.
 
+
+A Request claim is a good example because the decision may depend on public
+semantics owned by Request, Membership, and Organization while the domain
+transition still needs one atomic authoritative result.
+
+Assume preparation has acquired mutually compatible authoritative observations:
+
+#+begin_src clojure
+(def authoritative-inputs
+  {:request
+   {:request/id R
+    :request/status :open
+    :request/organization-id O
+    :request/helper-id nil
+    :model/version :request-v17}
+
+   :membership
+   {:membership/user-id U
+    :membership/organization-id O
+    :membership/status :active
+    :model/version :membership-v9}
+
+   :organization
+   {:organization/id O
+    :organization/claiming-enabled? true
+    :model/version :organization-v31}
+
+   :command
+   {:operation :request/claim
+    :command-id C42
+    :request-id R
+    :helper-id U}})
+#+end_src
+
+The domain decision can remain pure:
+
+#+begin_src clojure
+(defn claim-decision
+  [{:keys [request membership organization command]}]
+  (cond
+    (not= :open (:request/status request))
+    {:decision :rejected
+     :reason :request-not-open}
+
+    (not= :active (:membership/status membership))
+    {:decision :rejected
+     :reason :membership-inactive}
+
+    (not=
+      (:request/organization-id request)
+      (:membership/organization-id membership))
+    {:decision :rejected
+     :reason :wrong-organization}
+
+    (not (:organization/claiming-enabled? organization))
+    {:decision :rejected
+     :reason :organization-disallows-claim}
+
+    :else
+    {:decision :allowed
+     :transition
+     {:request-id (:request/id request)
+      :helper-id (:helper-id command)
+      :command-id (:command-id command)}}))
+#+end_src
+
+Preparation then converts the allowed decision into an authoritative transaction
+plan. The exact XTDB transaction primitives are intentionally abstracted here;
+what matters is the semantic content of the guards and writes.
+
+#+begin_src clojure
+(defn prepare-claim
+  [{:keys [request membership organization command] :as inputs}]
+  (let [{:keys [decision transition reason]}
+        (claim-decision inputs)]
+
+    (if (= :rejected decision)
+      {:prepare/status :rejected
+       :reason reason}
+
+      {:prepare/status :ready
+
+       ;; These guards protect the facts whose incompatible change would
+       ;; invalidate the prepared claim.
+       :commit/guards
+       [[:request/still-open
+         {:request-id (:request/id request)
+          :expected-version (:model/version request)}]
+
+        [:membership/still-active
+         {:user-id (:membership/user-id membership)
+          :organization-id
+          (:membership/organization-id membership)
+          :expected-version (:model/version membership)}]
+
+        [:organization/still-allows-claim
+         {:organization-id (:organization/id organization)
+          :expected-version (:model/version organization)}]
+
+        ;; Durable command reuse must also remain compatible.
+        [:command/not-incorporated-with-different-meaning
+         {:command-id (:command-id command)
+          :operation :request/claim
+          :subject (:request/id request)
+          :principal (:helper-id command)}]]
+
+       ;; The complete authoritative write set is one transaction.
+       :commit/writes
+       [[:request/claim
+         {:request-id (:request/id request)
+          :helper-id (:helper-id command)
+          :command-id (:command-id command)}]
+
+        [:command/record-incorporated-result
+         {:command-id (:command-id command)
+          :operation :request/claim
+          :subject (:request/id request)
+          :principal (:helper-id command)}]]
+
+       :transition transition})))
+#+end_src
+
+Suppose preparation succeeds, then another transaction deactivates Membership U
+before this commit is submitted:
+
+#+begin_src clojure
+(def prepared
+  (prepare-claim authoritative-inputs))
+
+;; Concurrent authoritative transaction:
+(membership/deactivate!
+  tx-context
+  {:user-id U
+   :organization-id O})
+
+;; Our later commit evaluates its declared guards atomically with its writes.
+(def result
+  (authoritative/submit!
+    tx-context
+    {:guards (:commit/guards prepared)
+     :writes (:commit/writes prepared)}))
+
+result
+;; =>
+{:commit/status :rejected
+ :failed-guard
+ [:membership/still-active
+  {:user-id U
+   :organization-id O}]}
+#+end_src
+
+The key property is not that the implementation happened to notice a version
+number. It is that the authoritative transition was not allowed to publish a
+half-valid state.
+
+In particular, this must never be an observable result:
+
+#+begin_src clojure
+;; Forbidden partial outcome.
+
+{:request
+ {:request/id R
+  :request/status :claimed
+  :request/helper-id U}
+
+ :membership
+ {:membership/user-id U
+  :membership/status :inactive}
+
+ :command-record
+ nil} ; mutation happened but command incorporation did not
+#+end_src
+
+If claiming the Request and recording durable command incorporation jointly
+constitute the promised invariant, both writes belong to the same authoritative
+transaction. If Membership status must remain active for the claim to commit,
+the commit must protect that predicate as required by the selected database
+mechanism.
+
+Notice that the public model APIs can still remain separate:
+
+#+begin_src clojure
+;; Semantic ownership remains separate.
+(request/current ctx R)
+(membership/current-for-user ctx U O)
+(organization/current ctx O)
+
+;; The public Request claim operation composes the authoritative transition.
+(request/claim
+  ctx
+  {:request-id R
+   :helper-id U
+   :command-id C42})
+#+end_src
+
+API separation did not force four independent commits. Conversely, merely
+concatenating write forms from several models would not prove that their public
+preconditions were preserved. The authoritative operation must compose the
+semantic constraints as well as the data writes.
+
 *** API boundaries do not force transaction boundaries
 
 A public operation may depend upon facts owned by several models while still
@@ -7658,6 +10032,223 @@ undone.
 
 What is forbidden is an externally real partial transition whose existence is
 hidden merely because the application wished the operation were atomic.
+
+
+A store checkout is a useful example because a payment provider cannot normally
+participate in the same XTDB transaction that establishes local Order state.
+
+Pretending otherwise would produce an imaginary atomic operation:
+
+#+begin_src clojure
+;; Misleading pseudo-operation.
+
+(defn place-order! [ctx checkout]
+  (atomic
+    (payment-provider/charge!
+      (:payment-method checkout)
+      (:total checkout))
+
+    (order-model/insert!
+      ctx
+      {:order/status :placed
+       :checkout checkout})))
+#+end_src
+
+No local transaction wrapper can make the remote charge roll back when the
+process dies after the provider accepts it.
+
+A truthful model instead exposes an intermediate authoritative state:
+
+#+begin_src clojure
+(def OrderStatus
+  [:enum
+   :payment-pending
+   :payment-authorized
+   :placed
+   :payment-failed
+   :cancelled])
+
+(defschema Order
+  [:map
+   [:order/id uuid?]
+   [:order/customer-id uuid?]
+   [:order/cart-id uuid?]
+   [:order/status OrderStatus]
+   [:order/total decimal?]
+   [:order/payment-command-id uuid?]
+   [:order/provider-reference {:optional true} string?]])
+#+end_src
+
+The initial authoritative transaction can create the pending Order and bind a
+stable provider idempotency key:
+
+#+begin_src clojure
+(defn begin-order!
+  [{:keys [db principal now]}
+   {:keys [cart-id command-id payment-method-id]}]
+
+  (let [cart
+        (cart-model/require-current!
+          db
+          {:cart-id cart-id
+           :customer-id (:user/id principal)})
+
+        order-id
+        (uuid/random)
+
+        provider-key
+        (str "order-payment/" command-id)]
+
+    (authoritative/submit!
+      db
+      {:guards
+       [[:cart/still-checkout-eligible
+         {:cart-id cart-id
+          :expected-version (:cart/version cart)}]
+
+        [:command/not-reused-incompatibly
+         {:command-id command-id
+          :operation :checkout/place-order
+          :subject cart-id
+          :principal (:user/id principal)}]]
+
+       :writes
+       [[:order/create
+         {:order/id order-id
+          :order/customer-id (:user/id principal)
+          :order/cart-id cart-id
+          :order/status :payment-pending
+          :order/total (:cart/total cart)
+          :order/payment-command-id command-id
+          :order/payment-method-id payment-method-id
+          :order/provider-idempotency-key provider-key
+          :order/created-at now}]
+
+        [:command/record
+         {:command-id command-id
+          :operation :checkout/place-order
+          :subject cart-id
+          :principal (:user/id principal)
+          :result-subject order-id}]]})))
+#+end_src
+
+At that point =:payment-pending= is not an embarrassing implementation detail.
+It is the truthful authoritative state: the Order exists locally, but external
+payment disposition is not yet established.
+
+The external effect can then run with the stable provider key:
+
+#+begin_src clojure
+(defn authorize-payment!
+  [ctx order]
+  (payment-provider/authorize!
+    (:payment-provider ctx)
+    {:idempotency-key
+     (:order/provider-idempotency-key order)
+
+     :payment-method-id
+     (:order/payment-method-id order)
+
+     :amount
+     (:order/total order)
+
+     :metadata
+     {:order-id (:order/id order)
+      :command-id (:order/payment-command-id order)}}))
+#+end_src
+
+Provider success becomes input to a *later* authoritative transition:
+
+#+begin_src clojure
+(defn record-payment-authorized!
+  [{:keys [db now]} order provider-result]
+  (authoritative/submit!
+    db
+    {:guards
+     [[:order/still-payment-pending
+       {:order-id (:order/id order)}]
+
+      [:provider-result/matches-order
+       {:order-id (:order/id order)
+        :amount (:order/total order)
+        :provider-reference
+        (:provider/reference provider-result)}]]
+
+     :writes
+     [[:order/record-payment-authorization
+       {:order-id (:order/id order)
+        :provider-reference
+        (:provider/reference provider-result)
+        :authorized-at now}]
+
+      [:order/set-status
+       {:order-id (:order/id order)
+        :status :placed}]]})))
+#+end_src
+
+Provider rejection has its own valid transition:
+
+#+begin_src clojure
+(defn record-payment-failed!
+  [{:keys [db now]} order provider-result]
+  (authoritative/submit!
+    db
+    {:guards
+     [[:order/still-payment-pending
+       {:order-id (:order/id order)}]]
+
+     :writes
+     [[:order/payment-failure
+       {:order-id (:order/id order)
+        :reason (:provider/reason provider-result)
+        :failed-at now}]
+
+      [:order/set-status
+       {:order-id (:order/id order)
+        :status :payment-failed}]]})))
+#+end_src
+
+The difficult failure window is provider success followed by local process loss
+before =record-payment-authorized!= commits. That state is real and must have a
+resolution path. If the provider supports lookup by the same idempotency key, a
+reconciler may recover it:
+
+#+begin_src clojure
+(defn reconcile-pending-payment!
+  [ctx order]
+  (let [provider-result
+        (payment-provider/lookup-by-idempotency-key
+          (:payment-provider ctx)
+          (:order/provider-idempotency-key order))]
+
+    (case (:provider/status provider-result)
+      :authorized
+      (record-payment-authorized!
+        ctx
+        order
+        provider-result)
+
+      :rejected
+      (record-payment-failed!
+        ctx
+        order
+        provider-result)
+
+      :not-found
+      {:resolution :still-unknown
+       :order-id (:order/id order)}
+
+      :pending
+      {:resolution :still-pending
+       :order-id (:order/id order)})))
+#+end_src
+
+This example does not require every Gesso application to use an outbox, one
+payment API, or these exact states. It demonstrates the semantic requirement:
+when a remote system cannot share the authoritative transaction, any externally
+real intermediate condition must be representable and recoverable according to
+the declared application protocol. Compensation, if later added, would be
+another transition; it would not make the historical payment attempt vanish.
 
 *** FX value-flow architecture
 
@@ -8135,6 +10726,179 @@ other cross-object compatibility relation, that stronger requirement must be
 declared and established explicitly. Independently authoritative observations
 are not automatically mutually compatible for every aggregate computation.
 
+
+A travel application makes scope-aware progression particularly obvious because
+two useful acquisitions may share one database while having nothing to do with
+one another semantically.
+
+Suppose a seat-map invalidation requires a reread of Flight 17 at or beyond some
+authoritative progression coordinate:
+
+#+begin_src clojure
+(def flight17-requirement
+  {:requirement/type :authoritative-acquisition
+   :authority :travel-db
+
+   :scope
+   {:projection :flight/seat-map
+    :flight/id #uuid "f1700000-0000-0000-0000-000000000017"
+    :coverage :complete-offered-seats}
+
+   :minimum-basis :P19})
+#+end_src
+
+An unrelated Hotel 9 acquisition may happen later in the same XTDB database:
+
+#+begin_src clojure
+(def hotel9-observation
+  {:provenance :authoritative
+   :authority :travel-db
+
+   :scope
+   {:projection :hotel/availability
+    :hotel/id #uuid "h0900000-0000-0000-0000-000000000009"
+    :coverage :rooms-for-date-range}
+
+   :basis :P25
+
+   :facts
+   [{:room/type :queen
+     :available 3}]})
+#+end_src
+
+Even if the database contract says =P25= is at least as advanced as =P19=,
+Hotel 9 does not discharge the Flight 17 requirement:
+
+#+begin_src clojure
+(defn satisfies?
+  [observation requirement]
+  (and
+    (= (:authority observation)
+       (:authority requirement))
+
+    (scope/covers?
+      (:scope observation)
+      (:scope requirement))
+
+    (progression/satisfies-minimum?
+      (:basis observation)
+      (:minimum-basis requirement))))
+
+(satisfies?
+  hotel9-observation
+  flight17-requirement)
+;; => false
+#+end_src
+
+The failure is not progression. It is scope.
+
+A matching Flight 17 observation can satisfy the requirement:
+
+#+begin_src clojure
+(def flight17-observation
+  {:provenance :authoritative
+   :authority :travel-db
+
+   :scope
+   {:projection :flight/seat-map
+    :flight/id #uuid "f1700000-0000-0000-0000-000000000017"
+    :coverage :complete-offered-seats}
+
+   :basis :P21
+
+   :facts
+   [{:seat/id :12A :status :available}
+    {:seat/id :12B :status :reserved}
+    {:seat/id :12C :status :available}]})
+
+(satisfies?
+  flight17-observation
+  flight17-requirement)
+;; => true
+#+end_src
+
+Coverage matters inside one logical subject too. A narrow read of Seat 12A is
+not automatically a complete seat-map observation:
+
+#+begin_src clojure
+(def seat12a-observation
+  {:provenance :authoritative
+   :authority :travel-db
+
+   :scope
+   {:projection :flight/seat
+    :flight/id #uuid "f1700000-0000-0000-0000-000000000017"
+    :seat/id :12A
+    :coverage :one-seat}
+
+   :basis :P23
+
+   :facts
+   [{:seat/id :12A
+     :status :available}]})
+
+(satisfies?
+  seat12a-observation
+  flight17-requirement)
+;; => false
+#+end_src
+
+The narrower observation may be perfectly authoritative for Seat 12A and still
+be insufficient to establish complete membership of the seat map.
+
+Requirement combination must preserve the same distinction. Two requirements
+for the same admitted scope may sometimes be conservatively reduced when one
+entails the other:
+
+#+begin_src clojure
+(def flight17-P19
+  (assoc flight17-requirement
+    :minimum-basis :P19))
+
+(def flight17-P22
+  (assoc flight17-requirement
+    :minimum-basis :P22))
+
+(requirement/entails?
+  flight17-P22
+  flight17-P19)
+;; => true, only if the selected progression contract establishes it
+
+(requirement/combine
+  flight17-P19
+  flight17-P22)
+;; =>
+;; {:requirement/type :authoritative-acquisition
+;;  :scope {...Flight 17 complete seat map...}
+;;  :minimum-basis :P22}
+#+end_src
+
+The Flight requirement and Hotel requirement are incomparable by scope, so a
+sound combination can retain both obligations instead of inventing a universal
+join:
+
+#+begin_src clojure
+(requirement/combine
+  flight17-requirement
+  {:requirement/type :authoritative-acquisition
+   :authority :travel-db
+   :scope
+   {:projection :hotel/availability
+    :hotel/id #uuid "h0900000-0000-0000-0000-000000000009"
+    :coverage :rooms-for-date-range}
+   :minimum-basis :P24})
+;; =>
+{:requirements
+ [flight17-requirement
+  hotel9-requirement]}
+#+end_src
+
+The same rule applies to HumanHelp board membership. A very new observation of
+one Request card is not proof that the complete authorized board query has been
+reacquired. Progression constrains *an acquisition of some declared scope*; it is
+not a freshness number that floats free of the facts and coverage that were
+actually observed.
+
 **** Acquisition scope includes query meaning and coverage
 
 The scope contract must distinguish entity content from aggregate membership.
@@ -8347,6 +11111,235 @@ wall-clock time.  Rejection, a successor acquisition, or another checked
 reconciliation strategy may be used where required.  What is forbidden is
 silently manufacturing one compatible snapshot by merging observations whose
 compatibility has not been established.
+
+
+The O1/O2 example above can be made executable without yet committing Part VI to
+one browser-coordinator implementation.
+
+Assume Bob's board currently carries one outstanding advisory:
+
+#+begin_src clojure
+(def board-state
+  {:projection
+   {:kind :request/board
+    :organization-id O
+    :coverage :complete-authorized-membership}
+
+   :adopted
+   {:basis :P17
+    :requests [R1 R2]}
+
+   :requirements
+   [{:requirement/id :O1
+     :scope
+     {:kind :request/board
+      :organization-id O
+      :coverage :complete-authorized-membership}
+     :minimum-basis :P18
+     :requires :acquire-and-adopt}]
+
+   :active-acquisition nil})
+#+end_src
+
+Starting Refresh captures the requirements the acquisition is intended to
+satisfy:
+
+#+begin_src clojure
+(defn begin-acquisition
+  [state acquisition-id]
+  (assoc state
+    :active-acquisition
+    {:acquisition/id acquisition-id
+     :captured-requirements
+     (:requirements state)
+     :scope (:projection state)}))
+
+(def refreshing
+  (begin-acquisition
+    board-state
+    :A1))
+#+end_src
+
+While A1 is in flight, a later invalidation adds O2:
+
+#+begin_src clojure
+(def advisory-O2
+  {:requirement/id :O2
+   :scope
+   {:kind :request/board
+    :organization-id O
+    :coverage :complete-authorized-membership}
+   :minimum-basis :P20
+   :requires :acquire-and-adopt})
+
+(def refreshing-with-O2
+  (update
+    refreshing
+    :requirements
+    conj
+    advisory-O2))
+#+end_src
+
+Now the server returns a complete authoritative board observation that is only
+justified through P18:
+
+#+begin_src clojure
+(def response-A1
+  {:acquisition/id :A1
+
+   :observation
+   {:provenance :authoritative
+
+    :scope
+    {:kind :request/board
+     :organization-id O
+     :coverage :complete-authorized-membership}
+
+    :basis :P18
+
+    :requests [R1 R2 R3]}})
+#+end_src
+
+Completion should evaluate each current requirement against the *actual admitted
+observation*:
+
+#+begin_src clojure
+(defn requirement-satisfied?
+  [observation requirement]
+  (and
+    (scope/covers?
+      (:scope observation)
+      (:scope requirement))
+
+    (progression/satisfies-minimum?
+      (:basis observation)
+      (:minimum-basis requirement))))
+
+(defn complete-acquisition
+  [state {:keys [acquisition/id observation]}]
+
+  (when-not
+    (= id
+       (get-in state
+         [:active-acquisition :acquisition/id]))
+    (throw
+      (ex-info
+        "Acquisition completion does not belong to the active acquisition."
+        {:error/type :acquisition/wrong-owner
+         :received id
+         :active
+         (get-in state
+           [:active-acquisition :acquisition/id])})))
+
+  (let [satisfied
+        (filter
+          #(requirement-satisfied?
+             observation
+             %)
+          (:requirements state))
+
+        outstanding
+        (remove
+          #(requirement-satisfied?
+             observation
+             %)
+          (:requirements state))
+
+        adopted
+        {:basis (:basis observation)
+         :requests (:requests observation)}]
+
+    (assoc state
+      :adopted adopted
+      :requirements (vec outstanding)
+      :active-acquisition nil
+      :last-discharged
+      (mapv :requirement/id satisfied))))
+#+end_src
+
+With a P18 response:
+
+#+begin_src clojure
+(def after-A1
+  (complete-acquisition
+    refreshing-with-O2
+    response-A1))
+
+(:last-discharged after-A1)
+;; => [:O1]
+
+(mapv :requirement/id
+      (:requirements after-A1))
+;; => [:O2]
+#+end_src
+
+O2 did not vanish merely because an HTTP request named "Refresh" completed.
+
+If the actual response had been justified through P21 for the same complete
+scope, both requirements could be discharged even though O2 arrived after A1
+started:
+
+#+begin_src clojure
+(def response-A1-stronger
+  (assoc-in response-A1
+    [:observation :basis]
+    :P21))
+
+(def after-strong-A1
+  (complete-acquisition
+    refreshing-with-O2
+    response-A1-stronger))
+
+(:requirements after-strong-A1)
+;; => []
+#+end_src
+
+The captured requirements still matter operationally: they explain why A1 was
+started and what minimum consistency the acquisition requested. But discharge is
+justified by the result actually obtained, not by request-start metadata.
+
+Adoption is a separate condition. If a semantically newer installed state makes
+this response ineligible for installation, the application cannot claim the
+visible board adopted O1 merely because the bytes were fetched:
+
+#+begin_src clojure
+(defn install-or-transfer-obligation
+  [state observation]
+  (if (presentation/can-install?
+        (:adopted state)
+        observation)
+
+    (-> state
+        (assoc
+          :adopted
+          {:basis (:basis observation)
+           :requests (:requests observation)})
+        (update
+          :requirements
+          #(remove
+             (fn [requirement]
+               (and
+                 (= :acquire-and-adopt
+                    (:requires requirement))
+                 (requirement-satisfied?
+                   observation
+                   requirement)))
+             %)))
+
+    ;; Acquisition happened, but visible incorporation did not.
+    ;; Requirements that demand adoption remain outstanding or move to a
+    ;; checked successor/reconciliation path.
+    (assoc state
+      :reconciliation
+      {:reason :observation-not-installable
+       :observation observation
+       :requirements (:requirements state)})))
+#+end_src
+
+Part VI may choose a different concrete coordinator representation. The semantic
+obligation established here is independent of that representation: advisory
+debt is scoped, a read discharges only what its admitted observation covers, and
+later requirements cannot be erased by an earlier in-flight acquisition.
 
 *** Advisory knowledge and authoritative knowledge remain separate
 
@@ -8715,6 +11708,262 @@ The design must distinguish at least three questions:
 3. What evidence about either fact is available to this participant?
 
 Those questions may have different answers.
+
+
+HumanHelp Claim can illustrate all three questions with one lost-response race.
+
+Suppose Alice submits semantic command C42:
+
+#+begin_src clojure
+(def C42
+  {:operation :request/claim
+   :command-id
+   #uuid "c4200000-0000-0000-0000-000000000042"
+   :request-id R
+   :principal Alice})
+#+end_src
+
+The Request model chooses to make command incorporation durable for this
+operation. A successful claim transaction writes both the Request transition and
+a command result:
+
+#+begin_src clojure
+(defn prepare-claim-tx
+  [{:keys [request principal command-id]}]
+  {:guards
+   [[:request/still-open
+     {:request-id (:request/id request)}]
+
+    [:command/not-bound-to-different-meaning
+     {:command-id command-id
+      :operation :request/claim
+      :subject (:request/id request)
+      :principal (:user/id principal)}]]
+
+   :writes
+   [[:request/claim
+     {:request-id (:request/id request)
+      :helper-id (:user/id principal)
+      :command-id command-id}]
+
+    [:command/store-result
+     {:command-id command-id
+      :operation :request/claim
+      :subject (:request/id request)
+      :principal (:user/id principal)
+      :outcome :committed
+      :result
+      {:request/id (:request/id request)
+       :request/status :claimed
+       :request/helper-id (:user/id principal)}}]]})
+#+end_src
+
+Assume that transaction commits, but the HTTP connection disappears before
+Alice's browser receives settlement:
+
+#+begin_example
+browser
+    submit C42
+        |
+        v
+server
+    authoritative transaction commits:
+        Request R -> claimed by Alice
+        command C42 -> committed
+        |
+        X response connection lost
+        |
+browser
+    timeout
+#+end_example
+
+At that moment the authoritative answers are:
+
+#+begin_src clojure
+{:current-request
+ {:request/id R
+  :request/status :claimed
+  :request/helper-id Alice}
+
+ :command-disposition
+ {:command-id C42
+  :outcome :committed}
+
+ :alice-evidence
+ :outcome-unknown}
+#+end_src
+
+The browser timeout changes only the third coordinate. It does not reverse the
+Request transition and does not turn the command into a confirmed rejection.
+
+Suppose Alice first recovers by rereading Request R:
+
+#+begin_src clojure
+(def current-request
+  (request/read-authorized-card
+    ctx
+    {:request-id R
+     :principal Alice}))
+
+current-request
+;; =>
+{:request/id R
+ :request/status :claimed
+ :request/helper-id Alice}
+#+end_src
+
+That may be enough to render the correct current UI. But without stronger
+command-specific evidence, the state alone need not prove that C42 caused it.
+Another concurrent command by Alice, an administrator operation, or another
+model-defined path might have produced an observationally equivalent current
+Request.
+
+Because this model *does* retain command-specific results, Alice can separately
+resolve attribution:
+
+#+begin_src clojure
+(defn resolve-command!
+  [{:keys [db principal]}
+   {:keys [command-id operation subject]}]
+
+  (let [record
+        (command-model/find-result
+          db
+          command-id)]
+
+    (cond
+      (nil? record)
+      {:resolution :not-established
+       :reason :no-retained-command-evidence}
+
+      (not=
+        {:operation operation
+         :subject subject
+         :principal (:user/id principal)}
+        (select-keys
+          record
+          [:operation :subject :principal]))
+      (throw
+        (ex-info
+          "Command id is bound to different semantic material."
+          {:error/type :command/incompatible-reuse
+           :command-id command-id}))
+
+      :else
+      {:resolution :established
+       :record record})))
+
+(resolve-command!
+  ctx
+  {:command-id (:command-id C42)
+   :operation :request/claim
+   :subject R})
+;; =>
+{:resolution :established
+ :record
+ {:command-id C42
+  :operation :request/claim
+  :subject R
+  :principal Alice
+  :outcome :committed
+  :result
+  {:request/id R
+   :request/status :claimed
+   :request/helper-id Alice}}}
+#+end_src
+
+A permitted retry can carry the same command identity through a new transport
+request and even a new protocol execution:
+
+#+begin_src clojure
+(def retry-attempt
+  {:command C42
+
+   :execution-id
+   #uuid "e8000000-0000-0000-0000-000000000008"
+
+   :transport-request-id
+   #uuid "t2000000-0000-0000-0000-000000000002"})
+
+(defn handle-claim-command!
+  [ctx {:keys [command]}]
+  (if-let [existing
+           (command-model/find-result
+             (:db ctx)
+             (:command-id command))]
+
+    (do
+      (command-model/require-compatible-binding!
+        existing
+        {:operation (:operation command)
+         :subject (:request-id command)
+         :principal (:principal command)})
+
+      ;; Returning the already-incorporated result is this model's explicit
+      ;; duplicate policy. Another operation could choose differently.
+      {:outcome :already-incorporated
+       :result (:result existing)})
+
+    (request/claim
+      ctx
+      command)))
+#+end_src
+
+Reusing C42 for incompatible semantic material is not a retry:
+
+#+begin_src clojure
+(handle-claim-command!
+  ctx
+  {:command
+   {:operation :request/cancel
+    :command-id (:command-id C42)
+    :request-id Q
+    :principal Alice}})
+
+;; =>
+;; {:error/type :command/incompatible-reuse
+;;  :command-id C42
+;;  :expected {:operation :request/claim
+;;             :subject R
+;;             :principal Alice}
+;;  :received {:operation :request/cancel
+;;             :subject Q
+;;             :principal Alice}}
+#+end_src
+
+Nor does inventing C43 solve an unknown C42 if duplicate effects matter:
+
+#+begin_src clojure
+;; This is a new semantic attempt, not "the retry of C42".
+{:operation :request/claim
+ :command-id C43
+ :request-id R
+ :principal Alice}
+#+end_src
+
+Whether a fresh command is permitted is a separate model/protocol decision.
+
+This worked example separates the three questions explicitly:
+
+#+begin_src clojure
+{:authoritative-domain-state
+ (request/read-current ctx R)
+
+ :authoritative-command-disposition
+ (command-model/find-result
+   (:db ctx)
+   (:command-id C42))
+
+ :participant-current-evidence
+ (client-state/command-knowledge
+   browser-state
+   (:command-id C42))}
+#+end_src
+
+Those values may converge later, but they are not definitionally the same.
+Current-state recovery can repair presentation without fabricating historical
+attribution, and command-specific evidence can establish attribution without
+reviving the retired browser execution that originally submitted the command.
 
 For example:
 

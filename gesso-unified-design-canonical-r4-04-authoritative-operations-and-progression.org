@@ -581,6 +581,289 @@ boundary.
 #+end_quote
 
 
+HumanHelp Claim can make that dependency direction concrete without requiring
+Choreo to know how Request persistence is implemented. A plausible public model
+contract might look like this:
+
+#+begin_src clojure
+(ns net.humanhelp.site.model.request.core
+  (:require
+   [net.humanhelp.site.model.request.domain :as domain]
+   [net.humanhelp.site.model.request.fx :as request.fx]))
+
+(def ClaimCommand
+  [:map
+   [:request-id uuid?]
+   [:helper-id uuid?]
+   [:command-id uuid?]])
+
+(def ClaimOutcome
+  [:multi {:dispatch :outcome}
+   [:committed
+    [:map
+     [:outcome [:= :committed]]
+     [:request Request]
+     [:command-id uuid?]]]
+
+   [:rejected
+    [:map
+     [:outcome [:= :rejected]]
+     [:reason
+      [:enum
+       :request-not-open
+       :membership-inactive
+       :organization-disallows-claim]]
+     [:request Request]
+     [:command-id uuid?]]]
+
+   [:already-incorporated
+    [:map
+     [:outcome [:= :already-incorporated]]
+     [:request Request]
+     [:command-id uuid?]]]
+
+   [:commit-unknown
+    [:map
+     [:outcome [:= :commit-unknown]]
+     [:command-id uuid?]]]])
+
+(def claim-contract
+  {:operation/id :request/claim
+
+   :input ClaimCommand
+
+   :outcome ClaimOutcome
+
+   :authority
+   [:authority :request]
+
+   :atomicity
+   :one-authoritative-transition
+
+   :requires
+   #{:authenticated-principal
+     :current-request
+     :current-membership
+     :current-organization}
+
+   :effects
+   {:authoritative
+    #{:request/claim-transition}
+
+    :after-commit
+    #{:request/live-invalidation
+      :request/settlement}}})
+
+(defn claim
+  "Public Request semantic operation.
+
+   The caller supplies trusted runtime context plus the semantic command.
+   The implementation below this boundary may change without requiring
+   choreography callers to understand its transaction plan."
+  [ctx command]
+  (m/assert ClaimCommand command)
+  (request.fx/run-claim ctx command))
+#+end_src
+
+The choreography depends on that public contract:
+
+#+begin_src clojure
+(ns net.humanhelp.site.model.request.choreo
+  (:require
+   [gesso.choreo.core :as choreo]
+   [net.humanhelp.site.model.request.core :as request]))
+
+(defn claim-request
+  [{:keys [request-id helper-id command-id]}]
+  (choreo/at
+    :request-authority
+
+    (choreo/invoke
+      {:operation :request/claim
+       :contract request/claim-contract}
+
+      (fn [ctx]
+        (request/claim
+          ctx
+          {:request-id request-id
+           :helper-id helper-id
+           :command-id command-id})))))
+#+end_src
+
+Nothing in that choreography needs to know whether the model uses one query,
+five queries, an XTDB transaction function, a Biff FX pipeline, or a future
+implementation with different private staging data.
+
+Below =request.core=, the selected realization may be considerably richer. The
+following FX-like pipeline is illustrative rather than a commitment to exact
+Biff syntax, but it preserves the required value-flow shape: invocation input is
+explicit, each state receives the previous state's output explicitly, and
+ambient context carries capabilities rather than accumulating arbitrary
+business data.
+
+#+begin_src clojure
+(ns net.humanhelp.site.model.request.fx
+  (:require
+   [com.biffweb :as biff]
+   [net.humanhelp.site.model.membership.core :as membership]
+   [net.humanhelp.site.model.organization.core :as organization]
+   [net.humanhelp.site.model.request.domain :as domain]
+   [net.humanhelp.site.model.request.persistence :as persistence]))
+
+(def claim-pipeline
+  {:start
+   (fn [ctx command]
+     {:state :load-authority
+      :command command})
+
+   :load-authority
+   (fn [ctx {:keys [command]}]
+     (let [request
+           (persistence/read-request
+             ctx
+             (:request-id command))
+
+           membership
+           (membership/current-for-user
+             ctx
+             {:user-id (:helper-id command)
+              :organization-id
+              (:request/organization-id request)})
+
+           organization
+           (organization/current
+             ctx
+             (:request/organization-id request))]
+
+       {:state :prepare
+        :command command
+        :request request
+        :membership membership
+        :organization organization}))
+
+   :prepare
+   (fn [ctx {:keys [command
+                    request
+                    membership
+                    organization]}]
+
+     (let [decision
+           (domain/claim-decision
+             {:request request
+              :membership membership
+              :organization organization
+              :helper-id (:helper-id command)})]
+
+       (if (= :allowed (:decision decision))
+         {:state :commit
+          :command command
+          :prepared
+          (persistence/prepare-claim
+            {:request request
+             :membership membership
+             :organization organization
+             :helper-id (:helper-id command)
+             :command-id (:command-id command)})}
+
+         {:state :done
+          :result
+          {:outcome :rejected
+           :reason (:reason decision)
+           :request request
+           :command-id (:command-id command)}})))
+
+   :commit
+   (fn [ctx {:keys [command prepared]}]
+     (let [result
+           (persistence/commit-prepared-claim!
+             ctx
+             prepared)]
+
+       (case (:commit/status result)
+         :committed
+         {:state :after-commit
+          :command command
+          :commit result}
+
+         :rejected
+         {:state :reload-after-rejection
+          :command command
+          :commit result}
+
+         :unknown
+         {:state :done
+          :result
+          {:outcome :commit-unknown
+           :command-id (:command-id command)}})))
+
+   :reload-after-rejection
+   (fn [ctx {:keys [command]}]
+     {:state :done
+      :result
+      {:outcome :rejected
+       :reason :authoritative-precondition-changed
+       :request
+       (persistence/read-request
+         ctx
+         (:request-id command))
+       :command-id (:command-id command)}})
+
+   :after-commit
+   (fn [ctx {:keys [command commit]}]
+     ;; Publication is after the authoritative transition.
+     ;; Failure here must not be translated into "claim failed".
+     (let [publication
+           (persistence/publish-claim-consequence!
+             ctx
+             {:request-id (:request-id command)
+              :command-id (:command-id command)
+              :basis (:commit/basis commit)})]
+
+       {:state :done
+        :result
+        {:outcome :committed
+         :request (:request commit)
+         :command-id (:command-id command)
+         :publication publication}}))
+
+   :done
+   (fn [_ctx {:keys [result]}]
+     result)})
+
+(defn run-claim
+  [ctx command]
+  (biff/run-state-machine
+    ctx
+    claim-pipeline
+    command))
+#+end_src
+
+The private pipeline may be replaced later without changing the public meaning
+of =request/claim=. Conversely, the choreography must not reach down and call a
+private state directly:
+
+#+begin_src clojure
+;; Forbidden architectural shortcut.
+
+(ns net.humanhelp.site.model.request.choreo
+  (:require
+   [net.humanhelp.site.model.request.fx :as request.fx]))
+
+(defn claim-request [ctx command]
+  ;; This bypasses the public semantic operation and couples choreography
+  ;; directly to one FX realization.
+  ((:commit request.fx/claim-pipeline)
+   ctx
+   {:command command
+    :prepared (:client-supplied-prepared-plan command)}))
+#+end_src
+
+That shortcut would make private transaction staging part of the distributed
+protocol even though =request.core= never promised it. The public model boundary
+exists precisely so Choreo can coordinate one stable semantic operation while
+the authoritative implementation remains free to be sophisticated underneath.
+
+
 #+LATEX: \newpage
 
 ** Atomic authoritative transitions
@@ -832,6 +1115,206 @@ performed close together. The operation must establish the snapshot or other
 compatibility relation required by its invariant and preserve the required
 premises through commit.
 
+
+A Request claim is a good example because the decision may depend on public
+semantics owned by Request, Membership, and Organization while the domain
+transition still needs one atomic authoritative result.
+
+Assume preparation has acquired mutually compatible authoritative observations:
+
+#+begin_src clojure
+(def authoritative-inputs
+  {:request
+   {:request/id R
+    :request/status :open
+    :request/organization-id O
+    :request/helper-id nil
+    :model/version :request-v17}
+
+   :membership
+   {:membership/user-id U
+    :membership/organization-id O
+    :membership/status :active
+    :model/version :membership-v9}
+
+   :organization
+   {:organization/id O
+    :organization/claiming-enabled? true
+    :model/version :organization-v31}
+
+   :command
+   {:operation :request/claim
+    :command-id C42
+    :request-id R
+    :helper-id U}})
+#+end_src
+
+The domain decision can remain pure:
+
+#+begin_src clojure
+(defn claim-decision
+  [{:keys [request membership organization command]}]
+  (cond
+    (not= :open (:request/status request))
+    {:decision :rejected
+     :reason :request-not-open}
+
+    (not= :active (:membership/status membership))
+    {:decision :rejected
+     :reason :membership-inactive}
+
+    (not=
+      (:request/organization-id request)
+      (:membership/organization-id membership))
+    {:decision :rejected
+     :reason :wrong-organization}
+
+    (not (:organization/claiming-enabled? organization))
+    {:decision :rejected
+     :reason :organization-disallows-claim}
+
+    :else
+    {:decision :allowed
+     :transition
+     {:request-id (:request/id request)
+      :helper-id (:helper-id command)
+      :command-id (:command-id command)}}))
+#+end_src
+
+Preparation then converts the allowed decision into an authoritative transaction
+plan. The exact XTDB transaction primitives are intentionally abstracted here;
+what matters is the semantic content of the guards and writes.
+
+#+begin_src clojure
+(defn prepare-claim
+  [{:keys [request membership organization command] :as inputs}]
+  (let [{:keys [decision transition reason]}
+        (claim-decision inputs)]
+
+    (if (= :rejected decision)
+      {:prepare/status :rejected
+       :reason reason}
+
+      {:prepare/status :ready
+
+       ;; These guards protect the facts whose incompatible change would
+       ;; invalidate the prepared claim.
+       :commit/guards
+       [[:request/still-open
+         {:request-id (:request/id request)
+          :expected-version (:model/version request)}]
+
+        [:membership/still-active
+         {:user-id (:membership/user-id membership)
+          :organization-id
+          (:membership/organization-id membership)
+          :expected-version (:model/version membership)}]
+
+        [:organization/still-allows-claim
+         {:organization-id (:organization/id organization)
+          :expected-version (:model/version organization)}]
+
+        ;; Durable command reuse must also remain compatible.
+        [:command/not-incorporated-with-different-meaning
+         {:command-id (:command-id command)
+          :operation :request/claim
+          :subject (:request/id request)
+          :principal (:helper-id command)}]]
+
+       ;; The complete authoritative write set is one transaction.
+       :commit/writes
+       [[:request/claim
+         {:request-id (:request/id request)
+          :helper-id (:helper-id command)
+          :command-id (:command-id command)}]
+
+        [:command/record-incorporated-result
+         {:command-id (:command-id command)
+          :operation :request/claim
+          :subject (:request/id request)
+          :principal (:helper-id command)}]]
+
+       :transition transition})))
+#+end_src
+
+Suppose preparation succeeds, then another transaction deactivates Membership U
+before this commit is submitted:
+
+#+begin_src clojure
+(def prepared
+  (prepare-claim authoritative-inputs))
+
+;; Concurrent authoritative transaction:
+(membership/deactivate!
+  tx-context
+  {:user-id U
+   :organization-id O})
+
+;; Our later commit evaluates its declared guards atomically with its writes.
+(def result
+  (authoritative/submit!
+    tx-context
+    {:guards (:commit/guards prepared)
+     :writes (:commit/writes prepared)}))
+
+result
+;; =>
+{:commit/status :rejected
+ :failed-guard
+ [:membership/still-active
+  {:user-id U
+   :organization-id O}]}
+#+end_src
+
+The key property is not that the implementation happened to notice a version
+number. It is that the authoritative transition was not allowed to publish a
+half-valid state.
+
+In particular, this must never be an observable result:
+
+#+begin_src clojure
+;; Forbidden partial outcome.
+
+{:request
+ {:request/id R
+  :request/status :claimed
+  :request/helper-id U}
+
+ :membership
+ {:membership/user-id U
+  :membership/status :inactive}
+
+ :command-record
+ nil} ; mutation happened but command incorporation did not
+#+end_src
+
+If claiming the Request and recording durable command incorporation jointly
+constitute the promised invariant, both writes belong to the same authoritative
+transaction. If Membership status must remain active for the claim to commit,
+the commit must protect that predicate as required by the selected database
+mechanism.
+
+Notice that the public model APIs can still remain separate:
+
+#+begin_src clojure
+;; Semantic ownership remains separate.
+(request/current ctx R)
+(membership/current-for-user ctx U O)
+(organization/current ctx O)
+
+;; The public Request claim operation composes the authoritative transition.
+(request/claim
+  ctx
+  {:request-id R
+   :helper-id U
+   :command-id C42})
+#+end_src
+
+API separation did not force four independent commits. Conversely, merely
+concatenating write forms from several models would not prove that their public
+preconditions were preserved. The authoritative operation must compose the
+semantic constraints as well as the data writes.
+
 *** API boundaries do not force transaction boundaries
 
 A public operation may depend upon facts owned by several models while still
@@ -888,6 +1371,223 @@ undone.
 
 What is forbidden is an externally real partial transition whose existence is
 hidden merely because the application wished the operation were atomic.
+
+
+A store checkout is a useful example because a payment provider cannot normally
+participate in the same XTDB transaction that establishes local Order state.
+
+Pretending otherwise would produce an imaginary atomic operation:
+
+#+begin_src clojure
+;; Misleading pseudo-operation.
+
+(defn place-order! [ctx checkout]
+  (atomic
+    (payment-provider/charge!
+      (:payment-method checkout)
+      (:total checkout))
+
+    (order-model/insert!
+      ctx
+      {:order/status :placed
+       :checkout checkout})))
+#+end_src
+
+No local transaction wrapper can make the remote charge roll back when the
+process dies after the provider accepts it.
+
+A truthful model instead exposes an intermediate authoritative state:
+
+#+begin_src clojure
+(def OrderStatus
+  [:enum
+   :payment-pending
+   :payment-authorized
+   :placed
+   :payment-failed
+   :cancelled])
+
+(defschema Order
+  [:map
+   [:order/id uuid?]
+   [:order/customer-id uuid?]
+   [:order/cart-id uuid?]
+   [:order/status OrderStatus]
+   [:order/total decimal?]
+   [:order/payment-command-id uuid?]
+   [:order/provider-reference {:optional true} string?]])
+#+end_src
+
+The initial authoritative transaction can create the pending Order and bind a
+stable provider idempotency key:
+
+#+begin_src clojure
+(defn begin-order!
+  [{:keys [db principal now]}
+   {:keys [cart-id command-id payment-method-id]}]
+
+  (let [cart
+        (cart-model/require-current!
+          db
+          {:cart-id cart-id
+           :customer-id (:user/id principal)})
+
+        order-id
+        (uuid/random)
+
+        provider-key
+        (str "order-payment/" command-id)]
+
+    (authoritative/submit!
+      db
+      {:guards
+       [[:cart/still-checkout-eligible
+         {:cart-id cart-id
+          :expected-version (:cart/version cart)}]
+
+        [:command/not-reused-incompatibly
+         {:command-id command-id
+          :operation :checkout/place-order
+          :subject cart-id
+          :principal (:user/id principal)}]]
+
+       :writes
+       [[:order/create
+         {:order/id order-id
+          :order/customer-id (:user/id principal)
+          :order/cart-id cart-id
+          :order/status :payment-pending
+          :order/total (:cart/total cart)
+          :order/payment-command-id command-id
+          :order/payment-method-id payment-method-id
+          :order/provider-idempotency-key provider-key
+          :order/created-at now}]
+
+        [:command/record
+         {:command-id command-id
+          :operation :checkout/place-order
+          :subject cart-id
+          :principal (:user/id principal)
+          :result-subject order-id}]]})))
+#+end_src
+
+At that point =:payment-pending= is not an embarrassing implementation detail.
+It is the truthful authoritative state: the Order exists locally, but external
+payment disposition is not yet established.
+
+The external effect can then run with the stable provider key:
+
+#+begin_src clojure
+(defn authorize-payment!
+  [ctx order]
+  (payment-provider/authorize!
+    (:payment-provider ctx)
+    {:idempotency-key
+     (:order/provider-idempotency-key order)
+
+     :payment-method-id
+     (:order/payment-method-id order)
+
+     :amount
+     (:order/total order)
+
+     :metadata
+     {:order-id (:order/id order)
+      :command-id (:order/payment-command-id order)}}))
+#+end_src
+
+Provider success becomes input to a *later* authoritative transition:
+
+#+begin_src clojure
+(defn record-payment-authorized!
+  [{:keys [db now]} order provider-result]
+  (authoritative/submit!
+    db
+    {:guards
+     [[:order/still-payment-pending
+       {:order-id (:order/id order)}]
+
+      [:provider-result/matches-order
+       {:order-id (:order/id order)
+        :amount (:order/total order)
+        :provider-reference
+        (:provider/reference provider-result)}]]
+
+     :writes
+     [[:order/record-payment-authorization
+       {:order-id (:order/id order)
+        :provider-reference
+        (:provider/reference provider-result)
+        :authorized-at now}]
+
+      [:order/set-status
+       {:order-id (:order/id order)
+        :status :placed}]]})))
+#+end_src
+
+Provider rejection has its own valid transition:
+
+#+begin_src clojure
+(defn record-payment-failed!
+  [{:keys [db now]} order provider-result]
+  (authoritative/submit!
+    db
+    {:guards
+     [[:order/still-payment-pending
+       {:order-id (:order/id order)}]]
+
+     :writes
+     [[:order/payment-failure
+       {:order-id (:order/id order)
+        :reason (:provider/reason provider-result)
+        :failed-at now}]
+
+      [:order/set-status
+       {:order-id (:order/id order)
+        :status :payment-failed}]]})))
+#+end_src
+
+The difficult failure window is provider success followed by local process loss
+before =record-payment-authorized!= commits. That state is real and must have a
+resolution path. If the provider supports lookup by the same idempotency key, a
+reconciler may recover it:
+
+#+begin_src clojure
+(defn reconcile-pending-payment!
+  [ctx order]
+  (let [provider-result
+        (payment-provider/lookup-by-idempotency-key
+          (:payment-provider ctx)
+          (:order/provider-idempotency-key order))]
+
+    (case (:provider/status provider-result)
+      :authorized
+      (record-payment-authorized!
+        ctx
+        order
+        provider-result)
+
+      :rejected
+      (record-payment-failed!
+        ctx
+        order
+        provider-result)
+
+      :not-found
+      {:resolution :still-unknown
+       :order-id (:order/id order)}
+
+      :pending
+      {:resolution :still-pending
+       :order-id (:order/id order)})))
+#+end_src
+
+This example does not require every Gesso application to use an outbox, one
+payment API, or these exact states. It demonstrates the semantic requirement:
+when a remote system cannot share the authoritative transaction, any externally
+real intermediate condition must be representable and recoverable according to
+the declared application protocol. Compensation, if later added, would be
+another transition; it would not make the historical payment attempt vanish.
 
 *** FX value-flow architecture
 
@@ -1365,6 +2065,179 @@ other cross-object compatibility relation, that stronger requirement must be
 declared and established explicitly. Independently authoritative observations
 are not automatically mutually compatible for every aggregate computation.
 
+
+A travel application makes scope-aware progression particularly obvious because
+two useful acquisitions may share one database while having nothing to do with
+one another semantically.
+
+Suppose a seat-map invalidation requires a reread of Flight 17 at or beyond some
+authoritative progression coordinate:
+
+#+begin_src clojure
+(def flight17-requirement
+  {:requirement/type :authoritative-acquisition
+   :authority :travel-db
+
+   :scope
+   {:projection :flight/seat-map
+    :flight/id #uuid "f1700000-0000-0000-0000-000000000017"
+    :coverage :complete-offered-seats}
+
+   :minimum-basis :P19})
+#+end_src
+
+An unrelated Hotel 9 acquisition may happen later in the same XTDB database:
+
+#+begin_src clojure
+(def hotel9-observation
+  {:provenance :authoritative
+   :authority :travel-db
+
+   :scope
+   {:projection :hotel/availability
+    :hotel/id #uuid "h0900000-0000-0000-0000-000000000009"
+    :coverage :rooms-for-date-range}
+
+   :basis :P25
+
+   :facts
+   [{:room/type :queen
+     :available 3}]})
+#+end_src
+
+Even if the database contract says =P25= is at least as advanced as =P19=,
+Hotel 9 does not discharge the Flight 17 requirement:
+
+#+begin_src clojure
+(defn satisfies?
+  [observation requirement]
+  (and
+    (= (:authority observation)
+       (:authority requirement))
+
+    (scope/covers?
+      (:scope observation)
+      (:scope requirement))
+
+    (progression/satisfies-minimum?
+      (:basis observation)
+      (:minimum-basis requirement))))
+
+(satisfies?
+  hotel9-observation
+  flight17-requirement)
+;; => false
+#+end_src
+
+The failure is not progression. It is scope.
+
+A matching Flight 17 observation can satisfy the requirement:
+
+#+begin_src clojure
+(def flight17-observation
+  {:provenance :authoritative
+   :authority :travel-db
+
+   :scope
+   {:projection :flight/seat-map
+    :flight/id #uuid "f1700000-0000-0000-0000-000000000017"
+    :coverage :complete-offered-seats}
+
+   :basis :P21
+
+   :facts
+   [{:seat/id :12A :status :available}
+    {:seat/id :12B :status :reserved}
+    {:seat/id :12C :status :available}]})
+
+(satisfies?
+  flight17-observation
+  flight17-requirement)
+;; => true
+#+end_src
+
+Coverage matters inside one logical subject too. A narrow read of Seat 12A is
+not automatically a complete seat-map observation:
+
+#+begin_src clojure
+(def seat12a-observation
+  {:provenance :authoritative
+   :authority :travel-db
+
+   :scope
+   {:projection :flight/seat
+    :flight/id #uuid "f1700000-0000-0000-0000-000000000017"
+    :seat/id :12A
+    :coverage :one-seat}
+
+   :basis :P23
+
+   :facts
+   [{:seat/id :12A
+     :status :available}]})
+
+(satisfies?
+  seat12a-observation
+  flight17-requirement)
+;; => false
+#+end_src
+
+The narrower observation may be perfectly authoritative for Seat 12A and still
+be insufficient to establish complete membership of the seat map.
+
+Requirement combination must preserve the same distinction. Two requirements
+for the same admitted scope may sometimes be conservatively reduced when one
+entails the other:
+
+#+begin_src clojure
+(def flight17-P19
+  (assoc flight17-requirement
+    :minimum-basis :P19))
+
+(def flight17-P22
+  (assoc flight17-requirement
+    :minimum-basis :P22))
+
+(requirement/entails?
+  flight17-P22
+  flight17-P19)
+;; => true, only if the selected progression contract establishes it
+
+(requirement/combine
+  flight17-P19
+  flight17-P22)
+;; =>
+;; {:requirement/type :authoritative-acquisition
+;;  :scope {...Flight 17 complete seat map...}
+;;  :minimum-basis :P22}
+#+end_src
+
+The Flight requirement and Hotel requirement are incomparable by scope, so a
+sound combination can retain both obligations instead of inventing a universal
+join:
+
+#+begin_src clojure
+(requirement/combine
+  flight17-requirement
+  {:requirement/type :authoritative-acquisition
+   :authority :travel-db
+   :scope
+   {:projection :hotel/availability
+    :hotel/id #uuid "h0900000-0000-0000-0000-000000000009"
+    :coverage :rooms-for-date-range}
+   :minimum-basis :P24})
+;; =>
+{:requirements
+ [flight17-requirement
+  hotel9-requirement]}
+#+end_src
+
+The same rule applies to HumanHelp board membership. A very new observation of
+one Request card is not proof that the complete authorized board query has been
+reacquired. Progression constrains *an acquisition of some declared scope*; it is
+not a freshness number that floats free of the facts and coverage that were
+actually observed.
+
 **** Acquisition scope includes query meaning and coverage
 
 The scope contract must distinguish entity content from aggregate membership.
@@ -1577,6 +2450,235 @@ wall-clock time.  Rejection, a successor acquisition, or another checked
 reconciliation strategy may be used where required.  What is forbidden is
 silently manufacturing one compatible snapshot by merging observations whose
 compatibility has not been established.
+
+
+The O1/O2 example above can be made executable without yet committing Part VI to
+one browser-coordinator implementation.
+
+Assume Bob's board currently carries one outstanding advisory:
+
+#+begin_src clojure
+(def board-state
+  {:projection
+   {:kind :request/board
+    :organization-id O
+    :coverage :complete-authorized-membership}
+
+   :adopted
+   {:basis :P17
+    :requests [R1 R2]}
+
+   :requirements
+   [{:requirement/id :O1
+     :scope
+     {:kind :request/board
+      :organization-id O
+      :coverage :complete-authorized-membership}
+     :minimum-basis :P18
+     :requires :acquire-and-adopt}]
+
+   :active-acquisition nil})
+#+end_src
+
+Starting Refresh captures the requirements the acquisition is intended to
+satisfy:
+
+#+begin_src clojure
+(defn begin-acquisition
+  [state acquisition-id]
+  (assoc state
+    :active-acquisition
+    {:acquisition/id acquisition-id
+     :captured-requirements
+     (:requirements state)
+     :scope (:projection state)}))
+
+(def refreshing
+  (begin-acquisition
+    board-state
+    :A1))
+#+end_src
+
+While A1 is in flight, a later invalidation adds O2:
+
+#+begin_src clojure
+(def advisory-O2
+  {:requirement/id :O2
+   :scope
+   {:kind :request/board
+    :organization-id O
+    :coverage :complete-authorized-membership}
+   :minimum-basis :P20
+   :requires :acquire-and-adopt})
+
+(def refreshing-with-O2
+  (update
+    refreshing
+    :requirements
+    conj
+    advisory-O2))
+#+end_src
+
+Now the server returns a complete authoritative board observation that is only
+justified through P18:
+
+#+begin_src clojure
+(def response-A1
+  {:acquisition/id :A1
+
+   :observation
+   {:provenance :authoritative
+
+    :scope
+    {:kind :request/board
+     :organization-id O
+     :coverage :complete-authorized-membership}
+
+    :basis :P18
+
+    :requests [R1 R2 R3]}})
+#+end_src
+
+Completion should evaluate each current requirement against the *actual admitted
+observation*:
+
+#+begin_src clojure
+(defn requirement-satisfied?
+  [observation requirement]
+  (and
+    (scope/covers?
+      (:scope observation)
+      (:scope requirement))
+
+    (progression/satisfies-minimum?
+      (:basis observation)
+      (:minimum-basis requirement))))
+
+(defn complete-acquisition
+  [state {:keys [acquisition/id observation]}]
+
+  (when-not
+    (= id
+       (get-in state
+         [:active-acquisition :acquisition/id]))
+    (throw
+      (ex-info
+        "Acquisition completion does not belong to the active acquisition."
+        {:error/type :acquisition/wrong-owner
+         :received id
+         :active
+         (get-in state
+           [:active-acquisition :acquisition/id])})))
+
+  (let [satisfied
+        (filter
+          #(requirement-satisfied?
+             observation
+             %)
+          (:requirements state))
+
+        outstanding
+        (remove
+          #(requirement-satisfied?
+             observation
+             %)
+          (:requirements state))
+
+        adopted
+        {:basis (:basis observation)
+         :requests (:requests observation)}]
+
+    (assoc state
+      :adopted adopted
+      :requirements (vec outstanding)
+      :active-acquisition nil
+      :last-discharged
+      (mapv :requirement/id satisfied))))
+#+end_src
+
+With a P18 response:
+
+#+begin_src clojure
+(def after-A1
+  (complete-acquisition
+    refreshing-with-O2
+    response-A1))
+
+(:last-discharged after-A1)
+;; => [:O1]
+
+(mapv :requirement/id
+      (:requirements after-A1))
+;; => [:O2]
+#+end_src
+
+O2 did not vanish merely because an HTTP request named "Refresh" completed.
+
+If the actual response had been justified through P21 for the same complete
+scope, both requirements could be discharged even though O2 arrived after A1
+started:
+
+#+begin_src clojure
+(def response-A1-stronger
+  (assoc-in response-A1
+    [:observation :basis]
+    :P21))
+
+(def after-strong-A1
+  (complete-acquisition
+    refreshing-with-O2
+    response-A1-stronger))
+
+(:requirements after-strong-A1)
+;; => []
+#+end_src
+
+The captured requirements still matter operationally: they explain why A1 was
+started and what minimum consistency the acquisition requested. But discharge is
+justified by the result actually obtained, not by request-start metadata.
+
+Adoption is a separate condition. If a semantically newer installed state makes
+this response ineligible for installation, the application cannot claim the
+visible board adopted O1 merely because the bytes were fetched:
+
+#+begin_src clojure
+(defn install-or-transfer-obligation
+  [state observation]
+  (if (presentation/can-install?
+        (:adopted state)
+        observation)
+
+    (-> state
+        (assoc
+          :adopted
+          {:basis (:basis observation)
+           :requests (:requests observation)})
+        (update
+          :requirements
+          #(remove
+             (fn [requirement]
+               (and
+                 (= :acquire-and-adopt
+                    (:requires requirement))
+                 (requirement-satisfied?
+                   observation
+                   requirement)))
+             %)))
+
+    ;; Acquisition happened, but visible incorporation did not.
+    ;; Requirements that demand adoption remain outstanding or move to a
+    ;; checked successor/reconciliation path.
+    (assoc state
+      :reconciliation
+      {:reason :observation-not-installable
+       :observation observation
+       :requirements (:requirements state)})))
+#+end_src
+
+Part VI may choose a different concrete coordinator representation. The semantic
+obligation established here is independent of that representation: advisory
+debt is scoped, a read discharges only what its admitted observation covers, and
+later requirements cannot be erased by an earlier in-flight acquisition.
 
 *** Advisory knowledge and authoritative knowledge remain separate
 
@@ -1945,6 +3047,262 @@ The design must distinguish at least three questions:
 3. What evidence about either fact is available to this participant?
 
 Those questions may have different answers.
+
+
+HumanHelp Claim can illustrate all three questions with one lost-response race.
+
+Suppose Alice submits semantic command C42:
+
+#+begin_src clojure
+(def C42
+  {:operation :request/claim
+   :command-id
+   #uuid "c4200000-0000-0000-0000-000000000042"
+   :request-id R
+   :principal Alice})
+#+end_src
+
+The Request model chooses to make command incorporation durable for this
+operation. A successful claim transaction writes both the Request transition and
+a command result:
+
+#+begin_src clojure
+(defn prepare-claim-tx
+  [{:keys [request principal command-id]}]
+  {:guards
+   [[:request/still-open
+     {:request-id (:request/id request)}]
+
+    [:command/not-bound-to-different-meaning
+     {:command-id command-id
+      :operation :request/claim
+      :subject (:request/id request)
+      :principal (:user/id principal)}]]
+
+   :writes
+   [[:request/claim
+     {:request-id (:request/id request)
+      :helper-id (:user/id principal)
+      :command-id command-id}]
+
+    [:command/store-result
+     {:command-id command-id
+      :operation :request/claim
+      :subject (:request/id request)
+      :principal (:user/id principal)
+      :outcome :committed
+      :result
+      {:request/id (:request/id request)
+       :request/status :claimed
+       :request/helper-id (:user/id principal)}}]]})
+#+end_src
+
+Assume that transaction commits, but the HTTP connection disappears before
+Alice's browser receives settlement:
+
+#+begin_example
+browser
+    submit C42
+        |
+        v
+server
+    authoritative transaction commits:
+        Request R -> claimed by Alice
+        command C42 -> committed
+        |
+        X response connection lost
+        |
+browser
+    timeout
+#+end_example
+
+At that moment the authoritative answers are:
+
+#+begin_src clojure
+{:current-request
+ {:request/id R
+  :request/status :claimed
+  :request/helper-id Alice}
+
+ :command-disposition
+ {:command-id C42
+  :outcome :committed}
+
+ :alice-evidence
+ :outcome-unknown}
+#+end_src
+
+The browser timeout changes only the third coordinate. It does not reverse the
+Request transition and does not turn the command into a confirmed rejection.
+
+Suppose Alice first recovers by rereading Request R:
+
+#+begin_src clojure
+(def current-request
+  (request/read-authorized-card
+    ctx
+    {:request-id R
+     :principal Alice}))
+
+current-request
+;; =>
+{:request/id R
+ :request/status :claimed
+ :request/helper-id Alice}
+#+end_src
+
+That may be enough to render the correct current UI. But without stronger
+command-specific evidence, the state alone need not prove that C42 caused it.
+Another concurrent command by Alice, an administrator operation, or another
+model-defined path might have produced an observationally equivalent current
+Request.
+
+Because this model *does* retain command-specific results, Alice can separately
+resolve attribution:
+
+#+begin_src clojure
+(defn resolve-command!
+  [{:keys [db principal]}
+   {:keys [command-id operation subject]}]
+
+  (let [record
+        (command-model/find-result
+          db
+          command-id)]
+
+    (cond
+      (nil? record)
+      {:resolution :not-established
+       :reason :no-retained-command-evidence}
+
+      (not=
+        {:operation operation
+         :subject subject
+         :principal (:user/id principal)}
+        (select-keys
+          record
+          [:operation :subject :principal]))
+      (throw
+        (ex-info
+          "Command id is bound to different semantic material."
+          {:error/type :command/incompatible-reuse
+           :command-id command-id}))
+
+      :else
+      {:resolution :established
+       :record record})))
+
+(resolve-command!
+  ctx
+  {:command-id (:command-id C42)
+   :operation :request/claim
+   :subject R})
+;; =>
+{:resolution :established
+ :record
+ {:command-id C42
+  :operation :request/claim
+  :subject R
+  :principal Alice
+  :outcome :committed
+  :result
+  {:request/id R
+   :request/status :claimed
+   :request/helper-id Alice}}}
+#+end_src
+
+A permitted retry can carry the same command identity through a new transport
+request and even a new protocol execution:
+
+#+begin_src clojure
+(def retry-attempt
+  {:command C42
+
+   :execution-id
+   #uuid "e8000000-0000-0000-0000-000000000008"
+
+   :transport-request-id
+   #uuid "t2000000-0000-0000-0000-000000000002"})
+
+(defn handle-claim-command!
+  [ctx {:keys [command]}]
+  (if-let [existing
+           (command-model/find-result
+             (:db ctx)
+             (:command-id command))]
+
+    (do
+      (command-model/require-compatible-binding!
+        existing
+        {:operation (:operation command)
+         :subject (:request-id command)
+         :principal (:principal command)})
+
+      ;; Returning the already-incorporated result is this model's explicit
+      ;; duplicate policy. Another operation could choose differently.
+      {:outcome :already-incorporated
+       :result (:result existing)})
+
+    (request/claim
+      ctx
+      command)))
+#+end_src
+
+Reusing C42 for incompatible semantic material is not a retry:
+
+#+begin_src clojure
+(handle-claim-command!
+  ctx
+  {:command
+   {:operation :request/cancel
+    :command-id (:command-id C42)
+    :request-id Q
+    :principal Alice}})
+
+;; =>
+;; {:error/type :command/incompatible-reuse
+;;  :command-id C42
+;;  :expected {:operation :request/claim
+;;             :subject R
+;;             :principal Alice}
+;;  :received {:operation :request/cancel
+;;             :subject Q
+;;             :principal Alice}}
+#+end_src
+
+Nor does inventing C43 solve an unknown C42 if duplicate effects matter:
+
+#+begin_src clojure
+;; This is a new semantic attempt, not "the retry of C42".
+{:operation :request/claim
+ :command-id C43
+ :request-id R
+ :principal Alice}
+#+end_src
+
+Whether a fresh command is permitted is a separate model/protocol decision.
+
+This worked example separates the three questions explicitly:
+
+#+begin_src clojure
+{:authoritative-domain-state
+ (request/read-current ctx R)
+
+ :authoritative-command-disposition
+ (command-model/find-result
+   (:db ctx)
+   (:command-id C42))
+
+ :participant-current-evidence
+ (client-state/command-knowledge
+   browser-state
+   (:command-id C42))}
+#+end_src
+
+Those values may converge later, but they are not definitionally the same.
+Current-state recovery can repair presentation without fabricating historical
+attribution, and command-specific evidence can establish attribution without
+reviving the retired browser execution that originally submitted the command.
 
 For example:
 
