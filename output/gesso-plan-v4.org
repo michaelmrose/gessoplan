@@ -12169,6 +12169,300 @@ The verifier should enforce at least:
 Multiple clients may hold mutually incompatible provisional projections without
 creating multiple authoritative histories.
 
+
+HumanHelp Claim is a useful worked example because its provisional presentation
+is visible to the user while its authority remains entirely elsewhere.
+
+Assume the browser has already acquired an authoritative Request card:
+
+#+begin_src clojure
+(def authoritative-card
+  {:projection/type :request/card
+   :authority :authoritative
+   :request/id R
+   :request/status :open
+   :request/helper-id nil
+   :basis :X17
+   :scope
+   {:projection :request/card
+    :request/id R}})
+#+end_src
+
+The view binds a semantic Claim operation:
+
+#+begin_src clojure
+(def bound-claim
+  {:operation :request/claim
+   :role :helper
+   :args {:request/id R}
+   :observation
+   {:scope
+    {:projection :request/card
+     :request/id R}
+    :basis :X17}})
+#+end_src
+
+When Alice clicks Claim, the runtime allocates a semantic command and may derive
+a provisional projection:
+
+#+begin_src clojure
+(def C42
+  #uuid "c4200000-0000-0000-0000-000000000042")
+
+(def provisional-claim
+  {:projection/type :request/card
+   :authority :provisional
+
+   :command/id C42
+
+   :basis
+   {:scope
+    {:projection :request/card
+     :request/id R}
+    :observed-through :X17}
+
+   :request/id R
+   :request/status :claiming
+   :request/helper-id Alice
+
+   :presentation
+   {:label "Claiming..."
+    :claim-button :disabled
+    :pending? true}})
+#+end_src
+
+That provisional projection is not a forecast that the model must eventually
+confirm. It is a typed local state associated with one command.
+
+The runtime can make the transition explicit:
+
+#+begin_src clojure
+(defn begin-claim
+  [{:keys [authoritative-card]} command-id principal]
+  {:machine/state :claim/pending
+
+   :command/id command-id
+
+   :authoritative-basis
+   {:scope (:scope authoritative-card)
+    :basis (:basis authoritative-card)}
+
+   :provisional
+   {:projection/type :request/card
+    :authority :provisional
+    :command/id command-id
+    :request/id (:request/id authoritative-card)
+    :request/status :claiming
+    :request/helper-id principal}
+
+   :resources
+   {:settlement-timeout
+    {:resource-instance/id
+     #uuid "91000000-0000-0000-0000-000000000001"
+     :owner [:execution :current]
+     :status :active}}})
+#+end_src
+
+Now consider four legitimate endings.
+
+First, direct confirmation:
+
+#+begin_src clojure
+(def accepted-settlement
+  {:event/type :request/claim-settled
+   :command/id C42
+   :outcome :accepted
+   :authoritative
+   {:request/id R
+    :request/status :claimed
+    :request/helper-id Alice
+    :basis :X18}})
+
+(defn settle-accepted
+  [runtime settlement]
+  (-> runtime
+      (assoc
+        :machine/state :claim/settled
+        :authoritative
+        (:authoritative settlement)
+        :provisional nil)
+      (update :resources retire-owned-resources)))
+#+end_src
+
+Second, authoritative rejection because Bob claimed first:
+
+#+begin_src clojure
+(def rejected-settlement
+  {:event/type :request/claim-settled
+   :command/id C42
+   :outcome :rejected
+   :reason :request-not-open
+   :authoritative
+   {:request/id R
+    :request/status :claimed
+    :request/helper-id Bob
+    :basis :X18}})
+
+(defn settle-rejected
+  [runtime settlement]
+  (-> runtime
+      (assoc
+        :machine/state :claim/rejected
+        :authoritative
+        (:authoritative settlement)
+        :provisional nil
+        :message
+        "Another helper claimed this Request.")
+      (update :resources retire-owned-resources)))
+#+end_src
+
+Third, local timeout with outcome still unknown:
+
+#+begin_src clojure
+(def timeout-event
+  {:event/type :resource/timeout
+   :resource-instance/id
+   #uuid "91000000-0000-0000-0000-000000000001"})
+
+(defn settle-timeout
+  [runtime _timeout]
+  (-> runtime
+      (assoc
+        :machine/state :claim/outcome-unknown
+
+        ;; The optimistic execution ends.
+        :provisional nil
+
+        ;; This is participant knowledge, not a domain conclusion.
+        :command-knowledge
+        {:command/id (:command/id runtime)
+         :disposition :unknown})
+
+      (update :resources retire-owned-resources)
+
+      (assoc
+        :recovery
+        {:kind :authoritative-reacquisition
+         :scope
+         {:projection :request/card
+          :request/id R}})))
+#+end_src
+
+The timeout does not synthesize =:rejected=. If the server committed before the
+connection disappeared, the authoritative Request may already be claimed.
+
+Fourth, an authoritative reread may supersede the provisional trajectory even
+without command-specific settlement:
+
+#+begin_src clojure
+(def reread-result
+  {:projection/type :request/card
+   :authority :authoritative
+   :request/id R
+   :request/status :claimed
+   :request/helper-id Alice
+   :basis :X19
+   :scope
+   {:projection :request/card
+    :request/id R}})
+
+(defn install-authoritative-reread
+  [runtime observation]
+  (if
+    (scope/covers?
+      (:scope observation)
+      (get-in runtime
+        [:authoritative-basis :scope]))
+
+    (-> runtime
+        (assoc
+          :machine/state :claim/recovered
+          :authoritative observation
+          :provisional nil)
+
+        ;; The current view is now authoritative even if command attribution
+        ;; remains unresolved.
+        (assoc
+          :command-knowledge
+          {:command/id (:command/id runtime)
+           :disposition
+           (or
+             (get-in runtime
+               [:command-knowledge :disposition])
+             :unknown)})
+
+        (update
+          :resources
+          retire-owned-resources))
+
+    runtime))
+#+end_src
+
+The browser can now render the correct authoritative Request card while still
+saying, internally, "I do not know whether C42 caused this state."
+
+That difference matters when another cause could have produced the same current
+Request state.
+
+The same example also shows why rollback is not unconditional. Suppose the
+browser preserved the old open card as a local snapshot:
+
+#+begin_src clojure
+(def optimistic-snapshot
+  {:request/id R
+   :request/status :open
+   :request/helper-id nil
+   :basis :X17})
+#+end_src
+
+After =reread-result= at X19 has been admitted and installed, a late failure
+callback from the old execution must not do this:
+
+#+begin_src clojure
+;; Forbidden stale rollback.
+
+(defn late-failure-handler [runtime _event]
+  (assoc runtime
+    :authoritative optimistic-snapshot
+    :machine/state :claim/rolled-back))
+#+end_src
+
+The snapshot may have been justified when captured. It no longer owns the target
+after authoritative supersession.
+
+A correct failure callback first checks current ownership and installation state:
+
+#+begin_src clojure
+(defn maybe-restore-snapshot
+  [runtime event]
+  (cond
+    (not (event/current-owner? runtime event))
+    runtime
+
+    (authoritative/supersedes-provisional?
+      (:authoritative runtime)
+      {:command/id (:command/id runtime)})
+    runtime
+
+    :else
+    (assoc runtime
+      :presentation
+      {:source :prior-justified-presentation
+       :snapshot optimistic-snapshot
+       :status :recovery-pending})))
+#+end_src
+
+Even in the last branch, restoring a familiar visual shape does not assert that
+authority reverted or that the command failed. Presentation may resemble the old
+card while its semantic classification remains recovery-pending or
+outcome-unknown.
+
+The code is intentionally larger than the minimal runtime representation likely
+to ship. Its purpose is to make the semantics visible: command identity,
+authoritative basis, provisional projection, local resource ownership, settlement
+evidence, authoritative supersession, and command attribution are related but
+not interchangeable.
+
 For example:
 
 #+begin_example
@@ -12519,6 +12813,217 @@ than relying only on logical target id. It follows the
 resource-instance counter is one possible representation. A delayed restore from an older
 replacement must not consume or mutate continuity state of a newer replacement.
 
+
+Consider a HumanHelp board where Bob has:
+
+- typed =cabinet= into the live search field;
+- expanded Request R17;
+- placed keyboard focus on the Refresh button;
+- scrolled the board midway down.
+
+An authoritative board reacquisition replaces the board fragment. The semantic
+result and local interaction continuity can be represented separately:
+
+#+begin_src clojure
+(def authoritative-board
+  {:projection/type :request/board
+   :authority :authoritative
+   :basis :X31
+   :requests [R12 R17 R22 R30]})
+
+(def continuity-capture
+  {:slot :request-board
+
+   :capture-instance/id
+   #uuid "a1000000-0000-0000-0000-000000000001"
+
+   :owner
+   {:replacement/id
+    #uuid "a2000000-0000-0000-0000-000000000001"}
+
+   :local
+   {:focus
+    {:kind :element-key
+     :key :board/refresh}
+
+    :scroll
+    {:top 842}
+
+    :inputs
+    {:board/search "cabinet"
+     :board/options
+     {:sort :newest
+      :visibility :available}}
+
+    :details
+    {:open-request-ids #{R17}}}})
+#+end_src
+
+None of =:board/search=, scroll offset 842, or "R17 details open" becomes a domain
+fact merely because the DOM from which it was captured was authoritative.
+
+The replacement adapter can treat continuity as a local effect transaction:
+
+#+begin_src clojure
+(defn replace-board!
+  [browser
+   {:keys [observation replacement-id]}]
+
+  (let [capture
+        (continuity/capture
+          browser
+          {:slot :request-board
+           :owner
+           {:replacement/id replacement-id}})
+
+        install
+        (dom/install-authoritative!
+          browser
+          {:target :request-board
+           :observation observation})]
+
+    (if (= :installed (:status install))
+      {:semantic
+       {:status :authoritative-installed
+        :observation observation}
+
+       :continuity
+       (continuity/restore!
+         browser
+         {:capture capture
+          :current-owner
+          {:replacement/id replacement-id}})}
+
+      {:semantic
+       {:status :installation-failed
+        :observation observation}
+
+       :continuity
+       {:status :not-attempted}})))
+#+end_src
+
+Suppose restore succeeds:
+
+#+begin_src clojure
+{:semantic
+ {:status :authoritative-installed
+  :observation authoritative-board}
+
+ :continuity
+ {:status :restored
+  :restored
+  #{:focus :scroll :inputs :details}}}
+#+end_src
+
+The new DOM can show authoritative Request membership from X31 while preserving
+Bob's search text and open details locally.
+
+Now suppose focus restoration fails because the Refresh button is absent from
+the newly authorized rendering:
+
+#+begin_src clojure
+{:semantic
+ {:status :authoritative-installed
+  :observation authoritative-board}
+
+ :continuity
+ {:status :partial
+  :restored #{:scroll :inputs :details}
+  :failed
+  {:focus
+   {:reason :element-no-longer-present
+    :key :board/refresh}}}}
+#+end_src
+
+That is not an authoritative transition failure. The application must not
+respond by reinstalling the old board merely to get the old Refresh button back.
+
+The race case is more interesting. Replacement O1 captures continuity instance
+I1. Before I1 restores, a second authoritative replacement O2 captures I2:
+
+#+begin_src clojure
+(def I1
+  {:slot :request-board
+   :capture-instance/id
+   #uuid "a1000000-0000-0000-0000-000000000011"
+   :owner
+   {:replacement/id
+    #uuid "a2000000-0000-0000-0000-000000000011"}
+   :local {:board/search "cabinet"}})
+
+(def I2
+  {:slot :request-board
+   :capture-instance/id
+   #uuid "a1000000-0000-0000-0000-000000000012"
+   :owner
+   {:replacement/id
+    #uuid "a2000000-0000-0000-0000-000000000012"}
+   :local {:board/search "cabinet hinge"}})
+
+(def continuity-runtime
+  {:current
+   {:slot :request-board
+    :capture-instance/id
+    (:capture-instance/id I2)
+    :owner (:owner I2)}})
+#+end_src
+
+A delayed callback for I1 must be rejected:
+
+#+begin_src clojure
+(defn current-continuity-capture?
+  [runtime capture]
+  (and
+    (=
+      (get-in runtime
+        [:current :capture-instance/id])
+      (:capture-instance/id capture))
+
+    (=
+      (get-in runtime
+        [:current :owner])
+      (:owner capture))))
+
+(current-continuity-capture?
+  continuity-runtime
+  I1)
+;; => false
+
+(current-continuity-capture?
+  continuity-runtime
+  I2)
+;; => true
+#+end_src
+
+The important state is not "which capture number is numerically larger?" It is
+which concrete capture is currently owned by the replacement scope that may
+restore this continuity slot.
+
+A continuity implementation may also filter captured values against the new
+authoritative rendering:
+
+#+begin_src clojure
+(defn admissible-details
+  [observation captured-details]
+  (let [authorized-ids
+        (set
+          (map :request/id
+               (:requests observation)))]
+
+    {:open-request-ids
+     (set/intersection
+       authorized-ids
+       (:open-request-ids captured-details))}))
+#+end_src
+
+If Request R17 is no longer part of Bob's authorized board projection, continuity
+must not recreate its DOM or disclosure merely because R17 was previously open.
+Local UI preservation is subordinate to the semantics of the new projection.
+
+This example shows why continuity deserves careful ownership despite not being
+choreographic truth. It can race, leak stale local state, or damage user
+experience, but it never becomes an authority channel.
+
 *** Continuity is local preservation, not provenance
 
 Focus, selection, scroll position, accordion openness, and similar values may be
@@ -12746,6 +13251,220 @@ A rendered capability is not durable authorization.
 
 The authoritative server/model operation must re-establish authenticated
 principal identity and current authorization when the command is executed.
+
+
+A prepared Request-card view can keep business-policy decisions out of Hiccup
+while still giving presentation code meaningful choices.
+
+Suppose a preparation layer receives current authoritative model values and asks
+the semantic application layer which actions are available:
+
+#+begin_src clojure
+(defn prepare-request-card
+  [{:keys [principal] :as ctx}
+   request]
+
+  (let [claim
+        (request.choreo/prepare
+          ctx
+          :request/claim
+          {:request request
+           :principal principal})
+
+        cancel
+        (request.choreo/prepare
+          ctx
+          :request/cancel
+          {:request request
+           :principal principal})
+
+        reassign
+        (request.choreo/prepare
+          ctx
+          :request/reassign
+          {:request request
+           :principal principal})]
+
+    {:request
+     {:id (:request/id request)
+      :title (:request/title request)
+      :status (:request/status request)}
+
+     :actions
+     {:claim claim
+      :cancel cancel
+      :reassign reassign}}))
+#+end_src
+
+The prepared values can distinguish policy-based absence from a construction
+defect:
+
+#+begin_src clojure
+{:claim
+ {:availability :available
+  :binding
+  {:operation :request/claim
+   :role :helper
+   :args {:request/id R}
+   :observation
+   {:scope {:projection :request/card
+            :request/id R}
+    :basis :X41}}}
+
+ :cancel
+ {:availability :unavailable
+  :reason :request/not-owned-by-principal}
+
+ :reassign
+ {:availability :unavailable
+  :reason :application/missing-required-target
+  :diagnostic
+  {:missing #{:helper/id}
+   :operation :request/reassign}}}
+#+end_src
+
+The first is an executable affordance. The second is legitimate product
+unavailability. The third indicates that application preparation tried to expose
+an operation but failed to supply required semantic input.
+
+A view can render those cases without knowing the underlying business rule:
+
+#+begin_src clojure
+(defn request-card-view
+  [{:keys [request actions]}]
+
+  [:article.request-card
+   [:h3 (:title request)]
+   [:p.status
+    (name (:status request))]
+
+   (case (get-in actions [:claim :availability])
+     :available
+     (gesso/action
+       {:binding
+        (get-in actions [:claim :binding])
+        :pending-label "Claiming..."
+        :class "gesso-action gesso-action--primary"}
+       "Claim")
+
+     :unavailable
+     nil
+
+     nil)
+
+   (case (get-in actions [:cancel :availability])
+     :available
+     (gesso/action
+       {:binding
+        (get-in actions [:cancel :binding])}
+       "Cancel")
+
+     :unavailable
+     nil
+
+     nil)
+
+   (case (get-in actions [:reassign :availability])
+     :available
+     (gesso/action
+       {:binding
+        (get-in actions [:reassign :binding])}
+       "Reassign")
+
+     :unavailable
+     (when
+       (= :application/missing-required-target
+          (get-in actions [:reassign :reason]))
+       (throw
+         (ex-info
+           "Request card cannot realize Reassign."
+           (get-in actions [:reassign :diagnostic]))))
+
+     nil)])
+#+end_src
+
+The view never asks:
+
+#+begin_src clojure
+(and
+  (= :open (:request/status request))
+  (= :helper (:membership/role current-user))
+  (:organization/claiming-enabled? organization)
+  (not (:request/helper-id request)))
+#+end_src
+
+because doing so would create a second claim-policy implementation in
+presentation code.
+
+The prepared binding can contain the information needed to derive realization
+metadata:
+
+#+begin_src clojure
+(def claim-binding
+  {:operation :request/claim
+   :role :helper
+   :args {:request/id R}
+   :observed-basis-claim :X41
+
+   :provisional
+   {:projection :request/claiming}
+
+   :realization
+   {:plan :plan/request-claim
+    :compatibility :humanhelp-live-v12}})
+#+end_src
+
+Rendering may turn that into HTMX or another browser mechanism, but the semantic
+identity must remain visible through the process:
+
+#+begin_src clojure
+(render-action claim-binding)
+;; =>
+[:button
+ {:class "gesso-action gesso-action--primary"
+  :hx-post "/gesso/op/request-claim"
+  :hx-swap "none"
+  :data-gesso-operation "request/claim"
+  :data-gesso-plan "plan/request-claim"
+  :data-gesso-binding "...opaque encoded binding..."
+  :aria-busy "false"}
+ "Claim"]
+#+end_src
+
+The exact attributes are illustrative. The important point is that they are
+derived from or checked against =claim-binding= rather than independently
+authored strings.
+
+If required realization data is missing, a managed action fails closed:
+
+#+begin_src clojure
+(render-action
+  (dissoc-in
+    claim-binding
+    [:realization :plan]))
+
+;; =>
+{:error/type :view/incomplete-semantic-realization
+ :operation :request/claim
+ :missing #{:projected-plan}
+ :fallback-rendered? false}
+#+end_src
+
+It must not silently produce:
+
+#+begin_src clojure
+[:button
+ {:hx-post "/requests/claim"}
+ "Claim"]
+#+end_src
+
+because that would erase the semantic operation while leaving an apparently
+functional mutation path.
+
+The view remains free to decide whether provisional status appears as
+="Claiming..."=, a spinner, reduced opacity, or another accessible treatment.
+The semantic layer says *what state this is*; the view says *how that state
+looks*.
 
 *** Views declare semantic intent, not transport machinery
 
@@ -13128,6 +13847,248 @@ The browser executes the accepted projection.
 
 The same semantic transition core used by production code is the object of
 formal reasoning and model checking.
+
+
+A small projected Claim machine makes the desired portability more concrete.
+
+The immutable plan can be ordinary portable data:
+
+#+begin_src clojure
+(def claim-plan
+  {:plan/version 3
+   :plan/id :plan/request-claim
+   :operation :request/claim
+
+   :states
+   {:idle
+    [{:event :ui/invoke
+      :guard [:binding/complete]
+      :next :pending
+      :effects
+      [[:command/allocate]
+       [:projection/install-provisional]
+       [:transport/start]]}]
+
+    :pending
+    [{:event :claim/settled
+      :guard
+      [:and
+       [:event/current-owner]
+       [:event/matches-command]]
+      :next :settled
+      :effects
+      [[:projection/install-authoritative]
+       [:resources/retire-owned]]}
+
+     {:event :claim/rejected
+      :guard
+      [:and
+       [:event/current-owner]
+       [:event/matches-command]]
+      :next :rejected
+      :effects
+      [[:projection/install-authoritative]
+       [:resources/retire-owned]]}
+
+     {:event :claim/timeout
+      :guard [:event/current-resource]
+      :next :unknown
+      :effects
+      [[:resources/retire-owned]
+       [:recovery/request-authoritative-acquisition]]}]
+
+    :unknown
+    [{:event :authority/acquired
+      :guard [:observation/covers-target]
+      :next :recovered
+      :effects
+      [[:projection/install-authoritative]]}]}})
+#+end_src
+
+Runtime state is separate from the plan:
+
+#+begin_src clojure
+(def runtime-state
+  {:machine/state :pending
+
+   :execution/id
+   #uuid "b1000000-0000-0000-0000-000000000010"
+
+   :command/id
+   #uuid "b2000000-0000-0000-0000-000000000042"
+
+   :resources
+   {:transport
+    {:resource-instance/id
+     #uuid "b3000000-0000-0000-0000-000000000006"}
+
+    :timeout
+    {:resource-instance/id
+     #uuid "b3000000-0000-0000-0000-000000000007"}}
+
+   :projection
+   {:authority :provisional
+    :request/id R
+    :request/status :claiming}})
+#+end_src
+
+A normalized event likewise contains runtime-specific values:
+
+#+begin_src clojure
+(def settled-event
+  {:event/type :claim/settled
+
+   :execution/id
+   #uuid "b1000000-0000-0000-0000-000000000010"
+
+   :command/id
+   #uuid "b2000000-0000-0000-0000-000000000042"
+
+   :resource-instance/id
+   #uuid "b3000000-0000-0000-0000-000000000006"
+
+   :authoritative
+   {:request/id R
+    :request/status :claimed
+    :request/helper-id Alice
+    :basis :X50}})
+#+end_src
+
+The portable transition function can remain pure:
+
+#+begin_src clojure
+(defn step
+  [plan state event]
+  (let [state-id
+        (:machine/state state)
+
+        candidates
+        (get-in plan
+          [:states state-id])
+
+        transition
+        (some
+          #(when
+             (= (:event %)
+                (:event/type event))
+             %)
+          candidates)]
+
+    (cond
+      (nil? transition)
+      {:result :rejected
+       :reason :event-not-admitted-in-state
+       :state state
+       :effects []}
+
+      (not
+        (guards/holds?
+          (:guard transition)
+          {:state state
+           :event event}))
+      {:result :rejected
+       :reason :guard-failed
+       :state state
+       :effects []}
+
+      :else
+      {:result :accepted
+       :state
+       (assoc state
+         :machine/state
+         (:next transition))
+       :effects
+       (effects/elaborate
+         (:effects transition)
+         {:state state
+          :event event})})))
+#+end_src
+
+Running the same input under JVM Clojure and ClojureScript should produce the
+same semantic result:
+
+#+begin_src clojure
+(step
+  claim-plan
+  runtime-state
+  settled-event)
+;; =>
+{:result :accepted
+
+ :state
+ {:machine/state :settled
+  :execution/id ...
+  :command/id ...
+  :resources ...
+  :projection ...}
+
+ :effects
+ [[:projection/install-authoritative
+   {:request/id R
+    :request/status :claimed
+    :request/helper-id Alice
+    :basis :X50}]
+
+  [:resources/retire-owned
+   {:execution/id
+    #uuid "b1000000-0000-0000-0000-000000000010"}]]}
+#+end_src
+
+The browser shell interprets abstract effects:
+
+#+begin_src clojure
+(defn interpret-effect!
+  [browser effect]
+  (case (first effect)
+
+    :projection/install-authoritative
+    (dom/install-authoritative!
+      browser
+      (second effect))
+
+    :projection/install-provisional
+    (dom/install-provisional!
+      browser
+      (second effect))
+
+    :transport/start
+    (transport/start!
+      browser
+      (second effect))
+
+    :resources/retire-owned
+    (resources/retire!
+      browser
+      (second effect))
+
+    :recovery/request-authoritative-acquisition
+    (acquisition/request!
+      browser
+      (second effect))))
+#+end_src
+
+The shell may differ across Chromium, Node tests, or another host. The transition
+meaning should not.
+
+A dangerous architecture would instead duplicate the branch logic:
+
+#+begin_src clojure
+;; JVM "reference semantics"
+(defn jvm-step [state event]
+  ...)
+
+;; separately handwritten browser behavior
+(defn browser-step! [dom event]
+  (if (= "claim-settled" (.-type event))
+    ;; independently decide what this means here
+    ...))
+#+end_src
+
+Even if the two implementations currently pass the same tests, the proof/test
+object and production object are now different semantic machines.
+
+The portable core avoids that correspondence gap by making platform-specific
+code interpret effects rather than redefine the state transition itself.
 
 A separately proved paper/reference machine followed by an independently
 handwritten production semantic adapter is insufficient for the strongest
@@ -13512,6 +14473,298 @@ second semantically richer client machine. Before using a sidecar, diagnostic
 tooling MUST verify its exact executable identity; a mismatch disables the
 sidecar and is itself a diagnostic error rather than permission to guess at a
 correspondence.
+
+
+A concrete build can make the separation mechanical.
+
+Suppose projection emits this canonical runtime plan:
+
+#+begin_src clojure
+(def executable-plan
+  {:plan/version 3
+   :plan/id :plan/request-claim
+   :compatibility/id :humanhelp-live-v12
+
+   :states
+   [{:state :idle
+     :transitions
+     [{:event :ui/invoke
+       :guard [:binding/complete]
+       :next 1
+       :effects
+       [[:command/allocate]
+        [:projection/install-provisional]
+        [:transport/start]]}]}
+
+    {:state :pending
+     :transitions
+     [{:event :claim/settled
+       :guard
+       [:and
+        [:event/current-owner]
+        [:event/matches-command]]
+       :next 2
+       :effects
+       [[:projection/install-authoritative]
+        [:resources/retire-owned]]}
+
+      {:event :claim/timeout
+       :guard [:event/current-resource]
+       :next 3
+       :effects
+       [[:resources/retire-owned]
+        [:recovery/request-authoritative-acquisition]]}]}
+
+    {:state :settled
+     :transitions []}
+
+    {:state :unknown
+     :transitions
+     [{:event :authority/acquired
+       :guard [:observation/covers-target]
+       :next 4
+       :effects
+       [[:projection/install-authoritative]]}]}
+
+    {:state :recovered
+     :transitions []}]})
+#+end_src
+
+The build computes an exact identity over the canonical executable payload:
+
+#+begin_src clojure
+(def executable-digest
+  (artifact/digest
+    {:algorithm :sha-256
+     :encoding :canonical-edn-v1
+     :value executable-plan}))
+#+end_src
+
+The sidecar can then explain the compact coordinates:
+
+#+begin_src clojure
+(def diagnostic-sidecar
+  {:sidecar/version 1
+
+   :plan/id :plan/request-claim
+
+   :executable-digest executable-digest
+
+   :states
+   {0
+    {:semantic-id :request-claim/helper/idle
+     :source
+     {:ns 'net.humanhelp.site.model.request.choreo
+      :form 'request-claim}}
+
+    1
+    {:semantic-id :request-claim/helper/pending}
+
+    2
+    {:semantic-id :request-claim/helper/settled}
+
+    3
+    {:semantic-id :request-claim/helper/outcome-unknown}
+
+    4
+    {:semantic-id :request-claim/helper/recovered}}
+
+   :transitions
+   {[1 0]
+    {:semantic-id
+     :request-claim/helper/accepted-settlement
+
+     :knowledge-derivation
+     {:premises
+      [[:event/carries :authoritative-request]
+       [:event/matches-command]
+       [:event/current-owner]]
+
+      :conclusion
+      [:helper/may-install
+       :authoritative-request]}
+
+     :authority-derivation
+     {:premises
+      [[:settlement/from-trusted-boundary]
+       [:request/authoritative-result]]
+
+      :conclusion
+      [:projection/status :authoritative]}
+
+     :proof-obligations
+     [:obligation/settlement-command-correlation
+      :obligation/stale-owner-rejected]}
+
+    [1 1]
+    {:semantic-id
+     :request-claim/helper/timeout
+
+     :knowledge-derivation
+     {:premises
+      [[:timeout/current-resource]]
+
+      :conclusion
+      [:command/disposition :unknown]}
+
+     :proof-obligations
+     [:obligation/timeout-does-not-imply-rejection]}}})
+#+end_src
+
+Production execution never calls:
+
+#+begin_src clojure
+(get-in diagnostic-sidecar
+  [:transitions [1 0] :knowledge-derivation])
+#+end_src
+
+to decide whether settlement is admissible.
+
+The transition function receives only executable semantics and current runtime
+inputs:
+
+#+begin_src clojure
+(step
+  executable-plan
+  runtime-state
+  normalized-event)
+#+end_src
+
+A development observer may watch that exact step result:
+
+#+begin_src clojure
+(defn observe-transition
+  [{:keys [plan state-before event result]}
+   sidecar]
+
+  (when-not
+    (= (:executable-digest sidecar)
+       (artifact/digest
+         {:algorithm :sha-256
+          :encoding :canonical-edn-v1
+          :value plan}))
+    (throw
+      (ex-info
+        "Diagnostic sidecar does not describe this executable."
+        {:error/type :diagnostic/executable-mismatch
+         :sidecar-digest
+         (:executable-digest sidecar)})))
+
+  (let [locator
+        (runtime/transition-locator
+          plan
+          state-before
+          event)]
+
+    {:runtime
+     {:locator locator
+      :event (:event/type event)
+      :result (:result result)}
+
+     :explanation
+     (get-in sidecar
+       [:transitions locator])}))
+#+end_src
+
+Its output can be rich:
+
+#+begin_src clojure
+{:runtime
+ {:locator [1 0]
+  :event :claim/settled
+  :result :accepted}
+
+ :explanation
+ {:semantic-id
+  :request-claim/helper/accepted-settlement
+
+  :knowledge-derivation
+  {...}
+
+  :authority-derivation
+  {...}
+
+  :proof-obligations
+  [...]}}
+#+end_src
+
+But observer failure must remain diagnostic:
+
+#+begin_src clojure
+(defn run-with-optional-observer
+  [plan state event observer sidecar]
+  (let [result
+        (step plan state event)]
+
+    (try
+      (observer
+        {:plan plan
+         :state-before state
+         :event event
+         :result result}
+        sidecar)
+
+      (catch Throwable t
+        (diagnostics/report!
+          {:error/type :diagnostic/observer-failed
+           :cause t})))
+
+    ;; Semantic result is returned regardless of observer success.
+    result))
+#+end_src
+
+Now corrupt the sidecar:
+
+#+begin_src clojure
+(def wrong-sidecar
+  (assoc diagnostic-sidecar
+    :executable-digest
+    "sha256:not-this-plan"))
+
+(run-with-optional-observer
+  executable-plan
+  runtime-state
+  settled-event
+  observe-transition
+  wrong-sidecar)
+;; =>
+;; semantic step result is unchanged
+;; diagnostic observer reports executable mismatch
+#+end_src
+
+Or remove it entirely:
+
+#+begin_src clojure
+(step
+  executable-plan
+  runtime-state
+  settled-event)
+;; =>
+;; same semantic transition
+#+end_src
+
+The exact artifact identity is stricter than runtime compatibility. A rebuilt
+plan could have different state indices or emitted bytes while remaining
+compatible enough for ordinary execution under the server/runtime contract. A
+sidecar for the old bytes still cannot explain the new runtime coordinates.
+
+That is why the build needs both:
+
+#+begin_src clojure
+{:runtime-compatibility
+ :humanhelp-live-v12
+
+ :exact-executable-identity
+ "sha256:6e4b..."}
+#+end_src
+
+One answers "may this runtime continue?" The other answers "does this diagnostic
+artifact describe these exact emitted coordinates?"
+
+The sidecar architecture earns its complexity by preserving that separation:
+production runs one compact semantic machine; verification and debugging can
+explain that machine richly without becoming an alternate authority or control
+path.
 
 Conceptually there are three modes:
 
