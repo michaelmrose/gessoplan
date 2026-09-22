@@ -595,7 +595,7 @@ contract might look like this:
 ;; helper is deliberately absent: browser or transport data does not get to
 ;; assert the principal that will own the authoritative transition.
 (def ClaimCommand
-  [:map
+  [:map {:closed true}
    [:request-id uuid?]
    [:command-id uuid?]])
 
@@ -614,8 +614,12 @@ contract might look like this:
       [:enum
        :request-not-open
        :membership-inactive
-       :organization-disallows-claim]]
-     [:request Request]
+       :membership-not-for-principal
+       :wrong-organization
+       :organization-disallows-claim
+       :authoritative-precondition-changed]]
+     ;; A principal may not be entitled to see the current Request on denial.
+     [:request {:optional true} [:maybe Request]]
      [:command-id uuid?]]]
 
    [:already-incorporated
@@ -716,92 +720,51 @@ context instead of being accepted from command data.
 (def claim-pipeline
   {:start
    (fn [ctx command]
-     {:state :load-authority
-      :command command})
-
-   :load-authority
-   (fn [ctx {:keys [command]}]
-     (let [principal
-           (authority/require-authenticated-principal ctx)
-
-           request
-           (persistence/read-request
-             ctx
-             (:request-id command))
-
-           membership
-           (membership/current-for-user
-             ctx
-             {:user-id (:user/id principal)
-              :organization-id
-              (:request/organization-id request)})
-
-           organization
-           (organization/current
-             ctx
-             (:request/organization-id request))]
-
-       {:state :prepare
-        :command command
-        :principal principal
-        :request request
-        :membership membership
-        :organization organization}))
+     {:state :prepare
+      :command command
+      ;; Rebound at the trusted invocation boundary, not taken from command.
+      :principal (authority/require-authenticated-principal ctx)})
 
    :prepare
-   (fn [ctx {:keys [command
-                    principal
-                    request
-                    membership
-                    organization]}]
-
-     (let [helper-id
-           (:user/id principal)
-
-           decision
-           (domain/claim-decision
-             {:request request
-              :membership membership
-              :organization organization
-              :helper-id helper-id})]
-
-       (if (= :allowed (:decision decision))
-         {:state :commit
-          :command command
-          :principal principal
-          :prepared
-          (persistence/prepare-claim
-            {:request request
-             :membership membership
-             :organization organization
-             :helper-id helper-id
-             :command-id (:command-id command)})}
-
-         {:state :done
-          :result
-          {:outcome :rejected
-           :reason (:reason decision)
-           :request request
-           :command-id (:command-id command)}})))
+   (fn [ctx {:keys [command principal]}]
+     ;; Explicit intent and trusted principal move forward separately.
+     ;; A model pre-read here could reject a compatible already-incorporated
+     ;; retry before the authoritative command record is examined.
+     {:state :commit
+      :command command
+      :principal principal})
 
    :commit
-   (fn [ctx {:keys [command principal prepared]}]
+   (fn [ctx {:keys [command principal]}]
+     ;; One public model-owned transaction first resolves any compatible
+     ;; prior command under current disclosure policy. For a new command it
+     ;; checks current Request, Membership, Organization and command binding,
+     ;; then writes the claim, command result and delivery debt atomically.
      (let [result
-           (persistence/commit-prepared-claim!
+           (persistence/submit-claim!
              ctx
-             prepared)]
-
+             {:command command
+              :principal principal})]
        (case (:commit/status result)
          :committed
          {:state :after-commit
           :command command
-          :principal principal
           :commit result}
 
+         :already-incorporated
+         {:state :done
+          :result
+          {:outcome :already-incorporated
+           :request (:request result)
+           :command-id (:command-id command)}}
+
          :rejected
-         {:state :reload-after-rejection
-          :command command
-          :commit result}
+         {:state :done
+          :result
+          {:outcome :rejected
+           :reason (:reason result)
+           :request (:request result)
+           :command-id (:command-id command)}}
 
          :unknown
          {:state :done
@@ -809,29 +772,21 @@ context instead of being accepted from command data.
           {:outcome :commit-unknown
            :command-id (:command-id command)}})))
 
-   :reload-after-rejection
-   (fn [ctx {:keys [command]}]
-     {:state :done
-      :result
-      {:outcome :rejected
-       :reason :authoritative-precondition-changed
-       :request
-       (persistence/read-request
-         ctx
-         (:request-id command))
-       :command-id (:command-id command)}})
-
    :after-commit
    (fn [ctx {:keys [command commit]}]
-     ;; Publication is after the authoritative transition.
-     ;; Failure here must not be translated into "claim failed".
+     ;; The durable outbox/delivery debt was committed with the claim.
+     ;; Publication failure cannot become a claim rejection.
      (let [publication
-           (persistence/publish-claim-consequence!
-             ctx
-             {:request-id (:request-id command)
-              :command-id (:command-id command)
-              :basis (:commit/basis commit)})]
-
+           (try
+             (persistence/publish-claim-consequence!
+               ctx
+               {:request-id (:request-id command)
+                :command-id (:command-id command)
+                :basis (:commit/basis commit)})
+             (catch Exception _delivery-error
+               ;; The durable debt remains available for a later worker.
+               {:publication/status :deferred
+                :command-id (:command-id command)}))]
        {:state :done
         :result
         {:outcome :committed
@@ -850,6 +805,17 @@ context instead of being accepted from command data.
     claim-pipeline
     command))
 #+end_src
+
+The private =submit-claim!= entry above denotes an atomic transaction
+contract, not a new required public API. It returns an already incorporated
+result only after checking command meaning and permission to disclose that
+result. It resolves that case *before* treating the now-claimed Request as a
+new command with failed =:open= precondition. A read in =:prepare= supplies a
+candidate or diagnostics; a precheck rejection cannot be final while a prior
+incorporation remains possible. Any committed result also records delivery
+debt atomically so failure during later publication cannot erase the duty to
+notify or imply non-incorporation. The concrete store mechanism and evidence
+for those properties remain Part IV implementation obligations.
 
 The private pipeline may be replaced later without changing the public meaning
 of =request/claim=. Conversely, the choreography must not reach down and call a
@@ -1206,64 +1172,65 @@ by preparation rather than a helper identity asserted by command data:
         :helper-id helper-id}})))
 #+end_src
 
-Preparation then converts the allowed decision into an authoritative transaction
-plan. The exact XTDB transaction primitives are intentionally abstracted here;
-what matters is the semantic content of the guards and writes.
+Preparation describes a candidate authoritative transaction, even when its
+earlier read suggests rejection: an existing compatible command may already
+have committed. The exact XTDB transaction primitives are intentionally
+abstracted here; the command lookup, current guards, and writes must satisfy
+one declared atomic decision contract.
 
 #+begin_src clojure
 (defn prepare-claim
   [{:keys [principal request membership organization command] :as inputs}]
-  (let [{:keys [decision transition reason]}
-        (claim-decision inputs)
+  (let [helper-id (:user/id principal)]
+    {:prepare/status :candidate
 
-        helper-id
-        (:user/id principal)]
+     ;; A pre-read may aid diagnosis, but must not reject an incorporated
+     ;; retry before the transaction checks the retained command record.
+     :observed/decision (claim-decision inputs)
 
-    (if (= :rejected decision)
-      {:prepare/status :rejected
-       :reason reason}
+     ;; Command resolution and the new-command guards/writes execute under
+     ;; one authoritative contract. This is not an unprotected lookup.
+     :commit/command-resolution
+     {:binding {:command-id (:command-id command)
+                :operation :request/claim
+                :subject (:request/id request)
+                :principal helper-id}
+      :compatible-existing :return-permitted-recorded-result
+      :incompatible-existing :reject
+      :absent :evaluate-new-command}
 
-      {:prepare/status :ready
+     ;; Only for a new command, guard transaction-current facts and any
+     ;; dependent relationship predicates; failure produces typed rejection.
+     :commit/new-command
+     {:guards
+      [[:request/still-open
+        {:request-id (:request/id request)
+         :expected-version (:model/version request)}]
 
-       ;; These guards protect the facts whose incompatible change would
-       ;; invalidate the prepared claim.
-       :commit/guards
-       [[:request/still-open
-         {:request-id (:request/id request)
-          :expected-version (:model/version request)}]
+       [:membership/still-active-for-principal
+        {:user-id helper-id
+         :organization-id (:membership/organization-id membership)
+         :expected-version (:model/version membership)}]
 
-        [:membership/still-active-for-principal
-         {:user-id helper-id
-          :organization-id
-          (:membership/organization-id membership)
-          :expected-version (:model/version membership)}]
+       [:organization/still-allows-claim
+        {:organization-id (:organization/id organization)
+         :expected-version (:model/version organization)}]]
 
-        [:organization/still-allows-claim
-         {:organization-id (:organization/id organization)
-          :expected-version (:model/version organization)}]
+      :writes
+      [[:request/claim
+        {:request-id (:request/id request)
+         :helper-id helper-id
+         :command-id (:command-id command)}]
 
-        ;; Durable command reuse is bound to the trusted principal as well as
-        ;; operation and subject.  The principal did not come from command data.
-        [:command/not-incorporated-with-different-meaning
-         {:command-id (:command-id command)
-          :operation :request/claim
-          :subject (:request/id request)
-          :principal helper-id}]]
+       [:command/record-incorporated-result
+        {:command-id (:command-id command)
+         :operation :request/claim
+         :subject (:request/id request)
+         :principal helper-id}]
 
-       ;; The complete authoritative write set is one transaction.
-       :commit/writes
-       [[:request/claim
-         {:request-id (:request/id request)
-          :helper-id helper-id
-          :command-id (:command-id command)}]
-
-        [:command/record-incorporated-result
-         {:command-id (:command-id command)
-          :operation :request/claim
-          :subject (:request/id request)
-          :principal helper-id}]]
-
-       :transition transition})))
+       [:delivery/record-publication-debt
+        {:command-id (:command-id command)
+         :request-id (:request/id request)}]]}}))
 #+end_src
 
 Suppose preparation succeeds, then another transaction deactivates Membership U
@@ -1279,12 +1246,13 @@ before this commit is submitted:
   {:user-id U
    :organization-id O})
 
-;; Our later commit evaluates its declared guards atomically with its writes.
+;; Our later commit resolves the command first; for a new command it
+;; evaluates current guards atomically with all authoritative writes.
 (def result
   (authoritative/submit!
     tx-context
-    {:guards (:commit/guards prepared)
-     :writes (:commit/writes prepared)}))
+    {:command-resolution (:commit/command-resolution prepared)
+     :new-command (:commit/new-command prepared)}))
 
 result
 ;; =>
@@ -1432,7 +1400,6 @@ A truthful model instead exposes an intermediate authoritative state:
 (def OrderStatus
   [:enum
    :payment-pending
-   :payment-authorized
    :placed
    :payment-failed
    :cancelled])
@@ -1445,8 +1412,15 @@ A truthful model instead exposes an intermediate authoritative state:
    [:order/status OrderStatus]
    [:order/total decimal?]
    [:order/payment-command-id uuid?]
+   [:order/payment-method-id uuid?]
+   [:order/provider-idempotency-key string?]
    [:order/provider-reference {:optional true} string?]])
 #+end_src
+
+In this illustrative product policy, a verified payment authorization is
+sufficient for the local Order to become =:placed=. If placement needs separate
+stock or fulfillment confirmation, that application must retain a distinct
+=:payment-authorized= state and declare its subsequent guarded transition.
 
 The initial authoritative transaction can create the pending Order and bind a
 stable provider idempotency key:
@@ -1456,50 +1430,70 @@ stable provider idempotency key:
   [{:keys [db principal now]}
    {:keys [cart-id command-id payment-method-id]}]
 
-  (let [cart
-        (cart-model/require-current!
-          db
-          {:cart-id cart-id
-           :customer-id (:user/id principal)})
+  ;; The command record is resolved atomically before any read that could
+  ;; reject a legitimate retry because its Cart has since changed or gone.
+  (authoritative/submit!
+    db
+    {:command-resolution
+     {:binding
+      {:command-id command-id
+       :operation :checkout/place-order
+       :subject cart-id
+       :principal (:user/id principal)
+       :payment-method-id payment-method-id}
+      :compatible-existing :return-permitted-recorded-order
+      :incompatible-existing :reject}
 
-        order-id
-        (uuid/random)
+     ;; The callback runs only on the command-absent branch *inside* the
+     ;; atomic decision. It reads/guards current Cart state and constructs
+     ;; the complete write set from that same guarded snapshot.
+     :on-absent
+     (fn [tx]
+       (let [cart
+             (cart-model/require-current-checkout-eligible!
+               tx
+               {:cart-id cart-id
+                :customer-id (:user/id principal)})
 
-        provider-key
-        (str "order-payment/" command-id)]
+             order-id (uuid/random)
+             provider-key (str "order-payment/" command-id)]
 
-    (authoritative/submit!
-      db
-      {:guards
-       [[:cart/still-checkout-eligible
-         {:cart-id cart-id
-          :expected-version (:cart/version cart)}]
+         {:guards
+          [[:cart/still-checkout-eligible
+            {:cart-id cart-id
+             :expected-version (:cart/version cart)}]]
 
-        [:command/not-reused-incompatibly
-         {:command-id command-id
-          :operation :checkout/place-order
-          :subject cart-id
-          :principal (:user/id principal)}]]
+          :writes
+          [[:order/create
+            {:order/id order-id
+             :order/customer-id (:user/id principal)
+             :order/cart-id cart-id
+             :order/status :payment-pending
+             :order/total (:cart/total cart)
+             :order/payment-command-id command-id
+             :order/payment-method-id payment-method-id
+             :order/provider-idempotency-key provider-key
+             :order/created-at now}]
 
-       :writes
-       [[:order/create
-         {:order/id order-id
-          :order/customer-id (:user/id principal)
-          :order/cart-id cart-id
-          :order/status :payment-pending
-          :order/total (:cart/total cart)
-          :order/payment-command-id command-id
-          :order/payment-method-id payment-method-id
-          :order/provider-idempotency-key provider-key
-          :order/created-at now}]
+           [:command/record
+            {:command-id command-id
+             :operation :checkout/place-order
+             :subject cart-id
+             :principal (:user/id principal)
+             :payment-method-id payment-method-id
+             :result-subject order-id}]
 
-        [:command/record
-         {:command-id command-id
-          :operation :checkout/place-order
-          :subject cart-id
-          :principal (:user/id principal)
-          :result-subject order-id}]]})))
+           [:payment/record-authorization-debt
+            {:order-id order-id
+             :provider-idempotency-key provider-key}]]}))}))
 #+end_src
+
+Command resolution, Cart guards, Order creation, command-result recording,
+and the durable payment-work obligation must be one supported atomic decision.
+The chosen persistence mechanism must prevent concurrent retries from both
+taking the =:absent= branch. A compatible retry checks permission to disclose
+the prior result and reuses its recorded Order and provider key; a client cannot
+substitute a different payment method under the same command identity.
 
 At that point =:payment-pending= is not an embarrassing implementation detail.
 It is the truthful authoritative state: the Order exists locally, but external
@@ -1537,6 +1531,10 @@ Provider success becomes input to a *later* authoritative transition:
      [[:order/still-payment-pending
        {:order-id (:order/id order)}]
 
+      [:provider-result/trusted-source
+       {:provider-idempotency-key
+        (:order/provider-idempotency-key order)}]
+
       [:provider-result/matches-order
        {:order-id (:order/id order)
         :amount (:order/total order)
@@ -1552,7 +1550,7 @@ Provider success becomes input to a *later* authoritative transition:
 
       [:order/set-status
        {:order-id (:order/id order)
-        :status :placed}]]})))
+        :status :placed}]]}))
 #+end_src
 
 Provider rejection has its own valid transition:
@@ -1564,7 +1562,12 @@ Provider rejection has its own valid transition:
     db
     {:guards
      [[:order/still-payment-pending
-       {:order-id (:order/id order)}]]
+       {:order-id (:order/id order)}]
+
+      [:provider-result/verified-rejection
+       {:order-id (:order/id order)
+        :provider-idempotency-key
+        (:order/provider-idempotency-key order)}]]
 
      :writes
      [[:order/payment-failure
@@ -1574,7 +1577,7 @@ Provider rejection has its own valid transition:
 
       [:order/set-status
        {:order-id (:order/id order)
-        :status :payment-failed}]]})))
+        :status :payment-failed}]]}))
 #+end_src
 
 The difficult failure window is provider success followed by local process loss
@@ -2125,7 +2128,7 @@ An unrelated Hotel 9 acquisition may happen later in the same XTDB database:
 
    :scope
    {:projection :hotel/availability
-    :hotel/id #uuid "h0900000-0000-0000-0000-000000000009"
+    :hotel/id #uuid "a0900000-0000-0000-0000-000000000009"
     :coverage :rooms-for-date-range}
 
    :basis :P25
@@ -2247,15 +2250,18 @@ sound combination can retain both obligations instead of inventing a universal
 join:
 
 #+begin_src clojure
-(requirement/combine
-  flight17-requirement
+(def hotel9-requirement
   {:requirement/type :authoritative-acquisition
    :authority :travel-db
    :scope
    {:projection :hotel/availability
-    :hotel/id #uuid "h0900000-0000-0000-0000-000000000009"
+    :hotel/id #uuid "a0900000-0000-0000-0000-000000000009"
     :coverage :rooms-for-date-range}
    :minimum-basis :P24})
+
+(requirement/combine
+  flight17-requirement
+  hotel9-requirement)
 ;; =>
 {:requirements
  [flight17-requirement
@@ -2496,10 +2502,14 @@ Assume Bob's board currently carries one outstanding advisory:
 
    :adopted
    {:basis :P17
+    :scope {:kind :request/board
+            :organization-id O
+            :coverage :complete-authorized-membership}
     :requests [R1 R2]}
 
    :requirements
    [{:requirement/id :O1
+     :authority :request
      :scope
      {:kind :request/board
       :organization-id O
@@ -2519,6 +2529,7 @@ satisfy:
   (assoc state
     :active-acquisition
     {:acquisition/id acquisition-id
+     :resource-instance/id [:acquisition-resource acquisition-id]
      :captured-requirements
      (:requirements state)
      :scope (:projection state)}))
@@ -2534,6 +2545,7 @@ While A1 is in flight, a later invalidation adds O2:
 #+begin_src clojure
 (def advisory-O2
   {:requirement/id :O2
+   :authority :request
    :scope
    {:kind :request/board
     :organization-id O
@@ -2555,9 +2567,11 @@ justified through P18:
 #+begin_src clojure
 (def response-A1
   {:acquisition/id :A1
+   :resource-instance/id [:acquisition-resource :A1]
 
    :observation
    {:provenance :authoritative
+    :authority :request
 
     :scope
     {:kind :request/board
@@ -2576,6 +2590,8 @@ observation*:
 (defn requirement-satisfied?
   [observation requirement]
   (and
+    (= (:authority observation)
+       (:authority requirement))
     (scope/covers?
       (:scope observation)
       (:scope requirement))
@@ -2585,45 +2601,63 @@ observation*:
       (:minimum-basis requirement))))
 
 (defn complete-acquisition
-  [state {:keys [acquisition/id observation]}]
+  [trusted-context state completion]
+  (let [active (:active-acquisition state)]
+    (when-not
+      (and
+        (some? (:acquisition/id active))
+        (= (:acquisition/id active)
+           (:acquisition/id completion))
+        (= (:resource-instance/id active)
+           (:resource-instance/id completion)))
+      (throw
+        (ex-info
+          "Acquisition completion does not belong to the active resource."
+          {:error/type :acquisition/wrong-owner
+           :received (:acquisition/id completion)
+           :active (:acquisition/id active)})))
 
-  (when-not
-    (= id
-       (get-in state
-         [:active-acquisition :acquisition/id]))
-    (throw
-      (ex-info
-        "Acquisition completion does not belong to the active acquisition."
-        {:error/type :acquisition/wrong-owner
-         :received id
-         :active
-         (get-in state
-           [:active-acquisition :acquisition/id])})))
+    ;; This checks trusted source/correlation, current read authorization,
+    ;; declared query scope and the actual consistency/coverage of the result.
+    ;; The :provenance key in client-carried data alone proves nothing.
+    (let [observation
+          (acquisition/require-admitted!
+            trusted-context
+            active
+            completion)
 
-  (let [satisfied
-        (filter
-          #(requirement-satisfied?
-             observation
-             %)
-          (:requirements state))
+          installable?
+          (presentation/can-install?
+            (:adopted state)
+            observation)
 
-        outstanding
-        (remove
-          #(requirement-satisfied?
-             observation
-             %)
-          (:requirements state))
+          discharged?
+          (fn [requirement]
+            (and (requirement-satisfied? observation requirement)
+                 (case (:requires requirement)
+                   :acquire-only true
+                   :acquire-and-adopt installable?
+                   false)))
 
-        adopted
-        {:basis (:basis observation)
-         :requests (:requests observation)}]
+          satisfied (filter discharged? (:requirements state))
+          outstanding (remove discharged? (:requirements state))]
 
-    (assoc state
-      :adopted adopted
-      :requirements (vec outstanding)
-      :active-acquisition nil
-      :last-discharged
-      (mapv :requirement/id satisfied))))
+      (cond->
+        (assoc state
+          :requirements (vec outstanding)
+          :active-acquisition nil
+          :last-discharged (mapv :requirement/id satisfied))
+
+        installable?
+        (assoc :adopted
+          {:basis (:basis observation)
+           :scope (:scope observation)
+           :requests (:requests observation)})
+
+        (not installable?)
+        (assoc :reconciliation
+          {:reason :observation-not-installable
+           :outstanding (mapv :requirement/id outstanding)})))))
 #+end_src
 
 With a P18 response:
@@ -2631,6 +2665,7 @@ With a P18 response:
 #+begin_src clojure
 (def after-A1
   (complete-acquisition
+    trusted-acquisition-context
     refreshing-with-O2
     response-A1))
 
@@ -2656,6 +2691,7 @@ started:
 
 (def after-strong-A1
   (complete-acquisition
+    trusted-acquisition-context
     refreshing-with-O2
     response-A1-stronger))
 
@@ -2667,43 +2703,21 @@ The captured requirements still matter operationally: they explain why A1 was
 started and what minimum consistency the acquisition requested. But discharge is
 justified by the result actually obtained, not by request-start metadata.
 
-Adoption is a separate condition. If a semantically newer installed state makes
-this response ineligible for installation, the application cannot claim the
-visible board adopted O1 merely because the bytes were fetched:
+Adoption is a separate condition. If a newer installed state makes this
+response ineligible for installation, fetched bytes cannot discharge a debt
+that requires visible adoption. The =complete-acquisition= transition above
+is the only path in this example
+that clears acquisition debt. If presentation installation fails, acquisition
+alone may satisfy an =:acquire-only= requirement, but an
+=:acquire-and-adopt= requirement remains outstanding and a reconciliation
+successor is recorded. The transition uses the requirements in the *current*
+state, so an advisory received while A1 was in flight cannot vanish.
 
-#+begin_src clojure
-(defn install-or-transfer-obligation
-  [state observation]
-  (if (presentation/can-install?
-        (:adopted state)
-        observation)
-
-    (-> state
-        (assoc
-          :adopted
-          {:basis (:basis observation)
-           :requests (:requests observation)})
-        (update
-          :requirements
-          #(remove
-             (fn [requirement]
-               (and
-                 (= :acquire-and-adopt
-                    (:requires requirement))
-                 (requirement-satisfied?
-                   observation
-                   requirement)))
-             %)))
-
-    ;; Acquisition happened, but visible incorporation did not.
-    ;; Requirements that demand adoption remain outstanding or move to a
-    ;; checked successor/reconciliation path.
-    (assoc state
-      :reconciliation
-      {:reason :observation-not-installable
-       :observation observation
-       :requirements (:requirements state)})))
-#+end_src
+A real completion is accepted only after trusted acquisition admission. The
+=:provenance :authoritative= tag and an =assoc-in= that changes =:basis= in a
+test fixture cannot turn arbitrary browser bytes into a trusted observation;
+the P18 and P21 examples assume the fixture supplies correspondingly admitted,
+authorized results from the declared complete board query.
 
 Part VI may choose a different concrete coordinator representation. The semantic
 obligation established here is independent of that representation: advisory
@@ -3117,15 +3131,18 @@ a command result, and both bind to the trusted principal established above:
   [{:keys [request principal command]}]
   (let [command-id (:command-id command)
         helper-id (:user/id principal)]
+    ;; The complete operation first resolves an existing compatible command
+    ;; inside this transaction; this map shows only the absent/new branch.
     {:guards
      [[:request/still-open
        {:request-id (:request/id request)}]
 
-      [:command/not-bound-to-different-meaning
-       {:command-id command-id
-        :operation :request/claim
-        :subject (:request/id request)
-        :principal helper-id}]]
+      [:membership/active-for-principal
+       {:principal helper-id
+        :request-id (:request/id request)}]
+
+      [:organization/currently-allows-claim
+       {:request-id (:request/id request)}]]
 
      :writes
      [[:request/claim
@@ -3142,7 +3159,11 @@ a command result, and both bind to the trusted principal established above:
         :result
         {:request/id (:request/id request)
          :request/status :claimed
-         :request/helper-id helper-id}}]]}))
+         :request/helper-id helper-id}}]
+
+      [:delivery/record-publication-debt
+       {:command-id command-id
+        :request-id (:request/id request)}]]}))
 #+end_src
 
 Assume that transaction commits, but the HTTP connection disappears before
@@ -3224,10 +3245,14 @@ principal is:
          :subject subject
          :principal (:user/id principal)}
 
+        ;; The lookup itself enforces disclosure for the current principal.
+        ;; Foreign command identities are indistinguishable from unavailable
+        ;; evidence through this public query.
         record
-        (command-model/find-result
+        (command-model/find-disclosable-result
           (:db ctx)
-          command-id)]
+          {:command-id command-id
+           :principal (:user/id principal)})]
 
     (cond
       (nil? record)
@@ -3280,40 +3305,25 @@ rebinds the current authenticated principal before comparing semantic material:
    #uuid "e8000000-0000-0000-0000-000000000008"
 
    :transport-request-id
-   #uuid "t2000000-0000-0000-0000-000000000002"})
+   #uuid "72000000-0000-0000-0000-000000000002"})
 
 (defn handle-claim-command!
   [ctx {:keys [command]}]
-  (let [principal
-        (authority/require-authenticated-principal ctx)
-
-        binding
-        {:operation (:operation command)
-         :subject (:request-id command)
-         :principal (:user/id principal)}]
-
-    (if-let [existing
-             (command-model/find-result
-               (:db ctx)
-               (:command-id command))]
-
-      (do
-        (command-model/require-compatible-binding!
-          existing
-          binding)
-
-        ;; Returning the already-incorporated result is this model's explicit
-        ;; duplicate policy. Another operation could choose differently.
-        {:outcome :already-incorporated
-         :result (:result existing)})
-
-      ;; request/claim performs the same trusted-principal/current-authority
-      ;; preparation before any authoritative transition.
-      (request/claim
-        ctx
-        {:request-id (:request-id command)
-         :command-id (:command-id command)}))))
+  ;; The admitted route fixes :request/claim; client :operation bytes cannot
+  ;; redirect this handler. The public model operation binds the principal
+  ;; from ctx and atomically resolves duplicates and new claims.
+  (request/claim
+    ctx
+    {:request-id (:request-id command)
+     :command-id (:command-id command)}))
 #+end_src
+
+An earlier =find-result= followed by =request/claim= would leave a race between
+two attempts that both observe no record. The model-owned atomic decision
+described above is the authoritative retry boundary. A response that says
+=:already-incorporated= is disclosed only to a currently permitted principal
+for the original binding; an incompatible or foreign command id cannot be used
+to fetch another principal's result.
 
 Reusing C42 for incompatible semantic material is not a retry.  Even under the
 same authenticated Alice context, changing operation or subject changes the
@@ -3503,4 +3513,3 @@ redundant tokens for the same instance.
 
 The design favors explicit identity over attempting to rediscover ownership
 later from DOM position, current URL, or another mutable physical fact.
-
