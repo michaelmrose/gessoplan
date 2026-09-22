@@ -591,10 +591,12 @@ contract might look like this:
    [net.humanhelp.site.model.request.domain :as domain]
    [net.humanhelp.site.model.request.fx :as request.fx]))
 
+;; This is semantic command material supplied by the caller.  The authenticated
+;; helper is deliberately absent: browser or transport data does not get to
+;; assert the principal that will own the authoritative transition.
 (def ClaimCommand
   [:map
    [:request-id uuid?]
-   [:helper-id uuid?]
    [:command-id uuid?]])
 
 (def ClaimOutcome
@@ -657,15 +659,17 @@ contract might look like this:
 (defn claim
   "Public Request semantic operation.
 
-   The caller supplies trusted runtime context plus the semantic command.
-   The implementation below this boundary may change without requiring
-   choreography callers to understand its transaction plan."
+   The command carries caller intent and semantic command identity.  Trusted
+   runtime context supplies the authenticated principal and the authoritative
+   observations required by the contract."
   [ctx command]
   (m/assert ClaimCommand command)
   (request.fx/run-claim ctx command))
 #+end_src
 
-The choreography depends on that public contract:
+The choreography depends on that public contract.  Notice that its parameters do
+not include a helper or principal identity.  Choreo can carry the semantic
+command while leaving principal binding to the trusted Request authority:
 
 #+begin_src clojure
 (ns net.humanhelp.site.model.request.choreo
@@ -674,7 +678,7 @@ The choreography depends on that public contract:
    [net.humanhelp.site.model.request.core :as request]))
 
 (defn claim-request
-  [{:keys [request-id helper-id command-id]}]
+  [{:keys [request-id command-id]}]
   (choreo/at
     :request-authority
 
@@ -686,7 +690,6 @@ The choreography depends on that public contract:
         (request/claim
           ctx
           {:request-id request-id
-           :helper-id helper-id
            :command-id command-id})))))
 #+end_src
 
@@ -696,15 +699,15 @@ implementation with different private staging data.
 
 Below =request.core=, the selected realization may be considerably richer. The
 following FX-like pipeline is illustrative rather than a commitment to exact
-Biff syntax, but it preserves the required value-flow shape: invocation input is
-explicit, each state receives the previous state's output explicitly, and
-ambient context carries capabilities rather than accumulating arbitrary
-business data.
+Biff syntax, but it preserves two boundaries at once: invocation input is
+explicit, while the authenticated principal is rebound from trusted runtime
+context instead of being accepted from command data.
 
 #+begin_src clojure
 (ns net.humanhelp.site.model.request.fx
   (:require
    [com.biffweb :as biff]
+   [net.humanhelp.auth.authority :as authority]
    [net.humanhelp.site.model.membership.core :as membership]
    [net.humanhelp.site.model.organization.core :as organization]
    [net.humanhelp.site.model.request.domain :as domain]
@@ -718,7 +721,10 @@ business data.
 
    :load-authority
    (fn [ctx {:keys [command]}]
-     (let [request
+     (let [principal
+           (authority/require-authenticated-principal ctx)
+
+           request
            (persistence/read-request
              ctx
              (:request-id command))
@@ -726,7 +732,7 @@ business data.
            membership
            (membership/current-for-user
              ctx
-             {:user-id (:helper-id command)
+             {:user-id (:user/id principal)
               :organization-id
               (:request/organization-id request)})
 
@@ -737,32 +743,38 @@ business data.
 
        {:state :prepare
         :command command
+        :principal principal
         :request request
         :membership membership
         :organization organization}))
 
    :prepare
    (fn [ctx {:keys [command
+                    principal
                     request
                     membership
                     organization]}]
 
-     (let [decision
+     (let [helper-id
+           (:user/id principal)
+
+           decision
            (domain/claim-decision
              {:request request
               :membership membership
               :organization organization
-              :helper-id (:helper-id command)})]
+              :helper-id helper-id})]
 
        (if (= :allowed (:decision decision))
          {:state :commit
           :command command
+          :principal principal
           :prepared
           (persistence/prepare-claim
             {:request request
              :membership membership
              :organization organization
-             :helper-id (:helper-id command)
+             :helper-id helper-id
              :command-id (:command-id command)})}
 
          {:state :done
@@ -773,7 +785,7 @@ business data.
            :command-id (:command-id command)}})))
 
    :commit
-   (fn [ctx {:keys [command prepared]}]
+   (fn [ctx {:keys [command principal prepared]}]
      (let [result
            (persistence/commit-prepared-claim!
              ctx
@@ -783,6 +795,7 @@ business data.
          :committed
          {:state :after-commit
           :command command
+          :principal principal
           :commit result}
 
          :rejected
@@ -851,7 +864,8 @@ private state directly:
 
 (defn claim-request [ctx command]
   ;; This bypasses the public semantic operation and couples choreography
-  ;; directly to one FX realization.
+  ;; directly to one FX realization.  Supplying a prepared value here would
+  ;; also bypass the trusted principal/current-authority preparation boundary.
   ((:commit request.fx/claim-pipeline)
    ctx
    {:command command
@@ -1120,11 +1134,17 @@ A Request claim is a good example because the decision may depend on public
 semantics owned by Request, Membership, and Organization while the domain
 transition still needs one atomic authoritative result.
 
-Assume preparation has acquired mutually compatible authoritative observations:
+Assume preparation has acquired mutually compatible authoritative observations
+*and* a trusted principal binding established by the server boundary.  The
+principal is deliberately separate from the command:
 
 #+begin_src clojure
 (def authoritative-inputs
-  {:request
+  {:principal
+   {:user/id U
+    :authority/source :authenticated-session}
+
+   :request
    {:request/id R
     :request/status :open
     :request/organization-id O
@@ -1142,43 +1162,48 @@ Assume preparation has acquired mutually compatible authoritative observations:
     :organization/claiming-enabled? true
     :model/version :organization-v31}
 
+   ;; Caller-controlled semantic intent.  It does not assert who the helper is.
    :command
    {:operation :request/claim
     :command-id C42
-    :request-id R
-    :helper-id U}})
+    :request-id R}})
 #+end_src
 
-The domain decision can remain pure:
+The domain decision can remain pure while using the trusted principal supplied
+by preparation rather than a helper identity asserted by command data:
 
 #+begin_src clojure
 (defn claim-decision
-  [{:keys [request membership organization command]}]
-  (cond
-    (not= :open (:request/status request))
-    {:decision :rejected
-     :reason :request-not-open}
+  [{:keys [principal request membership organization]}]
+  (let [helper-id (:user/id principal)]
+    (cond
+      (not= :open (:request/status request))
+      {:decision :rejected
+       :reason :request-not-open}
 
-    (not= :active (:membership/status membership))
-    {:decision :rejected
-     :reason :membership-inactive}
+      (not= :active (:membership/status membership))
+      {:decision :rejected
+       :reason :membership-inactive}
 
-    (not=
-      (:request/organization-id request)
-      (:membership/organization-id membership))
-    {:decision :rejected
-     :reason :wrong-organization}
+      (not= helper-id (:membership/user-id membership))
+      {:decision :rejected
+       :reason :membership-not-for-principal}
 
-    (not (:organization/claiming-enabled? organization))
-    {:decision :rejected
-     :reason :organization-disallows-claim}
+      (not=
+        (:request/organization-id request)
+        (:membership/organization-id membership))
+      {:decision :rejected
+       :reason :wrong-organization}
 
-    :else
-    {:decision :allowed
-     :transition
-     {:request-id (:request/id request)
-      :helper-id (:helper-id command)
-      :command-id (:command-id command)}}))
+      (not (:organization/claiming-enabled? organization))
+      {:decision :rejected
+       :reason :organization-disallows-claim}
+
+      :else
+      {:decision :allowed
+       :transition
+       {:request-id (:request/id request)
+        :helper-id helper-id}})))
 #+end_src
 
 Preparation then converts the allowed decision into an authoritative transaction
@@ -1187,9 +1212,12 @@ what matters is the semantic content of the guards and writes.
 
 #+begin_src clojure
 (defn prepare-claim
-  [{:keys [request membership organization command] :as inputs}]
+  [{:keys [principal request membership organization command] :as inputs}]
   (let [{:keys [decision transition reason]}
-        (claim-decision inputs)]
+        (claim-decision inputs)
+
+        helper-id
+        (:user/id principal)]
 
     (if (= :rejected decision)
       {:prepare/status :rejected
@@ -1204,8 +1232,8 @@ what matters is the semantic content of the guards and writes.
          {:request-id (:request/id request)
           :expected-version (:model/version request)}]
 
-        [:membership/still-active
-         {:user-id (:membership/user-id membership)
+        [:membership/still-active-for-principal
+         {:user-id helper-id
           :organization-id
           (:membership/organization-id membership)
           :expected-version (:model/version membership)}]
@@ -1214,25 +1242,26 @@ what matters is the semantic content of the guards and writes.
          {:organization-id (:organization/id organization)
           :expected-version (:model/version organization)}]
 
-        ;; Durable command reuse must also remain compatible.
+        ;; Durable command reuse is bound to the trusted principal as well as
+        ;; operation and subject.  The principal did not come from command data.
         [:command/not-incorporated-with-different-meaning
          {:command-id (:command-id command)
           :operation :request/claim
           :subject (:request/id request)
-          :principal (:helper-id command)}]]
+          :principal helper-id}]]
 
        ;; The complete authoritative write set is one transaction.
        :commit/writes
        [[:request/claim
          {:request-id (:request/id request)
-          :helper-id (:helper-id command)
+          :helper-id helper-id
           :command-id (:command-id command)}]
 
         [:command/record-incorporated-result
          {:command-id (:command-id command)
           :operation :request/claim
           :subject (:request/id request)
-          :principal (:helper-id command)}]]
+          :principal helper-id}]]
 
        :transition transition})))
 #+end_src
@@ -1261,7 +1290,7 @@ result
 ;; =>
 {:commit/status :rejected
  :failed-guard
- [:membership/still-active
+ [:membership/still-active-for-principal
   {:user-id U
    :organization-id O}]}
 #+end_src
@@ -1302,11 +1331,12 @@ Notice that the public model APIs can still remain separate:
 (membership/current-for-user ctx U O)
 (organization/current ctx O)
 
-;; The public Request claim operation composes the authoritative transition.
+;; The public Request claim operation receives command intent only.  It obtains
+;; the authenticated helper from trusted ctx before constructing the atomic
+;; transition shown above.
 (request/claim
   ctx
   {:request-id R
-   :helper-id U
    :command-id C42})
 #+end_src
 
@@ -3051,50 +3081,68 @@ Those questions may have different answers.
 
 HumanHelp Claim can illustrate all three questions with one lost-response race.
 
-Suppose Alice submits semantic command C42:
+Suppose Alice's browser forms semantic command C42.  The wire command identifies
+what is being attempted and which semantic attempt this is; it does *not* assert
+that Alice is the authenticated principal:
 
 #+begin_src clojure
 (def C42
   {:operation :request/claim
    :command-id
    #uuid "c4200000-0000-0000-0000-000000000042"
-   :request-id R
-   :principal Alice})
+   :request-id R})
+#+end_src
+
+When an attempt reaches the Request authority, trusted server context binds the
+principal independently of that command:
+
+#+begin_src clojure
+(defn admitted-claim-attempt
+  [ctx command]
+  {:command command
+   :principal
+   (authority/require-authenticated-principal ctx)})
+
+(def attempt
+  ;; The authenticated session represented by ctx belongs to Alice.
+  (admitted-claim-attempt ctx C42))
 #+end_src
 
 The Request model chooses to make command incorporation durable for this
 operation. A successful claim transaction writes both the Request transition and
-a command result:
+a command result, and both bind to the trusted principal established above:
 
 #+begin_src clojure
 (defn prepare-claim-tx
-  [{:keys [request principal command-id]}]
-  {:guards
-   [[:request/still-open
-     {:request-id (:request/id request)}]
+  [{:keys [request principal command]}]
+  (let [command-id (:command-id command)
+        helper-id (:user/id principal)]
+    {:guards
+     [[:request/still-open
+       {:request-id (:request/id request)}]
 
-    [:command/not-bound-to-different-meaning
-     {:command-id command-id
-      :operation :request/claim
-      :subject (:request/id request)
-      :principal (:user/id principal)}]]
+      [:command/not-bound-to-different-meaning
+       {:command-id command-id
+        :operation :request/claim
+        :subject (:request/id request)
+        :principal helper-id}]]
 
-   :writes
-   [[:request/claim
-     {:request-id (:request/id request)
-      :helper-id (:user/id principal)
-      :command-id command-id}]
+     :writes
+     [[:request/claim
+       {:request-id (:request/id request)
+        :helper-id helper-id
+        :command-id command-id}]
 
-    [:command/store-result
-     {:command-id command-id
-      :operation :request/claim
-      :subject (:request/id request)
-      :principal (:user/id principal)
-      :outcome :committed
-      :result
-      {:request/id (:request/id request)
-       :request/status :claimed
-       :request/helper-id (:user/id principal)}}]]})
+      [:command/store-result
+       {:command-id command-id
+        :operation :request/claim
+        :subject (:request/id request)
+        :principal helper-id
+        :outcome :committed
+        :result
+        {:request/id (:request/id request)
+         :request/status :claimed
+         :request/helper-id helper-id}}]]}))
 #+end_src
 
 Assume that transaction commits, but the HTTP connection disappears before
@@ -3106,9 +3154,10 @@ browser
         |
         v
 server
+    bind authenticated principal = Alice
     authoritative transaction commits:
         Request R -> claimed by Alice
-        command C42 -> committed
+        command C42 -> committed for Alice
         |
         X response connection lost
         |
@@ -3126,6 +3175,7 @@ At that moment the authoritative answers are:
 
  :command-disposition
  {:command-id C42
+  :principal Alice
   :outcome :committed}
 
  :alice-evidence
@@ -3135,14 +3185,15 @@ At that moment the authoritative answers are:
 The browser timeout changes only the third coordinate. It does not reverse the
 Request transition and does not turn the command into a confirmed rejection.
 
-Suppose Alice first recovers by rereading Request R:
+Suppose Alice first recovers by rereading Request R.  The authorized read again
+uses the authenticated principal from trusted context rather than taking a
+principal supplied by the browser:
 
 #+begin_src clojure
 (def current-request
   (request/read-authorized-card
     ctx
-    {:request-id R
-     :principal Alice}))
+    {:request-id R}))
 
 current-request
 ;; =>
@@ -3158,16 +3209,24 @@ model-defined path might have produced an observationally equivalent current
 Request.
 
 Because this model *does* retain command-specific results, Alice can separately
-resolve attribution:
+resolve attribution.  The resolver compares the retained binding with the
+current trusted principal; the lookup request does not get to assert who that
+principal is:
 
 #+begin_src clojure
 (defn resolve-command!
-  [{:keys [db principal]}
-   {:keys [command-id operation subject]}]
+  [ctx {:keys [command-id operation subject]}]
+  (let [principal
+        (authority/require-authenticated-principal ctx)
 
-  (let [record
+        expected-binding
+        {:operation operation
+         :subject subject
+         :principal (:user/id principal)}
+
+        record
         (command-model/find-result
-          db
+          (:db ctx)
           command-id)]
 
     (cond
@@ -3176,9 +3235,7 @@ resolve attribution:
        :reason :no-retained-command-evidence}
 
       (not=
-        {:operation operation
-         :subject subject
-         :principal (:user/id principal)}
+        expected-binding
         (select-keys
           record
           [:operation :subject :principal]))
@@ -3211,8 +3268,9 @@ resolve attribution:
    :request/helper-id Alice}}}
 #+end_src
 
-A permitted retry can carry the same command identity through a new transport
-request and even a new protocol execution:
+A permitted retry can carry the same semantic command identity through a new
+transport request and even a new protocol execution.  The new attempt still
+rebinds the current authenticated principal before comparing semantic material:
 
 #+begin_src clojure
 (def retry-attempt
@@ -3226,38 +3284,51 @@ request and even a new protocol execution:
 
 (defn handle-claim-command!
   [ctx {:keys [command]}]
-  (if-let [existing
-           (command-model/find-result
-             (:db ctx)
-             (:command-id command))]
+  (let [principal
+        (authority/require-authenticated-principal ctx)
 
-    (do
-      (command-model/require-compatible-binding!
-        existing
+        binding
         {:operation (:operation command)
          :subject (:request-id command)
-         :principal (:principal command)})
+         :principal (:user/id principal)}]
 
-      ;; Returning the already-incorporated result is this model's explicit
-      ;; duplicate policy. Another operation could choose differently.
-      {:outcome :already-incorporated
-       :result (:result existing)})
+    (if-let [existing
+             (command-model/find-result
+               (:db ctx)
+               (:command-id command))]
 
-    (request/claim
-      ctx
-      command)))
+      (do
+        (command-model/require-compatible-binding!
+          existing
+          binding)
+
+        ;; Returning the already-incorporated result is this model's explicit
+        ;; duplicate policy. Another operation could choose differently.
+        {:outcome :already-incorporated
+         :result (:result existing)})
+
+      ;; request/claim performs the same trusted-principal/current-authority
+      ;; preparation before any authoritative transition.
+      (request/claim
+        ctx
+        {:request-id (:request-id command)
+         :command-id (:command-id command)}))))
 #+end_src
 
-Reusing C42 for incompatible semantic material is not a retry:
+Reusing C42 for incompatible semantic material is not a retry.  Even under the
+same authenticated Alice context, changing operation or subject changes the
+semantic binding:
 
 #+begin_src clojure
-(handle-claim-command!
-  ctx
-  {:command
-   {:operation :request/cancel
-    :command-id (:command-id C42)
-    :request-id Q
-    :principal Alice}})
+(command-model/require-compatible-binding!
+  {:command-id (:command-id C42)
+   :operation :request/claim
+   :subject R
+   :principal Alice}
+
+  {:operation :request/cancel
+   :subject Q
+   :principal Alice})
 
 ;; =>
 ;; {:error/type :command/incompatible-reuse
@@ -3276,8 +3347,7 @@ Nor does inventing C43 solve an unknown C42 if duplicate effects matter:
 ;; This is a new semantic attempt, not "the retry of C42".
 {:operation :request/claim
  :command-id C43
- :request-id R
- :principal Alice}
+ :request-id R}
 #+end_src
 
 Whether a fresh command is permitted is a separate model/protocol decision.

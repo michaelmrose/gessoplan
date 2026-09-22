@@ -262,13 +262,22 @@ optimization opportunity; it is never an alternate trust path.
 
 A different kind of edit changes production realization while leaving the
 semantic operation unchanged.  That does not justify throwing away every proof,
-but neither may the old implementation evidence be silently reused.
+but neither may the old implementation evidence be silently reused.  Crucially,
+semantic evidence is retained only after its applicability to the /current
+normalized semantic subject/ has been checked; matching a semantic-ID string is
+not itself that check.
 
 #+begin_src clojure
 (def claim-contract
   {:semantic/id :operation/request-claim-O12
-   :pre [:request/open :helper/eligible]
-   :post [:request/claimed-by-actor]})
+   :normalized/semantics
+   {:pre #{:request/open :helper/eligible}
+    :post #{:request/claimed-by-authenticated-helper}}
+   :depends-on #{:rule/claim-eligible-R8
+                 :schema/request-S9}})
+
+(def current-claim-subject
+  (semantic/normalize claim-contract))
 
 (def xtdb-claim-adapter-a
   {:implementation/id :impl/claim-xtdb-A44
@@ -282,7 +291,14 @@ but neither may the old implementation evidence be silently reused.
 
 (def previous-evidence
   {:semantic-certificate
-   {:subject :operation/request-claim-O12
+   {:certificate/id :certificate/request-claim-C19
+    :subject
+    {:semantic/id :operation/request-claim-O12
+     :normalized/hash "sha256:8bf4..."}
+    :dependencies #{:rule/claim-eligible-R8
+                    :schema/request-S9}
+    :checker :checker/operation-v7
+    :profile :profile/compositional-v3
     :result :valid}
 
    :implementation-conformance
@@ -295,15 +311,30 @@ but neither may the old implementation evidence be silently reused.
     :uses :impl/claim-xtdb-A44
     :result :pass}})
 
+(def semantic-reuse
+  (certificate/admit-reuse
+   {:current-subject current-claim-subject
+    :current-dependencies (:depends-on claim-contract)
+    :required-checker :checker/operation-v7
+    :required-profile :profile/compositional-v3
+    :candidate (:semantic-certificate previous-evidence)}))
+
+;; Conceptually, this is true only because the current checker establishes that
+;; the certificate still applies to the current normalized subject and its
+;; dependencies.  The matching :semantic/id is useful correlation, not proof.
+{:admitted? true
+ :reason :current-subject-and-dependencies-match}
+
 (def reconsidered
   (release/reconsider-implementation
    {:old xtdb-claim-adapter-a
     :new xtdb-claim-adapter-b
+    :semantic-reuse semantic-reuse
     :evidence previous-evidence}))
 
-;; The semantic theorem still concerns O12.
+;; Evidence about A44 cannot establish facts about B45.  The semantic theorem
+;; may be retained only through the admitted applicability result above.
 {:retain #{:semantic-certificate/operation-request-claim-O12}
- ;; Evidence about A44 cannot establish facts about B45.
  :rerun #{:conformance/claim-adapter
           :integration/humanhelp-claim
           :real-browser/request-claim}
@@ -311,15 +342,20 @@ but neither may the old implementation evidence be silently reused.
                      :browser-manifest/humanhelp}}
 #+end_src
 
-The semantic certificate is reusable because its subject and semantic
-dependencies are unchanged.  The conformance result is not reusable because it
-was evidence about implementation =A44=.  Assembly and artifact work is
-recomputed precisely where the admitted implementation identity participates in
-their construction.
+The semantic certificate is reusable because the current checker establishes
+that its normalized subject, semantic dependencies, checker contract, and
+profile still apply.  It is /not/ reusable merely because both versions carry
+=:operation/request-claim-O12=.  A copied or stale semantic ID cannot establish
+semantic sameness.
+
+The conformance result is not reusable because it was evidence about
+implementation =A44=.  Assembly and artifact work is recomputed precisely where
+the admitted implementation identity participates in their construction.
 
 This distinction prevents two opposite pathologies: rebuilding every theorem
-because a handler was refactored, and retaining a green production report for
-code that the report never exercised.
+because a handler was refactored, and retaining either semantic or production
+evidence on the strength of matching labels that no current checker has shown to
+remain applicable.
 
 *** Root release report
 
@@ -872,14 +908,18 @@ claim that any milestone has been met.
 
 A release report should make partial progress boringly explicit.  A usable
 HumanHelp release may have completed the operational milestone while later
-assurance scopes remain incomplete.
+assurance scopes remain incomplete.  The report also names the exact admitted
+assembly-generation coordinate rather than using a bare, ambiguous
+"generation" field.
 
 #+begin_src clojure
 (def humanhelp-release-2026-09
   {:release/id :humanhelp/2026-09-r4-candidate-17
    :assembly
    {:semantic/id :assembly/humanhelp-A61
-    :generation :assembly-generation/G204
+    :assembly-generation/id :assembly-generation/G204
+    :assembly-generation/admission-evidence
+    :evidence/assembly-generation-G204-admission
     :browser-artifact "sha256:83c4..."
     :source {:gesso "819117f..."
              :humanhelp "dad5c7c..."}}
@@ -922,14 +962,19 @@ assurance scopes remain incomplete.
 #+end_src
 
 The report can admit this candidate for the operational claim if every required
-operational gate passes.  It cannot summarize the same record as "R4 complete"
-or silently reinterpret =:partial=, =:not-complete=, and =:prototype= as green.
-Conversely, unfinished formal or multi-node work does not erase evidence that
-already establishes the explicitly bounded operational milestone.
+operational gate passes and the referenced assembly-generation admission
+actually establishes that this report describes the candidate being released.
+The map does not make =G204= admitted merely by naming an admission-evidence ID;
+that evidence remains independently checked under the release boundary.
+
+It cannot summarize the same record as "R4 complete" or silently reinterpret
+=:partial=, =:not-complete=, and =:prototype= as green.  Conversely, unfinished
+formal or multi-node work does not erase evidence that already establishes the
+explicitly bounded operational milestone.
 
 Later releases reevaluate only the statuses whose subjects or premises changed.
-The historical record remains useful because it names the exact assembly
-generation, scope, and evidence to which each answer applied.
+The historical record remains useful because it names the exact admitted
+assembly generation, scope, and evidence to which each answer applied.
 
 ** Working rule for every future semantic change
 

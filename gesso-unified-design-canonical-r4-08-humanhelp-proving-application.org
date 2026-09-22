@@ -2280,12 +2280,18 @@ Browser A creates remote Request R at P18:
 
 #+begin_src clojure
 (def create-R-result-for-A
-  {:operation :request/create
+  ;; This is not the raw HTTP response.  It is the value produced after the
+  ;; trusted settlement boundary has correlated C18, checked the expected
+  ;; operation/subject, admitted the authoritative provenance and basis, and
+  ;; established that this observation may settle this browser execution.
+  {:admission/kind :admitted-command-result
+   :operation :request/create
    :command/id C18
    :outcome :accepted
 
-   :authoritative
-   {:basis :P18
+   :observation
+   {:admission/kind :admitted-authoritative-observation
+    :basis :P18
     :scope
     {:projection :request/card
      :request/id R}
@@ -2302,11 +2308,22 @@ the declared creator-local rule:
 
 #+begin_src clojure
 (defn incorporate-local-created-request
-  [board result]
+  [board admitted-result]
 
-  (let [request
-        (get-in result
-          [:authoritative :request])]
+  (assert
+    (= :admitted-command-result
+       (:admission/kind admitted-result)))
+
+  (let [observation
+        (:observation admitted-result)
+
+        _
+        (assert
+          (= :admitted-authoritative-observation
+             (:admission/kind observation)))
+
+        request
+        (:request observation)]
 
     (-> board
         (assoc-in
@@ -2314,18 +2331,17 @@ the declared creator-local rule:
            (:request/id request)]
           request)
 
-        ;; The board has not thereby become a complete P18 board snapshot.
-        ;; We retain the complete-board basis separately.
+        ;; This admits one correlated Request observation only.  It does not
+        ;; manufacture a complete P18 board observation.
         (assoc-in
           [:local-correlated
            (:request/id request)]
           {:basis
-           (get-in result
-             [:authoritative :basis])
+           (:basis observation)
 
            :source
-           [:command
-            (:command/id result)]})))))
+           [:admitted-command-result
+            (:command/id admitted-result)]})))))
 #+end_src
 
 B instead receives an advisory:
@@ -2404,10 +2420,10 @@ Presentation derives the Refresh indication from real advisory state:
      :aria-live-message
      (when (pos? pending)
        (str pending
-            " board update"
+            " refresh requirement"
             (when-not (= 1 pending)
               "s")
-            " available."))}))
+            " pending."))}))
 #+end_src
 
 Nothing in that rendering decodes Request R from the advisory.
@@ -2416,12 +2432,14 @@ Now B creates local Request S at P19:
 
 #+begin_src clojure
 (def create-S-result-for-B
-  {:operation :request/create
+  {:admission/kind :admitted-command-result
+   :operation :request/create
    :command/id C19
    :outcome :accepted
 
-   :authoritative
-   {:basis :P19
+   :observation
+   {:admission/kind :admitted-authoritative-observation
+    :basis :P19
     :scope
     {:projection :request/card
      :request/id S}
@@ -2505,8 +2523,9 @@ Changing search to =cabinet= does not cause R to appear:
 ;; never remote R merely because its title would match
 #+end_src
 
-Only explicit Refresh grants this board acquisition under the settled remote
-creation policy:
+Only explicit Refresh *requests* this board acquisition/adoption under the
+settled remote-creation policy.  It does not grant authority to read Requests;
+server-side authorization remains an independent trusted obligation:
 
 #+begin_src clojure
 (defn begin-explicit-refresh
@@ -2516,15 +2535,14 @@ creation policy:
     :refresh
     {:acquisition/id acquisition-id
 
-     :permission
-     {:kind :explicit-user-refresh
-      :granted? true}
+     :trigger
+     {:kind :explicit-user-refresh}
 
      :captured-requirements
      (get-in board
        [:advisory :requirements])
 
-     :scope
+     :requested-scope
      (:projection board)}))
 
 (def B4
@@ -2533,14 +2551,25 @@ creation policy:
     :refresh-20))
 #+end_src
 
-The trusted server performs an authorized complete-board acquisition:
+The browser sends only that acquisition request.  At the trusted server
+boundary, the current authenticated principal is rebound independently of the
+browser payload, authorization is evaluated for the requested board scope, the
+physical acquisition is correlated with the declared plan/resource instance,
+and the returned observation is admitted for provenance, scope, progression,
+and execution identity before it can reach installation code:
 
 #+begin_src clojure
-(def refresh-result
-  {:acquisition/id :refresh-20
+(def admitted-refresh-result
+  {:admission/kind :admitted-acquisition-result
+   :acquisition/id :refresh-20
+
+   :trusted-binding
+   {:principal Bob
+    :authorization :request-board/read-authorized}
 
    :observation
-   {:provenance :authoritative
+   {:admission/kind :admitted-authoritative-observation
+    :provenance :authoritative
 
     :scope
     {:kind :request/board
@@ -2556,14 +2585,26 @@ The trusted server performs an authorized complete-board acquisition:
      S-value]}})
 #+end_src
 
-Installation replaces complete-board membership from the observation while
-preserving compatible local presentation state:
+Installation replaces complete-board membership only from that admitted
+observation while preserving compatible local presentation state:
 
 #+begin_src clojure
 (defn install-refreshed-board
-  [board {:keys [observation]}]
+  [board admitted-result]
 
-  (let [members
+  (assert
+    (= :admitted-acquisition-result
+       (:admission/kind admitted-result)))
+
+  (let [observation
+        (:observation admitted-result)
+
+        _
+        (assert
+          (= :admitted-authoritative-observation
+             (:admission/kind observation)))
+
+        members
         (into {}
           (map
             (juxt :request/id identity))
@@ -2595,7 +2636,7 @@ preserving compatible local presentation state:
 (def B5
   (install-refreshed-board
     B4
-    refresh-result))
+    admitted-refresh-result))
 #+end_src
 
 Now R is legitimately adopted:
@@ -2631,7 +2672,7 @@ returned observation covers only through P20 while O2 requires P21, O2 remains:
 (def B5-with-O2
   (install-refreshed-board
     B4-with-O2
-    refresh-result))
+    admitted-refresh-result))
 
 (mapv
   :requirement/id
@@ -2648,8 +2689,8 @@ Gesso distinctions at once:
 - one object-specific authoritative result does not imply whole-board adoption;
 - advisory knowledge is not Request content;
 - local presentation transforms only admitted membership;
-- explicit acquisition permission remains distinct from knowledge that newer
-  authority exists;
+- an explicit acquisition/adoption trigger remains distinct both from knowledge
+  that newer authority exists and from trusted server authorization to read it;
 - advisory discharge follows actual acquisition coverage;
 - local correlated creation and remote selective adoption can coexist without a
   global "latest revision" shortcut.

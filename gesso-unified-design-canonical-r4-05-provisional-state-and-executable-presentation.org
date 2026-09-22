@@ -80,15 +80,24 @@ Assume the browser has already acquired an authoritative Request card:
 
 #+begin_src clojure
 (def authoritative-card
-  {:projection/type :request/card
-   :authority :authoritative
-   :request/id R
-   :request/status :open
-   :request/helper-id nil
-   :basis :X17
-   :scope
-   {:projection :request/card
-    :request/id R}})
+  ;; `projection/admitted` denotes the result of the trusted acquisition
+  ;; boundary.  Matching browser data cannot manufacture this value.
+  (projection/admitted
+    {:projection/type :request/card
+     :authority :authoritative
+     :request/id R
+     :request/status :open
+     :request/helper-id nil
+     :basis :X17
+     :scope
+     {:projection :request/card
+      :request/id R}}
+
+    {:admission/id :admission/request-card-X17
+     :acquisition/id :acquisition/request-card
+     :provenance :trusted-server
+     :authorized-principal [:user Alice]
+     :covered-through :X17}))
 #+end_src
 
 The view binds a semantic Claim operation:
@@ -142,28 +151,33 @@ The runtime can make the transition explicit:
 #+begin_src clojure
 (defn begin-claim
   [{:keys [authoritative-card]} command-id principal]
-  {:machine/state :claim/pending
+  (let [card
+        (projection/value authoritative-card)]
 
-   :command/id command-id
+    {:machine/state :claim/pending
 
-   :authoritative-basis
-   {:scope (:scope authoritative-card)
-    :basis (:basis authoritative-card)}
+     :command/id command-id
 
-   :provisional
-   {:projection/type :request/card
-    :authority :provisional
-    :command/id command-id
-    :request/id (:request/id authoritative-card)
-    :request/status :claiming
-    :request/helper-id principal}
+     :authoritative-basis
+     {:scope (:scope card)
+      :basis (:basis card)
+      :admission/id
+      (projection/admission-id authoritative-card)}
 
-   :resources
-   {:settlement-timeout
-    {:resource-instance/id
-     #uuid "91000000-0000-0000-0000-000000000001"
-     :owner [:execution :current]
-     :status :active}}})
+     :provisional
+     {:projection/type :request/card
+      :authority :provisional
+      :command/id command-id
+      :request/id (:request/id card)
+      :request/status :claiming
+      :request/helper-id principal}
+
+     :resources
+     {:settlement-timeout
+      {:resource-instance/id
+       #uuid "91000000-0000-0000-0000-000000000001"
+       :owner [:execution :current]
+       :status :active}}}))
 #+end_src
 
 Now consider four legitimate endings.
@@ -172,22 +186,35 @@ First, direct confirmation:
 
 #+begin_src clojure
 (def accepted-settlement
-  {:event/type :request/claim-settled
-   :command/id C42
-   :outcome :accepted
-   :authoritative
-   {:request/id R
-    :request/status :claimed
-    :request/helper-id Alice
-    :basis :X18}})
+  ;; Produced only after the trusted settlement boundary has authenticated
+  ;; the source, correlated C42, admitted the authoritative result, and
+  ;; established the covered scope/basis.
+  (settlement/admitted
+    {:event/type :request/claim-settled
+     :command/id C42
+     :outcome :accepted}
+
+    (projection/admitted
+      {:request/id R
+       :request/status :claimed
+       :request/helper-id Alice
+       :basis :X18}
+
+      {:provenance :trusted-command-settlement
+       :scope {:projection :request/card
+               :request/id R}
+       :covered-through :X18})))
 
 (defn settle-accepted
-  [runtime settlement]
+  [runtime admitted-settlement]
+  (settlement/require-admitted! admitted-settlement)
+
   (-> runtime
       (assoc
         :machine/state :claim/settled
         :authoritative
-        (:authoritative settlement)
+        (settlement/authoritative-projection
+          admitted-settlement)
         :provisional nil)
       (update :resources retire-owned-resources)))
 #+end_src
@@ -196,23 +223,33 @@ Second, authoritative rejection because Bob claimed first:
 
 #+begin_src clojure
 (def rejected-settlement
-  {:event/type :request/claim-settled
-   :command/id C42
-   :outcome :rejected
-   :reason :request-not-open
-   :authoritative
-   {:request/id R
-    :request/status :claimed
-    :request/helper-id Bob
-    :basis :X18}})
+  (settlement/admitted
+    {:event/type :request/claim-settled
+     :command/id C42
+     :outcome :rejected
+     :reason :request-not-open}
+
+    (projection/admitted
+      {:request/id R
+       :request/status :claimed
+       :request/helper-id Bob
+       :basis :X18}
+
+      {:provenance :trusted-command-settlement
+       :scope {:projection :request/card
+               :request/id R}
+       :covered-through :X18})))
 
 (defn settle-rejected
-  [runtime settlement]
+  [runtime admitted-settlement]
+  (settlement/require-admitted! admitted-settlement)
+
   (-> runtime
       (assoc
         :machine/state :claim/rejected
         :authoritative
-        (:authoritative settlement)
+        (settlement/authoritative-projection
+          admitted-settlement)
         :provisional nil
         :message
         "Another helper claimed this Request.")
@@ -259,46 +296,62 @@ without command-specific settlement:
 
 #+begin_src clojure
 (def reread-result
-  {:projection/type :request/card
-   :authority :authoritative
-   :request/id R
-   :request/status :claimed
-   :request/helper-id Alice
-   :basis :X19
-   :scope
-   {:projection :request/card
-    :request/id R}})
+  ;; This is not a decoded response map.  It is the result of the trusted
+  ;; acquisition boundary after authorization, provenance, plan, scope,
+  ;; progression, and resource-instance checks have succeeded.
+  (acquisition/admitted
+    {:projection/type :request/card
+     :authority :authoritative
+     :request/id R
+     :request/status :claimed
+     :request/helper-id Alice
+     :basis :X19
+     :scope
+     {:projection :request/card
+      :request/id R}}
+
+    {:acquisition/id :acquisition/request-card
+     :resource-instance/id
+     #uuid "a1900000-0000-0000-0000-000000000019"
+     :provenance :trusted-server
+     :authorized-principal [:user Alice]
+     :covered-through :X19}))
 
 (defn install-authoritative-reread
-  [runtime observation]
-  (if
-    (scope/covers?
-      (:scope observation)
-      (get-in runtime
-        [:authoritative-basis :scope]))
+  [runtime admitted-observation]
+  (acquisition/require-admitted! admitted-observation)
 
-    (-> runtime
-        (assoc
-          :machine/state :claim/recovered
-          :authoritative observation
-          :provisional nil)
+  (let [observation
+        (acquisition/value admitted-observation)]
 
-        ;; The current view is now authoritative even if command attribution
-        ;; remains unresolved.
-        (assoc
-          :command-knowledge
-          {:command/id (:command/id runtime)
-           :disposition
-           (or
-             (get-in runtime
-               [:command-knowledge :disposition])
-             :unknown)})
+    (if
+      (scope/covers?
+        (:scope observation)
+        (get-in runtime
+          [:authoritative-basis :scope]))
 
-        (update
-          :resources
-          retire-owned-resources))
+      (-> runtime
+          (assoc
+            :machine/state :claim/recovered
+            :authoritative admitted-observation
+            :provisional nil)
 
-    runtime))
+          ;; The current view is now authoritative even if command attribution
+          ;; remains unresolved.
+          (assoc
+            :command-knowledge
+            {:command/id (:command/id runtime)
+             :disposition
+             (or
+               (get-in runtime
+                 [:command-knowledge :disposition])
+               :unknown)})
+
+          (update
+            :resources
+            retire-owned-resources))
+
+      runtime)))
 #+end_src
 
 The browser can now render the correct authoritative Request card while still
@@ -1059,7 +1112,12 @@ and authoritative basis, producing something capability-like:
 #+begin_src clojure
 (choreo/bind request.choreo/claim
   {:role :helper
-   :principal [:user user-id]
+
+   ;; This value comes from trusted preparation context.  A browser-supplied
+   ;; user id may be carried as data, but it cannot establish this principal.
+   :principal
+   (trusted-context/authenticated-principal request-context)
+
    :args {:request-id request-id}
    :observed-basis observed-basis})
 #+end_src

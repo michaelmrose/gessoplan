@@ -1983,11 +1983,20 @@ Now compare a collaborative editor's typing indicator:
    :from :editor
    :to :peer-editor
 
+   ;; The adversarial wire payload describes ephemeral intent only.  It does
+   ;; not get to assert who the sender is.
    :payload
    [:map
     [:document/id uuid?]
-    [:actor/id uuid?]
     [:typing? boolean?]]
+
+   ;; Delivery of this message establishes sender knowledge only after the
+   ;; trusted communication boundary authenticates the connection and checks
+   ;; that this principal may participate in this document.
+   :sender-binding
+   {:principal-source :authenticated-channel
+    :authorize        :document/current-editor
+    :bind-as          :actor/id}
 
    :delivery
    {:durability :ephemeral
@@ -1996,6 +2005,31 @@ Now compare a collaborative editor's typing indicator:
 
    :semantics
    {:expires-after-ms 3000}})
+
+(defn admit-typing-message
+  [{:keys [authenticated-principal
+           current-document-membership
+           decoded-message]}]
+  (let [{:keys [document/id typing?]} decoded-message]
+    (when-not (= id (:document/id current-document-membership))
+      (throw (ex-info "typing message is for an unauthorized document"
+                      {:document/id id})))
+    (when-not (= authenticated-principal
+                 (:principal/id current-document-membership))
+      (throw (ex-info "typing sender is not the authenticated editor"
+                      {:document/id id})))
+
+    ;; This admitted value is produced by the trusted boundary.  The actor
+    ;; identity is established by authentication + current membership, not by
+    ;; a same-shaped field supplied in decoded-message.
+    {:message/id :document/typing
+     :document/id id
+     :typing? typing?
+     :actor/id authenticated-principal
+     :provenance
+     {:actor/id :authenticated-channel
+      :document/id :validated-payload
+      :membership :current-authority}}))
 #+end_src
 
 A projected peer machine may legitimately react to the received message itself:
@@ -2005,7 +2039,10 @@ A projected peer machine may legitimately react to the received message itself:
   {:role :peer-editor}
 
   (state :idle
-    (on-message
+    ;; on-admitted-message means the trusted communication boundary above has
+    ;; already established sender identity, authorization, payload shape, and
+    ;; the provenance that justifies local knowledge of :actor/id.
+    (on-admitted-message
       [:document/typing
        {:keys [document/id actor/id typing?]}]
 

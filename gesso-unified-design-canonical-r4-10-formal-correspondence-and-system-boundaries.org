@@ -545,65 +545,124 @@ its theorems or correspondence mechanisms already exist.
 **** Worked correspondence slice: HumanHelp Claim has one production meaning
 
 A Claim slice makes the correspondence direction concrete.  The formal and
-production objects may differ in representation, but the transferred theorem
-must still concern the production semantics actually admitted.
+production objects may differ in representation, but transferred guarantees
+must concern both the object production admits and, where execution safety is
+claimed, the concrete behavior production can actually perform.  The example
+therefore keeps *admission correspondence* and *execution refinement* separate.
+
+The browser command contributes correlation and domain intent.  It does not
+contribute the authenticated helper identity used by the authoritative
+transition:
 
 #+begin_src clojure
+(def claim-command-shape
+  {:operation :request/claim
+   :domain-input
+   {:request/id :uuid}
+   :correlation
+   {:command/id :uuid}})
+
 (def claim-subject
   {:operation :request/claim
    :state-type :humanhelp/Request
-   :input-type :humanhelp/ClaimInput
+   :command-shape claim-command-shape
+   :trusted-context
+   {:principal :authenticated-principal
+    :membership :current-authoritative-membership
+    :request :current-authoritative-request}
    :preconditions
-   [[:= [:field :request/status] :request.status/open]
-    [:known? :actor :membership/current]
-    [:authorized? :actor :request/claim]]
+   [[:= [:trusted :request :request/status] :request.status/open]
+    [:known? [:trusted :membership] :current]
+    [:authorized? [:trusted :principal] :request/claim]]
    :transition
    {:request/status :request.status/claimed
-    :request/helper-id [:input :actor/id]}
+    :request/helper-id [:trusted :principal :user/id]}
    :outcomes #{:accepted :rejected :unknown}})
 
+(def claim-normalized
+  (gesso.semantics/normalize-operation claim-subject))
+
 (def claim-formal-subject
-  (gesso.formal/translate-operation claim-subject))
+  (gesso.formal/translate-operation claim-normalized))
 
 (def claim-production-plan
-  (gesso.compile/executable-operation claim-subject))
+  (gesso.compile/executable-operation claim-normalized))
 
-(def claim-correspondence
+;; Claim 1: anything admitted by the production boundary for this guarantee
+;; has the corresponding formal judgment under the recorded assumptions.
+(def claim-admission-correspondence
   (gesso.formal/check-correspondence
    {:formal-subject claim-formal-subject
     :production-subject claim-production-plan
-    :claim
-    [:forall-supported-inputs
-     [:production-accepts? :request/claim]
-     [:formal-judgment-holds? :claim-safe]]
+    :proposition
+    [:forall-supported-subjects
+     [:production-admits? :request/claim]
+     [:formal-judgment-holds? :claim-admissible]]
+    :direction :production-admission-implies-formal-validity
     :representation :gesso.correspondence/operation-v1
-    :direction :production-acceptance-implies-formal-validity
     :dependencies
     {:rule-set :semantic/claim-rules-C21
      :operation :semantic/request-claim-op-O31
      :kernel :gesso-proof-kernel/K7}}))
 
+;; Claim 2: the concrete implementation/lowering used by production cannot
+;; perform an observable Claim behavior outside the admitted semantic plan.
+;; This is a distinct obligation; acceptance-set agreement alone is not enough.
+(def claim-execution-refinement
+  (gesso.formal/check-execution-refinement
+   {:semantic-plan claim-production-plan
+    :production-artifact :artifact/request-claim-A44
+    :observable-trace
+    #{:authoritative-read
+      :authorization-decision
+      :durable-commit
+      :settlement
+      :progression-publication}
+    :proposition
+    [:every-relevant-production-trace
+     [:refines :request/claim-semantic-trace]]
+    :dependencies
+    {:lowering :gesso.lowering/L12
+     :adapter :humanhelp.request.adapter/A9
+     :runtime-profile :humanhelp.production/P4}}))
+
 (def admitted-claim
   (gesso.application/admit-operation
-   {:plan claim-production-plan
-    :correspondence claim-correspondence}))
+   {:normalized-subject claim-normalized
+    :plan claim-production-plan
+    :required-correspondence
+    [claim-admission-correspondence
+     claim-execution-refinement]}))
 
-;; Wrong shape: prove F while production independently executes G.
-(def formal-F {:when :open :then :claimed})
-(defn production-G [request actor]
+;; Wrong shape: prove F, then independently execute G.
+(def formal-F
+  {:when :open
+   :then {:status :claimed
+          :helper :trusted-principal}})
+
+(defn production-G [request browser-command]
+  ;; Browser-controlled actor data has slipped into the authoritative write,
+  ;; and G also contains behavior not represented by F.
   (if (:request/priority-lock? request)
     request
     (assoc request
            :request/status :request.status/claimed
-           :request/helper-id (:actor/id actor))))
+           :request/helper-id (get-in browser-command [:actor :id]))))
 #+end_src
 
-The second shape leaves an unproved semantic gap even if =F= and =G= share a
-name, examples, or copied digest metadata.  The desired architecture checks the
-representation/refinement path to the executable production object.  Where an
-arbitrary Clojure implementation remains behind the public operation contract,
-its conformance remains an explicit trusted or tested premise until stronger
-evidence exists.
+The admitted shape does not treat a command-shaped map as an admitted semantic
+object merely because its keys look right.  Authentication, current Membership,
+current Request state, authorization, normalization, and the required
+correspondence evidence all belong to their declared trusted/admission
+boundaries.
+
+The final =production-G= shape leaves two independent gaps.  First, the formal
+subject and the production behavior are not connected by a checked execution
+refinement.  Second, browser-controlled actor identity has escaped its proper
+trust boundary.  Shared names, examples, digest metadata, or agreement on an
+acceptance test do not repair either gap.  Where arbitrary Clojure remains
+behind the public operation contract, its conformance remains an explicit
+trusted/tested premise until stronger evidence discharges that obligation.
 
 *** External proof assistant role
 
@@ -1258,80 +1317,170 @@ They must not redefine ordinary authoritative convergence.
 **** Worked multi-node contrast: durable Request versus ephemeral typing message
 
 Two cross-user features may traverse the same cluster while requiring different
-semantics.  First, Alice claims a durable HumanHelp Request through node A:
+semantics.  First, Alice submits a Claim intent through node A.  The wire command
+contains correlation plus the domain Request identity; the authoritative helper
+identity is rebound from node A's authenticated server context rather than
+accepted from the browser:
 
 #+begin_src clojure
-(def claim-command
+(def browser-claim-command
   {:command/id #uuid "76d7d7e1-fd03-47f7-82f7-66915ec283d9"
    :operation :request/claim
-   :request/id #uuid "412090ce-0e79-4bc8-9d66-a4690ee52022"
-   :actor/id #uuid "069ca45d-33de-4d06-b958-ef1a0da69390"})
+   :request/id #uuid "412090ce-0e79-4bc8-9d66-a4690ee52022"})
+
+(defn admit-claim-through-node-a
+  [http-request wire-command]
+  (let [principal
+        (auth/require-authenticated-principal node-a-system http-request)
+
+        request
+        (request/read-current-authoritative
+         node-a-system
+         (:request/id wire-command))
+
+        membership
+        (membership/read-current-authoritative
+         node-a-system
+         {:organization/id (:request/organization-id request)
+          :user/id (:user/id principal)})]
+
+    (choreo/admit-command
+     {:operation :request/claim
+      :wire-command wire-command
+      :trusted
+      {:principal principal
+       :request request
+       :membership membership}
+      :requirements
+      #{:authenticated-principal
+        :current-request
+        :current-membership
+        :claim-authorized}})))
+
+(def admitted-claim
+  (admit-claim-through-node-a incoming-http-request browser-claim-command))
 
 (def claim-result
-  (request/claim! node-a-system claim-command))
+  (request/execute-admitted-claim! node-a-system admitted-claim))
 
-;; The committed fact outlives node A.
-{:request/id (:request/id claim-command)
- :request/status :request.status/claimed
- :request/helper-id (:actor/id claim-command)
- :progression {:request/id (:request/id claim-command)
-               :basis 1842}}
+;; The committed authoritative fact is derived from the trusted/admitted
+;; principal and outlives node A.  It is not reconstructed from browser data.
+(def committed-request
+  (:authoritative/request claim-result))
+
+(assert (= (:request/helper-id committed-request)
+           (get-in admitted-claim [:trusted :principal :user/id])))
 
 (def advisory
   {:kind :request/authority-may-have-advanced
-   :scope [:request/id (:request/id claim-command)]
-   :requires {:basis-at-least 1842}})
+   :scope [:request/id (:request/id committed-request)]
+   :requires (:progression/requirement claim-result)})
 
-(defn refresh-through-node-c [principal advisory]
-  (auth/authorize-read! node-c-system principal (:scope advisory))
-  (let [observation
-        (request/read-authoritative
+(defn refresh-through-node-c
+  [http-request advisory]
+  (let [principal
+        (auth/require-authenticated-principal node-c-system http-request)
+
+        acquisition
+        (request/admit-authoritative-acquisition
          node-c-system
          {:principal principal
           :scope (:scope advisory)
-          :requirement (:requires advisory)})]
-    (progression/assert-satisfies! observation (:requires advisory))
+          :requirement (:requires advisory)})
+
+        observation
+        (request/read-authoritative node-c-system acquisition)]
+
+    (progression/assert-satisfies!
+     observation
+     (:requires advisory))
+
     observation))
 #+end_src
 
-If publication is lost, node C satisfies the outstanding requirement by reading
-the durable model under current authorization.  It does not reconstruct the
-Claim from node A's process memory.  The reread may establish current Request
-state without proving whether Alice received her direct settlement response.
+If publication is lost, node C can satisfy the outstanding requirement by
+performing a new authorized authoritative acquisition against the durable model.
+It does not reconstruct the Claim from node A's process memory, and possession
+of the advisory does not itself authorize the read.  The reread can establish
+current Request state without proving whether Alice received her direct
+settlement response or even whether node C can identify the exact execution
+that produced that state.
 
-Now contrast an ephemeral typing signal whose receipt itself is the semantic
-event:
+Now contrast an ephemeral typing signal whose *admitted participant-message
+receipt* is itself the semantic event.  The browser still does not get to assert
+a trusted sender or recipient identity.  The routing boundary binds those from
+authenticated/current collaboration state:
 
 #+begin_src clojure
-(def typing-message
-  {:execution/id #uuid "240e696a-e527-4fd1-80ac-bb104d91ef02"
-   :message/id #uuid "0a675872-2ba3-4575-a76f-4024d2c73938"
-   :from :actor/alice
-   :to :actor/bob
+(def browser-typing-intent
+  {:message/id #uuid "0a675872-2ba3-4575-a76f-4024d2c73938"
    :kind :collaboration/typing
-   :document/id #uuid "389bdfac-48c9-4563-8b83-83bfae42d32e"
-   :expires-at #inst "2026-09-21T21:36:04.000-07:00"})
+   :document/id #uuid "389bdfac-48c9-4563-8b83-83bfae42d32e"})
 
 (def typing-route-contract
   {:delivery :best-effort
    :durability :ephemeral
    :duplicates :permitted
    :late-message :discard
+   :sender-binding :authenticated-principal
+   :recipient-binding :current-collaboration-route
    :authorization :current-document-membership
-   :semantic-effect :recipient-observed-message})
+   :semantic-effect :recipient-observed-admitted-message})
 
-(defn receive-typing! [recipient message]
-  (when (and (routing/current-recipient? recipient message)
-             (auth/currently-authorized? recipient (:document/id message))
-             (time/before? (time/now) (:expires-at message)))
-    (ui/show-typing-indicator! (:from message))))
+(defn route-typing-intent!
+  [http-request wire-intent]
+  (let [sender
+        (auth/require-authenticated-principal node-a-system http-request)
+
+        document
+        (document/read-current-authoritative
+         node-a-system
+         (:document/id wire-intent))
+
+        _
+        (auth/require-current-document-membership!
+         node-a-system sender document)
+
+        recipients
+        (routing/current-collaboration-recipients
+         node-a-system
+         {:document document
+          :excluding (:user/id sender)})
+
+        admitted-message
+        (routing/admit-participant-message
+         {:intent wire-intent
+          :trusted
+          {:sender sender
+           :recipients recipients
+           :document document}
+          :execution/id (execution/new-id)
+          :expires-at (time/plus (time/now) (time/seconds 4))
+          :contract typing-route-contract})]
+
+    (routing/deliver! node-a-system admitted-message)))
+
+(defn receive-typing!
+  [recipient-session delivered-message]
+  (let [receipt
+        (routing/admit-recipient-receipt
+         {:recipient-session recipient-session
+          :message delivered-message
+          :contract typing-route-contract})]
+
+    (when receipt
+      (ui/show-typing-indicator!
+       (get-in receipt [:trusted :sender :display-name])))))
 #+end_src
 
-There may be no durable business fact for node C to reread later.  A stronger
+There may be no durable business fact for node C to reread later.  If the typing
+message is lost, its declared best-effort semantics permit that loss; a stronger
 product guarantee would need an explicit stronger routing, persistence,
-acknowledgment, or recovery contract.  Reusing Request invalidation semantics
-would conflate two meanings merely because both can travel through the same
-broker or load-balanced hosts.
+acknowledgment, or recovery contract.  Conversely, broker persistence or a
+delivery acknowledgment would not by itself turn the message into an
+authoritative domain commit.  Reusing Request invalidation semantics would
+conflate two meanings merely because both can travel through the same broker or
+load-balanced hosts.
 
 *** First physical multi-node topology may be simple
 

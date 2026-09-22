@@ -1516,7 +1516,8 @@ Before Refresh A completes, the component is reconstructed and starts Refresh B:
    :html "<div>current acquisition</div>"})
 #+end_src
 
-A narrow owner check can reject A for exactly the reason that matters:
+A narrow owner check can reject A for exactly the reason that matters, but it
+must not call that narrow result semantic admission:
 
 #+begin_src clojure
 (defn current-resource?
@@ -1532,41 +1533,73 @@ A narrow owner check can reject A for exactly the reason that matters:
     (:execution/id runtime)
     (:execution/id event)))
 
-(defn admit-acquisition-completion
+(defn correlate-acquisition-owner
   [runtime event]
   (cond
     (not (same-execution? runtime event))
-    {:result :rejected
+    {:result :owner-rejected
      :reason :wrong-execution}
 
     (not (current-resource? runtime event))
-    {:result :rejected
+    {:result :owner-rejected
      :reason :retired-resource-instance}
 
     :else
-    {:result :admitted
+    {:result :owner-correlated
      :event event}))
 
-(admit-acquisition-completion
+(correlate-acquisition-owner
   after-replacement
   refresh-a-result)
 ;; =>
-;; {:result :rejected
+;; {:result :owner-rejected
 ;;  :reason :retired-resource-instance}
 
-(admit-acquisition-completion
+(correlate-acquisition-owner
   after-replacement
   refresh-b-result)
 ;; =>
-;; {:result :admitted
+;; {:result :owner-correlated
 ;;  :event ...}
 #+end_src
 
-Notice what the guard does *not* infer. It does not claim that B42 is universally
-newer than every basis in the application. It does not prove that the returned
-HTML is authorized for some other user. It does not establish that the command
-which caused an invalidation succeeded. It establishes only that this completion
-belongs to the currently admitted resource instance and execution.
+That result proves only the narrow ownership/correlation fact needed at this
+stage.  Full semantic admission remains a distinct boundary.  Conceptually it
+can consume the correlated completion only after the rest of the acquisition
+contract has also been established:
+
+#+begin_src clojure
+(defn admit-acquisition-completion
+  [trusted-context runtime event]
+  (let [{:keys [result] :as owner}
+        (correlate-acquisition-owner runtime event)]
+    (if (not= result :owner-correlated)
+      owner
+      (acquisition-admission/admit!
+        {:trusted-context trusted-context
+         :runtime runtime
+         :event event
+
+         ;; These names stand for independently checked premises, not
+         ;; declarations supplied by the event itself.
+         :require
+         #{:authorized-principal
+           :expected-acquisition-plan
+           :trusted-provenance
+           :declared-observation-scope
+           :compatible-progression
+           :current-resource-owner
+           :permitted-installation-right}}))))
+#+end_src
+
+Notice what the owner guard does *not* infer. It does not claim that B42 is
+universally newer than every basis in the application. It does not prove that
+the returned HTML is authorized for some other user. It does not establish that
+the command which caused an invalidation succeeded. It establishes only that
+this completion belongs to the currently selected resource instance and
+execution.  The later admission boundary establishes the additional premises
+required before downstream code may treat the completion as an admitted
+authoritative acquisition result.
 
 A different event class can have a different semantic owner. For example, a
 shared advisory is not execution-private:
