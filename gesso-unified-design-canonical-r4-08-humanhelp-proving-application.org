@@ -310,6 +310,7 @@ The production Request model owns the domain transition:
 #+begin_src clojure
 (ns net.humanhelp.site.model.request.core
   (:require
+   [malli.core :as m]
    [net.humanhelp.site.model.request.domain :as domain]
    [net.humanhelp.site.model.request.fx :as request.fx]))
 
@@ -330,7 +331,9 @@ The production Request model owns the domain transition:
 Its domain layer owns the business rule:
 
 #+begin_src clojure
-(ns net.humanhelp.site.model.request.domain)
+(ns net.humanhelp.site.model.request.domain
+  (:require
+   [net.humanhelp.site.model.organization.core :as organization]))
 
 (defn claim-decision
   [{:keys [request membership organization helper-id]}]
@@ -404,10 +407,14 @@ not a copy of the rule:
       {:reacquire :request/card}
 
       :rejected
-      {:reacquire :request/card}
+      {:reacquire :request/card}}
 
-      :unknown
-      {:recover :request/reconcile-claim}}}))
+     ;; Unknown is participant knowledge after lost delivery, not a
+     ;; server assertion about the authoritative Claim outcome.
+     :delivery-uncertainty
+     {:recover
+      {:acquire :request/card
+       :command-attribution :unknown}}}))
 #+end_src
 
 The temporary proving UI binds a real control to that operation:
@@ -435,13 +442,15 @@ The temporary proving UI binds a real control to that operation:
    [:p
     (:request/summary request)]
 
-   (when-let [claim
-              (:claim actions)]
+   (case (gesso.view/require-prepared-availability!
+           :request/claim (:claim actions))
+     :available
      (gesso.view/action
-       {:binding claim
+       {:binding (get-in actions [:claim :binding])
         :class "request-card__claim"
         :pending-label "Claiming..."}
-       "Claim"))])
+       "Claim")
+     :unavailable nil)])
 #+end_src
 
 Preparation decides whether Claim is semantically available and supplies a bound
@@ -466,16 +475,18 @@ operation rather than forcing the view to reimplement claim policy:
 
    :actions
    {:claim
-    (when
-      (= :open
-         (:request/status request))
-
-      (gesso.prepare/bind
-        ctx
-        request.choreo/claim
-        {:request/id
-         (:request/id request)}))}})
+    (gesso.prepare/availability
+      ctx
+      request.choreo/claim
+      {:request/id
+       (:request/id request)})}})
 #+end_src
+
+Here =availability= returns either a validated =:available= binding or an
+explicit policy-based =:unavailable= result. An unknown operation, missing
+basis, malformed required argument, or absent projected plan is a construction
+error, never silent =nil= from the view. The preparation layer consults the
+production semantic operation instead of copying its =:open= eligibility test.
 
 The example route is a physical realization owned by the example application:
 
@@ -484,20 +495,27 @@ The example route is a physical realization owned by the example application:
 
 (def routes
   [{:route/id :route/request-claim
-    :method :post
-    :template "/app/requests/:request-id/claim"
+   :method :post
+   :template "/app/requests/:request-id/claim"
+    :path-parameters
+    {:request-id {:to [:args :request/id] :codec :uuid}}
+    :command-contract :contract/request-claim-command
     :semantic-operation :request/claim
     :trusted-capability :server/request-claim}
 
    {:route/id :route/request-card
     :method :get
     :template "/app/requests/:request-id"
-    :projection :request/card}
+    :path-parameters
+    {:request-id {:to [:scope :request/id] :codec :uuid}}
+    :projection :request/card
+    :trusted-capability :server/read-request-card}
 
    {:route/id :route/request-board
     :method :get
     :template "/app/requests"
-    :projection :request/board}])
+    :projection :request/board
+    :trusted-capability :server/read-request-board}])
 #+end_src
 
 The trusted protocol integration owns principal rebinding and the current
@@ -507,6 +525,7 @@ runtime/model premises:
 (ns net.humanhelp.example.optimistic
   (:require
    [gesso.server :as gesso.server]
+   [net.humanhelp.site.auth :as auth]
    [net.humanhelp.site.model.membership.core :as membership]
    [net.humanhelp.site.model.organization.core :as organization]
    [net.humanhelp.site.model.request.core :as request]))
@@ -560,9 +579,38 @@ runtime/model premises:
       command)))
 #+end_src
 
+The Claim server capability supplies the trusted conversion from a decoded
+semantic wire command to the model's internal command. This conversion occurs
+inside the admitted server operation used by =gesso.server/invoke!=:
+
+#+begin_src clojure
+(def server-operations
+  {:server/request-claim
+   {:semantic-operation :request/claim
+    :supplied-capabilities
+    #{:authenticated-principal :current-request
+      :current-membership :current-organization
+      :transaction :clock :authoritative-request-read}
+    :model-command
+    (fn [{:keys [principal]} command]
+      {:request-id (:request/id command)
+       :helper-id (:user/id principal)
+       :command-id (:command/id command)})
+    :invoke request/claim}})
+#+end_src
+
+The model-command converter is installed as trusted server code and is not
+selectable or replaceable from browser input. The decoded command ID is checked
+by the binding for its operation, contract, and correlation before conversion.
+The real assembly must also declare the two protected read capabilities
+=:server/read-request-card= and =:server/read-request-board= that the example
+routes refer to; otherwise application preflight rejects it.
+
 The model operation then runs below that trusted boundary:
 
 #+begin_src clojure
+;; Internal model command constructed by the trusted prepared server
+;; projection, with helper-id bound to the authenticated principal.
 (request/claim
   trusted-ctx
   {:request-id R
@@ -577,6 +625,15 @@ The model operation then runs below that trusted boundary:
  :basis :X24
  :command-id C42}
 #+end_src
+
+The public model command shown here is an internal trusted call shape.
+The untrusted wire command carries Request identity and semantic command
+correlation; the server projection independently binds =:helper-id= from the
+authenticated principal and checks the corresponding Membership/Organization.
+Neither a posted helper ID nor copied browser principal metadata can establish
+that model input. The example's =:route/request-card= and
+=:route/request-board= also require real protected read handlers in the
+application assembly; route declarations alone do not perform authorization.
 
 The creator/initiator settlement path can return correlated authoritative
 evidence:
@@ -2247,7 +2304,15 @@ Assume Browser B has already adopted a complete authorized board through P17:
 #+begin_src clojure
 (def B0
   {:actor [:client :B]
-   :principal Bob
+   :principal {:user/id Bob}
+
+   :owner
+   {:fragment/id :request-board
+    :resource-instance/id :bob-board-fragment-1}
+
+   :live
+   {:subscription/id :bob-board
+    :resource-instance/id :bob-board-instance-1}
 
    :projection
    {:kind :request/board
@@ -2270,37 +2335,35 @@ Assume Browser B has already adopted a complete authorized board through P17:
    :advisory
    {:requirements []}
 
-   :presentation
+   :options
    {:search ""
-    :sort :newest
-    :visibility :available}})
+    :time-order :newest
+    :mine-first? false
+    :unclaimed-first? false
+    :show-terminal? false
+    :open-details #{}}})
 #+end_src
 
 Browser A creates remote Request R at P18:
 
 #+begin_src clojure
 (def create-R-result-for-A
-  ;; This is not the raw HTTP response.  It is the value produced after the
-  ;; trusted settlement boundary has correlated C18, checked the expected
-  ;; operation/subject, admitted the authoritative provenance and basis, and
-  ;; established that this observation may settle this browser execution.
-  {:admission/kind :admitted-command-result
-   :operation :request/create
-   :command/id C18
-   :outcome :accepted
-
-   :observation
-   {:admission/kind :admitted-authoritative-observation
-    :basis :P18
-    :scope
-    {:projection :request/card
-     :request/id R}
-
-    :request
-    {:request/id R
-     :request/status :open
-     :request/title "Need help moving a cabinet"
-     :request/customer-id Alice}}})
+  ;; Fixture notation for the trusted settlement boundary, not a
+  ;; browser-callable constructor or an admission tag in a plain map.
+  (settlement/admitted-fixture
+    {:operation :request/create
+     :command/id C18
+     :outcome :accepted
+     :observation
+     {:basis :P18
+      :scope
+      {:projection :request/card
+       :request/id R}
+      :request
+      {:request/id R
+       :request/status :open
+       :request/title "Need help moving a cabinet"
+       :request/customer-id Alice}}}))
 #+end_src
 
 A may incorporate that correlated result immediately into A's own board under
@@ -2310,18 +2373,10 @@ the declared creator-local rule:
 (defn incorporate-local-created-request
   [board admitted-result]
 
-  (assert
-    (= :admitted-command-result
-       (:admission/kind admitted-result)))
-
-  (let [observation
-        (:observation admitted-result)
-
-        _
-        (assert
-          (= :admitted-authoritative-observation
-             (:admission/kind observation)))
-
+  (settlement/require-current-creator-result!
+    board admitted-result :request/create)
+  (let [result (settlement/value admitted-result)
+        observation (:observation result)
         request
         (:request observation)]
 
@@ -2341,33 +2396,42 @@ the declared creator-local rule:
 
            :source
            [:admitted-command-result
-            (:command/id admitted-result)]})))))
+            (:command/id result)]}))))
 #+end_src
 
 B instead receives an advisory:
 
 #+begin_src clojure
 (def advisory-R
-  {:live/event :request-authority-advanced
+  (advisory/admitted-fixture
+    {:live/event :request-authority-advanced
 
-   :scope
-   {:kind :request/board
-    :organization-id O
-    :coverage :complete-authorized-membership}
+     :scope
+     {:kind :request/board
+      :organization-id O
+      :coverage :complete-authorized-membership}
 
-   :requirement
-   {:requirement/id :remote-R
-    :kind :newer-relevant-authority
-    :minimum-basis :P18
-    :requires :acquire-and-adopt}})
+     :requirement
+     {:requirement/id :remote-R
+      :kind :newer-relevant-authority
+      :minimum-basis :P18
+      :scope
+      {:kind :request/board
+       :organization-id O
+       :coverage :complete-authorized-membership}
+      :requires :acquire-and-adopt}}
+    {:subscription/id :bob-board
+     :resource-instance/id :bob-board-instance-1}))
 
 (defn record-board-advisory
-  [board advisory]
+  [board admitted-advisory]
 
+  (advisory/require-current-subscription!
+    board admitted-advisory)
   (update-in board
     [:advisory :requirements]
     requirement/combine-preserving-scope
-    (:requirement advisory)))
+    (:requirement (advisory/value admitted-advisory))))
 
 (def B1
   (record-board-advisory
@@ -2378,10 +2442,10 @@ B instead receives an advisory:
 B1 still has the same adopted membership:
 
 #+begin_src clojure
-(keys
+(set (keys
   (get-in B1
-    [:adopted :members]))
-;; => (R1 R2)
+    [:adopted :members])))
+;; => #{R1 R2}
 
 (get-in B1
   [:advisory :requirements])
@@ -2432,23 +2496,20 @@ Now B creates local Request S at P19:
 
 #+begin_src clojure
 (def create-S-result-for-B
-  {:admission/kind :admitted-command-result
-   :operation :request/create
-   :command/id C19
-   :outcome :accepted
-
-   :observation
-   {:admission/kind :admitted-authoritative-observation
-    :basis :P19
-    :scope
-    {:projection :request/card
-     :request/id S}
-
-    :request
-    {:request/id S
-     :request/status :open
-     :request/title "Help carry boxes"
-     :request/customer-id Bob}}})
+  (settlement/admitted-fixture
+    {:operation :request/create
+     :command/id C19
+     :outcome :accepted
+     :observation
+     {:basis :P19
+      :scope
+      {:projection :request/card
+       :request/id S}
+      :request
+      {:request/id S
+       :request/status :open
+       :request/title "Help carry boxes"
+       :request/customer-id Bob}}}))
 
 (def B2
   (incorporate-local-created-request
@@ -2459,10 +2520,10 @@ Now B creates local Request S at P19:
 The desired state is now intentionally mixed:
 
 #+begin_src clojure
-(keys
+(set (keys
   (get-in B2
-    [:adopted :members]))
-;; => (R1 R2 S)
+    [:adopted :members])))
+;; => #{R1 R2 S}
 
 (mapv
   :requirement/id
@@ -2474,7 +2535,7 @@ The desired state is now intentionally mixed:
   [:local-correlated S])
 ;; =>
 {:basis :P19
- :source [:command C19]}
+ :source [:admitted-command-result C19]}
 #+end_src
 
 The fact that S was observed authoritatively at P19 does not admit R. B did not
@@ -2487,26 +2548,7 @@ has:
 (defn visible-board-members
   [board]
 
-  (->>
-    (vals
-      (get-in board
-        [:adopted :members]))
-
-    (board.presentation/apply-visibility
-      (get-in board
-        [:presentation :visibility]))
-
-    (board.presentation/apply-search
-      (get-in board
-        [:presentation :search]))
-
-    (board.presentation/apply-sort
-      {:mode
-       (get-in board
-         [:presentation :sort])
-
-       :principal
-       (:principal board)})))
+  (board.presentation/present-board board))
 #+end_src
 
 Changing search to =cabinet= does not cause R to appear:
@@ -2514,12 +2556,12 @@ Changing search to =cabinet= does not cause R to appear:
 #+begin_src clojure
 (def B3
   (assoc-in B2
-    [:presentation :search]
+    [:options :search]
     "cabinet"))
 
 (map :request/id
      (visible-board-members B3))
-;; => whatever among R1/R2/S matches "cabinet"
+;; => () for these local R1/R2/S titles
 ;; never remote R merely because its title would match
 #+end_src
 
@@ -2529,11 +2571,14 @@ server-side authorization remains an independent trusted obligation:
 
 #+begin_src clojure
 (defn begin-explicit-refresh
-  [board acquisition-id]
+  [board acquisition-id resource-instance-id]
 
   (assoc board
     :refresh
     {:acquisition/id acquisition-id
+
+     :resource-instance/id resource-instance-id
+     :owner (:owner board)
 
      :trigger
      {:kind :explicit-user-refresh}
@@ -2548,7 +2593,8 @@ server-side authorization remains an independent trusted obligation:
 (def B4
   (begin-explicit-refresh
     B3
-    :refresh-20))
+    :refresh-20
+    :refresh-resource-20))
 #+end_src
 
 The browser sends only that acquisition request.  At the trusted server
@@ -2560,50 +2606,42 @@ and execution identity before it can reach installation code:
 
 #+begin_src clojure
 (def admitted-refresh-result
-  {:admission/kind :admitted-acquisition-result
-   :acquisition/id :refresh-20
-
-   :trusted-binding
-   {:principal Bob
-    :authorization :request-board/read-authorized}
-
-   :observation
-   {:admission/kind :admitted-authoritative-observation
-    :provenance :authoritative
-
-    :scope
-    {:kind :request/board
-     :organization-id O
-     :coverage :complete-authorized-membership}
-
-    :basis :P20
-
-    :requests
-    [R1-value
-     R2-value
-     R-value
-     S-value]}})
+  ;; Fixture for an admitted current-permit installation completion, never
+  ;; a client-constructible {:admission/kind ...} map.
+  (acquisition/admitted-installed-fixture
+    {:acquisition/id :refresh-20
+     :observation
+     {:scope
+      {:kind :request/board
+       :organization-id O
+       :coverage :complete-authorized-membership}
+      :basis :P20
+      :requests
+      [R1-value
+       R2-value
+       R-value
+       S-value]}}
+    {:owner (:owner B4)
+     :resource-instance/id :refresh-resource-20
+     :principal {:user/id Bob}
+     :authorization :request-board/read-authorized}))
 #+end_src
 
 Installation replaces complete-board membership only from that admitted
 observation while preserving compatible local presentation state:
+The admission predicate below checks the current fragment owner, acquisition
+instance, authorized scope, progression relative to installed state, and
+adapter-confirmed physical installation. A network response or copied
+=:admission/kind= tag cannot discharge a visible-adoption obligation.
 
 #+begin_src clojure
 (defn install-refreshed-board
   [board admitted-result]
 
-  (assert
-    (= :admitted-acquisition-result
-       (:admission/kind admitted-result)))
-
+  (acquisition/require-installed-for-current-board!
+    board admitted-result)
   (let [observation
-        (:observation admitted-result)
-
-        _
-        (assert
-          (= :admitted-authoritative-observation
-             (:admission/kind observation)))
-
+        (:observation (acquisition/value admitted-result))
         members
         (into {}
           (map
@@ -2667,7 +2705,11 @@ returned observation covers only through P20 while O2 requires P21, O2 remains:
 (def B4-with-O2
   (record-board-advisory
     B4
-    {:requirement O2}))
+    (advisory/admitted-fixture
+      {:scope (:projection B4)
+       :requirement O2}
+      {:subscription/id :bob-board
+       :resource-instance/id :bob-board-instance-1})))
 
 (def B5-with-O2
   (install-refreshed-board
@@ -2980,7 +3022,7 @@ Search is local over the adopted projection:
 #+begin_src clojure
 (defn normalize-search
   [s]
-  (-> s
+  (-> (or s "")
       str/lower-case
       str/trim))
 
@@ -3013,16 +3055,24 @@ Time ordering is deterministic:
 (defn created-order
   [mode]
 
-  (case mode
-    :newest
-    #(compare
-       (:request/created-at %2)
-       (:request/created-at %1))
-
-    :oldest
-    #(compare
-       (:request/created-at %1)
-       (:request/created-at %2))))
+  (let [direction
+        (case mode
+          :newest -1
+          :oldest 1
+          (throw
+            (ex-info
+              "Unsupported Request order."
+              {:mode mode})))]
+    (fn [left right]
+      (let [by-time
+            (compare
+              (:request/created-at left)
+              (:request/created-at right))]
+        (if (zero? by-time)
+          (compare
+            (str (:request/id left))
+            (str (:request/id right)))
+          (* direction by-time))))))
 
 (defn apply-time-order
   [requests {:keys [time-order]}]
@@ -3042,7 +3092,7 @@ Mine-first uses the authenticated/principal-relative prepared fact:
      (:request/helper-id request)))
 
 (defn apply-mine-first
-  [principal requests {:keys [mine-first?]}]
+  [requests principal {:keys [mine-first?]}]
 
   (if-not mine-first?
     requests
@@ -3085,7 +3135,7 @@ One deterministic pipeline composes them:
 (defn present-board
   [{:keys [principal adopted options]}]
 
-  (->> (:requests adopted)
+  (-> (vals (:members adopted))
 
        (apply-terminal-visibility
          options)
@@ -3133,12 +3183,13 @@ Opening details likewise records local continuity:
   (update-in board
     [:options :open-details]
     (fn [open]
-      (if
-        (contains? open request-id)
+      (let [open (or open #{})]
+        (if
+          (contains? open request-id)
 
-        (disj open request-id)
+          (disj open request-id)
 
-        (conj open request-id)))))
+          (conj open request-id))))))
 #+end_src
 
 When an authoritative same-identity board replacement occurs, local options may
@@ -3146,9 +3197,13 @@ be retained:
 
 #+begin_src clojure
 (defn replace-authoritative-board
-  [board observation]
+  [board admitted-observation]
 
-  (let [adopted-ids
+  (acquisition/require-installed-for-current-board!
+    board admitted-observation)
+  (let [observation
+        (acquisition/value admitted-observation)
+        adopted-ids
         (set
           (map :request/id
                (:requests observation)))
@@ -3156,14 +3211,17 @@ be retained:
         open-details
         (set/intersection
           adopted-ids
-          (get-in board
-            [:options :open-details]))]
+          (or (get-in board
+                [:options :open-details]) #{}))]
 
     (-> board
         (assoc
           :adopted
           {:basis (:basis observation)
-           :requests (:requests observation)})
+           :members
+           (into {}
+             (map (juxt :request/id identity))
+             (:requests observation))})
 
         (assoc-in
           [:options :open-details]
@@ -3885,9 +3943,11 @@ test("creator-local adoption and remote advisory require explicit Refresh",
     const bobInitialIds =
       await visibleRequestIds(bobPage);
 
-    expect(
-      bobInitialIds
-    ).not.toContain(fixtures.newRequestId);
+    const aliceTitle =
+      uniqueTestTitle("Need help moving a cabinet");
+
+    const bobTitle =
+      uniqueTestTitle("Help carry boxes");
 
     await alicePage
       .getByRole("button", { name: "Create Request" })
@@ -3895,7 +3955,7 @@ test("creator-local adoption and remote advisory require explicit Refresh",
 
     await alicePage
       .getByLabel("Title")
-      .fill("Need help moving a cabinet");
+      .fill(aliceTitle);
 
     await alicePage
       .getByLabel("Description")
@@ -3908,16 +3968,19 @@ test("creator-local adoption and remote advisory require explicit Refresh",
     const aliceCreatedCard =
       alicePage
         .getByTestId("request-card")
-        .filter({ hasText: "Need help moving a cabinet" });
+        .filter({ hasText: aliceTitle });
 
     await expect(
       aliceCreatedCard
     ).toBeVisible();
 
+    const createdId =
+      await requestIdOf(aliceCreatedCard);
+
+    expect(bobInitialIds).not.toContain(createdId);
+
     const created =
-      await readRequestByTitleFromModel(
-        "Need help moving a cabinet"
-      );
+      await readRequestFromModel(createdId);
 
     expect(created).toMatchObject({
       status: "open",
@@ -3925,9 +3988,7 @@ test("creator-local adoption and remote advisory require explicit Refresh",
     });
 
     const bobRemoteCard =
-      bobPage
-        .getByTestId("request-card")
-        .filter({ hasText: "Need help moving a cabinet" });
+      requestCardById(bobPage, createdId);
 
     await expect(
       bobRemoteCard
@@ -3955,7 +4016,7 @@ test("creator-local adoption and remote advisory require explicit Refresh",
 
     await bobPage
       .getByLabel("Title")
-      .fill("Help carry boxes");
+      .fill(bobTitle);
 
     await bobPage
       .getByLabel("Description")
@@ -3969,11 +4030,21 @@ test("creator-local adoption and remote advisory require explicit Refresh",
       .getByLabel("Search Requests")
       .fill("");
 
-    await expect(
+    const bobCreatedCard =
       bobPage
         .getByTestId("request-card")
-        .filter({ hasText: "Help carry boxes" })
+        .filter({ hasText: bobTitle });
+
+    await expect(
+      bobCreatedCard
     ).toBeVisible();
+
+    const bobCreatedId =
+      await requestIdOf(bobCreatedCard);
+
+    expect(
+      (await readRequestFromModel(bobCreatedId)).customerId
+    ).toBe(fixtures.bob.userId);
 
     await expect(
       bobRemoteCard
@@ -3989,6 +4060,10 @@ test("creator-local adoption and remote advisory require explicit Refresh",
 
     await expect(
       bobRemoteCard
+    ).toBeVisible();
+
+    await expect(
+      requestCardById(bobPage, bobCreatedId)
     ).toBeVisible();
 
     await expect(
@@ -4073,7 +4148,13 @@ test("two helpers racing Claim resolve through production Request authority",
       bobCard.getByRole("button", { name: "Claim" })
     ).toBeVisible();
 
-    await Promise.all([
+    // The fixture holds both outgoing Claim requests before server dispatch;
+    // an uncontrolled pair of clicks need not produce a real race.
+    const race = await holdClaimRequestsAtServerBoundary(
+      [alicePage, bobPage], request.id
+    );
+
+    const clicks = Promise.all([
       aliceCard
         .getByRole("button", { name: "Claim" })
         .click(),
@@ -4083,7 +4164,11 @@ test("two helpers racing Claim resolve through production Request authority",
         .click(),
     ]);
 
-    await Promise.all([
+    await race.waitForBothRequests();
+    await race.releaseTogether();
+    await clicks;
+
+    const [aliceSettlement, bobSettlement] = await Promise.all([
       expectClaimExecutionSettled(
         alicePage,
         request.id
@@ -4094,6 +4179,12 @@ test("two helpers racing Claim resolve through production Request authority",
         request.id
       ),
     ]);
+
+    // Settlement helpers return outcomes for these command identities,
+    // rather than reporting that a button stopped showing a spinner.
+    expect(
+      [aliceSettlement.status, bobSettlement.status].sort()
+    ).toEqual(["accepted", "rejected"]);
 
     const authoritative =
       await readRequestFromModel(
@@ -4114,6 +4205,12 @@ test("two helpers racing Claim resolve through production Request authority",
     expect(
       authoritative.helperId
     ).not.toBeNull();
+
+    expect(
+      authoritative.helperId === fixtures.helperAlice.userId
+        ? aliceSettlement.status
+        : bobSettlement.status
+    ).toBe("accepted");
 
     // The remote-lifecycle adoption policy remains an explicit product
     // decision. This helper follows the selected fixture policy rather than
@@ -4314,7 +4411,8 @@ test("search, sorting, visibility, and details remain local board presentation",
 
     await refreshUntilBoardContains(
       page,
-      fixture.openRequestIds
+      [fixture.byTitle["Move a cabinet"].id,
+       fixture.byTitle["Install shelves"].id]
     );
 
     const initialModel =
@@ -4522,8 +4620,10 @@ real application:
 #+begin_src clojure
 (defn production-candidate
   []
-  (application-preflight/application
-    test-config))
+  (fixture/with-production-artifact-inventory
+    (gesso.application/normalize
+      (application-preflight/application
+        test-config))))
 
 (defn with-controlled-defect
   [candidate defect]
@@ -4540,7 +4640,7 @@ real application:
 
     :missing-browser-plan
     (update-in candidate
-      [:browser :required-plans]
+      [:browser :artifact :contained-plans]
       disj
       :plan/request-claim)
 
@@ -4554,7 +4654,7 @@ real application:
     (update-in candidate
       [:server-operations
        :server/request-claim
-       :supplies]
+       :supplied-capabilities]
       disj
       :clock)
 
@@ -4564,8 +4664,20 @@ real application:
       dissoc
       :request/board)
 
+    :missing-claim-reread
+    (update candidate
+      :acquisitions
+      dissoc
+      :request/card)
+
     candidate))
 #+end_src
+
+For the structural-only plan defect, the normalized fixture includes the
+artifact inventory populated from the production browser build. Changing its
+inventory is a checker fixture; the separate currentness tests below check the
+real served artifact and receipt. All source declarations still come from the
+one production constructor.
 
 Static defects then pass through the real preflight checker:
 
@@ -4577,23 +4689,20 @@ Static defects then pass through the real preflight checker:
           :missing-browser-plan)
 
         result
-        (gesso.application/check
-          candidate)]
+        (gesso.application/check-operation
+          candidate :request/claim)]
 
     (is (= :rejected
            (:status result)))
 
     (is (= :missing-browser-plan
-           (get-in result
-             [:error :kind])))
+           (:error/kind result)))
 
     (is (= :request/claim
-           (get-in result
-             [:error :operation])))
+           (:operation result)))
 
     (is (= :plan/request-claim
-           (get-in result
-             [:error :required])))))
+           (:required result)))))
 #+end_src
 
 The missing capability case likewise uses the actual server declaration:
@@ -4605,12 +4714,17 @@ The missing capability case likewise uses the actual server declaration:
           (production-candidate)
           :missing-clock)]
 
-    (is
-      (thrown-with-msg?
-        clojure.lang.ExceptionInfo
-        #"missing.*clock"
-        (gesso.application/admit-generation!
-          candidate)))
+    (is (= :missing-server-capability
+           (:error/kind
+             (gesso.application/check-operation
+               candidate :request/claim))))
+
+    ;; The fixture starts the real build/preflight/lifecycle with this
+    ;; candidate injected at its declared normalized-assembly boundary.
+    (is (thrown?
+          clojure.lang.ExceptionInfo
+          (fixture/start-from-normalized-assembly!
+            candidate)))
 
     (is (false?
           (test-runtime/server-started?)))))
@@ -4621,26 +4735,19 @@ than merely putting a fake boolean in the assembly:
 
 #+begin_src clojure
 (deftest stale-artifact-bytes-fail-currentness
-  (let [candidate
-        (production-candidate)
+  (let [{:keys [manifest plans]}
+        (artifact-fixture/current-projection
+          (production-candidate))
 
-        current-manifest
-        (browser/derive-manifest
-          candidate)
-
-        stale-receipt
-        (artifact-fixture/receipt-for
-          previous-manifest)
-
-        served-bytes
-        (artifact-fixture/bytes-for
-          previous-manifest)
+        {:keys [receipt artifact-path]}
+        (artifact-fixture/previous-build)
 
         result
-        (browser/check-currentness
-          {:manifest current-manifest
-           :receipt stale-receipt
-           :served-bytes served-bytes})]
+        (browser/check-browser-artifact-currentness
+          {:manifest manifest
+           :plans plans
+           :artifact-path artifact-path
+           :receipt receipt})]
 
     (is (= :rejected
            (:status result)))
@@ -4654,20 +4761,26 @@ metadata while leaving incompatible bytes:
 
 #+begin_src clojure
 (deftest forged-current-stamp-does-not-certify-stale-bytes
-  (let [current
-        (browser/derive-manifest
+  (let [{:keys [manifest plans]}
+        (artifact-fixture/current-projection
           (production-candidate))
 
+        {:keys [receipt artifact-path]}
+        (artifact-fixture/previous-build)
+
         forged
-        (assoc stale-receipt
+        (assoc receipt
           :manifest/id
-          (:manifest/id current))
+          (:manifest/id manifest)
+          :plan-digests
+          (artifact/plan-digests plans))
 
         result
-        (browser/check-currentness
-          {:manifest current
+        (browser/check-browser-artifact-currentness
+          {:manifest manifest
+           :plans plans
            :receipt forged
-           :served-bytes stale-bytes})]
+           :artifact-path artifact-path})]
 
     (is (= :rejected
            (:status result)))
@@ -4751,11 +4864,53 @@ The trusted boundary does not believe =:principal Mallory= merely because the
 client encoded it, and it does not accept an arbitrary plan identifier as proof
 of an admitted realization.
 
+That malformed-plan test alone does not prove principal rebinding: the request
+could have been rejected before principal handling. A separate isolated fixture
+submits an otherwise valid browser command with a forged client identity:
+
+#+begin_src clojure
+(deftest valid-plan-with-forged-principal-cannot-claim-as-mallory
+  (let [wire-command
+        (fixture/valid-claim-wire-command
+          {:request/id R
+           :command/id C43})
+
+        response
+        (http/post
+          test-server
+          (str "/app/requests/" R "/claim")
+          {:headers authenticated-alice-headers
+           :form-params
+           {"__gesso_live_optimistic_command"
+            (pr-str
+              (assoc wire-command
+                :principal Mallory))}})
+
+        current
+        (request-model/read-current test-ctx R)]
+
+    ;; Strict decoding may reject the extra field; a decoder that discards
+    ;; it may proceed only with Alice's authenticated server identity.
+    (is (<= 200 (:status response) 499))
+    (is (not= Mallory (:request/helper-id current)))
+    (if (< (:status response) 400)
+      (do
+        (is (= :claimed (:request/status current)))
+        (is (= Alice (:request/helper-id current))))
+      (is (= :open (:request/status current))))))
+#+end_src
+
+The test fixture must make both Alice and Mallory independently eligible to
+Claim, so an accidental Mallory binding cannot pass by failing domain policy.
+
 Finally, every malformed fixture should have a nearby valid control case:
 
 #+begin_src clojure
 (deftest valid-claim-generation-remains-usable
-  (let [generation
+  (let [candidate
+        (production-candidate)
+
+        generation
         (fixture/admitted-production-generation)
 
         page
@@ -4763,9 +4918,13 @@ Finally, every malformed fixture should have a nearby valid control case:
           generation
           {:principal Alice})]
 
-    (is (re-find
-          #"request/claim"
-          page))
+    (is (= :accepted
+           (:status
+             (gesso.application/check-operation
+               candidate :request/claim))))
+
+    (is (fixture/visible-claim-control?
+          page R))
 
     (is (= :preflight-closed
            (:status
@@ -5210,4 +5369,3 @@ production preflight, dynamic business authorization remains in the production
 models, and HumanHelp drives generic Gesso improvements only when a failure
 exposes a genuinely generic semantic or application-closure gap.
 #+end_quote
-
