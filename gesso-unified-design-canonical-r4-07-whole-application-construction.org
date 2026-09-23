@@ -451,6 +451,7 @@ requirements:
    :browser
    {:role :helper
     :plan :plan/request-claim
+    :command-contract :contract/request-claim-command
     :provisional :request/claiming}
 
    :server
@@ -469,10 +470,14 @@ requirements:
     {:reacquire :request/card}
 
     :rejected
-    {:reacquire :request/card}
+    {:reacquire :request/card}}
 
-    :unknown
-    {:recover :request/reconcile-claim}}})
+   ;; Unknown is participant knowledge after missing delivery, not a
+   ;; fabricated authoritative server outcome.
+   :delivery-uncertainty
+   {:recover
+    {:acquire :request/card
+     :command-attribution :unknown}}})
 #+end_src
 
 The component owns the fact that one rendered affordance invokes the operation:
@@ -504,11 +509,31 @@ The route namespace owns physical dispatch:
     :template
     "/app/requests/:request-id/claim"
 
+    :path-parameters
+    {:request-id
+     {:to [:args :request/id]
+      :codec :uuid}}
+
+    :accepts
+    {:command-contract :contract/request-claim-command
+     :correlation #{:command/id :execution/id}}
+
     :semantic-operation
     :request/claim
 
     :trusted-server-capability
-    :server/request-claim}])
+    :server/request-claim}
+
+   {:route/id :route/request-card
+    :method :get
+    :template "/app/requests/:request-id/card"
+    :path-parameters
+    {:request-id
+     {:to [:scope :request/id]
+      :codec :uuid}}
+    :authoritative-acquisition :request/card
+    :trusted-server-capability
+    :server/read-request-card}])
 #+end_src
 
 The trusted server integration owns the implementation capability it provides:
@@ -523,11 +548,28 @@ The trusted server integration owns the implementation capability it provides:
     :handler #'claim-handler
 
     :model-operation :request/claim
+    :accepts-command :contract/request-claim-command
 
     :supplies
     #{:authenticated-principal
       :transaction
       :clock
+      :authoritative-request-read}
+
+    ;; An actual provider binding must deliver the operation's required
+    ;; shape; naming :clock alone cannot supply :biff.fx/now.
+    :capability-bindings
+    {:clock
+     {:provider :application/system-clock
+      :context-key :biff.fx/now
+      :value-contract :instant}}}
+
+   :server/read-request-card
+   {:authoritative-acquisition :request/card
+    :handler #'read-request-card-handler
+    :authorization :current-principal-request-view
+    :supplies
+    #{:authenticated-principal
       :authoritative-request-read}}})
 #+end_src
 
@@ -553,6 +595,9 @@ the return path:
     :reread
     :route/request-card
 
+    :authorized-principal-source
+    :authenticated-session
+
     :progression
     :xtdb/snapshot}})
 #+end_src
@@ -568,7 +613,8 @@ second manually maintained operation registry:
    {:source :derive-from-application-assembly}
 
    :artifact
-   {:output "resources/public/gesso-live.js"
+   {:output-root "resources/public"
+    :logical-asset-path "/gesso-live.js"
 
     :builder
     #'build-current-browser-artifact!}})
@@ -647,6 +693,17 @@ The constructor can normalize those declarations into a graph:
 The exact public API is provisional. The design pressure is not: semantic facts
 are authored at their real owners, the assembly derives what can be derived, and
 independent physical choices remain visible as edges that must correspond.
+The displayed constructor also names Create, Cancel, and a Request-board
+declaration whose source bodies are omitted for brevity; those declarations
+must exist and close independently. The two displayed Request-card routes,
+the path-argument mapping, and the trusted clock-to-=biff.fx/now= binding
+are concrete obligations of the Claim path, not substitutes for omitted
+declarations or proof that the handler body supplies them correctly.
+The plan's command contract must also reach the rendered control and trusted
+route, including the required correlation. A working =hx-post= whose form
+omits the command field accepted by the route fails the transport/rendered
+surface edge despite its valid method and URL. The selected realization
+defines the actual wire field and checks its propagation at both boundaries.
 
 A structurally dangerous alternative would duplicate the same Claim identity in
 several unrelated maps:
@@ -863,7 +920,13 @@ A normalized operation realization could look approximately like:
     {:node/id :settlement/request-claim
      :kind :typed-settlement
      :outcomes
-     #{:accepted :rejected :unknown}}
+     #{:accepted :rejected}}
+
+    :recovery
+    {:node/id :recovery/request-claim-unknown
+     :kind :unknown-command-outcome-recovery
+     :acquire :request/card
+     :command-attribution :unknown}
 
     :acquisition
     {:node/id :acquire/request-card
@@ -924,6 +987,16 @@ The edges are the actual obligations:
     :kind :typed-outcome-correspondence
     :from :model/request-claim
     :to :settlement/request-claim}
+
+   {:edge/id :claim/plan->unknown-recovery
+    :kind :uncertain-delivery-recovery
+    :from :plan/request-claim
+    :to :recovery/request-claim-unknown}
+
+   {:edge/id :claim/recovery->acquisition
+    :kind :permitted-authoritative-reacquisition
+    :from :recovery/request-claim-unknown
+    :to :acquire/request-card}
 
    {:edge/id :claim/settlement->acquisition
     :kind :permits-authoritative-reacquisition
@@ -1036,7 +1109,7 @@ If the generated artifact omits the plan:
   (assoc-in normalized-assembly
     [:browser :artifact :contained-plans]
     #{:plan/request-create
-      :plan/request-refresh}))
+      :plan/request-cancel}))
 
 (application/check-operation
   broken-artifact
@@ -1049,7 +1122,7 @@ If the generated artifact omits the plan:
  :required :plan/request-claim
  :available
  #{:plan/request-create
-   :plan/request-refresh}}
+   :plan/request-cancel}}
 #+end_src
 
 If the route points to Cancel instead of Claim:
@@ -1124,7 +1197,7 @@ A closed operation report can preserve that structure:
  :status :preflight-closed
 
  :edges
- {:accepted 11
+ {:accepted 13
   :rejected 0
   :open 0}
 
@@ -1135,7 +1208,9 @@ A closed operation report can preserve that structure:
    :current-organization}
 
  :assurance
- {:choreography :kernel-checked
+ {:choreography
+  {:semantic-checker :accepted
+   :proof-kernel :accepted-under-stated-premises}
   :application-path :assembly-verified
   :current-authorization :runtime-enforced
   :browser-integration :tested}}
@@ -1664,7 +1739,13 @@ Suppose the normalized application assembly requires three browser plans:
 
    :compiler
    {:gesso/projector-version 12
-    :cljs-target :browser}
+    :cljs-target :browser
+    :cljs-build-identity
+    (build/identity :cljs-compiler)
+    :browser-runtime-source-identity
+    (build/identity :gesso-browser-runtime)
+    :build-options-identity
+    (build/identity :humanhelp-browser-options)}
 
    :required-plans
    [{:plan/id :plan/request-create
@@ -1675,8 +1756,8 @@ Suppose the normalized application assembly requires three browser plans:
      :operation :request/claim
      :compatibility :humanhelp-live-v12}
 
-    {:plan/id :plan/request-refresh
-     :operation :board/refresh
+    {:plan/id :plan/request-cancel
+     :operation :request/cancel
      :compatibility :humanhelp-live-v12}]})
 #+end_src
 
@@ -1693,6 +1774,13 @@ The manifest identity is computed over normalized semantic/build inputs:
   (assoc browser-manifest-input
     :manifest/id manifest-id))
 #+end_src
+
+The =build/identity= calls are schematic inputs backed by fingerprints or
+pinned versions of the actual compiler, runtime source, and relevant options.
+Reusing a literal =:current= label across changed inputs would leave the
+stale-artifact check unsound. A source or toolchain change that can alter the
+emitted runtime must change an appropriate normalized input or force a trusted rebuild whose
+artifact correspondence is rechecked.
 
 Projection emits the exact executable payloads required by that manifest:
 
@@ -1715,6 +1803,8 @@ over the actual served bytes:
 (defn build-browser-artifact!
   [{:keys [manifest plans output-path]}]
 
+  (browser/require-exact-projected-plan-set!
+    manifest plans)
   (let [javascript-bytes
         (cljs-build/compile-gesso-runtime!
           {:plans plans
@@ -1724,6 +1814,12 @@ over the actual served bytes:
         (artifact/digest-bytes
           {:algorithm :sha-256
            :bytes javascript-bytes})
+
+        ;; Build output includes an inspectable plan inventory bound to the
+        ;; emitted runtime registry, not an inventory typed into this receipt.
+        emitted-plan-digests
+        (cljs-build/inspect-emitted-plan-registry
+          javascript-bytes)
 
         receipt
         {:receipt/version 1
@@ -1738,15 +1834,14 @@ over the actual served bytes:
          artifact-digest
 
          :plan-digests
-         (into {}
-           (map
-             (fn [[plan-id plan]]
-               [plan-id
-                (artifact/digest
-                  {:algorithm :sha-256
-                   :encoding :canonical-edn-v1
-                   :value plan})]))
-           plans)}]
+         emitted-plan-digests}]
+
+    (when-not
+      (= emitted-plan-digests
+         (artifact/plan-digests plans))
+      (throw (ex-info
+               "Emitted plan registry differs from projected plans."
+               {:error/kind :artifact-content-mismatch})))
 
     (write-receipt!
       (str output-path ".receipt.edn")
@@ -1757,14 +1852,27 @@ over the actual served bytes:
 
 The receipt is detached from the bytes whose digest it records, so there is no
 self-hash cycle.
+Receipt fields alone cannot establish that the served JavaScript actually
+contains the claimed plans: a receipt could repeat the expected digests beside
+an unrelated bundle. The illustrative
+=cljs-build/inspect-emitted-plan-registry= contract requires an inspectable
+inventory derived from the *served bytes* and tied by the trusted builder to
+the runtime registry it emits. If the selected compiler cannot establish that
+binding, the checker must report the missing correspondence rather than
+calling receipt equality a proof of plan inclusion. Compiler fidelity and
+actual runtime behavior still require their separately named evidence.
 
 Startup compares the current manifest, current projected payloads, receipt, and
-served artifact:
+served artifact. This check reads the same asset path the admitted server will
+serve; deployment must reject replacing those bytes after admission or
+revalidate the replacement against a new assembly generation:
 
 #+begin_src clojure
 (defn check-browser-artifact-currentness
   [{:keys [manifest plans artifact-path receipt]}]
 
+  (browser/require-exact-projected-plan-set!
+    manifest plans)
   (let [actual-bytes
         (read-bytes artifact-path)
 
@@ -1774,17 +1882,33 @@ served artifact:
            :bytes actual-bytes})
 
         expected-plan-digests
-        (into {}
-          (map
-            (fn [[plan-id plan]]
-              [plan-id
-               (artifact/digest
-                 {:algorithm :sha-256
-                  :encoding :canonical-edn-v1
-                  :value plan})]))
-          plans)]
+        (artifact/plan-digests plans)
+
+        actual-plan-digests
+        (cljs-build/inspect-emitted-plan-registry
+          actual-bytes)
+
+        verified-manifest-id
+        (artifact/digest
+          {:algorithm :sha-256
+           :encoding :canonical-edn-v1
+           :value (dissoc manifest :manifest/id)})]
 
     (cond
+      (not=
+        verified-manifest-id
+        (:manifest/id manifest))
+      {:status :rejected
+       :error/kind :invalid-browser-manifest
+       :reason :manifest-identity-mismatch}
+
+      (not=
+        artifact-path
+        (:artifact/path receipt))
+      {:status :rejected
+       :error/kind :artifact-content-mismatch
+       :reason :served-path-does-not-match-receipt}
+
       (not=
         (:manifest/id manifest)
         (:manifest/id receipt))
@@ -1806,6 +1930,15 @@ served artifact:
        :receipt (:plan-digests receipt)}
 
       (not=
+        expected-plan-digests
+        actual-plan-digests)
+      {:status :rejected
+       :error/kind :artifact-content-mismatch
+       :reason :served-plan-registry-does-not-match-projection
+       :expected expected-plan-digests
+       :actual actual-plan-digests}
+
+      (not=
         actual-artifact-digest
         (:artifact/digest receipt))
       {:status :rejected
@@ -1820,7 +1953,15 @@ served artifact:
        :artifact/digest actual-artifact-digest})))
 #+end_src
 
-Now suppose the developer adds =:request/reassign= to the application assembly:
+The exact-set check rejects missing, extra, duplicate, nil, or
+operation/compatibility-mismatched plan entries before compiling or serving.
+An inventory match cannot compensate for a manifest that omitted an operation
+required by the source assembly; normalization checks that source-to-manifest
+edge independently.
+
+Now suppose the developer adds =:request/reassign= to its source-owned
+declarations. The next transformation illustrates the *derived* normalized
+manifest change; developers do not hand-edit the production manifest:
 
 #+begin_src clojure
 (def changed-manifest-input
@@ -1838,7 +1979,9 @@ Now suppose the developer adds =:request/reassign= to the application assembly:
      :value changed-manifest-input}))
 #+end_src
 
-The old receipt still names the previous manifest:
+In this fixture, =changed-projected-plans= is the new valid projected set,
+=old-receipt= is the receipt from the old build, and =old-manifest-id= is
+=manifest-id=. The old receipt still names the previous manifest:
 
 #+begin_src clojure
 (check-browser-artifact-currentness
@@ -1849,7 +1992,7 @@ The old receipt still names the previous manifest:
    :plans changed-projected-plans
 
    :artifact-path
-   "resources/public/gesso-live.js"
+   (:artifact/path old-receipt)
 
    :receipt old-receipt})
 ;; =>
@@ -1882,22 +2025,41 @@ A supported development command can make the normal path explicit:
           normalized
           manifest)
 
+        candidate-artifact-path
+        (browser/staged-artifact-path
+          manifest)
+
         receipt
         (browser/build-browser-artifact!
           {:manifest manifest
            :plans plans
            :output-path
-           "resources/public/gesso-live.js"})
+           candidate-artifact-path})
 
         preflight
         (gesso.application/preflight
           {:assembly normalized
            :browser-manifest manifest
-           :browser-artifact-receipt receipt})]
+           :browser-plans plans
+           :browser-artifact-receipt receipt
+           :served-artifact-path
+           candidate-artifact-path})]
 
     (gesso.application/admit-generation!
       preflight)))
 #+end_src
+
+Here =admit-generation!= returns a generation whose
+=:preflight/status= is =:accepted= and whose handler, route, provider, and
+served-artifact bindings are resolved from this same validated construction.
+The currentness check above runs on the served bytes, not just on the receipt.
+The staged path is unique to the candidate build and remains immutable while
+its assembly generation is admitted. The public logical asset route resolves
+through the request's admitted generation. Building a rejected A13 candidate
+cannot overwrite A12's served JavaScript. Activation switches new requests
+and asset bindings together; in-flight A12 requests keep their old binding.
+Browser cache/asset retention and old client compatibility follow the Part VI
+contract.
 
 This still leaves stale already-running browsers to Part VI's compatibility and
 recovery rules. Exact startup currentness answers a different question: whether
@@ -3112,6 +3274,8 @@ failed:
 {:http/status 500
 
  :gesso/settlement
+ ;; Produced by the trusted response boundary from the retained committed
+ ;; result; an arbitrary client or copied response map cannot issue it.
  {:command/id C42
   :authoritative-outcome :committed
   :presentation-outcome :response-render-failed
@@ -3121,7 +3285,15 @@ failed:
    :request/id R}}}
 #+end_src
 
-The exact transport is provisional. The semantic distinction is not.
+The exact transport is provisional. The semantic distinction is not. A client
+may use the committed outcome only after its settlement admission checks the
+authenticated source, command and owner correlation, outcome, and compatibility.
+If the 500 response body is lost or the selected HTMX error lifecycle does not
+expose that settlement path, the client must keep command disposition unknown
+and use the declared command-resolution or authoritative reacquisition path.
+The server's known commit remains committed either way. The selected supported
+response protocol must define how such a failure is delivered and normalized;
+the displayed map is not itself an admission certificate.
 
 This is why production-path tests need to state whether they are proving
 "malformed output was not delivered" or "protected mutation did not occur."
@@ -3384,7 +3556,8 @@ shape should resemble one stable module per lifecycle owner:
            (gesso.application/checked-handler
              generation
              (routes/application-handler
-               ctx))]
+               (generation/handler-bindings
+                 generation ctx)))]
 
        {:server
         (aleph/start-server!
@@ -3499,27 +3672,20 @@ Candidate construction happens before activation:
         {:error/type :application/candidate-not-admitted
          :candidate candidate})))
 
-  (let [old
-        (:current-generation runtime)]
-
-    (-> runtime
-        ;; Atomic/serialized activation boundary conceptually swaps the
-        ;; generation used by new requests.
-        (assoc
-          :current-generation
-          candidate)
-
-        (update
-          :retiring-generations
-          conj
-          old))))
+  ;; The implementation serializes this compare-and-activate operation,
+  ;; preserves old bindings for in-flight requests, and retires them only
+  ;; after all declared owners release their references.
+  (generation/activate-if-current!
+    runtime
+    (:current-generation runtime)
+    candidate))
 #+end_src
 
 A request that began under A12 keeps an A12 generation reference:
 
 #+begin_src clojure
 (def request-context
-  {:request/id H77
+  {:transport-request/id H77
    :generation/ref :A12})
 
 ;; Later source reload activates A13.
@@ -3531,7 +3697,7 @@ A request that began under A12 keeps an A12 generation reference:
 New requests use A13:
 
 #+begin_src clojure
-{:request/id H78
+{:transport-request/id H78
  :generation/ref :A13}
 #+end_src
 
@@ -3759,7 +3925,8 @@ could produce structured data resembling:
   :role :helper
 
   :semantic-status
-  {:class :kernel-checked
+  {:semantic-checker/status :accepted
+   :proof-kernel/status :accepted-under-stated-premises
    :certificate
    :cert/request-claim-v12}}
 
@@ -3782,7 +3949,7 @@ could produce structured data resembling:
    :status :assembly-verified}
 
   :artifact
-  {:path "resources/public/gesso-live.js"
+  {:path "resources/public/gesso-live.M18.js"
    :digest "sha256:..."
    :receipt :R18
    :status :assembly-verified}}
@@ -3831,8 +3998,14 @@ could produce structured data resembling:
 
  :settlement
  {:outcomes
-  #{:accepted :rejected :unknown}
+  #{:accepted :rejected}
 
+  :status :assembly-verified}
+
+ :delivery-uncertainty
+ {:knowledge :unknown
+  :recovery :route/request-card
+  :command-attribution :unknown
   :status :assembly-verified}
 
  :acquisition
@@ -3849,7 +4022,9 @@ could produce structured data resembling:
   :status :assembly-verified}
 
  :assurance
- {:semantic-operation :kernel-checked
+ {:semantic-operation
+  {:semantic-checker :accepted
+   :proof-kernel :accepted-under-stated-premises}
   :application-closure :assembly-verified
   :startup-enforcement :runtime-enforced
   :current-authorization :runtime-enforced
@@ -3973,9 +4148,8 @@ The invocation can still return a runtime/model outcome:
 #+begin_src clojure
 (request/claim
   current-runtime-context
-  {:request-id R
-   :helper-id Alice
-   :command-id C42})
+  {:request/id R
+   :command/id C42})
 ;; =>
 {:outcome :rejected
  :reason :membership-inactive}
@@ -4051,6 +4225,11 @@ The value of such an explanation is not that application runtime should carry a
 large graph on every request. The graph is construction and diagnostic evidence.
 It lets humans, tests, and future proof tooling inspect the same realization that
 startup actually admitted.
+The linear path displayed above shows direct settlement. The closure report
+also includes the separate
+=:claim/plan->unknown-recovery= and
+=:claim/recovery->acquisition= edges when response delivery is lost. That
+reacquisition recovers the Request view without claiming command attribution.
 
 That shared inspectable object is the opposite of the failure mode this part is
 trying to eliminate: a working-looking application whose browser, route, server,
@@ -4101,7 +4280,7 @@ This makes contradictory declarations repairable locally.
 The report should identify whether each statement is:
 
 - mechanically proved under named assumptions;
-- kernel-checked or exact-finite checked within its stated scope;
+- proof-kernel-checked or exact-finite checked within its stated scope;
 - assembly-verified;
 - runtime-enforced;
 - trusted or application-asserted;
@@ -4550,4 +4729,3 @@ the others merely because the same application satisfies all three.  Preflight,
 production-path rejection tests, application acceptance, and real-browser
 acceptance provide complementary, not interchangeable, evidence.
 #+end_quote
-
