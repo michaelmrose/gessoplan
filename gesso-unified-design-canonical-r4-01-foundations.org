@@ -1,10 +1,10 @@
-#+title: Gesso Unified Design
-#+subtitle: Canonical architecture, assurance model, and reference application
-#+date: 2026-09-22
-#+startup: nofold
-#+options: toc:3 num:nil
-#+property: canonical-revision r4-draft
-#+property: supersedes gesso-unified-design-canonical-r3
+# #+title: Gesso Unified Design
+# #+subtitle: Canonical architecture, assurance model, and reference application
+# #+date: 2026-09-22
+# #+startup: nofold
+# #+options: toc:3 num:nil
+# #+property: canonical-revision r4-draft
+# #+property: supersedes gesso-unified-design-canonical-r3
 
 #+LATEX_HEADER: \renewcommand{\maketitle}{}
 
@@ -579,43 +579,67 @@ owns current domain authorization and the decision about a repeated command:
        :command-id command-id})))
 #+end_src
 
-The admitted command boundary supplies a stable =:gesso/command-id= before the
-first possible send, validates its binding to this operation, arguments, and
-principal, and preserves it through retries; a browser may carry the identifier
-but does not confer authority by choosing its bytes. The public
-=request-model/claim!= operation must check any existing command record's
-binding and permission to disclose it, then atomically guard the current
-Request state, the helper's active Membership, the Organization policy, and the
-Request/Organization association together with the ownership change and
-command-result record. A compatible repetition of an incorporated command
-returns its permitted recorded outcome, including when the Request is now
-claimed; incompatible reuse is rejected. A new command whose commit guard
-fails returns a typed rejection and permits authoritative card reacquisition;
-an indeterminate delivery remains unknown until reconciliation against
-authoritative outcome evidence. Separate pre-reads would leave a race and
-could incorrectly reject a retry after a successful commit.
+#+begin_quote
+Why can a Claim be retried without claiming the Request twice?
+#+end_quote
 
-Part IV distinguishes model outcomes =:committed=, =:rejected=,
-=:already-incorporated=, and =:commit-unknown=. This example's presentation
-settlements are =:accepted=, =:rejected=, and =:unknown=: a permitted
-=:already-incorporated= outcome with a recorded successful claim maps to the
-same accepted successor without incorporating the command again;
-=:commit-unknown= remains unknown until reconciled. The assembly must check
-these explicit mappings, including the authority needed to disclose a prior
-result.
+Before the first possible send, the admitted command boundary assigns a stable
+=:gesso/command-id= to the Claim command. It binds that identity to the
+operation, its arguments, and the authenticated principal, and preserves the
+identity across retries. The browser may carry the identifier back to the server.
+Choosing or presenting its bytes does not authenticate the browser, authorize
+the Claim, or prove that the command committed.
+
+The public =request-model/claim!= operation handles an existing command record
+before treating an invocation as a new Claim. It checks that the recorded
+operation, arguments, and principal match the admitted command. It also checks
+whether the current principal may learn the recorded result. A compatible retry
+returns that permitted result without applying the transition again. Thus, a
+retry of a successful Claim may return success even though the Request is now
+claimed. Reusing the identifier for a different command is rejected, and the
+existence of a record must not disclose another principal's result.
+
+For a new command, Claim must check the current Request state, the helper's
+active Membership, the Organization policy, and the Request/Organization
+association as part of the atomic transition. The ownership change and
+successful command-result record commit together. If a required guard fails,
+the model returns a typed rejection and permits authoritative card
+reacquisition under the declared contract.
+
+Separate pre-reads cannot provide this guarantee. A relevant fact may change
+between a pre-read and commit. Conversely, checking only the Request's current
+status before consulting the command record could reject a retry because its
+first attempt already succeeded. The record establishes whether this command
+was incorporated; the atomic guards decide whether a new command can commit.
+
+Part IV distinguishes the model outcomes =:committed=, =:rejected=,
+=:already-incorporated=, and =:commit-unknown=. This example presents
+=:accepted=, =:rejected=, or =:unknown= to the participant. The assembly must
+check the explicit mapping:
+
+| Model outcome | Presentation settlement |
+|---------------+-------------------------|
+| =:committed= | =:accepted= when the successful result is delivered |
+| =:rejected= | =:rejected= when the typed rejection is delivered |
+| =:already-incorporated= | The permitted recorded result; a recorded successful Claim maps to =:accepted= without another transition |
+| =:commit-unknown= | =:unknown= until authorized command-outcome evidence resolves it |
+
+A delivery failure can leave the participant uncertain even if the transaction
+committed. Reading a Request that is currently claimed may settle its displayed
+state, but that observation alone does not establish which command claimed it.
 
 The exact declaration, certificate representation, and handler API are
-illustrative. The separation is not. A checked certificate can justify
-admitting the Claim plan when its obligations are discharged; separate
-production and transaction evidence must show that the admitted realization
-actually enforces current authority. A certificate cannot manufacture Alice's principal,
-Membership, Request state, Organization policy, or present authorization.
+illustrative. A checked certificate can justify admitting the Claim plan when
+its obligations are discharged. Separate production and transaction evidence
+must show that the running realization enforces command binding, permitted
+result disclosure, current authority, and the atomic guards. A certificate
+cannot manufacture the authenticated principal, active Membership, current
+Request state, Organization policy, or present authorization.
 
-This is also why sending the certificate back from the browser would add no
-authority. The browser may carry a reference to the admitted operation or plan,
-but the current trusted premises still belong to the runtime boundary that owns
-them.
-
+Sending that certificate back from the browser would add no authority. The
+browser may carry a reference to an admitted operation or plan; the trusted
+runtime boundaries must still establish the current facts and permissions they
+own.
 #+LATEX: \newpage
 
 Therefore:

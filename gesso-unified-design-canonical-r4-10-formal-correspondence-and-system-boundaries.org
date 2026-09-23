@@ -560,7 +560,8 @@ transition:
    :domain-input
    {:request/id :uuid}
    :correlation
-   {:command/id :uuid}})
+   {:command/id :uuid}
+   :observed-basis :optional-untrusted-observation-reference})
 
 (def claim-subject
   {:operation :request/claim
@@ -569,15 +570,31 @@ transition:
    :trusted-context
    {:principal :authenticated-principal
     :membership :current-authoritative-membership
-    :request :current-authoritative-request}
+    :request :current-authoritative-request
+    :organization :current-authoritative-organization}
    :preconditions
-   [[:= [:trusted :request :request/status] :request.status/open]
-    [:known? [:trusted :membership] :current]
+   [[:= [:trusted :request :request/status] :open]
+    [:= [:trusted :membership :membership/status] :active]
+    [:= [:trusted :membership :membership/organization-id]
+        [:trusted :request :request/organization-id]]
+    ;; Policy is a typed, named HumanHelp model premise. Whether its
+    ;; implementation conforms is separate trusted/checked evidence.
+    [:organization/allows-claim?
+     [:trusted :organization]
+     [:trusted :membership]
+     [:trusted :request]]
     [:authorized? [:trusted :principal] :request/claim]]
    :transition
-   {:request/status :request.status/claimed
+   {:request/status :claimed
     :request/helper-id [:trusted :principal :user/id]}
-   :outcomes #{:accepted :rejected :unknown}})
+   :commit-contract
+   {:guard #{:current-request :current-membership
+             :current-organization :bound-command-identity}
+    :atomic-writes #{:request-ownership :command-result-record}}
+   :outcomes #{:accepted :rejected}
+   :delivery-uncertainty
+   {:recover {:acquire :request/card
+              :command-attribution :unknown}}})
 
 (def claim-normalized
   (gesso.semantics/normalize-operation claim-subject))
@@ -588,14 +605,14 @@ transition:
 (def claim-production-plan
   (gesso.compile/executable-operation claim-normalized))
 
-;; Claim 1: anything admitted by the production boundary for this guarantee
-;; has the corresponding formal judgment under the recorded assumptions.
+;; An instance-level check for this normalized Claim subject. A theorem about
+;; every supported operation needs a separately checked quantified proof.
 (def claim-admission-correspondence
   (gesso.formal/check-correspondence
    {:formal-subject claim-formal-subject
     :production-subject claim-production-plan
     :proposition
-    [:forall-supported-subjects
+    [:this-normalized-subject
      [:production-admits? :request/claim]
      [:formal-judgment-holds? :claim-admissible]]
     :direction :production-admission-implies-formal-validity
@@ -605,34 +622,41 @@ transition:
      :operation :semantic/request-claim-op-O31
      :kernel :gesso-proof-kernel/K7}}))
 
-;; Claim 2: the concrete implementation/lowering used by production cannot
-;; perform an observable Claim behavior outside the admitted semantic plan.
-;; This is a distinct obligation; acceptance-set agreement alone is not enough.
-(def claim-execution-refinement
-  (gesso.formal/check-execution-refinement
-   {:semantic-plan claim-production-plan
-    :production-artifact :artifact/request-claim-A44
-    :observable-trace
+;; This is a distinct obligation. An opaque arbitrary Clojure implementation
+;; cannot be proved to refine a plan by naming its artifact in a map.
+(def claim-execution-obligation
+  {:semantic-plan claim-production-plan
+   :production-binding
+   {:server-capability :server/request-claim
+    :model-var 'net.humanhelp.site.model.request.core/claim
+    :implementation-identity :fixture/claim-implementation-A44}
+   :observables
     #{:authoritative-read
       :authorization-decision
       :durable-commit
       :settlement
       :progression-publication}
-    :proposition
-    [:every-relevant-production-trace
-     [:refines :request/claim-semantic-trace]]
-    :dependencies
-    {:lowering :gesso.lowering/L12
-     :adapter :humanhelp.request.adapter/A9
-     :runtime-profile :humanhelp.production/P4}}))
+   :proposition
+   [:every-relevant-production-trace
+    [:refines :request/claim-semantic-trace]]
+   :dependencies
+   {:lowering :gesso.lowering/L12
+    :adapter :humanhelp.request.adapter/A9
+    :runtime-profile :humanhelp.production/P4}})
 
-(def admitted-claim
-  (gesso.application/admit-operation
-   {:normalized-subject claim-normalized
-    :plan claim-production-plan
-    :required-correspondence
-    [claim-admission-correspondence
-     claim-execution-refinement]}))
+(def claim-execution-refinement
+  (gesso.formal/check-execution-refinement
+    claim-execution-obligation))
+
+;; The selected profile may admit a named trusted implementation premise,
+;; or require a checked refinement. An unsupported/unchecked result cannot
+;; satisfy the latter. Whole-application admission still follows Part VII.
+(def claim-correspondence-gate
+  {:normalized-subject claim-normalized
+   :plan claim-production-plan
+   :admission-evidence claim-admission-correspondence
+   :execution-evidence claim-execution-refinement
+   :selected-profile :gesso/external-formal-v1})
 
 ;; Wrong shape: prove F, then independently execute G.
 (def formal-F
@@ -646,7 +670,7 @@ transition:
   (if (:request/priority-lock? request)
     request
     (assoc request
-           :request/status :request.status/claimed
+           :request/status :claimed
            :request/helper-id (get-in browser-command [:actor :id]))))
 #+end_src
 
@@ -655,6 +679,18 @@ object merely because its keys look right.  Authentication, current Membership,
 current Request state, authorization, normalization, and the required
 correspondence evidence all belong to their declared trusted/admission
 boundaries.
+
+The =:commit-contract= records an obligation, not evidence that an arbitrary
+Request implementation actually performs one atomic guarded write. Production
+Claim must check the command record's operation, Request argument, and bound
+principal before a permitted replay; guard the current Request, Membership,
+Organization, and association together with the ownership and command-result
+write; and retain unknown delivery as participant knowledge. The formal
+profile cannot report checked execution refinement of those actions without
+a real implementation binding and a proof or other justified correspondence
+mechanism. Calling =check-execution-refinement= in this illustrative code does
+not assert its result is =:checked=. In Part VII, preflight and admission apply
+to the whole assembled application after the profile's requirements are met.
 
 The final =production-G= shape leaves two independent gaps.  First, the formal
 subject and the production behavior are not connected by a checked execution
@@ -811,6 +847,8 @@ UUIDs would therefore prove only an artificial four-value model.
 (defn callback-admitted? [state callback]
   (and (= (:resource-instance callback)
           (:current-resource-instance state))
+       (not (contains? (:retired-resource-instances state)
+                       (:resource-instance callback)))
        (contains? (:pending state)
                   (:resource-instance callback))))
 
@@ -825,14 +863,23 @@ UUIDs would therefore prove only an artificial four-value model.
    (abstract-instance state (:resource-instance callback))
    :pending?
    (contains? (:pending state) (:resource-instance callback))
+   :retired?
+   (contains? (:retired-resource-instances state)
+              (:resource-instance callback))
    :event (:event callback)})
 
-(defn abstract-admitted? [{:keys [instance-class pending?]}]
-  (and (= instance-class :instance/current) pending?))
+(defn abstract-admitted?
+  [{:keys [instance-class pending? retired?]}]
+  (and (= instance-class :instance/current)
+       pending?
+       (not retired?)))
 
 (def resource-ownership-obligation
   {:initial :every-concrete-initial-state-has-related-abstract-state
    :step :every-relevant-concrete-transition-is-simulated
+   :fresh-name :allocation-preserves-required-equality-and-inequality
+   :retirement :current-identity-cannot-remain-permitted-when-retired
+   :metadata :pending-and-retired-sets-are-bounded-or-soundly-abstracted
    :property
    [:implies
     [:abstract-callback-admitted?]
@@ -847,6 +894,15 @@ exhaustive exploration of the finite abstract state space can support a claim
 about every concrete identity covered by that theorem.  Without that bridge,
 the same exploration is merely bounded evidence.  Liveness still needs its own
 scheduling/fairness argument rather than inheriting this safety result.
+Here =abstract-callback= is only a *local observation abstraction*, not a
+complete finite transition system. A real proof must specify the abstract
+state and all transitions, preserve equality and freshness when an arbitrary
+new identity becomes current, and account for unbounded pending/retired
+metadata. It must also state the invariant that a retired current instance
+cannot retain effect permission. This slice checks resource ownership alone;
+execution identity, effect phase, and deferred DOM mutation require their own
+admission conditions. None of the symbols in =resource-ownership-obligation=
+is itself a discharged theorem.
 
 *** Evidence package and maintenance
 
@@ -976,8 +1032,10 @@ semantic proof evidence
 #+end_example
 
 
-A cache lookup makes the distinction operational.  Matching bytes can establish
-artifact identity while old semantic evidence is nevertheless stale under a new
+A cache lookup makes the distinction operational. This small data example
+compares *claimed* artifact IDs; it does not inspect served bytes or establish
+that either ID is genuine. Even when the real Part VII currentness check has
+established byte identity, old semantic evidence can be stale under a new
 dependency closure.
 
 #+begin_src clojure
@@ -996,21 +1054,26 @@ dependency closure.
     :membership :semantic/membership-M19}
    :assembly-generation :assembly/H43})
 
-(defn artifact-identical? [cached current]
+(defn claimed-artifact-id-equal? [cached current]
   (= (:artifact/id cached) (:required-artifact/id current)))
 
-(defn evidence-admissible? [cached current]
-  (and (artifact-identical? cached current)
+(defn claim-compatible-with-current-closure? [cached current]
+  (and (claimed-artifact-id-equal? cached current)
        (= (:dependencies cached) (:dependencies current))
        (= (:assembly-generation cached) (:assembly-generation current))))
 
-(artifact-identical? cached-browser-artifact current-application) ;=> true
-(evidence-admissible? cached-browser-artifact current-application) ;=> false
+(claimed-artifact-id-equal?
+  cached-browser-artifact current-application) ;=> true
+(claim-compatible-with-current-closure?
+  cached-browser-artifact current-application) ;=> false
 #+end_src
 
-The digest still says something useful about exact artifact identity.  It does
-not authorize carrying the old Membership-dependent proposition into the new
-assembly, and a new digest alone would not prove semantic correctness either.
+The copied digest claim cannot authorize carrying the old Membership-dependent
+proposition into the new assembly. To establish actual byte correspondence,
+the checker must inspect the asset production will serve and relate its digest
+and emitted plan registry to the current manifest/receipt under Part VII's
+build and serving contract. Only then is artifact identity evidence available;
+it still does not prove the proposition associated with those bytes.
 
 *** Elaborator/checker shared-bug risk
 
@@ -1342,20 +1405,29 @@ accepted from the browser:
         (membership/read-current-authoritative
          node-a-system
          {:organization/id (:request/organization-id request)
-          :user/id (:user/id principal)})]
+          :user/id (:user/id principal)})
 
+        organization
+        (organization/read-current-authoritative
+         node-a-system
+         (:request/organization-id request))]
+
+    ;; Admission validates the wire contract and binds these trusted facts;
+    ;; execute-admitted-claim! rechecks mutable facts and policy in its
+    ;; atomic commit. Declaring a requirement is not proof it was satisfied.
     (choreo/admit-command
      {:operation :request/claim
       :wire-command wire-command
       :trusted
       {:principal principal
        :request request
-       :membership membership}
+       :membership membership
+       :organization organization}
       :requirements
       #{:authenticated-principal
         :current-request
         :current-membership
-        :claim-authorized}})))
+        :current-organization}})))
 
 (def admitted-claim
   (admit-claim-through-node-a incoming-http-request browser-claim-command))
@@ -1363,43 +1435,77 @@ accepted from the browser:
 (def claim-result
   (request/execute-admitted-claim! node-a-system admitted-claim))
 
-;; The committed authoritative fact is derived from the trusted/admitted
-;; principal and outlives node A.  It is not reconstructed from browser data.
+;; A rejected result has no committed Request and produces no success advisory.
+;; A response lost after submission is uncertain to the browser until it has
+;; command-specific evidence; a current-state read alone may not attribute it.
 (def committed-request
-  (:authoritative/request claim-result))
+  (when (= :committed (:outcome claim-result))
+    (:authoritative/request claim-result)))
 
-(assert (= (:request/helper-id committed-request)
-           (get-in admitted-claim [:trusted :principal :user/id])))
+(when committed-request
+  (assert (= (:request/helper-id committed-request)
+             (:user/id
+              (choreo/admitted-trusted-principal admitted-claim)))))
 
+;; This publication attempt may itself fail after a successful commit. It
+;; carries board progression information, not protected Request contents.
 (def advisory
-  {:kind :request/authority-may-have-advanced
-   :scope [:request/id (:request/id committed-request)]
-   :requires (:progression/requirement claim-result)})
+  (when committed-request
+    {:kind :request/authority-may-have-advanced
+     :scope
+     {:projection :request/board
+      :organization-id (:request/organization-id committed-request)
+      :coverage :complete-authorized-membership}
+     :requires
+     (progression/require-board-requirement!
+       claim-result)}))
 
 (defn refresh-through-node-c
-  [http-request advisory]
+  [http-request trigger]
   (let [principal
         (auth/require-authenticated-principal node-c-system http-request)
 
+        scope
+        (board/require-current-authorized-scope!
+         node-c-system principal)
+
+        ;; An admitted advisory may add a progression requirement. Explicit
+        ;; Refresh still works when no advisory arrived at Bob's browser.
+        requirement
+        (advisory/requirement-if-admitted-for-scope
+         trigger scope)
+
         acquisition
-        (request/admit-authoritative-acquisition
+        (board/admit-authoritative-acquisition
          node-c-system
          {:principal principal
-          :scope (:scope advisory)
-          :requirement (:requires advisory)})
+          :scope scope
+          :requirement requirement
+          :trigger trigger})
 
         observation
-        (request/read-authoritative node-c-system acquisition)]
+        (board/read-authoritative node-c-system acquisition)]
 
-    (progression/assert-satisfies!
-     observation
-     (:requires advisory))
-
-    observation))
+    (if (and requirement
+             (not (progression/satisfies?
+                    observation requirement)))
+      {:status :retryable-insufficient-progression
+       :required requirement}
+      {:status :acquired
+       :observation observation})))
 #+end_src
 
-If publication is lost, node C can satisfy the outstanding requirement by
-performing a new authorized authoritative acquisition against the durable model.
+If publication is lost before Bob sees it, Bob cannot supply its requirement;
+his explicit Refresh or another declared recovery trigger must perform a new
+authorized authoritative acquisition against the durable model. With a
+previously received advisory, the acquisition must satisfy its scoped
+progression requirement; a lagging node returns retryable insufficiency
+without discharging it. Acquisition alone does not establish browser
+installation: the adapter admits and installs the observation under the
+current resource-instance and adoption policy.
+The advisory branch illustrates one selected remote-lifecycle notification
+policy; Part VIII leaves automatic adoption of already-visible remote
+lifecycle changes as an explicit HumanHelp product decision.
 It does not reconstruct the Claim from node A's process memory, and possession
 of the advisory does not itself authorize the read.  The reread can establish
 current Request state without proving whether Alice received her direct
@@ -1463,6 +1569,9 @@ authenticated/current collaboration state:
 (defn receive-typing!
   [recipient-session delivered-message]
   (let [receipt
+        ;; Checks trusted sender/recipient binding, current recipient access,
+        ;; admitted routing scope, expiry, and current execution/resource owner.
+        ;; A wire map or broker delivery by itself is not a receipt.
         (routing/admit-recipient-receipt
          {:recipient-session recipient-session
           :message delivered-message
@@ -1627,4 +1736,3 @@ adoption policy survives these realizations. Operational success, compositional
 certification, external formal correspondence, and multi-node completion remain
 distinct milestones with distinct evidence.
 #+end_quote
-
