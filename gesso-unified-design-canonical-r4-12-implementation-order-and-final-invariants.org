@@ -204,6 +204,8 @@ Gate:
   rather than pretending a successful HTTP response establishes coverage;
 - advisory debt does not itself authorize acquisition or adoption;
 - successor acquisitions stay within the declared user-action/policy permission;
+- an authorized explicit acquisition path remains available when a relevant
+  advisory is never delivered and no debt was recorded for it;
 - reconnect does not grant stale callbacks authority.
 
 *** Stage 6 -- Whole-application assembly and mandatory preflight
@@ -278,6 +280,8 @@ Required work:
 - sort and visibility controls;
 - Request details/continuity;
 - a selected, independently testable response-flow contract;
+- a selected remote lifecycle adoption policy, without equating advisory delivery
+  with permission to show or acquire a changed Request;
 - terminal rendering;
 - login/principal separation;
 - multiple browser contexts;
@@ -294,6 +298,8 @@ Gate:
   rendering, or trusted-invocation boundary;
 - all required lifecycle and rich-board capabilities pass independently of which
   actions the current implementation happens to expose;
+- dropped advisory delivery still has an independent permitted Refresh or other
+  declared recovery path; reconnect alone cannot be its only trigger;
 - local creation while unrelated remote work is pending preserves selective
   adoption and advisory debt;
 - local hiding is not misclassified as authoritative absence;
@@ -647,6 +653,8 @@ Gate:
 - node-local state may disappear without losing authoritative model truth;
 - users on different nodes converge through authority under the declared
   acquisition/adoption policy, recovery actions, and environmental premises;
+- cross-node convergence does not depend on delivery of each advisory, including
+  when the only advisory for a change is lost;
 - retry/duplicate handling follows the model's declared durable identity and
   retention contract where claimed;
 - crash after commit before publication exercises the actual recovery path;
@@ -665,6 +673,11 @@ applications.  Names are illustrative.  In particular, functions whose names
 contain =admit=, =prepare=, =issue=, or =check= stand for the corresponding
 supported checking boundary described in the preceding Parts; a raw map with the
 same fields is not thereby an admitted value.
+
+These source blocks are contract sketches, not verified Biff, Gesso, HumanHelp,
+or formal-tool APIs. Their identifiers denote distinct checked results where
+the text says they are admitted; evaluating a sketch or assigning a =def= does
+not implement a checker, run a proof, or grant admission.
 
 The example also keeps three kinds of identity separate throughout:
 
@@ -688,7 +701,9 @@ from the static operation declaration.
    :trusted-requirements
    #{:principal/current
      :clock/current
-     :request/current}
+     :request/current
+     :membership/current
+     :organization/current}
    :prepare
    [:load-current-request
     :authorize-current-principal-as-helper
@@ -719,7 +734,13 @@ part of the operation's meaning.
     {:request/id (routes/request-id http-request)}
     :authoritative-input
     {:request/current
-     (request-model/read-current db (routes/request-id http-request))}
+     (request-model/read-current db (routes/request-id http-request))
+     :membership/current
+     (membership-model/read-for-principal
+      db (session/current-principal http-request))
+     :organization/current
+     (organization-model/read-for-request
+      db (routes/request-id http-request))}
 
     ;; Distinct from the durable command identity carried by an admitted
     ;; semantic command.
@@ -731,7 +752,9 @@ Only after this boundary has checked operation identity, route/transport
 correspondence, authenticated principal binding, structural command requirements,
 and the operation's trusted requirements does the HumanHelp model receive the
 admitted invocation.  The model remains the sole owner of the Claim business
-transition.
+transition. Trusted observations and commit-time guards must still obey the
+model's consistency contract; a pre-commit read alone does not make future
+authorization or Request status true at commit.
 
 By Stage 3, the same operation gains a portable semantic description.  Knowledge
 is not represented merely as a bag of convenient fact names: the projected role
@@ -765,8 +788,15 @@ assertion.
 
    :branch
    {:when [:known= [:helper :request/status] :open]
-    :offer :request/claim
+    :continue :request/claim-binding
     :otherwise :claim/unavailable}
+
+   ;; Availability comes from model-owned preparation with trusted current
+   ;; membership/organization context. Observing :open is necessary here,
+   ;; never sufficient to assert eligibility or server authorization.
+   :binding {:source :model-owned-preparation
+             :operation :request/claim
+             :render-control :only-when-bound}
 
    :authoritative-observation :request/current})
 
@@ -774,10 +804,12 @@ assertion.
   (choreo/project claim-choreo :helper))
 #+end_src
 
-Projection may therefore expose Claim only when the helper projection can justify
-the branch it takes.  The choreography does not create another copy of the
-HumanHelp Claim policy; it describes interaction around the authoritative
-operation and the knowledge needed to project it safely.
+Projection may take this branch only when the helper can justify its observation.
+The rendered Claim control also requires a model-owned eligible binding, and a
+later trusted server admission rechecks current principal and model preconditions.
+The choreography does not create another copy of the HumanHelp Claim policy; it
+describes interaction around the authoritative operation and the knowledge needed
+to project it safely.
 
 Stages 4-5 make that projection executable in the browser and connect successful
 or uncertain execution to settlement, advisory invalidation, and permitted
@@ -795,7 +827,9 @@ map nor a later current-state reread proves an uncertain command's outcome.
    {:kind :admitted-semantic-command
     :operation :request/claim}
    :provisional-effect :request/show-claimed-by-self
-   :settlement #{:committed :rejected :outcome-unknown}
+   :authoritative-settlement #{:accepted :rejected}
+   :delivery-uncertainty {:participant-knowledge :outcome-unknown
+                          :recovery :permitted-authoritative-reread}
    :managed-fragment :request/card})
 
 (def request-change-advisory
@@ -804,15 +838,19 @@ map nor a later current-state reread proves an uncertain command's outcome.
    :request/id request-id
    :remote-progression 42
    :acquisition :request/current
-   :adoption-policy :board/explicit-refresh})
+   :adoption-permission :from-selected-humanhelp-policy})
 #+end_src
 
-The advisory says that relevant authority advanced.  It contains neither the
-authoritative Request value nor permission to adopt unrelated Requests.  A later
-admitted =:request/current= observation can supersede provisional presentation,
-but current state and command-outcome knowledge remain distinct.  Resource
-instance ownership is also checked independently, so a callback from an obsolete
-browser resource cannot settle or mutate its successor.
+Here =:remote-progression= is advisory data for the scoped resource, not a newly
+admitted authoritative observation. This sketch intentionally leaves remote
+lifecycle adoption to the HumanHelp decision required by Stage 7; for a newly
+created remote Request the explicit board Refresh remains the declared visible
+adoption action. The advisory contains neither the authoritative Request value
+nor permission to adopt unrelated Requests. A later permitted and admitted
+=:request/current= observation can supersede provisional presentation, but
+current state and command-outcome knowledge remain distinct. Resource instance
+ownership is also checked independently, so a callback from an obsolete browser
+resource cannot settle or mutate its successor.
 
 At Stages 6-8, the Claim path must close as part of the actual application.  The
 closure boundary does substantially more than confirm that a bag of names exists.
@@ -836,17 +874,20 @@ admitted assembly generation.
    :required-server-capabilities
    #{:principal/current
      :clock/current
-     :request/current}
+     :request/current
+     :membership/current
+     :organization/current}
    :required-browser-manifest-entry :plan/request-claim})
 
 (def admitted-humanhelp-generation
   (application/admit-generation!
-   {:canonical-assembly humanhelp/application-assembly
-    :requirements #{claim-closure-requirement}
+   {:canonical-assembly
+    (humanhelp/application-assembly config)
+    :inspection-targets #{claim-closure-requirement}
     :prepared-server-realizations prepared-server-realizations
     :routes humanhelp/routes
     :acquisitions humanhelp/acquisitions
-    :generated-browser-artifact browser-build/receipt}))
+    :generated-browser-artifact generated-browser-artifact}))
 
 (def claim-closure-report
   (application/explain-path
@@ -854,10 +895,15 @@ admitted assembly generation.
    :request/claim))
 #+end_src
 
-The important output is not a self-declared =:valid? true=.  Admission returns a
-checker-owned assembly generation whose report identifies the checked edges,
-exact artifact correspondence, supplied capabilities, and any retained runtime or
-trusted premises.  HumanHelp then exercises that same production assembly in real
+The =:inspection-targets= set in this sketch requests explanation of one Claim path; it
+does not define the application's required product capabilities. The canonical
+assembly and independent Part VIII product acceptance input still require all
+six lifecycle operations and the remaining rich-board behaviors before Stage 7
+or the operational milestone can pass. Admission returns a checker-owned assembly
+generation whose report identifies checked edges, exact artifact correspondence,
+supplied capabilities, and retained runtime or trusted premises; a self-declared
+=:valid? true= is insufficient. HumanHelp then exercises that same production
+assembly in real
 Chromium:
 
 #+begin_example
@@ -881,11 +927,17 @@ specific certification profile.
 (def normalized-claim-rule
   (rules/normalize
    {:rule/id :request/helper-may-claim
+    :source :humanhelp/request-model/claim-policy
     :subject :request
     :when
     [:and
      [:= [:request/status] :open]
-     [:membership/current-helper? [:principal/current]]]
+     [:= [:membership/status] :active]
+     [:= [:request/organization-id] [:membership/organization-id]]
+     [:organization/allows-claim?
+      [:organization/current]
+      [:membership/current]
+      [:request/current]]]
     :result :claim/allowed}))
 
 (def admitted-claim-rule-certificate
@@ -894,7 +946,10 @@ specific certification profile.
     :profile :gesso/rules-v1
     :dependencies
     {:request-schema request-schema-certificate
-     :membership-relationship membership-certificate}
+     :membership-relationship membership-certificate
+     :organization-policy organization-policy-certificate
+     :organization-allows-claim-primitive
+     admitted-organization-claim-primitive-contract}
     :assumptions
     #{{:assumption/id :humanhelp/current-membership-read-is-authoritative
        :proposition :membership/current-read-authoritative}}
@@ -909,10 +964,19 @@ specific certification profile.
     :required-guarantees
     #{:trusted-principal-binding
       :authoritative-current-request
+      :current-membership-and-organization
       :open->claimed-transition-owned-by-model}
     :derivations claim-operation-derivations
     :implementation-assumptions claim-implementation-assumptions}))
 #+end_src
+
+The rule is an illustrative normalized view of the single HumanHelp model-owned
+policy, not another browser-maintained decision. Its organization predicate is
+admitted only under a typed, totality/partiality-declared primitive contract and
+the relevant dependencies. The certificate does not prove that an arbitrary
+implementation of =humanhelp.request/claim!= evaluates that rule or protects
+commit-time preconditions: that correspondence retains its separately checked
+or explicitly trusted implementation obligation.
 
 The Choreo, helper projection, executable plan, and application assembly are then
 certified against the exact admitted dependencies they consume.  Their serialized
@@ -969,6 +1033,7 @@ in for execution trace/refinement.
     {:formal-transition formal/request-claim-transition
      :production-realization humanhelp.request/claim!
      :observable-boundary :authoritative-request-transition
+     :correspondence-evidence claim-model-correspondence-evidence
      :assumptions claim-execution-correspondence-assumptions})})
 
 (def admitted-claim-release
@@ -982,11 +1047,15 @@ in for execution trace/refinement.
     :implementation-evidence claim-production-evidence}))
 #+end_src
 
-The release result therefore means that the exact admitted subjects and shipped
-artifact satisfied the requested evidence profile.  A theorem about a neighboring
-formal subject, a certificate for a predecessor semantic identity, or a Chromium
-run against different bytes cannot be substituted merely because the labels look
-related.
+The =:correspondence-evidence= above must be a checked witness for the stated
+production relation or an explicitly classified trusted premise compatible with
+the requested profile. The name =check-execution-refinement!= does not supply a
+proof by itself, and admission correspondence alone cannot establish this
+execution claim. If the requested profile requires a proof and has only a trusted
+premise, admission fails. A successful release result concerns the exact admitted
+subjects and shipped artifact; a theorem about a neighboring formal subject, a
+certificate for a predecessor semantic identity, or a Chromium run against
+different bytes cannot substitute for them.
 
 Finally Stage 18 changes physical topology, not Claim's semantic owner or the
 meaning of any earlier identity.  A command can be admitted on node A, commit
@@ -1208,8 +1277,9 @@ remaining uncertainty.
 
 Advisory requirements, observations, and adoption are scoped. A newer local
 result cannot admit unrelated remote Requests or erase their outstanding debt.
-Queued successors, reconnect, and stale-plan recovery require their declared
-acquisition/adoption permission.
+An authorized explicit Refresh can acquire changes even if no advisory arrived
+and thus no debt was recorded. Queued successors, reconnect, and stale-plan
+recovery require their declared acquisition/adoption permission.
 
 *** Gate M -- evidence scope survives composition and release
 
@@ -1256,9 +1326,11 @@ claim.
                 :action :adopt-all-visible-requests}
 
    ;; The exposed operation registry accidentally omits Reassign, then calls the
-   ;; smaller registry the complete product.
-   :capabilities {:required #{:claim :unclaim :complete :cancel :reassign}
-                  :exposed #{:claim :unclaim :complete :cancel}}
+   ;; smaller registry the complete lifecycle.
+   :capabilities {:required #{:claim :unclaim :mark-on-the-way
+                              :complete :cancel :reassign}
+                  :exposed #{:claim :unclaim :mark-on-the-way
+                              :complete :cancel}}
 
    ;; Formal and browser evidence concern neighboring, not admitted, artifacts.
    :evidence {:certificate-subject :plan/request-claim-P23
@@ -1266,8 +1338,9 @@ claim.
               :chromium-tested-artifact "sha256:previous-release"
               :release-artifact "sha256:old-bytes"}
 
-   ;; Preflight also overclaims a future fact.
-   :preflight {:network-will-remain-available true}})
+   ;; Preflight also overclaims a future fact, with no checked recovery contract.
+   :preflight {:network-will-remain-available true
+               :network-loss-recovery nil}})
 #+end_src
 
 The candidate is not repaired by choosing one late gate and calling every defect a
@@ -1284,7 +1357,7 @@ release error.  Each contradiction stops where enough information first exists:
 | Release lacks Chromium evidence for shipped bytes | release admission | G -- real browser release gate |
 | Known malformed closure is allowed to run | application preflight | H -- stop malformed programs early |
 | Authority-shaped browser map treated as admitted value | trusted admission | I -- representation is not admission |
-| Reassign disappears because registry omitted it | product completeness check | J -- independent capability completeness |
+| Reassign disappears because registry omitted it | independent product completeness check | J -- independent capability completeness |
 | Current state is treated as proof of timed-out command outcome | recovery semantics | K -- knowledge differs from outcome |
 | Reconnect adopts outside declared policy/scope | acquisition/adoption check | L -- scope survives recovery |
 | Certificate/test identities copied onto different artifacts | release composition | M -- evidence scope survives release |
@@ -1301,7 +1374,10 @@ look persuasive.
 First the application is reconstructed from the canonical source-owned assembly.
 The required trusted capabilities must actually resolve, and the browser artifact
 must be generated from the current normalized assembly rather than renamed to
-match it.
+match it. The recovered assembly's source-owned dynamic failure contract must
+also pass structural preflight before any application listener serves; the
+product acceptance requirement comes from the independent HumanHelp spec rather
+than the application's exposed operation list.
 
 #+begin_src clojure
 (def repaired-generation
@@ -1314,7 +1390,9 @@ match it.
           :providers
           {:principal/current session-principal-provider
            :clock/current system-clock-provider
-           :request/current request-model-provider}})
+           :request/current request-model-provider
+           :membership/current membership-model-provider
+           :organization/current organization-model-provider}})
 
         browser-artifact
         (browser-build/generate!
@@ -1324,9 +1402,15 @@ match it.
      {:canonical-assembly assembly
       :prepared-server-realizations prepared-server
       :generated-browser-artifact browser-artifact
-      :required-product-capabilities
-      #{:claim :unclaim :complete :cancel :reassign}})))
+      :required-product-acceptance
+      humanhelp/independent-product-acceptance})))
 #+end_src
+
+That independent acceptance specification covers all six lifecycle operations,
+creation, details, response flow, search, sorting, visibility, Refresh, and the
+selected remote lifecycle policy. The sketch is conditional on those product
+decisions being recorded and evidenced; the current unfinished application
+cannot be declared complete merely by evaluating this expression.
 
 The request path then treats browser input as an untrusted representation.  The
 server binds the authenticated principal and current dynamic facts itself, checks
@@ -1353,6 +1437,14 @@ admitted execution only if the declared operation requirements are satisfied.
           {:request/current
            (request-model/read-current
             (:db system)
+            (routes/request-id http-request))
+           :membership/current
+           (membership-model/read-for-principal
+            (:db system)
+            (session/current-principal http-request))
+           :organization/current
+           (organization-model/read-for-request
+            (:db system)
             (routes/request-id http-request))}
           :execution-id (execution/new-id!)})]
 
@@ -1366,27 +1458,33 @@ Notice what is *not* repaired by this code: a client field named =:principal=,
 command identity carried by the semantic envelope identifies the command after
 its protocol/admission checks; it does not authenticate the actor or establish
 current authoritative state.
+The model must revalidate its claim guards in the declared atomic transition;
+these reads are trusted inputs, not an immunity from concurrent changes.
 
-Recovery and continuity are repaired at their own semantic boundaries.  Current
+Recovery and continuity are repaired at their own semantic boundaries. Current
 state can supersede provisional presentation without fabricating knowledge of the
 lost command outcome, and a reconnect preserves advisory debt until the declared
-scope/adoption policy permits reacquisition.
+scope/adoption policy permits reacquisition. An advisory can be lost altogether:
+the permitted explicit board Refresh must independently acquire current
+authority under the selected HumanHelp policy.
 
 #+begin_src clojure
 (def repaired-recovery-policy
-  {:on-transport-uncertainty
-   {:authoritative-reread :request/current
-    :presentation :may-converge-to-current-authority
-    :command-outcome :outcome-unknown-unless-admitted-evidence}
-
-   :on-reconnect
-   {:remote-progress :record-advisory-debt
-    :automatic-adoption :only-where-declared
-    :request-board :board/explicit-refresh}})
+  (application/declared-recovery repaired-generation))
 #+end_src
 
-The certification/formal/browser evidence must then be regenerated or re-admitted
-for the exact current subjects.  Matching identifier strings are not enough.
+The admitted recovery contract must preserve command-outcome uncertainty on lost
+delivery, record scope-compatible advisory debt on reconnect, and let a permitted
+explicit board Refresh acquire current authority without an advisory. It does
+not use reconnect to grant automatic adoption. Its structural coverage and the
+concrete implementations must be checked during assembly admission and fault
+tests; writing a similar map after the fact would establish nothing.
+
+For an illustrative later release requesting compositional and external formal
+assurance, certification/formal/browser evidence must be regenerated or
+re-admitted for the exact current subjects. Operational application completion
+under Stages 1–8 does not require completion of the later formal milestone.
+Matching identifier strings are not enough.
 
 #+begin_src clojure
 (def repaired-assurance
@@ -1403,8 +1501,8 @@ for the exact current subjects.  Matching identifier strings are not enough.
         formal-correspondence
         (formal/check-production-correspondence!
          {:certification claim-certification
-          :production-checker production/gesso-kernel
-          :formal-rules formal/gesso-kernel
+          :production-checker production/gesso-proof-kernel
+          :formal-rules formal/gesso-proof-kernel
           :required-claims
           #{:admission-correspondence
             :claim-execution-refinement}})
@@ -1422,34 +1520,42 @@ for the exact current subjects.  Matching identifier strings are not enough.
      :chromium-evidence chromium-evidence}))
 #+end_src
 
-Preflight still does not predict that the network will stay available.  Instead,
-the application declares and checks that the relevant dynamic failure paths have
-supported recovery behavior:
+Each formal result needs its actual mechanism and scope. An admission/checker
+correspondence result does not establish execution refinement; any missing
+execution witness remains a named trusted or tested premise, and a requested
+formal proof profile must reject it when that profile requires a checked result.
+The Chromium run must exercise the production served bytes and controls for the
+same admitted assembly generation, with evidence of that byte binding.
+
+Preflight did not predict that the network would stay available. The following
+is only a readable excerpt of the dynamic-condition handling declared by the
+canonical assembly and structurally checked before serving; it is neither a
+new post-admission override nor an unconditional convergence promise:
 
 #+begin_src clojure
 (def dynamic-failure-contract
-  {:network-loss
-   {:during-command :settle-outcome-unknown
-    :recovery :authoritative-reread-when-permitted}
-   :publication-loss
-   {:after-commit :recover-from-authority}
-   :reconnect
-   {:preserve-scope true
-    :preserve-authenticated-principal-binding true
-    :preserve-selective-adoption true}})
+  (application/declared-dynamic-handling repaired-generation))
+
+;; For example, this checked declaration requires a transport-loss path that
+;; preserves command-outcome uncertainty, a post-commit publication-recovery
+;; path, and a scoped reacquisition path permitted even if no advisory arrived.
 #+end_src
 
-Only after those independently owned checks succeed can release admission make a
-release claim:
+Only after those independently owned checks succeed can the requested later
+release profile make its scoped claim:
 
 #+begin_src clojure
 (def admitted-release
   (release/admit!
-   {:assembly-generation repaired-generation
-    :dynamic-failure-contract dynamic-failure-contract
+   {:profile :humanhelp/external-formal-release-v1
+    :assembly-generation repaired-generation
     :certification (:certification repaired-assurance)
     :formal-correspondence (:formal-correspondence repaired-assurance)
     :browser-evidence (:chromium-evidence repaired-assurance)
+    :dynamic-handling-evidence
+    (application/dynamic-handling-evidence repaired-generation)
+    :product-acceptance-evidence
+    humanhelp/independent-product-test-results
     :required-gates
     #{:no-silent-downgrade
       :same-semantic-subject
@@ -1507,8 +1613,10 @@ authoritative basis and semantic command.
 Views attach typed operations to affordances and determine presentation.
 
 The browser runtime realizes Gesso semantics through a small pure transition
-system in the executable semantic core, whose safety/refinement properties are
-machine checked. HTMX remains the ordinary declarative owner of its request/response/OOB/swap/settle lifecycle and
+system in the executable semantic core. Its safety/refinement claims carry the
+actual stated scope of their machine checks; finite exploration alone establishes
+only the explored bound unless a sound abstraction extends it. HTMX remains the
+ordinary declarative owner of its request/response/OOB/swap/settle lifecycle and
 is gated or observed only through documented lifecycle boundaries where Gesso
 semantics require it; a custom HTMX extension is not an architectural
 requirement. Gesso-owned timers, provisional DOM work, continuity resources, and
@@ -1556,4 +1664,3 @@ remain essential for the trusted shell, external libraries, real browsers,
 operational scale, and application contracts, but they are not used as a
 synonym for proof.
 #+end_quote
-

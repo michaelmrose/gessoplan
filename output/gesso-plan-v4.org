@@ -1,10 +1,10 @@
-#+title: Gesso Unified Design
-#+subtitle: Canonical architecture, assurance model, and reference application
-#+date: 2026-09-22
-#+startup: nofold
-#+options: toc:3 num:nil
-#+property: canonical-revision r4-draft
-#+property: supersedes gesso-unified-design-canonical-r3
+# #+title: Gesso Unified Design
+# #+subtitle: Canonical architecture, assurance model, and reference application
+# #+date: 2026-09-22
+# #+startup: nofold
+# #+options: toc:3 num:nil
+# #+property: canonical-revision r4-draft
+# #+property: supersedes gesso-unified-design-canonical-r3
 
 #+LATEX_HEADER: \renewcommand{\maketitle}{}
 
@@ -30052,6 +30052,12 @@ the application author to write proof terms by hand.
 
 Suppose the author writes a pleasant rule against certified domain names:
 
+This is a deliberately small *illustrative policy conjunct*. The production
+HumanHelp Claim policy in Part VIII additionally relies on the relevant
+Membership/Organization rules and trusted current-state checks. Proving this
+rule well typed does not prove that it is the complete production policy or
+that its Clojure implementation conforms to it.
+
 #+begin_src clojure
 (defrule claimable?
   {:inputs
@@ -30103,11 +30109,11 @@ variation:
 
     [:= 
      [:field :request :request/status]
-     [:enum :request.status/open]]
+     [:enum :open]]
 
     [:= 
      [:field :membership :membership/status]
-     [:enum :membership.status/active]]
+     [:enum :active]]
 
     [:=
      [:field :membership :membership/organization-id]
@@ -30167,7 +30173,7 @@ derivations it expects will be needed:
      [:well-typed
       [:= 
        [:field :request :request/status]
-       [:enum :request.status/open]]]
+       [:enum :open]]]
 
      :proof
      [:eq-same-type
@@ -30177,14 +30183,14 @@ derivations it expects will be needed:
        :humanhelp/RequestStatus]
 
       [:enum-member
-       :request.status/open
+       :open
        :humanhelp/RequestStatus]]}
 
     {:goal
      [:well-typed
       [:=
        [:field :membership :membership/status]
-       [:enum :membership.status/active]]]
+       [:enum :active]]]
 
      :proof
      [:eq-same-type
@@ -30194,7 +30200,7 @@ derivations it expects will be needed:
        :humanhelp/MembershipStatus]
 
       [:enum-member
-       :membership.status/active
+       :active
        :humanhelp/MembershipStatus]]}
 
     {:goal
@@ -30232,31 +30238,41 @@ The elaborator's proposed list is not itself the definition of "all obligations
 that matter." The rule checker independently derives the required coverage from
 the normalized subject and certification profile:
 
+In particular, the checker recomputes referenced fields and reachable
+subexpressions from the normalized body. The =:resolved= set and the numbered
+child references in the following proof terms are claims to check against
+that body, not proof by self-declaration.
+
 #+begin_src clojure
 (def required-obligations
   (rule-checker/required-obligations
     {:subject normalized-claimable
      :profile :gesso/rules-v1}))
 ;; =>
-[{:obligation/id :claimable/body-total
+[{:obligation/id :claimable/body-boolean
   :goal
   [:returns
    :request/claimable?
    :gesso/Boolean]}
+
+ {:obligation/id :claimable/body-total
+  :goal
+  [:total
+   :request/claimable?]}
 
  {:obligation/id :claimable/status-equality
   :goal
   [:well-typed
    [:= 
     [:field :request :request/status]
-    [:enum :request.status/open]]]}
+    [:enum :open]]]}
 
  {:obligation/id :claimable/membership-equality
   :goal
   [:well-typed
    [:= 
     [:field :membership :membership/status]
-    [:enum :membership.status/active]]]}
+    [:enum :active]]]}
 
  {:obligation/id :claimable/organization-id-equality
   :goal
@@ -30292,7 +30308,9 @@ coverage
 ;; =>
 {:status :incomplete
  :missing
- [{:obligation/id :claimable/body-total
+ [{:obligation/id :claimable/body-boolean
+   ...}
+  {:obligation/id :claimable/body-total
    ...}
   {:obligation/id :claimable/all-input-fields-resolved
    ...}]}
@@ -30305,7 +30323,7 @@ A corrected elaborator output can add those derivations:
 
 #+begin_src clojure
 (def complete-derivations
-  (concat
+  (vec (concat
     (:proposed-derivations
      elaborated-claimable)
 
@@ -30337,16 +30355,38 @@ A corrected elaborator output can add those derivations:
        [:expression-returns-boolean
         2]
        [:expression-returns-boolean
-        3]]}]))
+        3]]}
+
+     {:goal
+      [:total :request/claimable?]
+
+      :proof
+      [:all-terms-total
+       {:subject-id :request/claimable?
+        :field-presence :required
+        :operators #{:and := :field :enum}}]}])))
 #+end_src
 
-The proof kernel checks each derivation against already admitted semantic
-interfaces:
+The accepting rule-set checker recomputes required coverage from the subject,
+then asks the proof kernel to check each derivation against already admitted
+semantic interfaces:
+
+For this example, =rule-checker/check-all= derives the obligation set again
+instead of trusting =required-obligations= supplied from outside. The proof
+kernel checks that every numbered child refers to the actual corresponding
+expression and resolves each =:field-type= premise against an admitted
+dependency. Without those checks, the apparently complete proof below would
+not establish its advertised goal.
+It also checks totality of the actual field accesses and primitive operators;
+the =:all-terms-total= payload alone cannot assert totality for an omitted
+term, optional field, or partial primitive.
 
 #+begin_src clojure
 (def checked
-  (proof.kernel/check-all
+  (rule-checker/check-all
     {:subject normalized-claimable
+
+     :profile :gesso/rules-v1
 
      :dependencies
      {:request-schema
@@ -30358,9 +30398,6 @@ interfaces:
       :organization-schema
       verified-organization-schema}
 
-     :required-obligations
-     required-obligations
-
      :derivations
      complete-derivations}))
 
@@ -30369,7 +30406,8 @@ checked
 {:status :accepted
 
  :covered
- #{:claimable/body-total
+ #{:claimable/body-boolean
+   :claimable/body-total
    :claimable/status-equality
    :claimable/membership-equality
    :claimable/organization-id-equality
@@ -30378,6 +30416,7 @@ checked
 
  :guarantees
  #{[:rule/well-typed :request/claimable?]
+   [:rule/total :request/claimable?]
    [:rule/returns
     :request/claimable?
     :gesso/Boolean]}}
@@ -30802,7 +30841,7 @@ Conceptual normalized term:
   [:principal :current]
   [:role :helper]]
  [:= [:field :request/status]
-     [:enum :request.status/open]]
+     [:enum :open]]
  [:= [:field :request/organization-id]
      [:field :current-user/organization-id]]]
 #+end_src
@@ -30857,7 +30896,23 @@ source-file load order.
 A concrete Claim dependency closure can preserve that ownership while still
 producing one compositional proof DAG.
 
+The following maps illustrate the *readable contents* of interfaces and
+reports produced by admitted construction. Writing these =def= forms does not
+create certified values: downstream composition consumes checker-issued
+handles and rechecks serialized representations at the relevant trust boundary.
+Labels such as =:semantic/request-schema-S17= stand in for computed semantic
+identities; production certificates bind actual normalized subjects and
+dependency IDs, not these mnemonic symbols.
+
 The schema certificates export only schema facts:
+
+The Request status list and Organization boolean below are schematic example
+interfaces, not claims that these exact fields and variants exist in the
+current production model. The actual pilot must derive its closed enum from
+the production Request schema and either certify the real Organization policy
+interface or expose =organization/allows-claim?= as a named, typed, explicitly
+trusted primitive. Inventing =:organization/claiming-enabled?= to make the
+example typecheck would not certify the actual HumanHelp Claim path.
 
 #+begin_src clojure
 (def request-schema-interface
@@ -30889,11 +30944,11 @@ The schema certificates export only schema facts:
     :humanhelp/RequestStatus
     {:kind :closed-enum
      :variants
-     #{:request.status/open
-       :request.status/claimed
-       :request.status/on-the-way
-       :request.status/completed
-       :request.status/cancelled}}}})
+     #{:open
+       :claimed
+       :on-the-way
+       :completed
+       :cancelled}}}})
 
 (def organization-schema-interface
   {:interface/kind :schema
@@ -31047,11 +31102,14 @@ The operation certificate adds the public authoritative contract:
 
     :outcomes
     #{:accepted
-      :rejected
-      :unknown}}
+      :rejected}
+
+    :delivery-uncertainty
+    {:recover {:acquire :request/card
+               :command-attribution :unknown}}}
 
    :guarantees
-   #{[:operation/outcome-closed
+   #{[:operation/outcomes-closed
       :request/claim]
 
      [:operation/authority-required
@@ -31104,8 +31162,11 @@ into Request FX:
      [:settlement/covered
       :request/claim
       #{:accepted
-        :rejected
-        :unknown}]
+        :rejected}]
+
+     [:delivery-uncertainty/recovery-declared
+      :request/claim
+      :request/card]
 
      [:projection/knowledge-sufficient
       :helper]}})
@@ -31245,6 +31306,12 @@ everything to =:verified true=:
      [:projection/preserves
       :request-claim/helper
       :supported-observables-v1]
+     :evidence :kernel-checked}
+
+    {:proposition
+     [:delivery-uncertainty/recovery-declared
+      :request/claim
+      :request/card]
      :evidence :kernel-checked}
 
     {:proposition
@@ -31957,8 +32024,14 @@ Claim rules C21 were certified against exactly that interface:
    :semantic/claim-rules-C21
 
    :dependencies
-   {:organization-domain
-    :semantic/organization-domain-O14}
+   {:request-schema
+    :semantic/request-schema-S17
+    :membership-schema
+    :semantic/membership-schema-M11
+    :organization-domain
+    :semantic/organization-domain-O14
+    :membership-relationships
+    :semantic/membership-rel-R8}
 
    :guarantees
    #{[:rule/well-typed
@@ -31992,7 +32065,7 @@ But old C21 explicitly depends on O14:
 
 #+begin_src clojure
 (certification/compose
-  {:artifact claim-rules-C21
+  {:artifact verified-claim-rules-C21
 
    :dependencies
    {:organization-domain
@@ -32018,6 +32091,11 @@ But old C21 explicitly depends on O14:
 
 The cache may still physically contain C21, operation O31, choreography H12,
 projection P7, and plan E5:
+
+Here =cached-C21= and its peers denote checker-issued handles (or persisted
+candidates rechecked before use). The earlier =def= maps only displayed their
+public interfaces; supplying those maps to =compose= would instead fail as
+unadmitted input, regardless of the stale-dependency check.
 
 #+begin_src clojure
 (def cache
@@ -32050,12 +32128,16 @@ set:
            checker-profile]}]
 
   (and
+    ;; This checks a checker-issued handle or a fully rechecked persisted
+    ;; certificate, never a raw map's :valid? flag.
+    (certificate/admitted? cached)
+
     (=
-      (:subject-semantic-id cached)
+      (certificate/subject-semantic-id cached)
       (semantic/id subject))
 
     (=
-      (:dependency-semantic-ids cached)
+      (certificate/dependency-semantic-ids cached)
       (into {}
         (map
           (fn [[k certified]]
@@ -32065,7 +32147,7 @@ set:
         dependencies))
 
     (=
-      (:checker-profile cached)
+      (certificate/checker-profile cached)
       checker-profile)
 
     (certificate/admissible?
@@ -32116,23 +32198,41 @@ typecheck because it still references =organization.claiming-enabled?=:
 
 The developer repairs the rule:
 
+Accepting both =:claim-policy/open= and =:claim-policy/helpers-only= without
+checking the helper role would be *well typed but policy wrong*. The repaired
+source explicitly declares a principal input and uses a certified role
+predicate. A missing role interface is an unresolved dependency, not a reason
+to treat every active member as a helper:
+
 #+begin_src clojure
 (defrule claimable?
   {:inputs
    {:request :humanhelp/Request
     :membership :humanhelp/Membership
-    :organization :humanhelp/Organization}}
+    :organization :humanhelp/Organization
+    :principal :humanhelp/AuthenticatedPrincipal}}
 
   (and
     (= request.status :open)
 
     (= membership.status :active)
 
-    (contains?
-      #{:claim-policy/open
-        :claim-policy/helpers-only}
-      organization.claim-policy)))
+    (= membership.organization-id
+       request.organization-id)
+
+    (= organization.id
+       request.organization-id)
+
+    (case organization.claim-policy
+      :claim-policy/open true
+      :claim-policy/helpers-only
+      (has-role? principal :helper)
+      :claim-policy/closed false)))
 #+end_src
+
+This still proves only the rule's declared subset under its certified inputs.
+The server must bind the current authenticated principal, Request, Membership,
+and Organization, and the implementation-conformance premise remains explicit.
 
 Certification produces a new rule identity C22:
 
@@ -32143,8 +32243,16 @@ Certification produces a new rule identity C22:
  :semantic/claim-rules-C22
 
  :dependencies
- {:organization-domain
-  :semantic/organization-domain-O15}
+ {:request-schema
+  :semantic/request-schema-S17
+  :membership-schema
+  :semantic/membership-schema-M11
+  :organization-schema
+  :semantic/organization-schema-O9
+  :organization-domain
+  :semantic/organization-domain-O15
+  :principal-role-interface
+  :semantic/principal-helper-role-PR1}
 
  :guarantees
  #{[:rule/well-typed
@@ -32511,6 +32619,11 @@ Suppose a HumanHelp helper projection contains this branch:
 
 The normalized projection state says the helper knows only:
 
+This is a static program-point environment. A derivation about a future
+authoritative observation is conditional on an event admitted by the runtime;
+the proof kernel cannot assert that any particular browser has already
+received such an observation.
+
 #+begin_src clojure
 {:role :helper
 
@@ -32591,11 +32704,17 @@ A subtler bug uses a real rule with a missing premise:
      [:request/private-review R]]
 
     ;; Required premise 2 should establish that the helper admitted
-    ;; request-card-observation. The elaborator accidentally omits it.
+    ;; a matching observation in the conditional receive transition.
+    ;; The elaborator accidentally omits it.
     ]})
 #+end_src
 
 The kernel can reject the malformed application of the inference rule:
+
+An admitted receive *contract* suffices for the static conditional claim. A
+concrete observation still requires runtime scope, owner, freshness, and
+resource-instance checks before the browser may adopt it. Supplying an
+asserted client observation as this premise is invalid.
 
 #+begin_src clojure
 (proof.kernel/check
@@ -32746,7 +32865,13 @@ S1's certificate identity:
 #+end_src
 
 The derivation in =:cert-P1= may be perfectly valid for S1. The relevant
-projection-to-plan correspondence checker must reject the mismatch:
+projection-to-plan correspondence checker must reject the mismatch. It
+reconstructs the canonical executable payload from the admitted S1 subject (or
+checks an equivalent independent preservation derivation) and compares it to
+the *actual* emitted payload. Reading =:claimed-source= on its own would accept
+the forged plan. If the lowering checker and emitter share a bug or the served
+bytes differ from the checked payload, those are separate named implementation
+and artifact correspondence premises, not proof-kernel conclusions:
 
 #+begin_src clojure
 (plan-checker/check-correspondence
@@ -32764,8 +32889,8 @@ projection-to-plan correspondence checker must reject the mismatch:
  :certified-subject
  :projection-S1
 
- :emitted-from
- :projection-S2}
+ :reason
+ :emitted-payload-differs-from-checked-lowering}
 #+end_src
 
 This is why the proof kernel is deliberately *small*, not omnipotent. It catches
@@ -33111,6 +33236,12 @@ A score over mutants is evidence about that corpus, not a soundness theorem.
 The corpus can be organized as data so every mutant records the baseline,
 isolated change, expected boundary, and diagnostic before the test runs.
 
+Ordinary source mutants start from fresh *unadmitted* production declarations
+and go through the same constructor/checkers as the positive control. A
+certificate-forgery mutant instead changes serialized candidate bytes at the
+deserialization boundary. The test fixture exposes these distinct injection
+points; it never assumes a checker-issued opaque value is a writable map.
+
 For example:
 
 #+begin_src clojure
@@ -33125,7 +33256,7 @@ For example:
     (fn [program]
       (update-in program
         [:request-schema
-         :types
+         :declaration :types
          :humanhelp/Request
          :fields]
         dissoc
@@ -33148,13 +33279,16 @@ For example:
     :baseline
     :humanhelp/request-claim
 
+    :exercise :certificate/compose
+
     :mutate
     (fn [program]
-      (assoc program
-        :organization-domain
-        organization-domain-O15
-        :claim-rules-certificate
-        cached-C21))
+      (-> program
+          (assoc-in [:organization-domain :declaration]
+                    (fixtures/organization-policy-source
+                      :claim-policy-enum))
+          (assoc-in [:certificate-cache :claim-rules]
+                    (fixtures/serialized-certificate cached-C21))))
 
     :affected
     [:dependency
@@ -33200,10 +33334,12 @@ For example:
     :baseline
     :humanhelp/request-claim
 
+    :exercise :certificate/deserialization
+
     :mutate
     (fn [program]
-      (assoc program
-        :claim-rules-certificate
+      (assoc-in program
+        [:certificate-cache :claim-rules]
         {:certificate/kind :rule-set
          :semantic-id
          :semantic/claim-rules-C21
@@ -33218,7 +33354,7 @@ For example:
 
     :expect
     {:result :rejected
-     :boundary :rule-set/admission
+     :boundary :certificate/deserialization
      :error/type
      :certification/unadmitted-dependency}}
 
@@ -33228,13 +33364,14 @@ For example:
     :baseline
     :humanhelp/request-claim
 
+    :exercise :projection/compose
+
     :mutate
     (fn [program]
       (assoc-in program
-        [:helper-projection
-         :dependencies
-         :choreography]
-        :semantic/request-create-choreo-H3))
+        [:certificate-cache :helper-projection]
+        (fixtures/serialized-certificate
+          verified-create-helper-projection)))
 
     :affected
     [:projection
@@ -33257,8 +33394,11 @@ For example:
       (update-in program
         [:application-assembly
          :routes]
-        dissoc
-        :route/request-claim))
+        (fn [routes]
+          (vec
+            (remove
+              #(= :route/request-claim (:route/id %))
+              routes)))))
 
     :affected
     [:application
@@ -33288,29 +33428,57 @@ For example:
      :expense/manager-limit]
 
     :expect
-    {:result :accepted-by-design
+    {:result :accepted
      :reason
-     :coherent-product-policy-change}}])
+     :coherent-product-policy-change}
+
+    :classification :application-truth}])
 #+end_src
 
-The runner builds a fresh baseline for every case so mutants cannot contaminate
-one another:
+The runner checks a fresh positive baseline for *every* case before applying
+its isolated mutation. The fixture contains source declarations built by the
+production constructors plus any explicitly selected cached candidate bytes.
+An =:exercise= selector invokes the named *supported* boundary with the fixture
+inputs; omitted selectors run the whole production construction. Thus the
+stale-certificate case tests the rejected composition attempt itself. A normal
+cache may instead miss, re-elaborate against O15, and reject the unchanged old
+rule as an unknown field. A separate production-path case must show that
+neither route admits a stale dependent. Deserialization validates cache
+admission before it can reuse a certificate:
+
+The two =:prohibited-*= fields in the runner come from instrumented fixture
+constructors and effect sinks, not from a mutable result supplied by the
+mutant. If that instrumentation is unavailable, the case is incomplete; =nil=
+cannot silently stand for =false=.
 
 #+begin_src clojure
 (defn run-mutant!
   [{:mutant/keys [id]
-    :keys [baseline mutate expect]}]
+    :keys [baseline mutate expect exercise]}]
 
   (let [program
-        (fixtures/fresh-certified-program
+        (fixtures/fresh-certification-candidate
           baseline)
+
+        baseline-result
+        (certification/exercise-supported-boundary
+          program (or exercise :production-construction))
+
+        _
+        (when-not (= :accepted (:result baseline-result))
+          (throw
+            (ex-info
+              "Positive certification control failed."
+              {:mutant/id id
+               :baseline baseline
+               :result baseline-result})))
 
         mutated
         (mutate program)
 
         result
-        (certification/run-through-supported-boundaries
-          mutated)]
+        (certification/exercise-supported-boundary
+          mutated (or exercise :production-construction))]
 
     {:mutant/id id
 
@@ -33320,12 +33488,17 @@ one another:
      (select-keys result
        [:result
         :boundary
-        :error/type])
+        :error/type
+        :prohibited-artifact-constructed?
+        :prohibited-effect-observed?])
 
      :pass?
-     (mutation/expected?
-       expect
-       result)}))
+     (and
+       (mutation/expected? expect result)
+       (or (= :accepted (:result result))
+           (and
+             (false? (:prohibited-artifact-constructed? result))
+             (false? (:prohibited-effect-observed? result)))))}))
 #+end_src
 
 A test asserts the predeclared classification:
@@ -33355,7 +33528,7 @@ The same runner executes the positive baseline through the same supported path:
   [baseline]
 
   (let [program
-        (fixtures/fresh-certified-program
+        (fixtures/fresh-certification-candidate
           baseline)
 
         result
@@ -33428,7 +33601,8 @@ A detailed corpus report can preserve first-enforcing-boundary evidence:
    :product-policy/change-manager-limit
 
    :expected
-   {:result :accepted-by-design}
+   {:result :accepted
+    :reason :coherent-product-policy-change}
 
    :actual
    {:result :accepted}
@@ -33672,6 +33846,22 @@ An illustrative root report might look like:
     :certification/profile
     :gesso/compositional-v1}
 
+   :implementation-bindings
+   {:request-model
+    {:ns 'net.humanhelp.site.model.request.core
+     :var 'claim
+     :implementation-identity :fixture/request-claim-impl-A13}
+    :claim-server
+    {:capability :server/request-claim
+     :implementation-identity :fixture/claim-server-impl-A13}}
+
+   :browser-artifact-binding
+   {:manifest/id :fixture/browser-manifest-A13
+    :served-path :fixture/served-gesso-live-A13
+    :served-bytes-digest :fixture/browser-bytes-A13
+    :emitted-plan-registry :fixture/claim-plan-registry-A13
+    :currentness-report :fixture/artifact-currentness-A13}
+
    :normalized-subjects
    {:request-schema
     :semantic/request-schema-S17
@@ -33768,13 +33958,22 @@ An illustrative root report might look like:
      [:operation/outcomes-closed
       :request/claim
       #{:accepted
-        :rejected
-        :unknown}]
+        :rejected}]
 
      :evidence
      {:class :kernel-checked
       :certificate
       :semantic/request-claim-op-O31}}
+
+    {:proposition
+     [:delivery-uncertainty/recovery-declared
+      :request/claim
+      :request/card]
+
+     :evidence
+     {:class :kernel-checked
+      :certificate
+      :semantic/request-claim-choreo-H12}}
 
     {:proposition
      [:helper/branch-knowledge-sufficient
@@ -33821,8 +34020,8 @@ An illustrative root report might look like:
 
      :evidence
      {:class :assembly-verified
-      :artifact-digest
-      "sha256:artifact-A13"}}
+      :currentness-report
+      :fixture/artifact-currentness-A13}}
 
     {:proposition
      [:transport/routes
@@ -33927,8 +34126,8 @@ An illustrative root report might look like:
 
      :evidence
      {:class :runtime-enforced
-      :test
-      :humanhelp/preflight-startup}}
+      :boundary :humanhelp/production-startup
+      :supporting-test :humanhelp/preflight-startup}}
 
     {:proposition
      [:real-chromium/two-client-claim
@@ -33958,6 +34157,12 @@ An illustrative root report might look like:
 A report with =:status :accepted= is meaningful only because the requested
 compositional profile defines which certificate classes and obligations must be
 closed. It does not mean every trusted assumption has been turned into a theorem.
+The symbolic fixture identities above represent separately checked bindings;
+an actual root report must name the served asset path and digest *and* the
+manifest and emitted registry established from those served bytes under Part
+VII's currentness check. A copied digest field alone is insufficient. Binding
+the model and server implementation identities also prevents reusing evidence
+from A13 after their implementations change without changing semantic source.
 
 The report also makes partial progress explicit. For example, before checked
 operation-implementation conformance exists:
@@ -34205,7 +34410,6 @@ semantic mismatch prevents construction of the stale downstream application
 artifact, while application-specific policy assumptions remain visible rather
 than being mislabeled as framework theorems.
 #+end_quote
-
 * Part X — Formal correspondence and system boundaries
 :PROPERTIES:
 :CUSTOM_ID: part-10-formal-correspondence-and-system-boundaries
@@ -34768,7 +34972,8 @@ transition:
    :domain-input
    {:request/id :uuid}
    :correlation
-   {:command/id :uuid}})
+   {:command/id :uuid}
+   :observed-basis :optional-untrusted-observation-reference})
 
 (def claim-subject
   {:operation :request/claim
@@ -34777,15 +34982,31 @@ transition:
    :trusted-context
    {:principal :authenticated-principal
     :membership :current-authoritative-membership
-    :request :current-authoritative-request}
+    :request :current-authoritative-request
+    :organization :current-authoritative-organization}
    :preconditions
-   [[:= [:trusted :request :request/status] :request.status/open]
-    [:known? [:trusted :membership] :current]
+   [[:= [:trusted :request :request/status] :open]
+    [:= [:trusted :membership :membership/status] :active]
+    [:= [:trusted :membership :membership/organization-id]
+        [:trusted :request :request/organization-id]]
+    ;; Policy is a typed, named HumanHelp model premise. Whether its
+    ;; implementation conforms is separate trusted/checked evidence.
+    [:organization/allows-claim?
+     [:trusted :organization]
+     [:trusted :membership]
+     [:trusted :request]]
     [:authorized? [:trusted :principal] :request/claim]]
    :transition
-   {:request/status :request.status/claimed
+   {:request/status :claimed
     :request/helper-id [:trusted :principal :user/id]}
-   :outcomes #{:accepted :rejected :unknown}})
+   :commit-contract
+   {:guard #{:current-request :current-membership
+             :current-organization :bound-command-identity}
+    :atomic-writes #{:request-ownership :command-result-record}}
+   :outcomes #{:accepted :rejected}
+   :delivery-uncertainty
+   {:recover {:acquire :request/card
+              :command-attribution :unknown}}})
 
 (def claim-normalized
   (gesso.semantics/normalize-operation claim-subject))
@@ -34796,14 +35017,14 @@ transition:
 (def claim-production-plan
   (gesso.compile/executable-operation claim-normalized))
 
-;; Claim 1: anything admitted by the production boundary for this guarantee
-;; has the corresponding formal judgment under the recorded assumptions.
+;; An instance-level check for this normalized Claim subject. A theorem about
+;; every supported operation needs a separately checked quantified proof.
 (def claim-admission-correspondence
   (gesso.formal/check-correspondence
    {:formal-subject claim-formal-subject
     :production-subject claim-production-plan
     :proposition
-    [:forall-supported-subjects
+    [:this-normalized-subject
      [:production-admits? :request/claim]
      [:formal-judgment-holds? :claim-admissible]]
     :direction :production-admission-implies-formal-validity
@@ -34813,34 +35034,41 @@ transition:
      :operation :semantic/request-claim-op-O31
      :kernel :gesso-proof-kernel/K7}}))
 
-;; Claim 2: the concrete implementation/lowering used by production cannot
-;; perform an observable Claim behavior outside the admitted semantic plan.
-;; This is a distinct obligation; acceptance-set agreement alone is not enough.
-(def claim-execution-refinement
-  (gesso.formal/check-execution-refinement
-   {:semantic-plan claim-production-plan
-    :production-artifact :artifact/request-claim-A44
-    :observable-trace
+;; This is a distinct obligation. An opaque arbitrary Clojure implementation
+;; cannot be proved to refine a plan by naming its artifact in a map.
+(def claim-execution-obligation
+  {:semantic-plan claim-production-plan
+   :production-binding
+   {:server-capability :server/request-claim
+    :model-var 'net.humanhelp.site.model.request.core/claim
+    :implementation-identity :fixture/claim-implementation-A44}
+   :observables
     #{:authoritative-read
       :authorization-decision
       :durable-commit
       :settlement
       :progression-publication}
-    :proposition
-    [:every-relevant-production-trace
-     [:refines :request/claim-semantic-trace]]
-    :dependencies
-    {:lowering :gesso.lowering/L12
-     :adapter :humanhelp.request.adapter/A9
-     :runtime-profile :humanhelp.production/P4}}))
+   :proposition
+   [:every-relevant-production-trace
+    [:refines :request/claim-semantic-trace]]
+   :dependencies
+   {:lowering :gesso.lowering/L12
+    :adapter :humanhelp.request.adapter/A9
+    :runtime-profile :humanhelp.production/P4}})
 
-(def admitted-claim
-  (gesso.application/admit-operation
-   {:normalized-subject claim-normalized
-    :plan claim-production-plan
-    :required-correspondence
-    [claim-admission-correspondence
-     claim-execution-refinement]}))
+(def claim-execution-refinement
+  (gesso.formal/check-execution-refinement
+    claim-execution-obligation))
+
+;; The selected profile may admit a named trusted implementation premise,
+;; or require a checked refinement. An unsupported/unchecked result cannot
+;; satisfy the latter. Whole-application admission still follows Part VII.
+(def claim-correspondence-gate
+  {:normalized-subject claim-normalized
+   :plan claim-production-plan
+   :admission-evidence claim-admission-correspondence
+   :execution-evidence claim-execution-refinement
+   :selected-profile :gesso/external-formal-v1})
 
 ;; Wrong shape: prove F, then independently execute G.
 (def formal-F
@@ -34854,7 +35082,7 @@ transition:
   (if (:request/priority-lock? request)
     request
     (assoc request
-           :request/status :request.status/claimed
+           :request/status :claimed
            :request/helper-id (get-in browser-command [:actor :id]))))
 #+end_src
 
@@ -34863,6 +35091,18 @@ object merely because its keys look right.  Authentication, current Membership,
 current Request state, authorization, normalization, and the required
 correspondence evidence all belong to their declared trusted/admission
 boundaries.
+
+The =:commit-contract= records an obligation, not evidence that an arbitrary
+Request implementation actually performs one atomic guarded write. Production
+Claim must check the command record's operation, Request argument, and bound
+principal before a permitted replay; guard the current Request, Membership,
+Organization, and association together with the ownership and command-result
+write; and retain unknown delivery as participant knowledge. The formal
+profile cannot report checked execution refinement of those actions without
+a real implementation binding and a proof or other justified correspondence
+mechanism. Calling =check-execution-refinement= in this illustrative code does
+not assert its result is =:checked=. In Part VII, preflight and admission apply
+to the whole assembled application after the profile's requirements are met.
 
 The final =production-G= shape leaves two independent gaps.  First, the formal
 subject and the production behavior are not connected by a checked execution
@@ -35019,6 +35259,8 @@ UUIDs would therefore prove only an artificial four-value model.
 (defn callback-admitted? [state callback]
   (and (= (:resource-instance callback)
           (:current-resource-instance state))
+       (not (contains? (:retired-resource-instances state)
+                       (:resource-instance callback)))
        (contains? (:pending state)
                   (:resource-instance callback))))
 
@@ -35033,14 +35275,23 @@ UUIDs would therefore prove only an artificial four-value model.
    (abstract-instance state (:resource-instance callback))
    :pending?
    (contains? (:pending state) (:resource-instance callback))
+   :retired?
+   (contains? (:retired-resource-instances state)
+              (:resource-instance callback))
    :event (:event callback)})
 
-(defn abstract-admitted? [{:keys [instance-class pending?]}]
-  (and (= instance-class :instance/current) pending?))
+(defn abstract-admitted?
+  [{:keys [instance-class pending? retired?]}]
+  (and (= instance-class :instance/current)
+       pending?
+       (not retired?)))
 
 (def resource-ownership-obligation
   {:initial :every-concrete-initial-state-has-related-abstract-state
    :step :every-relevant-concrete-transition-is-simulated
+   :fresh-name :allocation-preserves-required-equality-and-inequality
+   :retirement :current-identity-cannot-remain-permitted-when-retired
+   :metadata :pending-and-retired-sets-are-bounded-or-soundly-abstracted
    :property
    [:implies
     [:abstract-callback-admitted?]
@@ -35055,6 +35306,15 @@ exhaustive exploration of the finite abstract state space can support a claim
 about every concrete identity covered by that theorem.  Without that bridge,
 the same exploration is merely bounded evidence.  Liveness still needs its own
 scheduling/fairness argument rather than inheriting this safety result.
+Here =abstract-callback= is only a *local observation abstraction*, not a
+complete finite transition system. A real proof must specify the abstract
+state and all transitions, preserve equality and freshness when an arbitrary
+new identity becomes current, and account for unbounded pending/retired
+metadata. It must also state the invariant that a retired current instance
+cannot retain effect permission. This slice checks resource ownership alone;
+execution identity, effect phase, and deferred DOM mutation require their own
+admission conditions. None of the symbols in =resource-ownership-obligation=
+is itself a discharged theorem.
 
 *** Evidence package and maintenance
 
@@ -35184,8 +35444,10 @@ semantic proof evidence
 #+end_example
 
 
-A cache lookup makes the distinction operational.  Matching bytes can establish
-artifact identity while old semantic evidence is nevertheless stale under a new
+A cache lookup makes the distinction operational. This small data example
+compares *claimed* artifact IDs; it does not inspect served bytes or establish
+that either ID is genuine. Even when the real Part VII currentness check has
+established byte identity, old semantic evidence can be stale under a new
 dependency closure.
 
 #+begin_src clojure
@@ -35204,21 +35466,26 @@ dependency closure.
     :membership :semantic/membership-M19}
    :assembly-generation :assembly/H43})
 
-(defn artifact-identical? [cached current]
+(defn claimed-artifact-id-equal? [cached current]
   (= (:artifact/id cached) (:required-artifact/id current)))
 
-(defn evidence-admissible? [cached current]
-  (and (artifact-identical? cached current)
+(defn claim-compatible-with-current-closure? [cached current]
+  (and (claimed-artifact-id-equal? cached current)
        (= (:dependencies cached) (:dependencies current))
        (= (:assembly-generation cached) (:assembly-generation current))))
 
-(artifact-identical? cached-browser-artifact current-application) ;=> true
-(evidence-admissible? cached-browser-artifact current-application) ;=> false
+(claimed-artifact-id-equal?
+  cached-browser-artifact current-application) ;=> true
+(claim-compatible-with-current-closure?
+  cached-browser-artifact current-application) ;=> false
 #+end_src
 
-The digest still says something useful about exact artifact identity.  It does
-not authorize carrying the old Membership-dependent proposition into the new
-assembly, and a new digest alone would not prove semantic correctness either.
+The copied digest claim cannot authorize carrying the old Membership-dependent
+proposition into the new assembly. To establish actual byte correspondence,
+the checker must inspect the asset production will serve and relate its digest
+and emitted plan registry to the current manifest/receipt under Part VII's
+build and serving contract. Only then is artifact identity evidence available;
+it still does not prove the proposition associated with those bytes.
 
 *** Elaborator/checker shared-bug risk
 
@@ -35550,20 +35817,29 @@ accepted from the browser:
         (membership/read-current-authoritative
          node-a-system
          {:organization/id (:request/organization-id request)
-          :user/id (:user/id principal)})]
+          :user/id (:user/id principal)})
 
+        organization
+        (organization/read-current-authoritative
+         node-a-system
+         (:request/organization-id request))]
+
+    ;; Admission validates the wire contract and binds these trusted facts;
+    ;; execute-admitted-claim! rechecks mutable facts and policy in its
+    ;; atomic commit. Declaring a requirement is not proof it was satisfied.
     (choreo/admit-command
      {:operation :request/claim
       :wire-command wire-command
       :trusted
       {:principal principal
        :request request
-       :membership membership}
+       :membership membership
+       :organization organization}
       :requirements
       #{:authenticated-principal
         :current-request
         :current-membership
-        :claim-authorized}})))
+        :current-organization}})))
 
 (def admitted-claim
   (admit-claim-through-node-a incoming-http-request browser-claim-command))
@@ -35571,43 +35847,77 @@ accepted from the browser:
 (def claim-result
   (request/execute-admitted-claim! node-a-system admitted-claim))
 
-;; The committed authoritative fact is derived from the trusted/admitted
-;; principal and outlives node A.  It is not reconstructed from browser data.
+;; A rejected result has no committed Request and produces no success advisory.
+;; A response lost after submission is uncertain to the browser until it has
+;; command-specific evidence; a current-state read alone may not attribute it.
 (def committed-request
-  (:authoritative/request claim-result))
+  (when (= :committed (:outcome claim-result))
+    (:authoritative/request claim-result)))
 
-(assert (= (:request/helper-id committed-request)
-           (get-in admitted-claim [:trusted :principal :user/id])))
+(when committed-request
+  (assert (= (:request/helper-id committed-request)
+             (:user/id
+              (choreo/admitted-trusted-principal admitted-claim)))))
 
+;; This publication attempt may itself fail after a successful commit. It
+;; carries board progression information, not protected Request contents.
 (def advisory
-  {:kind :request/authority-may-have-advanced
-   :scope [:request/id (:request/id committed-request)]
-   :requires (:progression/requirement claim-result)})
+  (when committed-request
+    {:kind :request/authority-may-have-advanced
+     :scope
+     {:projection :request/board
+      :organization-id (:request/organization-id committed-request)
+      :coverage :complete-authorized-membership}
+     :requires
+     (progression/require-board-requirement!
+       claim-result)}))
 
 (defn refresh-through-node-c
-  [http-request advisory]
+  [http-request trigger]
   (let [principal
         (auth/require-authenticated-principal node-c-system http-request)
 
+        scope
+        (board/require-current-authorized-scope!
+         node-c-system principal)
+
+        ;; An admitted advisory may add a progression requirement. Explicit
+        ;; Refresh still works when no advisory arrived at Bob's browser.
+        requirement
+        (advisory/requirement-if-admitted-for-scope
+         trigger scope)
+
         acquisition
-        (request/admit-authoritative-acquisition
+        (board/admit-authoritative-acquisition
          node-c-system
          {:principal principal
-          :scope (:scope advisory)
-          :requirement (:requires advisory)})
+          :scope scope
+          :requirement requirement
+          :trigger trigger})
 
         observation
-        (request/read-authoritative node-c-system acquisition)]
+        (board/read-authoritative node-c-system acquisition)]
 
-    (progression/assert-satisfies!
-     observation
-     (:requires advisory))
-
-    observation))
+    (if (and requirement
+             (not (progression/satisfies?
+                    observation requirement)))
+      {:status :retryable-insufficient-progression
+       :required requirement}
+      {:status :acquired
+       :observation observation})))
 #+end_src
 
-If publication is lost, node C can satisfy the outstanding requirement by
-performing a new authorized authoritative acquisition against the durable model.
+If publication is lost before Bob sees it, Bob cannot supply its requirement;
+his explicit Refresh or another declared recovery trigger must perform a new
+authorized authoritative acquisition against the durable model. With a
+previously received advisory, the acquisition must satisfy its scoped
+progression requirement; a lagging node returns retryable insufficiency
+without discharging it. Acquisition alone does not establish browser
+installation: the adapter admits and installs the observation under the
+current resource-instance and adoption policy.
+The advisory branch illustrates one selected remote-lifecycle notification
+policy; Part VIII leaves automatic adoption of already-visible remote
+lifecycle changes as an explicit HumanHelp product decision.
 It does not reconstruct the Claim from node A's process memory, and possession
 of the advisory does not itself authorize the read.  The reread can establish
 current Request state without proving whether Alice received her direct
@@ -35671,6 +35981,9 @@ authenticated/current collaboration state:
 (defn receive-typing!
   [recipient-session delivered-message]
   (let [receipt
+        ;; Checks trusted sender/recipient binding, current recipient access,
+        ;; admitted routing scope, expiry, and current execution/resource owner.
+        ;; A wire map or broker delivery by itself is not a receipt.
         (routing/admit-recipient-receipt
          {:recipient-session recipient-session
           :message delivered-message
@@ -35835,7 +36148,6 @@ adoption policy survives these realizations. Operational success, compositional
 certification, external formal correspondence, and multi-node completion remain
 distinct milestones with distinct evidence.
 #+end_quote
-
 * Part XI — Release and completion
 :PROPERTIES:
 :CUSTOM_ID: part-11-release-and-completion
@@ -35967,18 +36279,21 @@ source edit matters because it changes normalized semantic input, not because it
 shares a file or commit with other code.
 
 #+begin_src clojure
-(def claim-eligibility-v7
+(def claim-eligibility-source-v7
   {:artifact/class :semantic/rule
    :rule/id :request/claim-eligible?
-   :semantic/id :rule/claim-eligible-R7
    :requires #{:membership/current :request/open}
    :result :helper-may-claim})
+
+(def claim-eligibility-v7
+  (semantic/normalize-rule
+    claim-eligibility-source-v7))
 
 (def claim-operation-v12
   {:artifact/class :semantic/operation
    :operation :request/claim
    :semantic/id :operation/request-claim-O12
-   :depends-on #{:rule/claim-eligible-R7
+   :depends-on #{(semantic/id claim-eligibility-v7)
                  :schema/request-S9}
    :effect :request/open->claimed})
 
@@ -35993,19 +36308,23 @@ shares a file or commit with other code.
    :plan/id :plan/request-search-P4
    :depends-on #{:projection/request-search-J3}})
 
-;; Product policy changes: suspended helpers may no longer Claim.
+;; Product policy changes: suspended helpers may no longer Claim. This
+;; source edit does not assign or forge its next semantic identity.
 (def claim-eligibility-v8
-  (-> claim-eligibility-v7
-      (assoc :semantic/id :rule/claim-eligible-R8)
-      (update :requires conj :helper/not-suspended)))
+  (semantic/normalize-rule
+    (update claim-eligibility-source-v7
+      :requires conj :helper/not-suspended)))
 
 (def invalidation
   (release/reconsider
-   {:changed #{:rule/claim-eligible-R7}
-    :replacement {:rule/claim-eligible-R7 :rule/claim-eligible-R8}
+   {:changed #{(semantic/id claim-eligibility-v7)}
+    :replacement {(semantic/id claim-eligibility-v7)
+                  (semantic/id claim-eligibility-v8)}
     :dependency-index production-dependencies}))
 
 ;; Conceptual result:
+invalidation
+;; =>
 {:rebuild
  #{:operation/request-claim
    :certificate/request-claim
@@ -36023,6 +36342,11 @@ identity is stale.  The Claim-facing projection/plan and the root assembly are
 then reconsidered because their dependency closure contains that operation.  If
 the generated browser artifact incorporates the changed Claim plan, its exact
 bytes and artifact identity change as well.
+Here =R7= and =R8= are mnemonic labels for identities computed from the
+normalized rules, and =production-dependencies= is the index derived from the
+admitted source graph. The new =:helper/not-suspended= predicate must have a
+typed, appropriately authoritative model input; if it does not, the rule is
+rejected rather than allowing the illustrated rebuild to proceed.
 
 The search plan does not become stale merely because its implementation lives in
 the same repository, release, or source namespace.  Its dependencies did not
@@ -36067,6 +36391,7 @@ claim under the current checker contract.
                    :schema/request-S9}
    :checker :checker/operation-v6
    :result :valid
+   ;; A hash is not the derivation or its checked subject binding.
    :derivation-hash "71ad..."})
 
 (def admission
@@ -36076,7 +36401,8 @@ claim under the current checker contract.
     :required-profile :profile/compositional-v3
     :candidate cached-report}))
 
-;; The cache filename and :result do not override these mismatches.
+;; A checker that collects safe independent diagnostics can report these;
+;; a fail-fast checker may report the first blocking error instead.
 {:admitted? false
  :errors
  [{:type :certificate/subject-mismatch
@@ -36087,7 +36413,9 @@ claim under the current checker contract.
    :actual :rule/claim-eligible-R7}
   {:type :certificate/checker-mismatch
    :required :checker/operation-v7
-   :actual :checker/operation-v6}]}
+   :actual :checker/operation-v6}
+  {:type :certificate/missing-required-derivation
+   :reason :digest-without-checkable-proof}]}
 #+end_src
 
 A hostile variant could copy the new subject ID and leave the old derivation
@@ -36107,8 +36435,7 @@ not itself that check.
 
 #+begin_src clojure
 (def claim-contract
-  {:semantic/id :operation/request-claim-O12
-   :normalized/semantics
+  {:normalized/semantics
    {:pre #{:request/open :helper/eligible}
     :post #{:request/claimed-by-authenticated-helper}}
    :depends-on #{:rule/claim-eligible-R8
@@ -36117,31 +36444,34 @@ not itself that check.
 (def current-claim-subject
   (semantic/normalize claim-contract))
 
+(def claim-semantic-id
+  (semantic/id current-claim-subject))
+
 (def xtdb-claim-adapter-a
   {:implementation/id :impl/claim-xtdb-A44
-   :implements :operation/request-claim-O12
+   :implements claim-semantic-id
    :handler #'request.model/claim-v1})
 
 (def xtdb-claim-adapter-b
   {:implementation/id :impl/claim-xtdb-B45
-   :implements :operation/request-claim-O12
+   :implements claim-semantic-id
    :handler #'request.model/claim-v2})
 
 (def previous-evidence
   {:semantic-certificate
-   {:certificate/id :certificate/request-claim-C19
-    :subject
-    {:semantic/id :operation/request-claim-O12
-     :normalized/hash "sha256:8bf4..."}
-    :dependencies #{:rule/claim-eligible-R8
-                    :schema/request-S9}
-    :checker :checker/operation-v7
-    :profile :profile/compositional-v3
-    :result :valid}
+   ;; A complete previously issued certificate candidate, including the
+   ;; normalized subject, derivations, dependencies, and assumption scopes.
+   ;; The checker re-admits it below; a report saying :result :valid would
+   ;; not suffice.
+   (certificate-fixture/serialized-checked-operation-certificate
+    {:subject current-claim-subject
+     :dependencies (:depends-on claim-contract)
+     :checker :checker/operation-v7
+     :profile :profile/compositional-v3})
 
    :implementation-conformance
    {:subject :impl/claim-xtdb-A44
-    :against :operation/request-claim-O12
+    :against claim-semantic-id
     :result :pass}
 
    :integration
@@ -36159,9 +36489,9 @@ not itself that check.
 
 ;; Conceptually, this is true only because the current checker establishes that
 ;; the certificate still applies to the current normalized subject and its
-;; dependencies.  The matching :semantic/id is useful correlation, not proof.
+;; dependencies.  The computed semantic ID is useful correlation, not proof.
 {:admitted? true
- :reason :current-subject-and-dependencies-match}
+ :reason :subject-dependencies-and-derivation-rechecked}
 
 (def reconsidered
   (release/reconsider-implementation
@@ -36172,23 +36502,30 @@ not itself that check.
 
 ;; Evidence about A44 cannot establish facts about B45.  The semantic theorem
 ;; may be retained only through the admitted applicability result above.
-{:retain #{:semantic-certificate/operation-request-claim-O12}
+{:retain #{:semantic-certificate/operation-request-claim-O13}
  :rerun #{:conformance/claim-adapter
           :integration/humanhelp-claim
           :real-browser/request-claim}
- :rebuild-if-bound #{:assembly/humanhelp
-                     :browser-manifest/humanhelp}}
+ :revalidate #{:server-provider-binding
+               :assembly/humanhelp
+               :startup-preflight/humanhelp}
+ :rebuild-if-bound #{:browser-manifest/humanhelp
+                     :browser-artifact/humanhelp}}
 #+end_src
 
 The semantic certificate is reusable because the current checker establishes
 that its normalized subject, semantic dependencies, checker contract, and
 profile still apply.  It is /not/ reusable merely because both versions carry
-=:operation/request-claim-O12=.  A copied or stale semantic ID cannot establish
+the same computed Claim identity. A copied or stale semantic ID cannot establish
 semantic sameness.
 
 The conformance result is not reusable because it was evidence about
 implementation =A44=.  Assembly and artifact work is recomputed precisely where
 the admitted implementation identity participates in their construction.
+The =A44/B45= labels stand for implementation identities established from the
+actual bound handler, build, and relevant dependencies. Assigning those labels
+in a map is not itself evidence that production executes those implementations;
+activation checks the current binding under Part VII's assembly lifecycle.
 
 This distinction prevents two opposite pathologies: rebuilding every theorem
 because a handler was refactored, and retaining either semantic or production
@@ -36750,6 +37087,12 @@ assurance scopes remain incomplete.  The report also names the exact admitted
 assembly-generation coordinate rather than using a bare, ambiguous
 "generation" field.
 
+This is a *hypothetical future* release after HumanHelp has selected and tested
+the still-open response-flow and remote-lifecycle policies. The two decision
+references below are placeholders for independently recorded, substantive
+HumanHelp contracts; this example does not choose either policy or claim that
+the present application satisfies the operational milestone.
+
 #+begin_src clojure
 (def humanhelp-release-2026-09
   {:release/id :humanhelp/2026-09-r4-candidate-17
@@ -36758,19 +37101,55 @@ assembly-generation coordinate rather than using a bare, ambiguous
     :assembly-generation/id :assembly-generation/G204
     :assembly-generation/admission-evidence
     :evidence/assembly-generation-G204-admission
-    :browser-artifact "sha256:83c4..."
+    :browser-artifact
+    {:manifest/id :fixture/browser-manifest-G204
+     :served-path :fixture/browser-asset-G204
+     :served-bytes-digest "sha256:83c4..."
+     :emitted-plan-registry :fixture/plan-registry-G204
+     :currentness-report :evidence/browser-currentness-G204}
     :source {:gesso "819117f..."
              :humanhelp "dad5c7c..."}}
+
+   :canonical-requirements :humanhelp/part-viii-operational-v1
+   :selected-product-contracts
+   {:response-flow :humanhelp/response-contract-selected-v1
+    :remote-lifecycle-adoption
+    :humanhelp/remote-lifecycle-policy-selected-v1}
 
    :milestones
    {:operational-application
     {:status :complete
-     :scope #{:request/create :request/details :request/search
+     :scope #{:request/create :request/details :request/respond
+              :request/search :request/sort :request/board-options
+              :request/show-terminal :request/hide-terminal
+              :request/terminal-render
               :request/claim :request/unclaim :request/on-the-way
               :request/complete :request/cancel :request/reassign
-              :advisory/refresh :continuity/reconnect}
-     :evidence #{:gate/jvm :gate/node :gate/chromium
-                 :gate/real-http :gate/multi-client}}
+              :creator/immediate-adoption :remote/creation-advisory
+              :remote/lifecycle-selected-policy
+              :advisory/explicit-refresh
+              :advisory/late-event-retention
+              :continuity/reconnect :authorization/protected-read
+              :claim/concurrent-two-client-settlement}
+     :gate-results
+     {:gate/production-model-truth :passed
+      :gate/required-capabilities :passed
+      :gate/product-decisions :passed
+      :gate/assembly-closure :passed
+      :gate/startup-preflight :passed
+      :gate/production-entrypoint :passed
+      :gate/rendered-surface :passed
+      :gate/browser-currentness :passed
+      :gate/browser-runtime-source :passed
+      :gate/plan-compatibility-or-retirement :passed
+      :gate/jvm :passed
+      :gate/node :passed
+      :gate/chromium :passed
+      :gate/real-http :passed
+      :gate/multi-client :passed
+      :gate/adversarial-defects :passed}
+     :evidence-index
+     :evidence/operational-G204-gates}
 
     :compositional-certification
     {:status :partial
@@ -36782,8 +37161,8 @@ assembly-generation coordinate rather than using a bare, ambiguous
 
     :external-formal-verification
     {:status :not-complete
-     :complete #{:formal/knowledge-safety-draft
-                 :formal/progression-finite-model}
+     :checked #{:formal/progression-finite-model}
+     :in-progress #{:formal/knowledge-safety-draft}
      :missing #{:production-correspondence-theorem
                 :stable-release-bound-evidence}}
 
@@ -36802,6 +37181,12 @@ assembly-generation coordinate rather than using a bare, ambiguous
 The report can admit this candidate for the operational claim if every required
 operational gate passes and the referenced assembly-generation admission
 actually establishes that this report describes the candidate being released.
+The external evidence index must resolve *each* gate to its actual result,
+test environment, production-bound subject/artifact, and independent product
+contract. The report cannot turn a missing gate into =:passed= merely by
+including a keyword in this example. In particular, the two selected contracts
+must be real and independently tested for the full operational claim; absent
+either one, =:status :complete= and =:open-decisions #{}= are invalid.
 The map does not make =G204= admitted merely by naming an admission-evidence ID;
 that evidence remains independently checked under the release boundary.
 
@@ -36845,7 +37230,6 @@ are built compositionally from those claims, and construction stops at the first
 semantic mismatch instead of allowing incompatible assumptions to drift into an
 application that merely appears to work.
 #+end_quote
-
 * Part XII — Implementation order and final invariants
 :PROPERTIES:
 :CUSTOM_ID: part-12-implementation-order-and-final-invariants
@@ -37052,6 +37436,8 @@ Gate:
   rather than pretending a successful HTTP response establishes coverage;
 - advisory debt does not itself authorize acquisition or adoption;
 - successor acquisitions stay within the declared user-action/policy permission;
+- an authorized explicit acquisition path remains available when a relevant
+  advisory is never delivered and no debt was recorded for it;
 - reconnect does not grant stale callbacks authority.
 
 *** Stage 6 -- Whole-application assembly and mandatory preflight
@@ -37126,6 +37512,8 @@ Required work:
 - sort and visibility controls;
 - Request details/continuity;
 - a selected, independently testable response-flow contract;
+- a selected remote lifecycle adoption policy, without equating advisory delivery
+  with permission to show or acquire a changed Request;
 - terminal rendering;
 - login/principal separation;
 - multiple browser contexts;
@@ -37142,6 +37530,8 @@ Gate:
   rendering, or trusted-invocation boundary;
 - all required lifecycle and rich-board capabilities pass independently of which
   actions the current implementation happens to expose;
+- dropped advisory delivery still has an independent permitted Refresh or other
+  declared recovery path; reconnect alone cannot be its only trigger;
 - local creation while unrelated remote work is pending preserves selective
   adoption and advisory debt;
 - local hiding is not misclassified as authoritative absence;
@@ -37495,6 +37885,8 @@ Gate:
 - node-local state may disappear without losing authoritative model truth;
 - users on different nodes converge through authority under the declared
   acquisition/adoption policy, recovery actions, and environmental premises;
+- cross-node convergence does not depend on delivery of each advisory, including
+  when the only advisory for a change is lost;
 - retry/duplicate handling follows the model's declared durable identity and
   retention contract where claimed;
 - crash after commit before publication exercises the actual recovery path;
@@ -37513,6 +37905,11 @@ applications.  Names are illustrative.  In particular, functions whose names
 contain =admit=, =prepare=, =issue=, or =check= stand for the corresponding
 supported checking boundary described in the preceding Parts; a raw map with the
 same fields is not thereby an admitted value.
+
+These source blocks are contract sketches, not verified Biff, Gesso, HumanHelp,
+or formal-tool APIs. Their identifiers denote distinct checked results where
+the text says they are admitted; evaluating a sketch or assigning a =def= does
+not implement a checker, run a proof, or grant admission.
 
 The example also keeps three kinds of identity separate throughout:
 
@@ -37536,7 +37933,9 @@ from the static operation declaration.
    :trusted-requirements
    #{:principal/current
      :clock/current
-     :request/current}
+     :request/current
+     :membership/current
+     :organization/current}
    :prepare
    [:load-current-request
     :authorize-current-principal-as-helper
@@ -37567,7 +37966,13 @@ part of the operation's meaning.
     {:request/id (routes/request-id http-request)}
     :authoritative-input
     {:request/current
-     (request-model/read-current db (routes/request-id http-request))}
+     (request-model/read-current db (routes/request-id http-request))
+     :membership/current
+     (membership-model/read-for-principal
+      db (session/current-principal http-request))
+     :organization/current
+     (organization-model/read-for-request
+      db (routes/request-id http-request))}
 
     ;; Distinct from the durable command identity carried by an admitted
     ;; semantic command.
@@ -37579,7 +37984,9 @@ Only after this boundary has checked operation identity, route/transport
 correspondence, authenticated principal binding, structural command requirements,
 and the operation's trusted requirements does the HumanHelp model receive the
 admitted invocation.  The model remains the sole owner of the Claim business
-transition.
+transition. Trusted observations and commit-time guards must still obey the
+model's consistency contract; a pre-commit read alone does not make future
+authorization or Request status true at commit.
 
 By Stage 3, the same operation gains a portable semantic description.  Knowledge
 is not represented merely as a bag of convenient fact names: the projected role
@@ -37613,8 +38020,15 @@ assertion.
 
    :branch
    {:when [:known= [:helper :request/status] :open]
-    :offer :request/claim
+    :continue :request/claim-binding
     :otherwise :claim/unavailable}
+
+   ;; Availability comes from model-owned preparation with trusted current
+   ;; membership/organization context. Observing :open is necessary here,
+   ;; never sufficient to assert eligibility or server authorization.
+   :binding {:source :model-owned-preparation
+             :operation :request/claim
+             :render-control :only-when-bound}
 
    :authoritative-observation :request/current})
 
@@ -37622,10 +38036,12 @@ assertion.
   (choreo/project claim-choreo :helper))
 #+end_src
 
-Projection may therefore expose Claim only when the helper projection can justify
-the branch it takes.  The choreography does not create another copy of the
-HumanHelp Claim policy; it describes interaction around the authoritative
-operation and the knowledge needed to project it safely.
+Projection may take this branch only when the helper can justify its observation.
+The rendered Claim control also requires a model-owned eligible binding, and a
+later trusted server admission rechecks current principal and model preconditions.
+The choreography does not create another copy of the HumanHelp Claim policy; it
+describes interaction around the authoritative operation and the knowledge needed
+to project it safely.
 
 Stages 4-5 make that projection executable in the browser and connect successful
 or uncertain execution to settlement, advisory invalidation, and permitted
@@ -37643,7 +38059,9 @@ map nor a later current-state reread proves an uncertain command's outcome.
    {:kind :admitted-semantic-command
     :operation :request/claim}
    :provisional-effect :request/show-claimed-by-self
-   :settlement #{:committed :rejected :outcome-unknown}
+   :authoritative-settlement #{:accepted :rejected}
+   :delivery-uncertainty {:participant-knowledge :outcome-unknown
+                          :recovery :permitted-authoritative-reread}
    :managed-fragment :request/card})
 
 (def request-change-advisory
@@ -37652,15 +38070,19 @@ map nor a later current-state reread proves an uncertain command's outcome.
    :request/id request-id
    :remote-progression 42
    :acquisition :request/current
-   :adoption-policy :board/explicit-refresh})
+   :adoption-permission :from-selected-humanhelp-policy})
 #+end_src
 
-The advisory says that relevant authority advanced.  It contains neither the
-authoritative Request value nor permission to adopt unrelated Requests.  A later
-admitted =:request/current= observation can supersede provisional presentation,
-but current state and command-outcome knowledge remain distinct.  Resource
-instance ownership is also checked independently, so a callback from an obsolete
-browser resource cannot settle or mutate its successor.
+Here =:remote-progression= is advisory data for the scoped resource, not a newly
+admitted authoritative observation. This sketch intentionally leaves remote
+lifecycle adoption to the HumanHelp decision required by Stage 7; for a newly
+created remote Request the explicit board Refresh remains the declared visible
+adoption action. The advisory contains neither the authoritative Request value
+nor permission to adopt unrelated Requests. A later permitted and admitted
+=:request/current= observation can supersede provisional presentation, but
+current state and command-outcome knowledge remain distinct. Resource instance
+ownership is also checked independently, so a callback from an obsolete browser
+resource cannot settle or mutate its successor.
 
 At Stages 6-8, the Claim path must close as part of the actual application.  The
 closure boundary does substantially more than confirm that a bag of names exists.
@@ -37684,17 +38106,20 @@ admitted assembly generation.
    :required-server-capabilities
    #{:principal/current
      :clock/current
-     :request/current}
+     :request/current
+     :membership/current
+     :organization/current}
    :required-browser-manifest-entry :plan/request-claim})
 
 (def admitted-humanhelp-generation
   (application/admit-generation!
-   {:canonical-assembly humanhelp/application-assembly
-    :requirements #{claim-closure-requirement}
+   {:canonical-assembly
+    (humanhelp/application-assembly config)
+    :inspection-targets #{claim-closure-requirement}
     :prepared-server-realizations prepared-server-realizations
     :routes humanhelp/routes
     :acquisitions humanhelp/acquisitions
-    :generated-browser-artifact browser-build/receipt}))
+    :generated-browser-artifact generated-browser-artifact}))
 
 (def claim-closure-report
   (application/explain-path
@@ -37702,10 +38127,15 @@ admitted assembly generation.
    :request/claim))
 #+end_src
 
-The important output is not a self-declared =:valid? true=.  Admission returns a
-checker-owned assembly generation whose report identifies the checked edges,
-exact artifact correspondence, supplied capabilities, and any retained runtime or
-trusted premises.  HumanHelp then exercises that same production assembly in real
+The =:inspection-targets= set in this sketch requests explanation of one Claim path; it
+does not define the application's required product capabilities. The canonical
+assembly and independent Part VIII product acceptance input still require all
+six lifecycle operations and the remaining rich-board behaviors before Stage 7
+or the operational milestone can pass. Admission returns a checker-owned assembly
+generation whose report identifies checked edges, exact artifact correspondence,
+supplied capabilities, and retained runtime or trusted premises; a self-declared
+=:valid? true= is insufficient. HumanHelp then exercises that same production
+assembly in real
 Chromium:
 
 #+begin_example
@@ -37729,11 +38159,17 @@ specific certification profile.
 (def normalized-claim-rule
   (rules/normalize
    {:rule/id :request/helper-may-claim
+    :source :humanhelp/request-model/claim-policy
     :subject :request
     :when
     [:and
      [:= [:request/status] :open]
-     [:membership/current-helper? [:principal/current]]]
+     [:= [:membership/status] :active]
+     [:= [:request/organization-id] [:membership/organization-id]]
+     [:organization/allows-claim?
+      [:organization/current]
+      [:membership/current]
+      [:request/current]]]
     :result :claim/allowed}))
 
 (def admitted-claim-rule-certificate
@@ -37742,7 +38178,10 @@ specific certification profile.
     :profile :gesso/rules-v1
     :dependencies
     {:request-schema request-schema-certificate
-     :membership-relationship membership-certificate}
+     :membership-relationship membership-certificate
+     :organization-policy organization-policy-certificate
+     :organization-allows-claim-primitive
+     admitted-organization-claim-primitive-contract}
     :assumptions
     #{{:assumption/id :humanhelp/current-membership-read-is-authoritative
        :proposition :membership/current-read-authoritative}}
@@ -37757,10 +38196,19 @@ specific certification profile.
     :required-guarantees
     #{:trusted-principal-binding
       :authoritative-current-request
+      :current-membership-and-organization
       :open->claimed-transition-owned-by-model}
     :derivations claim-operation-derivations
     :implementation-assumptions claim-implementation-assumptions}))
 #+end_src
+
+The rule is an illustrative normalized view of the single HumanHelp model-owned
+policy, not another browser-maintained decision. Its organization predicate is
+admitted only under a typed, totality/partiality-declared primitive contract and
+the relevant dependencies. The certificate does not prove that an arbitrary
+implementation of =humanhelp.request/claim!= evaluates that rule or protects
+commit-time preconditions: that correspondence retains its separately checked
+or explicitly trusted implementation obligation.
 
 The Choreo, helper projection, executable plan, and application assembly are then
 certified against the exact admitted dependencies they consume.  Their serialized
@@ -37817,6 +38265,7 @@ in for execution trace/refinement.
     {:formal-transition formal/request-claim-transition
      :production-realization humanhelp.request/claim!
      :observable-boundary :authoritative-request-transition
+     :correspondence-evidence claim-model-correspondence-evidence
      :assumptions claim-execution-correspondence-assumptions})})
 
 (def admitted-claim-release
@@ -37830,11 +38279,15 @@ in for execution trace/refinement.
     :implementation-evidence claim-production-evidence}))
 #+end_src
 
-The release result therefore means that the exact admitted subjects and shipped
-artifact satisfied the requested evidence profile.  A theorem about a neighboring
-formal subject, a certificate for a predecessor semantic identity, or a Chromium
-run against different bytes cannot be substituted merely because the labels look
-related.
+The =:correspondence-evidence= above must be a checked witness for the stated
+production relation or an explicitly classified trusted premise compatible with
+the requested profile. The name =check-execution-refinement!= does not supply a
+proof by itself, and admission correspondence alone cannot establish this
+execution claim. If the requested profile requires a proof and has only a trusted
+premise, admission fails. A successful release result concerns the exact admitted
+subjects and shipped artifact; a theorem about a neighboring formal subject, a
+certificate for a predecessor semantic identity, or a Chromium run against
+different bytes cannot substitute for them.
 
 Finally Stage 18 changes physical topology, not Claim's semantic owner or the
 meaning of any earlier identity.  A command can be admitted on node A, commit
@@ -38056,8 +38509,9 @@ remaining uncertainty.
 
 Advisory requirements, observations, and adoption are scoped. A newer local
 result cannot admit unrelated remote Requests or erase their outstanding debt.
-Queued successors, reconnect, and stale-plan recovery require their declared
-acquisition/adoption permission.
+An authorized explicit Refresh can acquire changes even if no advisory arrived
+and thus no debt was recorded. Queued successors, reconnect, and stale-plan
+recovery require their declared acquisition/adoption permission.
 
 *** Gate M -- evidence scope survives composition and release
 
@@ -38104,9 +38558,11 @@ claim.
                 :action :adopt-all-visible-requests}
 
    ;; The exposed operation registry accidentally omits Reassign, then calls the
-   ;; smaller registry the complete product.
-   :capabilities {:required #{:claim :unclaim :complete :cancel :reassign}
-                  :exposed #{:claim :unclaim :complete :cancel}}
+   ;; smaller registry the complete lifecycle.
+   :capabilities {:required #{:claim :unclaim :mark-on-the-way
+                              :complete :cancel :reassign}
+                  :exposed #{:claim :unclaim :mark-on-the-way
+                              :complete :cancel}}
 
    ;; Formal and browser evidence concern neighboring, not admitted, artifacts.
    :evidence {:certificate-subject :plan/request-claim-P23
@@ -38114,8 +38570,9 @@ claim.
               :chromium-tested-artifact "sha256:previous-release"
               :release-artifact "sha256:old-bytes"}
 
-   ;; Preflight also overclaims a future fact.
-   :preflight {:network-will-remain-available true}})
+   ;; Preflight also overclaims a future fact, with no checked recovery contract.
+   :preflight {:network-will-remain-available true
+               :network-loss-recovery nil}})
 #+end_src
 
 The candidate is not repaired by choosing one late gate and calling every defect a
@@ -38132,7 +38589,7 @@ release error.  Each contradiction stops where enough information first exists:
 | Release lacks Chromium evidence for shipped bytes | release admission | G -- real browser release gate |
 | Known malformed closure is allowed to run | application preflight | H -- stop malformed programs early |
 | Authority-shaped browser map treated as admitted value | trusted admission | I -- representation is not admission |
-| Reassign disappears because registry omitted it | product completeness check | J -- independent capability completeness |
+| Reassign disappears because registry omitted it | independent product completeness check | J -- independent capability completeness |
 | Current state is treated as proof of timed-out command outcome | recovery semantics | K -- knowledge differs from outcome |
 | Reconnect adopts outside declared policy/scope | acquisition/adoption check | L -- scope survives recovery |
 | Certificate/test identities copied onto different artifacts | release composition | M -- evidence scope survives release |
@@ -38149,7 +38606,10 @@ look persuasive.
 First the application is reconstructed from the canonical source-owned assembly.
 The required trusted capabilities must actually resolve, and the browser artifact
 must be generated from the current normalized assembly rather than renamed to
-match it.
+match it. The recovered assembly's source-owned dynamic failure contract must
+also pass structural preflight before any application listener serves; the
+product acceptance requirement comes from the independent HumanHelp spec rather
+than the application's exposed operation list.
 
 #+begin_src clojure
 (def repaired-generation
@@ -38162,7 +38622,9 @@ match it.
           :providers
           {:principal/current session-principal-provider
            :clock/current system-clock-provider
-           :request/current request-model-provider}})
+           :request/current request-model-provider
+           :membership/current membership-model-provider
+           :organization/current organization-model-provider}})
 
         browser-artifact
         (browser-build/generate!
@@ -38172,9 +38634,15 @@ match it.
      {:canonical-assembly assembly
       :prepared-server-realizations prepared-server
       :generated-browser-artifact browser-artifact
-      :required-product-capabilities
-      #{:claim :unclaim :complete :cancel :reassign}})))
+      :required-product-acceptance
+      humanhelp/independent-product-acceptance})))
 #+end_src
+
+That independent acceptance specification covers all six lifecycle operations,
+creation, details, response flow, search, sorting, visibility, Refresh, and the
+selected remote lifecycle policy. The sketch is conditional on those product
+decisions being recorded and evidenced; the current unfinished application
+cannot be declared complete merely by evaluating this expression.
 
 The request path then treats browser input as an untrusted representation.  The
 server binds the authenticated principal and current dynamic facts itself, checks
@@ -38201,6 +38669,14 @@ admitted execution only if the declared operation requirements are satisfied.
           {:request/current
            (request-model/read-current
             (:db system)
+            (routes/request-id http-request))
+           :membership/current
+           (membership-model/read-for-principal
+            (:db system)
+            (session/current-principal http-request))
+           :organization/current
+           (organization-model/read-for-request
+            (:db system)
             (routes/request-id http-request))}
           :execution-id (execution/new-id!)})]
 
@@ -38214,27 +38690,33 @@ Notice what is *not* repaired by this code: a client field named =:principal=,
 command identity carried by the semantic envelope identifies the command after
 its protocol/admission checks; it does not authenticate the actor or establish
 current authoritative state.
+The model must revalidate its claim guards in the declared atomic transition;
+these reads are trusted inputs, not an immunity from concurrent changes.
 
-Recovery and continuity are repaired at their own semantic boundaries.  Current
+Recovery and continuity are repaired at their own semantic boundaries. Current
 state can supersede provisional presentation without fabricating knowledge of the
 lost command outcome, and a reconnect preserves advisory debt until the declared
-scope/adoption policy permits reacquisition.
+scope/adoption policy permits reacquisition. An advisory can be lost altogether:
+the permitted explicit board Refresh must independently acquire current
+authority under the selected HumanHelp policy.
 
 #+begin_src clojure
 (def repaired-recovery-policy
-  {:on-transport-uncertainty
-   {:authoritative-reread :request/current
-    :presentation :may-converge-to-current-authority
-    :command-outcome :outcome-unknown-unless-admitted-evidence}
-
-   :on-reconnect
-   {:remote-progress :record-advisory-debt
-    :automatic-adoption :only-where-declared
-    :request-board :board/explicit-refresh}})
+  (application/declared-recovery repaired-generation))
 #+end_src
 
-The certification/formal/browser evidence must then be regenerated or re-admitted
-for the exact current subjects.  Matching identifier strings are not enough.
+The admitted recovery contract must preserve command-outcome uncertainty on lost
+delivery, record scope-compatible advisory debt on reconnect, and let a permitted
+explicit board Refresh acquire current authority without an advisory. It does
+not use reconnect to grant automatic adoption. Its structural coverage and the
+concrete implementations must be checked during assembly admission and fault
+tests; writing a similar map after the fact would establish nothing.
+
+For an illustrative later release requesting compositional and external formal
+assurance, certification/formal/browser evidence must be regenerated or
+re-admitted for the exact current subjects. Operational application completion
+under Stages 1–8 does not require completion of the later formal milestone.
+Matching identifier strings are not enough.
 
 #+begin_src clojure
 (def repaired-assurance
@@ -38251,8 +38733,8 @@ for the exact current subjects.  Matching identifier strings are not enough.
         formal-correspondence
         (formal/check-production-correspondence!
          {:certification claim-certification
-          :production-checker production/gesso-kernel
-          :formal-rules formal/gesso-kernel
+          :production-checker production/gesso-proof-kernel
+          :formal-rules formal/gesso-proof-kernel
           :required-claims
           #{:admission-correspondence
             :claim-execution-refinement}})
@@ -38270,34 +38752,42 @@ for the exact current subjects.  Matching identifier strings are not enough.
      :chromium-evidence chromium-evidence}))
 #+end_src
 
-Preflight still does not predict that the network will stay available.  Instead,
-the application declares and checks that the relevant dynamic failure paths have
-supported recovery behavior:
+Each formal result needs its actual mechanism and scope. An admission/checker
+correspondence result does not establish execution refinement; any missing
+execution witness remains a named trusted or tested premise, and a requested
+formal proof profile must reject it when that profile requires a checked result.
+The Chromium run must exercise the production served bytes and controls for the
+same admitted assembly generation, with evidence of that byte binding.
+
+Preflight did not predict that the network would stay available. The following
+is only a readable excerpt of the dynamic-condition handling declared by the
+canonical assembly and structurally checked before serving; it is neither a
+new post-admission override nor an unconditional convergence promise:
 
 #+begin_src clojure
 (def dynamic-failure-contract
-  {:network-loss
-   {:during-command :settle-outcome-unknown
-    :recovery :authoritative-reread-when-permitted}
-   :publication-loss
-   {:after-commit :recover-from-authority}
-   :reconnect
-   {:preserve-scope true
-    :preserve-authenticated-principal-binding true
-    :preserve-selective-adoption true}})
+  (application/declared-dynamic-handling repaired-generation))
+
+;; For example, this checked declaration requires a transport-loss path that
+;; preserves command-outcome uncertainty, a post-commit publication-recovery
+;; path, and a scoped reacquisition path permitted even if no advisory arrived.
 #+end_src
 
-Only after those independently owned checks succeed can release admission make a
-release claim:
+Only after those independently owned checks succeed can the requested later
+release profile make its scoped claim:
 
 #+begin_src clojure
 (def admitted-release
   (release/admit!
-   {:assembly-generation repaired-generation
-    :dynamic-failure-contract dynamic-failure-contract
+   {:profile :humanhelp/external-formal-release-v1
+    :assembly-generation repaired-generation
     :certification (:certification repaired-assurance)
     :formal-correspondence (:formal-correspondence repaired-assurance)
     :browser-evidence (:chromium-evidence repaired-assurance)
+    :dynamic-handling-evidence
+    (application/dynamic-handling-evidence repaired-generation)
+    :product-acceptance-evidence
+    humanhelp/independent-product-test-results
     :required-gates
     #{:no-silent-downgrade
       :same-semantic-subject
@@ -38355,8 +38845,10 @@ authoritative basis and semantic command.
 Views attach typed operations to affordances and determine presentation.
 
 The browser runtime realizes Gesso semantics through a small pure transition
-system in the executable semantic core, whose safety/refinement properties are
-machine checked. HTMX remains the ordinary declarative owner of its request/response/OOB/swap/settle lifecycle and
+system in the executable semantic core. Its safety/refinement claims carry the
+actual stated scope of their machine checks; finite exploration alone establishes
+only the explored bound unless a sound abstraction extends it. HTMX remains the
+ordinary declarative owner of its request/response/OOB/swap/settle lifecycle and
 is gated or observed only through documented lifecycle boundaries where Gesso
 semantics require it; a custom HTMX extension is not an architectural
 requirement. Gesso-owned timers, provisional DOM work, continuity resources, and
@@ -38404,4 +38896,3 @@ remain essential for the trusted shell, external libraries, real browsers,
 operational scale, and application contracts, but they are not used as a
 synonym for proof.
 #+end_quote
-

@@ -564,6 +564,12 @@ the application author to write proof terms by hand.
 
 Suppose the author writes a pleasant rule against certified domain names:
 
+This is a deliberately small *illustrative policy conjunct*. The production
+HumanHelp Claim policy in Part VIII additionally relies on the relevant
+Membership/Organization rules and trusted current-state checks. Proving this
+rule well typed does not prove that it is the complete production policy or
+that its Clojure implementation conforms to it.
+
 #+begin_src clojure
 (defrule claimable?
   {:inputs
@@ -615,11 +621,11 @@ variation:
 
     [:= 
      [:field :request :request/status]
-     [:enum :request.status/open]]
+     [:enum :open]]
 
     [:= 
      [:field :membership :membership/status]
-     [:enum :membership.status/active]]
+     [:enum :active]]
 
     [:=
      [:field :membership :membership/organization-id]
@@ -679,7 +685,7 @@ derivations it expects will be needed:
      [:well-typed
       [:= 
        [:field :request :request/status]
-       [:enum :request.status/open]]]
+       [:enum :open]]]
 
      :proof
      [:eq-same-type
@@ -689,14 +695,14 @@ derivations it expects will be needed:
        :humanhelp/RequestStatus]
 
       [:enum-member
-       :request.status/open
+       :open
        :humanhelp/RequestStatus]]}
 
     {:goal
      [:well-typed
       [:=
        [:field :membership :membership/status]
-       [:enum :membership.status/active]]]
+       [:enum :active]]]
 
      :proof
      [:eq-same-type
@@ -706,7 +712,7 @@ derivations it expects will be needed:
        :humanhelp/MembershipStatus]
 
       [:enum-member
-       :membership.status/active
+       :active
        :humanhelp/MembershipStatus]]}
 
     {:goal
@@ -744,31 +750,41 @@ The elaborator's proposed list is not itself the definition of "all obligations
 that matter." The rule checker independently derives the required coverage from
 the normalized subject and certification profile:
 
+In particular, the checker recomputes referenced fields and reachable
+subexpressions from the normalized body. The =:resolved= set and the numbered
+child references in the following proof terms are claims to check against
+that body, not proof by self-declaration.
+
 #+begin_src clojure
 (def required-obligations
   (rule-checker/required-obligations
     {:subject normalized-claimable
      :profile :gesso/rules-v1}))
 ;; =>
-[{:obligation/id :claimable/body-total
+[{:obligation/id :claimable/body-boolean
   :goal
   [:returns
    :request/claimable?
    :gesso/Boolean]}
+
+ {:obligation/id :claimable/body-total
+  :goal
+  [:total
+   :request/claimable?]}
 
  {:obligation/id :claimable/status-equality
   :goal
   [:well-typed
    [:= 
     [:field :request :request/status]
-    [:enum :request.status/open]]]}
+    [:enum :open]]]}
 
  {:obligation/id :claimable/membership-equality
   :goal
   [:well-typed
    [:= 
     [:field :membership :membership/status]
-    [:enum :membership.status/active]]]}
+    [:enum :active]]]}
 
  {:obligation/id :claimable/organization-id-equality
   :goal
@@ -804,7 +820,9 @@ coverage
 ;; =>
 {:status :incomplete
  :missing
- [{:obligation/id :claimable/body-total
+ [{:obligation/id :claimable/body-boolean
+   ...}
+  {:obligation/id :claimable/body-total
    ...}
   {:obligation/id :claimable/all-input-fields-resolved
    ...}]}
@@ -817,7 +835,7 @@ A corrected elaborator output can add those derivations:
 
 #+begin_src clojure
 (def complete-derivations
-  (concat
+  (vec (concat
     (:proposed-derivations
      elaborated-claimable)
 
@@ -849,16 +867,38 @@ A corrected elaborator output can add those derivations:
        [:expression-returns-boolean
         2]
        [:expression-returns-boolean
-        3]]}]))
+        3]]}
+
+     {:goal
+      [:total :request/claimable?]
+
+      :proof
+      [:all-terms-total
+       {:subject-id :request/claimable?
+        :field-presence :required
+        :operators #{:and := :field :enum}}]}])))
 #+end_src
 
-The proof kernel checks each derivation against already admitted semantic
-interfaces:
+The accepting rule-set checker recomputes required coverage from the subject,
+then asks the proof kernel to check each derivation against already admitted
+semantic interfaces:
+
+For this example, =rule-checker/check-all= derives the obligation set again
+instead of trusting =required-obligations= supplied from outside. The proof
+kernel checks that every numbered child refers to the actual corresponding
+expression and resolves each =:field-type= premise against an admitted
+dependency. Without those checks, the apparently complete proof below would
+not establish its advertised goal.
+It also checks totality of the actual field accesses and primitive operators;
+the =:all-terms-total= payload alone cannot assert totality for an omitted
+term, optional field, or partial primitive.
 
 #+begin_src clojure
 (def checked
-  (proof.kernel/check-all
+  (rule-checker/check-all
     {:subject normalized-claimable
+
+     :profile :gesso/rules-v1
 
      :dependencies
      {:request-schema
@@ -870,9 +910,6 @@ interfaces:
       :organization-schema
       verified-organization-schema}
 
-     :required-obligations
-     required-obligations
-
      :derivations
      complete-derivations}))
 
@@ -881,7 +918,8 @@ checked
 {:status :accepted
 
  :covered
- #{:claimable/body-total
+ #{:claimable/body-boolean
+   :claimable/body-total
    :claimable/status-equality
    :claimable/membership-equality
    :claimable/organization-id-equality
@@ -890,6 +928,7 @@ checked
 
  :guarantees
  #{[:rule/well-typed :request/claimable?]
+   [:rule/total :request/claimable?]
    [:rule/returns
     :request/claimable?
     :gesso/Boolean]}}
@@ -1314,7 +1353,7 @@ Conceptual normalized term:
   [:principal :current]
   [:role :helper]]
  [:= [:field :request/status]
-     [:enum :request.status/open]]
+     [:enum :open]]
  [:= [:field :request/organization-id]
      [:field :current-user/organization-id]]]
 #+end_src
@@ -1369,7 +1408,23 @@ source-file load order.
 A concrete Claim dependency closure can preserve that ownership while still
 producing one compositional proof DAG.
 
+The following maps illustrate the *readable contents* of interfaces and
+reports produced by admitted construction. Writing these =def= forms does not
+create certified values: downstream composition consumes checker-issued
+handles and rechecks serialized representations at the relevant trust boundary.
+Labels such as =:semantic/request-schema-S17= stand in for computed semantic
+identities; production certificates bind actual normalized subjects and
+dependency IDs, not these mnemonic symbols.
+
 The schema certificates export only schema facts:
+
+The Request status list and Organization boolean below are schematic example
+interfaces, not claims that these exact fields and variants exist in the
+current production model. The actual pilot must derive its closed enum from
+the production Request schema and either certify the real Organization policy
+interface or expose =organization/allows-claim?= as a named, typed, explicitly
+trusted primitive. Inventing =:organization/claiming-enabled?= to make the
+example typecheck would not certify the actual HumanHelp Claim path.
 
 #+begin_src clojure
 (def request-schema-interface
@@ -1401,11 +1456,11 @@ The schema certificates export only schema facts:
     :humanhelp/RequestStatus
     {:kind :closed-enum
      :variants
-     #{:request.status/open
-       :request.status/claimed
-       :request.status/on-the-way
-       :request.status/completed
-       :request.status/cancelled}}}})
+     #{:open
+       :claimed
+       :on-the-way
+       :completed
+       :cancelled}}}})
 
 (def organization-schema-interface
   {:interface/kind :schema
@@ -1559,11 +1614,14 @@ The operation certificate adds the public authoritative contract:
 
     :outcomes
     #{:accepted
-      :rejected
-      :unknown}}
+      :rejected}
+
+    :delivery-uncertainty
+    {:recover {:acquire :request/card
+               :command-attribution :unknown}}}
 
    :guarantees
-   #{[:operation/outcome-closed
+   #{[:operation/outcomes-closed
       :request/claim]
 
      [:operation/authority-required
@@ -1616,8 +1674,11 @@ into Request FX:
      [:settlement/covered
       :request/claim
       #{:accepted
-        :rejected
-        :unknown}]
+        :rejected}]
+
+     [:delivery-uncertainty/recovery-declared
+      :request/claim
+      :request/card]
 
      [:projection/knowledge-sufficient
       :helper]}})
@@ -1757,6 +1818,12 @@ everything to =:verified true=:
      [:projection/preserves
       :request-claim/helper
       :supported-observables-v1]
+     :evidence :kernel-checked}
+
+    {:proposition
+     [:delivery-uncertainty/recovery-declared
+      :request/claim
+      :request/card]
      :evidence :kernel-checked}
 
     {:proposition
@@ -2469,8 +2536,14 @@ Claim rules C21 were certified against exactly that interface:
    :semantic/claim-rules-C21
 
    :dependencies
-   {:organization-domain
-    :semantic/organization-domain-O14}
+   {:request-schema
+    :semantic/request-schema-S17
+    :membership-schema
+    :semantic/membership-schema-M11
+    :organization-domain
+    :semantic/organization-domain-O14
+    :membership-relationships
+    :semantic/membership-rel-R8}
 
    :guarantees
    #{[:rule/well-typed
@@ -2504,7 +2577,7 @@ But old C21 explicitly depends on O14:
 
 #+begin_src clojure
 (certification/compose
-  {:artifact claim-rules-C21
+  {:artifact verified-claim-rules-C21
 
    :dependencies
    {:organization-domain
@@ -2530,6 +2603,11 @@ But old C21 explicitly depends on O14:
 
 The cache may still physically contain C21, operation O31, choreography H12,
 projection P7, and plan E5:
+
+Here =cached-C21= and its peers denote checker-issued handles (or persisted
+candidates rechecked before use). The earlier =def= maps only displayed their
+public interfaces; supplying those maps to =compose= would instead fail as
+unadmitted input, regardless of the stale-dependency check.
 
 #+begin_src clojure
 (def cache
@@ -2562,12 +2640,16 @@ set:
            checker-profile]}]
 
   (and
+    ;; This checks a checker-issued handle or a fully rechecked persisted
+    ;; certificate, never a raw map's :valid? flag.
+    (certificate/admitted? cached)
+
     (=
-      (:subject-semantic-id cached)
+      (certificate/subject-semantic-id cached)
       (semantic/id subject))
 
     (=
-      (:dependency-semantic-ids cached)
+      (certificate/dependency-semantic-ids cached)
       (into {}
         (map
           (fn [[k certified]]
@@ -2577,7 +2659,7 @@ set:
         dependencies))
 
     (=
-      (:checker-profile cached)
+      (certificate/checker-profile cached)
       checker-profile)
 
     (certificate/admissible?
@@ -2628,23 +2710,41 @@ typecheck because it still references =organization.claiming-enabled?=:
 
 The developer repairs the rule:
 
+Accepting both =:claim-policy/open= and =:claim-policy/helpers-only= without
+checking the helper role would be *well typed but policy wrong*. The repaired
+source explicitly declares a principal input and uses a certified role
+predicate. A missing role interface is an unresolved dependency, not a reason
+to treat every active member as a helper:
+
 #+begin_src clojure
 (defrule claimable?
   {:inputs
    {:request :humanhelp/Request
     :membership :humanhelp/Membership
-    :organization :humanhelp/Organization}}
+    :organization :humanhelp/Organization
+    :principal :humanhelp/AuthenticatedPrincipal}}
 
   (and
     (= request.status :open)
 
     (= membership.status :active)
 
-    (contains?
-      #{:claim-policy/open
-        :claim-policy/helpers-only}
-      organization.claim-policy)))
+    (= membership.organization-id
+       request.organization-id)
+
+    (= organization.id
+       request.organization-id)
+
+    (case organization.claim-policy
+      :claim-policy/open true
+      :claim-policy/helpers-only
+      (has-role? principal :helper)
+      :claim-policy/closed false)))
 #+end_src
+
+This still proves only the rule's declared subset under its certified inputs.
+The server must bind the current authenticated principal, Request, Membership,
+and Organization, and the implementation-conformance premise remains explicit.
 
 Certification produces a new rule identity C22:
 
@@ -2655,8 +2755,16 @@ Certification produces a new rule identity C22:
  :semantic/claim-rules-C22
 
  :dependencies
- {:organization-domain
-  :semantic/organization-domain-O15}
+ {:request-schema
+  :semantic/request-schema-S17
+  :membership-schema
+  :semantic/membership-schema-M11
+  :organization-schema
+  :semantic/organization-schema-O9
+  :organization-domain
+  :semantic/organization-domain-O15
+  :principal-role-interface
+  :semantic/principal-helper-role-PR1}
 
  :guarantees
  #{[:rule/well-typed
@@ -3023,6 +3131,11 @@ Suppose a HumanHelp helper projection contains this branch:
 
 The normalized projection state says the helper knows only:
 
+This is a static program-point environment. A derivation about a future
+authoritative observation is conditional on an event admitted by the runtime;
+the proof kernel cannot assert that any particular browser has already
+received such an observation.
+
 #+begin_src clojure
 {:role :helper
 
@@ -3103,11 +3216,17 @@ A subtler bug uses a real rule with a missing premise:
      [:request/private-review R]]
 
     ;; Required premise 2 should establish that the helper admitted
-    ;; request-card-observation. The elaborator accidentally omits it.
+    ;; a matching observation in the conditional receive transition.
+    ;; The elaborator accidentally omits it.
     ]})
 #+end_src
 
 The kernel can reject the malformed application of the inference rule:
+
+An admitted receive *contract* suffices for the static conditional claim. A
+concrete observation still requires runtime scope, owner, freshness, and
+resource-instance checks before the browser may adopt it. Supplying an
+asserted client observation as this premise is invalid.
 
 #+begin_src clojure
 (proof.kernel/check
@@ -3258,7 +3377,13 @@ S1's certificate identity:
 #+end_src
 
 The derivation in =:cert-P1= may be perfectly valid for S1. The relevant
-projection-to-plan correspondence checker must reject the mismatch:
+projection-to-plan correspondence checker must reject the mismatch. It
+reconstructs the canonical executable payload from the admitted S1 subject (or
+checks an equivalent independent preservation derivation) and compares it to
+the *actual* emitted payload. Reading =:claimed-source= on its own would accept
+the forged plan. If the lowering checker and emitter share a bug or the served
+bytes differ from the checked payload, those are separate named implementation
+and artifact correspondence premises, not proof-kernel conclusions:
 
 #+begin_src clojure
 (plan-checker/check-correspondence
@@ -3276,8 +3401,8 @@ projection-to-plan correspondence checker must reject the mismatch:
  :certified-subject
  :projection-S1
 
- :emitted-from
- :projection-S2}
+ :reason
+ :emitted-payload-differs-from-checked-lowering}
 #+end_src
 
 This is why the proof kernel is deliberately *small*, not omnipotent. It catches
@@ -3623,6 +3748,12 @@ A score over mutants is evidence about that corpus, not a soundness theorem.
 The corpus can be organized as data so every mutant records the baseline,
 isolated change, expected boundary, and diagnostic before the test runs.
 
+Ordinary source mutants start from fresh *unadmitted* production declarations
+and go through the same constructor/checkers as the positive control. A
+certificate-forgery mutant instead changes serialized candidate bytes at the
+deserialization boundary. The test fixture exposes these distinct injection
+points; it never assumes a checker-issued opaque value is a writable map.
+
 For example:
 
 #+begin_src clojure
@@ -3637,7 +3768,7 @@ For example:
     (fn [program]
       (update-in program
         [:request-schema
-         :types
+         :declaration :types
          :humanhelp/Request
          :fields]
         dissoc
@@ -3660,13 +3791,16 @@ For example:
     :baseline
     :humanhelp/request-claim
 
+    :exercise :certificate/compose
+
     :mutate
     (fn [program]
-      (assoc program
-        :organization-domain
-        organization-domain-O15
-        :claim-rules-certificate
-        cached-C21))
+      (-> program
+          (assoc-in [:organization-domain :declaration]
+                    (fixtures/organization-policy-source
+                      :claim-policy-enum))
+          (assoc-in [:certificate-cache :claim-rules]
+                    (fixtures/serialized-certificate cached-C21))))
 
     :affected
     [:dependency
@@ -3712,10 +3846,12 @@ For example:
     :baseline
     :humanhelp/request-claim
 
+    :exercise :certificate/deserialization
+
     :mutate
     (fn [program]
-      (assoc program
-        :claim-rules-certificate
+      (assoc-in program
+        [:certificate-cache :claim-rules]
         {:certificate/kind :rule-set
          :semantic-id
          :semantic/claim-rules-C21
@@ -3730,7 +3866,7 @@ For example:
 
     :expect
     {:result :rejected
-     :boundary :rule-set/admission
+     :boundary :certificate/deserialization
      :error/type
      :certification/unadmitted-dependency}}
 
@@ -3740,13 +3876,14 @@ For example:
     :baseline
     :humanhelp/request-claim
 
+    :exercise :projection/compose
+
     :mutate
     (fn [program]
       (assoc-in program
-        [:helper-projection
-         :dependencies
-         :choreography]
-        :semantic/request-create-choreo-H3))
+        [:certificate-cache :helper-projection]
+        (fixtures/serialized-certificate
+          verified-create-helper-projection)))
 
     :affected
     [:projection
@@ -3769,8 +3906,11 @@ For example:
       (update-in program
         [:application-assembly
          :routes]
-        dissoc
-        :route/request-claim))
+        (fn [routes]
+          (vec
+            (remove
+              #(= :route/request-claim (:route/id %))
+              routes)))))
 
     :affected
     [:application
@@ -3800,29 +3940,57 @@ For example:
      :expense/manager-limit]
 
     :expect
-    {:result :accepted-by-design
+    {:result :accepted
      :reason
-     :coherent-product-policy-change}}])
+     :coherent-product-policy-change}
+
+    :classification :application-truth}])
 #+end_src
 
-The runner builds a fresh baseline for every case so mutants cannot contaminate
-one another:
+The runner checks a fresh positive baseline for *every* case before applying
+its isolated mutation. The fixture contains source declarations built by the
+production constructors plus any explicitly selected cached candidate bytes.
+An =:exercise= selector invokes the named *supported* boundary with the fixture
+inputs; omitted selectors run the whole production construction. Thus the
+stale-certificate case tests the rejected composition attempt itself. A normal
+cache may instead miss, re-elaborate against O15, and reject the unchanged old
+rule as an unknown field. A separate production-path case must show that
+neither route admits a stale dependent. Deserialization validates cache
+admission before it can reuse a certificate:
+
+The two =:prohibited-*= fields in the runner come from instrumented fixture
+constructors and effect sinks, not from a mutable result supplied by the
+mutant. If that instrumentation is unavailable, the case is incomplete; =nil=
+cannot silently stand for =false=.
 
 #+begin_src clojure
 (defn run-mutant!
   [{:mutant/keys [id]
-    :keys [baseline mutate expect]}]
+    :keys [baseline mutate expect exercise]}]
 
   (let [program
-        (fixtures/fresh-certified-program
+        (fixtures/fresh-certification-candidate
           baseline)
+
+        baseline-result
+        (certification/exercise-supported-boundary
+          program (or exercise :production-construction))
+
+        _
+        (when-not (= :accepted (:result baseline-result))
+          (throw
+            (ex-info
+              "Positive certification control failed."
+              {:mutant/id id
+               :baseline baseline
+               :result baseline-result})))
 
         mutated
         (mutate program)
 
         result
-        (certification/run-through-supported-boundaries
-          mutated)]
+        (certification/exercise-supported-boundary
+          mutated (or exercise :production-construction))]
 
     {:mutant/id id
 
@@ -3832,12 +4000,17 @@ one another:
      (select-keys result
        [:result
         :boundary
-        :error/type])
+        :error/type
+        :prohibited-artifact-constructed?
+        :prohibited-effect-observed?])
 
      :pass?
-     (mutation/expected?
-       expect
-       result)}))
+     (and
+       (mutation/expected? expect result)
+       (or (= :accepted (:result result))
+           (and
+             (false? (:prohibited-artifact-constructed? result))
+             (false? (:prohibited-effect-observed? result)))))}))
 #+end_src
 
 A test asserts the predeclared classification:
@@ -3867,7 +4040,7 @@ The same runner executes the positive baseline through the same supported path:
   [baseline]
 
   (let [program
-        (fixtures/fresh-certified-program
+        (fixtures/fresh-certification-candidate
           baseline)
 
         result
@@ -3940,7 +4113,8 @@ A detailed corpus report can preserve first-enforcing-boundary evidence:
    :product-policy/change-manager-limit
 
    :expected
-   {:result :accepted-by-design}
+   {:result :accepted
+    :reason :coherent-product-policy-change}
 
    :actual
    {:result :accepted}
@@ -4184,6 +4358,22 @@ An illustrative root report might look like:
     :certification/profile
     :gesso/compositional-v1}
 
+   :implementation-bindings
+   {:request-model
+    {:ns 'net.humanhelp.site.model.request.core
+     :var 'claim
+     :implementation-identity :fixture/request-claim-impl-A13}
+    :claim-server
+    {:capability :server/request-claim
+     :implementation-identity :fixture/claim-server-impl-A13}}
+
+   :browser-artifact-binding
+   {:manifest/id :fixture/browser-manifest-A13
+    :served-path :fixture/served-gesso-live-A13
+    :served-bytes-digest :fixture/browser-bytes-A13
+    :emitted-plan-registry :fixture/claim-plan-registry-A13
+    :currentness-report :fixture/artifact-currentness-A13}
+
    :normalized-subjects
    {:request-schema
     :semantic/request-schema-S17
@@ -4280,13 +4470,22 @@ An illustrative root report might look like:
      [:operation/outcomes-closed
       :request/claim
       #{:accepted
-        :rejected
-        :unknown}]
+        :rejected}]
 
      :evidence
      {:class :kernel-checked
       :certificate
       :semantic/request-claim-op-O31}}
+
+    {:proposition
+     [:delivery-uncertainty/recovery-declared
+      :request/claim
+      :request/card]
+
+     :evidence
+     {:class :kernel-checked
+      :certificate
+      :semantic/request-claim-choreo-H12}}
 
     {:proposition
      [:helper/branch-knowledge-sufficient
@@ -4333,8 +4532,8 @@ An illustrative root report might look like:
 
      :evidence
      {:class :assembly-verified
-      :artifact-digest
-      "sha256:artifact-A13"}}
+      :currentness-report
+      :fixture/artifact-currentness-A13}}
 
     {:proposition
      [:transport/routes
@@ -4439,8 +4638,8 @@ An illustrative root report might look like:
 
      :evidence
      {:class :runtime-enforced
-      :test
-      :humanhelp/preflight-startup}}
+      :boundary :humanhelp/production-startup
+      :supporting-test :humanhelp/preflight-startup}}
 
     {:proposition
      [:real-chromium/two-client-claim
@@ -4470,6 +4669,12 @@ An illustrative root report might look like:
 A report with =:status :accepted= is meaningful only because the requested
 compositional profile defines which certificate classes and obligations must be
 closed. It does not mean every trusted assumption has been turned into a theorem.
+The symbolic fixture identities above represent separately checked bindings;
+an actual root report must name the served asset path and digest *and* the
+manifest and emitted registry established from those served bytes under Part
+VII's currentness check. A copied digest field alone is insufficient. Binding
+the model and server implementation identities also prevents reusing evidence
+from A13 after their implementations change without changing semantic source.
 
 The report also makes partial progress explicit. For example, before checked
 operation-implementation conformance exists:
@@ -4717,4 +4922,3 @@ semantic mismatch prevents construction of the stale downstream application
 artifact, while application-specific policy assumptions remain visible rather
 than being mislabeled as framework theorems.
 #+end_quote
-
