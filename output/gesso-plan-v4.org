@@ -9641,7 +9641,7 @@ contract might look like this:
 ;; helper is deliberately absent: browser or transport data does not get to
 ;; assert the principal that will own the authoritative transition.
 (def ClaimCommand
-  [:map
+  [:map {:closed true}
    [:request-id uuid?]
    [:command-id uuid?]])
 
@@ -9660,8 +9660,12 @@ contract might look like this:
       [:enum
        :request-not-open
        :membership-inactive
-       :organization-disallows-claim]]
-     [:request Request]
+       :membership-not-for-principal
+       :wrong-organization
+       :organization-disallows-claim
+       :authoritative-precondition-changed]]
+     ;; A principal may not be entitled to see the current Request on denial.
+     [:request {:optional true} [:maybe Request]]
      [:command-id uuid?]]]
 
    [:already-incorporated
@@ -9762,92 +9766,51 @@ context instead of being accepted from command data.
 (def claim-pipeline
   {:start
    (fn [ctx command]
-     {:state :load-authority
-      :command command})
-
-   :load-authority
-   (fn [ctx {:keys [command]}]
-     (let [principal
-           (authority/require-authenticated-principal ctx)
-
-           request
-           (persistence/read-request
-             ctx
-             (:request-id command))
-
-           membership
-           (membership/current-for-user
-             ctx
-             {:user-id (:user/id principal)
-              :organization-id
-              (:request/organization-id request)})
-
-           organization
-           (organization/current
-             ctx
-             (:request/organization-id request))]
-
-       {:state :prepare
-        :command command
-        :principal principal
-        :request request
-        :membership membership
-        :organization organization}))
+     {:state :prepare
+      :command command
+      ;; Rebound at the trusted invocation boundary, not taken from command.
+      :principal (authority/require-authenticated-principal ctx)})
 
    :prepare
-   (fn [ctx {:keys [command
-                    principal
-                    request
-                    membership
-                    organization]}]
-
-     (let [helper-id
-           (:user/id principal)
-
-           decision
-           (domain/claim-decision
-             {:request request
-              :membership membership
-              :organization organization
-              :helper-id helper-id})]
-
-       (if (= :allowed (:decision decision))
-         {:state :commit
-          :command command
-          :principal principal
-          :prepared
-          (persistence/prepare-claim
-            {:request request
-             :membership membership
-             :organization organization
-             :helper-id helper-id
-             :command-id (:command-id command)})}
-
-         {:state :done
-          :result
-          {:outcome :rejected
-           :reason (:reason decision)
-           :request request
-           :command-id (:command-id command)}})))
+   (fn [ctx {:keys [command principal]}]
+     ;; Explicit intent and trusted principal move forward separately.
+     ;; A model pre-read here could reject a compatible already-incorporated
+     ;; retry before the authoritative command record is examined.
+     {:state :commit
+      :command command
+      :principal principal})
 
    :commit
-   (fn [ctx {:keys [command principal prepared]}]
+   (fn [ctx {:keys [command principal]}]
+     ;; One public model-owned transaction first resolves any compatible
+     ;; prior command under current disclosure policy. For a new command it
+     ;; checks current Request, Membership, Organization and command binding,
+     ;; then writes the claim, command result and delivery debt atomically.
      (let [result
-           (persistence/commit-prepared-claim!
+           (persistence/submit-claim!
              ctx
-             prepared)]
-
+             {:command command
+              :principal principal})]
        (case (:commit/status result)
          :committed
          {:state :after-commit
           :command command
-          :principal principal
           :commit result}
 
+         :already-incorporated
+         {:state :done
+          :result
+          {:outcome :already-incorporated
+           :request (:request result)
+           :command-id (:command-id command)}}
+
          :rejected
-         {:state :reload-after-rejection
-          :command command
-          :commit result}
+         {:state :done
+          :result
+          {:outcome :rejected
+           :reason (:reason result)
+           :request (:request result)
+           :command-id (:command-id command)}}
 
          :unknown
          {:state :done
@@ -9855,29 +9818,21 @@ context instead of being accepted from command data.
           {:outcome :commit-unknown
            :command-id (:command-id command)}})))
 
-   :reload-after-rejection
-   (fn [ctx {:keys [command]}]
-     {:state :done
-      :result
-      {:outcome :rejected
-       :reason :authoritative-precondition-changed
-       :request
-       (persistence/read-request
-         ctx
-         (:request-id command))
-       :command-id (:command-id command)}})
-
    :after-commit
    (fn [ctx {:keys [command commit]}]
-     ;; Publication is after the authoritative transition.
-     ;; Failure here must not be translated into "claim failed".
+     ;; The durable outbox/delivery debt was committed with the claim.
+     ;; Publication failure cannot become a claim rejection.
      (let [publication
-           (persistence/publish-claim-consequence!
-             ctx
-             {:request-id (:request-id command)
-              :command-id (:command-id command)
-              :basis (:commit/basis commit)})]
-
+           (try
+             (persistence/publish-claim-consequence!
+               ctx
+               {:request-id (:request-id command)
+                :command-id (:command-id command)
+                :basis (:commit/basis commit)})
+             (catch Exception _delivery-error
+               ;; The durable debt remains available for a later worker.
+               {:publication/status :deferred
+                :command-id (:command-id command)}))]
        {:state :done
         :result
         {:outcome :committed
@@ -9896,6 +9851,17 @@ context instead of being accepted from command data.
     claim-pipeline
     command))
 #+end_src
+
+The private =submit-claim!= entry above denotes an atomic transaction
+contract, not a new required public API. It returns an already incorporated
+result only after checking command meaning and permission to disclose that
+result. It resolves that case *before* treating the now-claimed Request as a
+new command with failed =:open= precondition. A read in =:prepare= supplies a
+candidate or diagnostics; a precheck rejection cannot be final while a prior
+incorporation remains possible. Any committed result also records delivery
+debt atomically so failure during later publication cannot erase the duty to
+notify or imply non-incorporation. The concrete store mechanism and evidence
+for those properties remain Part IV implementation obligations.
 
 The private pipeline may be replaced later without changing the public meaning
 of =request/claim=. Conversely, the choreography must not reach down and call a
@@ -10252,64 +10218,65 @@ by preparation rather than a helper identity asserted by command data:
         :helper-id helper-id}})))
 #+end_src
 
-Preparation then converts the allowed decision into an authoritative transaction
-plan. The exact XTDB transaction primitives are intentionally abstracted here;
-what matters is the semantic content of the guards and writes.
+Preparation describes a candidate authoritative transaction, even when its
+earlier read suggests rejection: an existing compatible command may already
+have committed. The exact XTDB transaction primitives are intentionally
+abstracted here; the command lookup, current guards, and writes must satisfy
+one declared atomic decision contract.
 
 #+begin_src clojure
 (defn prepare-claim
   [{:keys [principal request membership organization command] :as inputs}]
-  (let [{:keys [decision transition reason]}
-        (claim-decision inputs)
+  (let [helper-id (:user/id principal)]
+    {:prepare/status :candidate
 
-        helper-id
-        (:user/id principal)]
+     ;; A pre-read may aid diagnosis, but must not reject an incorporated
+     ;; retry before the transaction checks the retained command record.
+     :observed/decision (claim-decision inputs)
 
-    (if (= :rejected decision)
-      {:prepare/status :rejected
-       :reason reason}
+     ;; Command resolution and the new-command guards/writes execute under
+     ;; one authoritative contract. This is not an unprotected lookup.
+     :commit/command-resolution
+     {:binding {:command-id (:command-id command)
+                :operation :request/claim
+                :subject (:request/id request)
+                :principal helper-id}
+      :compatible-existing :return-permitted-recorded-result
+      :incompatible-existing :reject
+      :absent :evaluate-new-command}
 
-      {:prepare/status :ready
+     ;; Only for a new command, guard transaction-current facts and any
+     ;; dependent relationship predicates; failure produces typed rejection.
+     :commit/new-command
+     {:guards
+      [[:request/still-open
+        {:request-id (:request/id request)
+         :expected-version (:model/version request)}]
 
-       ;; These guards protect the facts whose incompatible change would
-       ;; invalidate the prepared claim.
-       :commit/guards
-       [[:request/still-open
-         {:request-id (:request/id request)
-          :expected-version (:model/version request)}]
+       [:membership/still-active-for-principal
+        {:user-id helper-id
+         :organization-id (:membership/organization-id membership)
+         :expected-version (:model/version membership)}]
 
-        [:membership/still-active-for-principal
-         {:user-id helper-id
-          :organization-id
-          (:membership/organization-id membership)
-          :expected-version (:model/version membership)}]
+       [:organization/still-allows-claim
+        {:organization-id (:organization/id organization)
+         :expected-version (:model/version organization)}]]
 
-        [:organization/still-allows-claim
-         {:organization-id (:organization/id organization)
-          :expected-version (:model/version organization)}]
+      :writes
+      [[:request/claim
+        {:request-id (:request/id request)
+         :helper-id helper-id
+         :command-id (:command-id command)}]
 
-        ;; Durable command reuse is bound to the trusted principal as well as
-        ;; operation and subject.  The principal did not come from command data.
-        [:command/not-incorporated-with-different-meaning
-         {:command-id (:command-id command)
-          :operation :request/claim
-          :subject (:request/id request)
-          :principal helper-id}]]
+       [:command/record-incorporated-result
+        {:command-id (:command-id command)
+         :operation :request/claim
+         :subject (:request/id request)
+         :principal helper-id}]
 
-       ;; The complete authoritative write set is one transaction.
-       :commit/writes
-       [[:request/claim
-         {:request-id (:request/id request)
-          :helper-id helper-id
-          :command-id (:command-id command)}]
-
-        [:command/record-incorporated-result
-         {:command-id (:command-id command)
-          :operation :request/claim
-          :subject (:request/id request)
-          :principal helper-id}]]
-
-       :transition transition})))
+       [:delivery/record-publication-debt
+        {:command-id (:command-id command)
+         :request-id (:request/id request)}]]}}))
 #+end_src
 
 Suppose preparation succeeds, then another transaction deactivates Membership U
@@ -10325,12 +10292,13 @@ before this commit is submitted:
   {:user-id U
    :organization-id O})
 
-;; Our later commit evaluates its declared guards atomically with its writes.
+;; Our later commit resolves the command first; for a new command it
+;; evaluates current guards atomically with all authoritative writes.
 (def result
   (authoritative/submit!
     tx-context
-    {:guards (:commit/guards prepared)
-     :writes (:commit/writes prepared)}))
+    {:command-resolution (:commit/command-resolution prepared)
+     :new-command (:commit/new-command prepared)}))
 
 result
 ;; =>
@@ -10478,7 +10446,6 @@ A truthful model instead exposes an intermediate authoritative state:
 (def OrderStatus
   [:enum
    :payment-pending
-   :payment-authorized
    :placed
    :payment-failed
    :cancelled])
@@ -10491,8 +10458,15 @@ A truthful model instead exposes an intermediate authoritative state:
    [:order/status OrderStatus]
    [:order/total decimal?]
    [:order/payment-command-id uuid?]
+   [:order/payment-method-id uuid?]
+   [:order/provider-idempotency-key string?]
    [:order/provider-reference {:optional true} string?]])
 #+end_src
+
+In this illustrative product policy, a verified payment authorization is
+sufficient for the local Order to become =:placed=. If placement needs separate
+stock or fulfillment confirmation, that application must retain a distinct
+=:payment-authorized= state and declare its subsequent guarded transition.
 
 The initial authoritative transaction can create the pending Order and bind a
 stable provider idempotency key:
@@ -10502,50 +10476,70 @@ stable provider idempotency key:
   [{:keys [db principal now]}
    {:keys [cart-id command-id payment-method-id]}]
 
-  (let [cart
-        (cart-model/require-current!
-          db
-          {:cart-id cart-id
-           :customer-id (:user/id principal)})
+  ;; The command record is resolved atomically before any read that could
+  ;; reject a legitimate retry because its Cart has since changed or gone.
+  (authoritative/submit!
+    db
+    {:command-resolution
+     {:binding
+      {:command-id command-id
+       :operation :checkout/place-order
+       :subject cart-id
+       :principal (:user/id principal)
+       :payment-method-id payment-method-id}
+      :compatible-existing :return-permitted-recorded-order
+      :incompatible-existing :reject}
 
-        order-id
-        (uuid/random)
+     ;; The callback runs only on the command-absent branch *inside* the
+     ;; atomic decision. It reads/guards current Cart state and constructs
+     ;; the complete write set from that same guarded snapshot.
+     :on-absent
+     (fn [tx]
+       (let [cart
+             (cart-model/require-current-checkout-eligible!
+               tx
+               {:cart-id cart-id
+                :customer-id (:user/id principal)})
 
-        provider-key
-        (str "order-payment/" command-id)]
+             order-id (uuid/random)
+             provider-key (str "order-payment/" command-id)]
 
-    (authoritative/submit!
-      db
-      {:guards
-       [[:cart/still-checkout-eligible
-         {:cart-id cart-id
-          :expected-version (:cart/version cart)}]
+         {:guards
+          [[:cart/still-checkout-eligible
+            {:cart-id cart-id
+             :expected-version (:cart/version cart)}]]
 
-        [:command/not-reused-incompatibly
-         {:command-id command-id
-          :operation :checkout/place-order
-          :subject cart-id
-          :principal (:user/id principal)}]]
+          :writes
+          [[:order/create
+            {:order/id order-id
+             :order/customer-id (:user/id principal)
+             :order/cart-id cart-id
+             :order/status :payment-pending
+             :order/total (:cart/total cart)
+             :order/payment-command-id command-id
+             :order/payment-method-id payment-method-id
+             :order/provider-idempotency-key provider-key
+             :order/created-at now}]
 
-       :writes
-       [[:order/create
-         {:order/id order-id
-          :order/customer-id (:user/id principal)
-          :order/cart-id cart-id
-          :order/status :payment-pending
-          :order/total (:cart/total cart)
-          :order/payment-command-id command-id
-          :order/payment-method-id payment-method-id
-          :order/provider-idempotency-key provider-key
-          :order/created-at now}]
+           [:command/record
+            {:command-id command-id
+             :operation :checkout/place-order
+             :subject cart-id
+             :principal (:user/id principal)
+             :payment-method-id payment-method-id
+             :result-subject order-id}]
 
-        [:command/record
-         {:command-id command-id
-          :operation :checkout/place-order
-          :subject cart-id
-          :principal (:user/id principal)
-          :result-subject order-id}]]})))
+           [:payment/record-authorization-debt
+            {:order-id order-id
+             :provider-idempotency-key provider-key}]]}))}))
 #+end_src
+
+Command resolution, Cart guards, Order creation, command-result recording,
+and the durable payment-work obligation must be one supported atomic decision.
+The chosen persistence mechanism must prevent concurrent retries from both
+taking the =:absent= branch. A compatible retry checks permission to disclose
+the prior result and reuses its recorded Order and provider key; a client cannot
+substitute a different payment method under the same command identity.
 
 At that point =:payment-pending= is not an embarrassing implementation detail.
 It is the truthful authoritative state: the Order exists locally, but external
@@ -10583,6 +10577,10 @@ Provider success becomes input to a *later* authoritative transition:
      [[:order/still-payment-pending
        {:order-id (:order/id order)}]
 
+      [:provider-result/trusted-source
+       {:provider-idempotency-key
+        (:order/provider-idempotency-key order)}]
+
       [:provider-result/matches-order
        {:order-id (:order/id order)
         :amount (:order/total order)
@@ -10598,7 +10596,7 @@ Provider success becomes input to a *later* authoritative transition:
 
       [:order/set-status
        {:order-id (:order/id order)
-        :status :placed}]]})))
+        :status :placed}]]}))
 #+end_src
 
 Provider rejection has its own valid transition:
@@ -10610,7 +10608,12 @@ Provider rejection has its own valid transition:
     db
     {:guards
      [[:order/still-payment-pending
-       {:order-id (:order/id order)}]]
+       {:order-id (:order/id order)}]
+
+      [:provider-result/verified-rejection
+       {:order-id (:order/id order)
+        :provider-idempotency-key
+        (:order/provider-idempotency-key order)}]]
 
      :writes
      [[:order/payment-failure
@@ -10620,7 +10623,7 @@ Provider rejection has its own valid transition:
 
       [:order/set-status
        {:order-id (:order/id order)
-        :status :payment-failed}]]})))
+        :status :payment-failed}]]}))
 #+end_src
 
 The difficult failure window is provider success followed by local process loss
@@ -11171,7 +11174,7 @@ An unrelated Hotel 9 acquisition may happen later in the same XTDB database:
 
    :scope
    {:projection :hotel/availability
-    :hotel/id #uuid "h0900000-0000-0000-0000-000000000009"
+    :hotel/id #uuid "a0900000-0000-0000-0000-000000000009"
     :coverage :rooms-for-date-range}
 
    :basis :P25
@@ -11293,15 +11296,18 @@ sound combination can retain both obligations instead of inventing a universal
 join:
 
 #+begin_src clojure
-(requirement/combine
-  flight17-requirement
+(def hotel9-requirement
   {:requirement/type :authoritative-acquisition
    :authority :travel-db
    :scope
    {:projection :hotel/availability
-    :hotel/id #uuid "h0900000-0000-0000-0000-000000000009"
+    :hotel/id #uuid "a0900000-0000-0000-0000-000000000009"
     :coverage :rooms-for-date-range}
    :minimum-basis :P24})
+
+(requirement/combine
+  flight17-requirement
+  hotel9-requirement)
 ;; =>
 {:requirements
  [flight17-requirement
@@ -11542,10 +11548,14 @@ Assume Bob's board currently carries one outstanding advisory:
 
    :adopted
    {:basis :P17
+    :scope {:kind :request/board
+            :organization-id O
+            :coverage :complete-authorized-membership}
     :requests [R1 R2]}
 
    :requirements
    [{:requirement/id :O1
+     :authority :request
      :scope
      {:kind :request/board
       :organization-id O
@@ -11565,6 +11575,7 @@ satisfy:
   (assoc state
     :active-acquisition
     {:acquisition/id acquisition-id
+     :resource-instance/id [:acquisition-resource acquisition-id]
      :captured-requirements
      (:requirements state)
      :scope (:projection state)}))
@@ -11580,6 +11591,7 @@ While A1 is in flight, a later invalidation adds O2:
 #+begin_src clojure
 (def advisory-O2
   {:requirement/id :O2
+   :authority :request
    :scope
    {:kind :request/board
     :organization-id O
@@ -11601,9 +11613,11 @@ justified through P18:
 #+begin_src clojure
 (def response-A1
   {:acquisition/id :A1
+   :resource-instance/id [:acquisition-resource :A1]
 
    :observation
    {:provenance :authoritative
+    :authority :request
 
     :scope
     {:kind :request/board
@@ -11622,6 +11636,8 @@ observation*:
 (defn requirement-satisfied?
   [observation requirement]
   (and
+    (= (:authority observation)
+       (:authority requirement))
     (scope/covers?
       (:scope observation)
       (:scope requirement))
@@ -11631,45 +11647,63 @@ observation*:
       (:minimum-basis requirement))))
 
 (defn complete-acquisition
-  [state {:keys [acquisition/id observation]}]
+  [trusted-context state completion]
+  (let [active (:active-acquisition state)]
+    (when-not
+      (and
+        (some? (:acquisition/id active))
+        (= (:acquisition/id active)
+           (:acquisition/id completion))
+        (= (:resource-instance/id active)
+           (:resource-instance/id completion)))
+      (throw
+        (ex-info
+          "Acquisition completion does not belong to the active resource."
+          {:error/type :acquisition/wrong-owner
+           :received (:acquisition/id completion)
+           :active (:acquisition/id active)})))
 
-  (when-not
-    (= id
-       (get-in state
-         [:active-acquisition :acquisition/id]))
-    (throw
-      (ex-info
-        "Acquisition completion does not belong to the active acquisition."
-        {:error/type :acquisition/wrong-owner
-         :received id
-         :active
-         (get-in state
-           [:active-acquisition :acquisition/id])})))
+    ;; This checks trusted source/correlation, current read authorization,
+    ;; declared query scope and the actual consistency/coverage of the result.
+    ;; The :provenance key in client-carried data alone proves nothing.
+    (let [observation
+          (acquisition/require-admitted!
+            trusted-context
+            active
+            completion)
 
-  (let [satisfied
-        (filter
-          #(requirement-satisfied?
-             observation
-             %)
-          (:requirements state))
+          installable?
+          (presentation/can-install?
+            (:adopted state)
+            observation)
 
-        outstanding
-        (remove
-          #(requirement-satisfied?
-             observation
-             %)
-          (:requirements state))
+          discharged?
+          (fn [requirement]
+            (and (requirement-satisfied? observation requirement)
+                 (case (:requires requirement)
+                   :acquire-only true
+                   :acquire-and-adopt installable?
+                   false)))
 
-        adopted
-        {:basis (:basis observation)
-         :requests (:requests observation)}]
+          satisfied (filter discharged? (:requirements state))
+          outstanding (remove discharged? (:requirements state))]
 
-    (assoc state
-      :adopted adopted
-      :requirements (vec outstanding)
-      :active-acquisition nil
-      :last-discharged
-      (mapv :requirement/id satisfied))))
+      (cond->
+        (assoc state
+          :requirements (vec outstanding)
+          :active-acquisition nil
+          :last-discharged (mapv :requirement/id satisfied))
+
+        installable?
+        (assoc :adopted
+          {:basis (:basis observation)
+           :scope (:scope observation)
+           :requests (:requests observation)})
+
+        (not installable?)
+        (assoc :reconciliation
+          {:reason :observation-not-installable
+           :outstanding (mapv :requirement/id outstanding)})))))
 #+end_src
 
 With a P18 response:
@@ -11677,6 +11711,7 @@ With a P18 response:
 #+begin_src clojure
 (def after-A1
   (complete-acquisition
+    trusted-acquisition-context
     refreshing-with-O2
     response-A1))
 
@@ -11702,6 +11737,7 @@ started:
 
 (def after-strong-A1
   (complete-acquisition
+    trusted-acquisition-context
     refreshing-with-O2
     response-A1-stronger))
 
@@ -11713,43 +11749,21 @@ The captured requirements still matter operationally: they explain why A1 was
 started and what minimum consistency the acquisition requested. But discharge is
 justified by the result actually obtained, not by request-start metadata.
 
-Adoption is a separate condition. If a semantically newer installed state makes
-this response ineligible for installation, the application cannot claim the
-visible board adopted O1 merely because the bytes were fetched:
+Adoption is a separate condition. If a newer installed state makes this
+response ineligible for installation, fetched bytes cannot discharge a debt
+that requires visible adoption. The =complete-acquisition= transition above
+is the only path in this example
+that clears acquisition debt. If presentation installation fails, acquisition
+alone may satisfy an =:acquire-only= requirement, but an
+=:acquire-and-adopt= requirement remains outstanding and a reconciliation
+successor is recorded. The transition uses the requirements in the *current*
+state, so an advisory received while A1 was in flight cannot vanish.
 
-#+begin_src clojure
-(defn install-or-transfer-obligation
-  [state observation]
-  (if (presentation/can-install?
-        (:adopted state)
-        observation)
-
-    (-> state
-        (assoc
-          :adopted
-          {:basis (:basis observation)
-           :requests (:requests observation)})
-        (update
-          :requirements
-          #(remove
-             (fn [requirement]
-               (and
-                 (= :acquire-and-adopt
-                    (:requires requirement))
-                 (requirement-satisfied?
-                   observation
-                   requirement)))
-             %)))
-
-    ;; Acquisition happened, but visible incorporation did not.
-    ;; Requirements that demand adoption remain outstanding or move to a
-    ;; checked successor/reconciliation path.
-    (assoc state
-      :reconciliation
-      {:reason :observation-not-installable
-       :observation observation
-       :requirements (:requirements state)})))
-#+end_src
+A real completion is accepted only after trusted acquisition admission. The
+=:provenance :authoritative= tag and an =assoc-in= that changes =:basis= in a
+test fixture cannot turn arbitrary browser bytes into a trusted observation;
+the P18 and P21 examples assume the fixture supplies correspondingly admitted,
+authorized results from the declared complete board query.
 
 Part VI may choose a different concrete coordinator representation. The semantic
 obligation established here is independent of that representation: advisory
@@ -12163,15 +12177,18 @@ a command result, and both bind to the trusted principal established above:
   [{:keys [request principal command]}]
   (let [command-id (:command-id command)
         helper-id (:user/id principal)]
+    ;; The complete operation first resolves an existing compatible command
+    ;; inside this transaction; this map shows only the absent/new branch.
     {:guards
      [[:request/still-open
        {:request-id (:request/id request)}]
 
-      [:command/not-bound-to-different-meaning
-       {:command-id command-id
-        :operation :request/claim
-        :subject (:request/id request)
-        :principal helper-id}]]
+      [:membership/active-for-principal
+       {:principal helper-id
+        :request-id (:request/id request)}]
+
+      [:organization/currently-allows-claim
+       {:request-id (:request/id request)}]]
 
      :writes
      [[:request/claim
@@ -12188,7 +12205,11 @@ a command result, and both bind to the trusted principal established above:
         :result
         {:request/id (:request/id request)
          :request/status :claimed
-         :request/helper-id helper-id}}]]}))
+         :request/helper-id helper-id}}]
+
+      [:delivery/record-publication-debt
+       {:command-id command-id
+        :request-id (:request/id request)}]]}))
 #+end_src
 
 Assume that transaction commits, but the HTTP connection disappears before
@@ -12270,10 +12291,14 @@ principal is:
          :subject subject
          :principal (:user/id principal)}
 
+        ;; The lookup itself enforces disclosure for the current principal.
+        ;; Foreign command identities are indistinguishable from unavailable
+        ;; evidence through this public query.
         record
-        (command-model/find-result
+        (command-model/find-disclosable-result
           (:db ctx)
-          command-id)]
+          {:command-id command-id
+           :principal (:user/id principal)})]
 
     (cond
       (nil? record)
@@ -12326,40 +12351,25 @@ rebinds the current authenticated principal before comparing semantic material:
    #uuid "e8000000-0000-0000-0000-000000000008"
 
    :transport-request-id
-   #uuid "t2000000-0000-0000-0000-000000000002"})
+   #uuid "72000000-0000-0000-0000-000000000002"})
 
 (defn handle-claim-command!
   [ctx {:keys [command]}]
-  (let [principal
-        (authority/require-authenticated-principal ctx)
-
-        binding
-        {:operation (:operation command)
-         :subject (:request-id command)
-         :principal (:user/id principal)}]
-
-    (if-let [existing
-             (command-model/find-result
-               (:db ctx)
-               (:command-id command))]
-
-      (do
-        (command-model/require-compatible-binding!
-          existing
-          binding)
-
-        ;; Returning the already-incorporated result is this model's explicit
-        ;; duplicate policy. Another operation could choose differently.
-        {:outcome :already-incorporated
-         :result (:result existing)})
-
-      ;; request/claim performs the same trusted-principal/current-authority
-      ;; preparation before any authoritative transition.
-      (request/claim
-        ctx
-        {:request-id (:request-id command)
-         :command-id (:command-id command)}))))
+  ;; The admitted route fixes :request/claim; client :operation bytes cannot
+  ;; redirect this handler. The public model operation binds the principal
+  ;; from ctx and atomically resolves duplicates and new claims.
+  (request/claim
+    ctx
+    {:request-id (:request-id command)
+     :command-id (:command-id command)}))
 #+end_src
+
+An earlier =find-result= followed by =request/claim= would leave a race between
+two attempts that both observe no record. The model-owned atomic decision
+described above is the authoritative retry boundary. A response that says
+=:already-incorporated= is disclosed only to a currently permitted principal
+for the original binding; an incompatible or foreign command id cannot be used
+to fetch another principal's result.
 
 Reusing C42 for incompatible semantic material is not a retry.  Even under the
 same authenticated Alice context, changing operation or subject changes the
@@ -12549,7 +12559,6 @@ redundant tokens for the same instance.
 
 The design favors explicit identity over attempting to rediscover ownership
 later from DOM position, current URL, or another mutable physical fact.
-
 * Part V — Provisional state and executable presentation
 :PROPERTIES:
 :CUSTOM_ID: part-05-provisional-state-and-executable-presentation
@@ -12632,8 +12641,8 @@ Assume the browser has already acquired an authoritative Request card:
 
 #+begin_src clojure
 (def authoritative-card
-  ;; `projection/admitted` denotes the result of the trusted acquisition
-  ;; boundary.  Matching browser data cannot manufacture this value.
+  ;; Fixture notation for a trusted acquisition result, not a browser
+  ;; constructor. A copied tag or map cannot establish admission.
   (projection/admitted
     {:projection/type :request/card
      :authority :authoritative
@@ -12673,6 +12682,12 @@ a provisional projection:
 (def C42
   #uuid "c4200000-0000-0000-0000-000000000042")
 
+(def E42
+  #uuid "e4200000-0000-0000-0000-000000000042")
+
+(def T42
+  #uuid "91000000-0000-0000-0000-000000000001")
+
 (def provisional-claim
   {:projection/type :request/card
    :authority :provisional
@@ -12702,13 +12717,19 @@ The runtime can make the transition explicit:
 
 #+begin_src clojure
 (defn begin-claim
-  [{:keys [authoritative-card]} command-id principal]
+  [{:keys [authoritative-card current-owner binding] :as runtime}
+   command-id]
+  (projection/require-admitted-for!
+    runtime authoritative-card current-owner binding)
   (let [card
-        (projection/value authoritative-card)]
+        (projection/value authoritative-card)
+        principal
+        (binding/authorized-principal binding)]
 
     {:machine/state :claim/pending
 
      :command/id command-id
+     :execution/id (:execution/id current-owner)
 
      :authoritative-basis
      {:scope (:scope card)
@@ -12727,10 +12748,16 @@ The runtime can make the transition explicit:
      :resources
      {:settlement-timeout
       {:resource-instance/id
-       #uuid "91000000-0000-0000-0000-000000000001"
-       :owner [:execution :current]
+       (:settlement-timeout/id runtime)
+       :owner current-owner
        :status :active}}}))
 #+end_src
+
+Here the admitted start context carries ={:execution/id E42}= as its current
+owner and =T42= as its allocated settlement-timeout instance. The binding's
+principal is authenticated by trusted preparation; it is also subject to the
+server's independent authorization when the command arrives. A browser label
+or request body cannot create that authentication.
 
 Now consider four legitimate endings.
 
@@ -12738,12 +12765,14 @@ First, direct confirmation:
 
 #+begin_src clojure
 (def accepted-settlement
-  ;; Produced only after the trusted settlement boundary has authenticated
-  ;; the source, correlated C42, admitted the authoritative result, and
-  ;; established the covered scope/basis.
+  ;; Fixture notation for a trusted settlement result, not a browser
+  ;; constructor. Boundary admission authenticates source and correlates
+  ;; execution, command, resource, outcome, and scoped progression.
   (settlement/admitted
     {:event/type :request/claim-settled
+     :execution/id E42
      :command/id C42
+     :resource-instance/id T42
      :outcome :accepted}
 
     (projection/admitted
@@ -12759,7 +12788,9 @@ First, direct confirmation:
 
 (defn settle-accepted
   [runtime admitted-settlement]
-  (settlement/require-admitted! admitted-settlement)
+  (settlement/require-admitted-for!
+    runtime admitted-settlement
+    {:outcome :accepted :target :request/card})
 
   (-> runtime
       (assoc
@@ -12777,7 +12808,9 @@ Second, authoritative rejection because Bob claimed first:
 (def rejected-settlement
   (settlement/admitted
     {:event/type :request/claim-settled
+     :execution/id E42
      :command/id C42
+     :resource-instance/id T42
      :outcome :rejected
      :reason :request-not-open}
 
@@ -12794,7 +12827,9 @@ Second, authoritative rejection because Bob claimed first:
 
 (defn settle-rejected
   [runtime admitted-settlement]
-  (settlement/require-admitted! admitted-settlement)
+  (settlement/require-admitted-for!
+    runtime admitted-settlement
+    {:outcome :rejected :target :request/card})
 
   (-> runtime
       (assoc
@@ -12813,12 +12848,18 @@ Third, local timeout with outcome still unknown:
 #+begin_src clojure
 (def timeout-event
   {:event/type :resource/timeout
-   :resource-instance/id
-   #uuid "91000000-0000-0000-0000-000000000001"})
+   :execution/id E42
+   :command/id C42
+   :resource-instance/id T42})
 
 (defn settle-timeout
-  [runtime _timeout]
-  (-> runtime
+  [runtime timeout]
+  (if-not
+    (and (= :claim/pending (:machine/state runtime))
+         (event/current-resource-owner?
+           runtime timeout :settlement-timeout))
+    runtime
+    (-> runtime
       (assoc
         :machine/state :claim/outcome-unknown
 
@@ -12836,8 +12877,8 @@ Third, local timeout with outcome still unknown:
         :recovery
         {:kind :authoritative-reacquisition
          :scope
-         {:projection :request/card
-          :request/id R}})))
+         (get-in runtime
+           [:authoritative-basis :scope])}))))
 #+end_src
 
 The timeout does not synthesize =:rejected=. If the server committed before the
@@ -12871,21 +12912,18 @@ without command-specific settlement:
 
 (defn install-authoritative-reread
   [runtime admitted-observation]
-  (acquisition/require-admitted! admitted-observation)
-
-  (let [observation
-        (acquisition/value admitted-observation)]
-
-    (if
-      (scope/covers?
-        (:scope observation)
-        (get-in runtime
-          [:authoritative-basis :scope]))
-
-      (-> runtime
+  ;; Admission is relative to the current target owner, authorized scope,
+  ;; installed observation, and declared progression rule.
+  (if
+    (acquisition/admitted-for-current-target?
+      runtime admitted-observation
+      (get-in runtime [:authoritative-basis :scope]))
+    (-> runtime
           (assoc
             :machine/state :claim/recovered
-            :authoritative admitted-observation
+            :authoritative
+            (acquisition/authoritative-projection
+              admitted-observation)
             :provisional nil)
 
           ;; The current view is now authoritative even if command attribution
@@ -12903,7 +12941,7 @@ without command-specific settlement:
             :resources
             retire-owned-resources))
 
-      runtime)))
+    runtime))
 #+end_src
 
 The browser can now render the correct authoritative Request card while still
@@ -12921,6 +12959,12 @@ browser preserved the old open card as a local snapshot:
    :request/status :open
    :request/helper-id nil
    :basis :X17})
+
+(def optimistic-capture
+  {:admitted-basis
+   (projection/admission-id authoritative-card)
+   :presentation optimistic-snapshot
+   :owner {:execution/id E42}})
 #+end_src
 
 After =reread-result= at X19 has been admitted and installed, a late failure
@@ -12942,22 +12986,19 @@ A correct failure callback first checks current ownership and installation state
 
 #+begin_src clojure
 (defn maybe-restore-snapshot
-  [runtime event]
-  (cond
-    (not (event/current-owner? runtime event))
-    runtime
-
-    (authoritative/supersedes-provisional?
-      (:authoritative runtime)
-      {:command/id (:command/id runtime)})
-    runtime
-
-    :else
+  [runtime event captured]
+  (if
+    (and (event/current-provisional-owner? runtime event)
+         (snapshot/same-admitted-basis?
+           captured (:authoritative-basis runtime))
+         (not (authoritative/installed-after-capture?
+                runtime captured)))
     (assoc runtime
       :presentation
       {:source :prior-justified-presentation
-       :snapshot optimistic-snapshot
-       :status :recovery-pending})))
+       :snapshot (:presentation captured)
+       :status :recovery-pending})
+    runtime))
 #+end_src
 
 Even in the last branch, restoring a familiar visual shape does not assert that
@@ -13334,10 +13375,22 @@ result and local interaction continuity can be represented separately:
 
 #+begin_src clojure
 (def authoritative-board
+  ;; Illustration of the value inside an admitted board observation.
   {:projection/type :request/board
    :authority :authoritative
    :basis :X31
-   :requests [R12 R17 R22 R30]})
+   :requests [{:request/id R12}
+              {:request/id R17}
+              {:request/id R22}
+              {:request/id R30}]})
+
+(def admitted-board
+  ;; Fixture notation: issued only by authorized, trusted acquisition.
+  (acquisition/admitted
+    authoritative-board
+    {:scope {:projection :request/board}
+     :authorized-principal [:user Bob]
+     :covered-through :X31}))
 
 (def continuity-capture
   {:slot :request-board
@@ -13377,6 +13430,8 @@ The replacement adapter can treat continuity as a local effect transaction:
   [browser
    {:keys [observation replacement-id]}]
 
+  (acquisition/require-admitted-for-current-target!
+    browser :request-board observation)
   (let [capture
         (continuity/capture
           browser
@@ -13385,7 +13440,7 @@ The replacement adapter can treat continuity as a local effect transaction:
            {:replacement/id replacement-id}})
 
         install
-        (dom/install-authoritative!
+        (dom/install-authoritative-if-current!
           browser
           {:target :request-board
            :observation observation})]
@@ -13396,18 +13451,19 @@ The replacement adapter can treat continuity as a local effect transaction:
         :observation observation}
 
        :continuity
-       (continuity/restore!
+       (continuity/restore-if-current!
          browser
          {:capture capture
-          :current-owner
-          {:replacement/id replacement-id}})}
+          :slot :request-board
+          :installed-observation observation})}
 
-      {:semantic
-       {:status :installation-failed
-        :observation observation}
-
-       :continuity
-       {:status :not-attempted}})))
+      (do
+        (continuity/retire-capture-if-current! browser capture)
+        {:semantic
+         {:status :installation-failed
+          :observation observation}
+         :continuity
+         {:status :not-attempted}}))))
 #+end_src
 
 Suppose restore succeeds:
@@ -13415,7 +13471,7 @@ Suppose restore succeeds:
 #+begin_src clojure
 {:semantic
  {:status :authoritative-installed
-  :observation authoritative-board}
+  :observation admitted-board}
 
  :continuity
  {:status :restored
@@ -13425,6 +13481,9 @@ Suppose restore succeeds:
 
 The new DOM can show authoritative Request membership from X31 while preserving
 Bob's search text and open details locally.
+The install operation itself compares current ownership and scoped progression
+at its mutation boundary. The earlier admission check cannot substitute for
+that check if another replacement can intervene.
 
 Now suppose focus restoration fails because the Refresh button is absent from
 the newly authorized rendering:
@@ -13432,7 +13491,7 @@ the newly authorized rendering:
 #+begin_src clojure
 {:semantic
  {:status :authoritative-installed
-  :observation authoritative-board}
+  :observation admitted-board}
 
  :continuity
  {:status :partial
@@ -13482,6 +13541,12 @@ A delayed callback for I1 must be rejected:
 (defn current-continuity-capture?
   [runtime capture]
   (and
+    (some? (get-in runtime [:current :capture-instance/id]))
+    (some? (:capture-instance/id capture))
+    (some? (get-in runtime [:current :owner]))
+    (some? (:owner capture))
+    (= (get-in runtime [:current :slot])
+       (:slot capture))
     (=
       (get-in runtime
         [:current :capture-instance/id])
@@ -13505,7 +13570,9 @@ A delayed callback for I1 must be rejected:
 
 The important state is not "which capture number is numerically larger?" It is
 which concrete capture is currently owned by the replacement scope that may
-restore this continuity slot.
+restore this continuity slot. The adapter checks its own current slot registry
+immediately before restoration rather than trusting a callback's owner claim.
+It retires the capture after restoration or failed installation.
 
 A continuity implementation may also filter captured values against the new
 authoritative rendering:
@@ -13516,7 +13583,7 @@ authoritative rendering:
   (let [authorized-ids
         (set
           (map :request/id
-               (:requests observation)))]
+               (:requests (acquisition/value observation))))]
 
     {:open-request-ids
      (set/intersection
@@ -13851,7 +13918,8 @@ A view can render those cases without knowing the underlying business rule:
    [:p.status
     (name (:status request))]
 
-   (case (get-in actions [:claim :availability])
+   (case (action/require-prepared-availability!
+           :request/claim (:claim actions))
      :available
      (gesso/action
        {:binding
@@ -13861,11 +13929,10 @@ A view can render those cases without knowing the underlying business rule:
        "Claim")
 
      :unavailable
-     nil
-
      nil)
 
-   (case (get-in actions [:cancel :availability])
+   (case (action/require-prepared-availability!
+           :request/cancel (:cancel actions))
      :available
      (gesso/action
        {:binding
@@ -13873,11 +13940,10 @@ A view can render those cases without knowing the underlying business rule:
        "Cancel")
 
      :unavailable
-     nil
-
      nil)
 
-   (case (get-in actions [:reassign :availability])
+   (case (action/require-prepared-availability!
+           :request/reassign (:reassign actions))
      :available
      (gesso/action
        {:binding
@@ -13885,16 +13951,14 @@ A view can render those cases without knowing the underlying business rule:
        "Reassign")
 
      :unavailable
-     (when
-       (= :application/missing-required-target
-          (get-in actions [:reassign :reason]))
-       (throw
-         (ex-info
-           "Request card cannot realize Reassign."
-           (get-in actions [:reassign :diagnostic]))))
-
      nil)])
 #+end_src
+
+Here =action/require-prepared-availability!= accepts only a validated
+=:available= binding or a declared policy-based =:unavailable= reason. It
+throws for missing/unknown availability, missing required input (including
+Reassign's =:helper/id= above), or a plan/binding construction defect for
+*every* action. A broken intended action cannot silently disappear.
 
 The view never asks:
 
@@ -14367,55 +14431,78 @@ A small projected Claim machine makes the desired portability more concrete.
 The immutable plan can be ordinary portable data:
 
 #+begin_src clojure
-(def claim-plan
+(def executable-plan
   {:plan/version 3
    :plan/id :plan/request-claim
+   :compatibility/id :humanhelp-live-v12
    :operation :request/claim
 
    :states
-   {:idle
-    [{:event :ui/invoke
-      :guard [:binding/complete]
-      :next :pending
-      :effects
-      [[:command/allocate]
-       [:projection/install-provisional]
-       [:transport/start]]}]
+   [{:state :idle
+     :transitions
+     [{:event :ui/invoke
+       :guard [:binding/complete]
+       :next 1
+       :effects
+       [[:command/allocate]
+        [:projection/install-provisional]
+        [:transport/start]]}]}
 
-    :pending
-    [{:event :claim/settled
-      :guard
-      [:and
-       [:event/current-owner]
-       [:event/matches-command]]
-      :next :settled
-      :effects
-      [[:projection/install-authoritative]
-       [:resources/retire-owned]]}
+    {:state :pending
+     :transitions
+     [{:event :claim/settled
+       :guard
+       [:and
+        [:event/current-owner]
+        [:event/matches-command]
+        [:settlement/admitted-current-outcome]
+        [:observation/admitted-progressive]]
+       :next 2
+       :effects
+       [[:command/record-accepted]
+        [:projection/install-authoritative]
+        [:resources/retire-owned]]}
 
-     {:event :claim/rejected
-      :guard
-      [:and
-       [:event/current-owner]
-       [:event/matches-command]]
-      :next :rejected
-      :effects
-      [[:projection/install-authoritative]
-       [:resources/retire-owned]]}
+      {:event :claim/timeout
+       :guard [:event/current-resource-owner]
+       :next 3
+       :effects
+       [[:command/record-unknown]
+        [:resources/retire-owned]
+        [:recovery/request-authoritative-acquisition]]}
 
-     {:event :claim/timeout
-      :guard [:event/current-resource]
-      :next :unknown
-      :effects
-      [[:resources/retire-owned]
-       [:recovery/request-authoritative-acquisition]]}]
+      {:event :claim/rejected
+       :guard
+       [:and
+        [:event/current-owner]
+        [:event/matches-command]
+        [:settlement/admitted-current-outcome]
+        [:observation/admitted-progressive]]
+       :next 5
+       :effects
+       [[:command/record-rejected]
+        [:projection/install-authoritative]
+        [:resources/retire-owned]]}]}
 
-    :unknown
+    {:state :settled
+     :transitions []}
+
+    {:state :unknown
+     :transitions
     [{:event :authority/acquired
-      :guard [:observation/covers-target]
-      :next :recovered
-      :effects
-      [[:projection/install-authoritative]]}]}})
+       :guard
+       [:and
+        [:event/current-recovery-target-owner]
+        [:observation/admitted-authorized-current-progressive]]
+       :next 4
+       :effects
+       [[:projection/install-authoritative]]}]}
+
+    {:state :recovered
+     :transitions []}
+
+    {:state :rejected
+     :transitions []}]})
 #+end_src
 
 Runtime state is separate from the plan:
@@ -14433,11 +14520,21 @@ Runtime state is separate from the plan:
    :resources
    {:transport
     {:resource-instance/id
-     #uuid "b3000000-0000-0000-0000-000000000006"}
+     #uuid "b3000000-0000-0000-0000-000000000006"
+     :owner [:execution
+             #uuid "b1000000-0000-0000-0000-000000000010"]
+     :status :active}
 
     :timeout
     {:resource-instance/id
-     #uuid "b3000000-0000-0000-0000-000000000007"}}
+     #uuid "b3000000-0000-0000-0000-000000000007"
+     :owner [:execution
+             #uuid "b1000000-0000-0000-0000-000000000010"]
+     :status :active}}
+
+   :authoritative-basis
+   {:scope {:projection :request/card :request/id R}
+    :basis :X49}
 
    :projection
    {:authority :provisional
@@ -14460,11 +14557,23 @@ A normalized event likewise contains runtime-specific values:
    :resource-instance/id
    #uuid "b3000000-0000-0000-0000-000000000006"
 
-   :authoritative
-   {:request/id R
-    :request/status :claimed
-    :request/helper-id Alice
-    :basis :X50}})
+   ;; Supplied by the trusted settlement admission boundary. The map by
+   ;; itself would not satisfy :settlement/admitted-current-outcome.
+   :settlement
+   (settlement/admitted-fixture
+     {:execution/id
+      #uuid "b1000000-0000-0000-0000-000000000010"
+      :command/id
+      #uuid "b2000000-0000-0000-0000-000000000042"
+      :resource-instance/id
+      #uuid "b3000000-0000-0000-0000-000000000006"
+      :outcome :accepted
+      :scope {:projection :request/card :request/id R}
+      :authoritative
+      {:request/id R
+       :request/status :claimed
+       :request/helper-id Alice
+       :basis :X50}})})
 #+end_src
 
 The portable transition function can remain pure:
@@ -14472,20 +14581,13 @@ The portable transition function can remain pure:
 #+begin_src clojure
 (defn step
   [plan state event]
-  (let [state-id
-        (:machine/state state)
-
+  (let [state-index
+        (plan/state-index plan (:machine/state state))
         candidates
-        (get-in plan
-          [:states state-id])
-
+        (get-in plan [:states state-index :transitions])
         transition
-        (some
-          #(when
-             (= (:event %)
-                (:event/type event))
-             %)
-          candidates)]
+        (some #(when (= (:event %) (:event/type event)) %)
+              candidates)]
 
     (cond
       (nil? transition)
@@ -14505,16 +14607,18 @@ The portable transition function can remain pure:
        :effects []}
 
       :else
-      {:result :accepted
-       :state
-       (assoc state
-         :machine/state
-         (:next transition))
-       :effects
-       (effects/elaborate
-         (:effects transition)
-         {:state state
-          :event event})})))
+      (let [next-state
+            (get-in plan [:states (:next transition) :state])
+            elaborated
+            (effects/elaborate (:effects transition)
+              {:state state :event event})]
+        ;; The *same pure core* updates semantic state and returns physical
+        ;; requests. The browser adapter cannot invent a competing state.
+        {:result :accepted
+         :state (effects/apply-semantic
+                  (assoc state :machine/state next-state)
+                  elaborated)
+         :effects (effects/physical-requests elaborated)}))))
 #+end_src
 
 Running the same input under JVM Clojure and ClojureScript should produce the
@@ -14522,7 +14626,7 @@ same semantic result:
 
 #+begin_src clojure
 (step
-  claim-plan
+  executable-plan
   runtime-state
   settled-event)
 ;; =>
@@ -14532,8 +14636,12 @@ same semantic result:
  {:machine/state :settled
   :execution/id ...
   :command/id ...
-  :resources ...
-  :projection ...}
+  :resources {:transport {:status :retired} :timeout {:status :retired}}
+  :projection {:authority :authoritative
+               :request/id R
+               :request/status :claimed
+               :request/helper-id Alice
+               :basis :X50}}
 
  :effects
  [[:projection/install-authoritative
@@ -14547,6 +14655,25 @@ same semantic result:
     #uuid "b1000000-0000-0000-0000-000000000010"}]]}
 #+end_src
 
+The notation =settlement/admitted-fixture= represents a value supplied only
+by a trusted admission boundary, not a constructor exposed to the browser.
+=guards/holds?= checks the current execution/resource and admitted outcome;
+=effects/elaborate= extracts only the authorized projection from that admitted
+settlement. =effects/apply-semantic= is pure: it records the authoritative
+projection, accepted command disposition, and retired resource ownership.
+=:claim/timeout= records unknown disposition, and an admitted reread can
+recover presentation while leaving command attribution unknown.
+=:event/current-recovery-target-owner= refers to the adapter's recovery
+target owner after the timed-out execution retires; it never resurrects that
+execution. Acquisition events still require their own resource-instance
+correlation and current scoped installation admission.
+=:claim/rejected= requires its own admitted settlement; observing the current
+Request state does not by itself establish why the command failed.
+=effects/physical-requests= returns adapter instructions separately. An
+installation failure must enter the declared physical-effect recovery contract;
+the shell cannot silently reverse the semantic admission or pretend the DOM
+was installed. The abbreviated displayed result omits unrelated state fields.
+
 The browser shell interprets abstract effects:
 
 #+begin_src clojure
@@ -14555,7 +14682,7 @@ The browser shell interprets abstract effects:
   (case (first effect)
 
     :projection/install-authoritative
-    (dom/install-authoritative!
+    (dom/install-if-current!
       browser
       (second effect))
 
@@ -14990,58 +15117,9 @@ correspondence.
 
 A concrete build can make the separation mechanical.
 
-Suppose projection emits this canonical runtime plan:
-
-#+begin_src clojure
-(def executable-plan
-  {:plan/version 3
-   :plan/id :plan/request-claim
-   :compatibility/id :humanhelp-live-v12
-
-   :states
-   [{:state :idle
-     :transitions
-     [{:event :ui/invoke
-       :guard [:binding/complete]
-       :next 1
-       :effects
-       [[:command/allocate]
-        [:projection/install-provisional]
-        [:transport/start]]}]}
-
-    {:state :pending
-     :transitions
-     [{:event :claim/settled
-       :guard
-       [:and
-        [:event/current-owner]
-        [:event/matches-command]]
-       :next 2
-       :effects
-       [[:projection/install-authoritative]
-        [:resources/retire-owned]]}
-
-      {:event :claim/timeout
-       :guard [:event/current-resource]
-       :next 3
-       :effects
-       [[:resources/retire-owned]
-        [:recovery/request-authoritative-acquisition]]}]}
-
-    {:state :settled
-     :transitions []}
-
-    {:state :unknown
-     :transitions
-     [{:event :authority/acquired
-       :guard [:observation/covers-target]
-       :next 4
-       :effects
-       [[:projection/install-authoritative]]}]}
-
-    {:state :recovered
-     :transitions []}]})
-#+end_src
+The plan above is the canonical emitted runtime artifact. The build uses this
+very object for production, portable tests, and exact diagnostic correspondence;
+there is no second handwritten machine for the sidecar to explain.
 
 The build computes an exact identity over the canonical executable payload:
 
@@ -15080,7 +15158,10 @@ The sidecar can then explain the compact coordinates:
     {:semantic-id :request-claim/helper/outcome-unknown}
 
     4
-    {:semantic-id :request-claim/helper/recovered}}
+    {:semantic-id :request-claim/helper/recovered}
+
+    5
+    {:semantic-id :request-claim/helper/rejected}}
 
    :transitions
    {[1 0]
@@ -15107,7 +15188,8 @@ The sidecar can then explain the compact coordinates:
 
      :proof-obligations
      [:obligation/settlement-command-correlation
-      :obligation/stale-owner-rejected]}
+      :obligation/stale-owner-rejected
+      :obligation/scoped-progression-admitted]}
 
     [1 1]
     {:semantic-id
@@ -15115,13 +15197,36 @@ The sidecar can then explain the compact coordinates:
 
      :knowledge-derivation
      {:premises
-      [[:timeout/current-resource]]
+      [[:timeout/current-resource-owner]]
 
       :conclusion
       [:command/disposition :unknown]}
 
      :proof-obligations
-     [:obligation/timeout-does-not-imply-rejection]}}})
+     [:obligation/timeout-does-not-imply-rejection]}
+
+    [1 2]
+    {:semantic-id
+     :request-claim/helper/rejected-settlement
+
+     :knowledge-derivation
+     {:premises
+      [[:event/current-owner]
+       [:event/matches-command]
+       [:settlement/admitted-current-outcome]]
+      :conclusion [:command/disposition :rejected]}
+
+     :proof-obligations
+     [:obligation/settlement-command-correlation
+      :obligation/rejection-requires-admitted-outcome]}}})
+#+end_src
+
+The sidecar locates the rejected settlement at [1 2]. A missing explanation
+cannot be silently interpreted as proof that the transition is safe.
+
+#+begin_src clojure
+(get-in diagnostic-sidecar [:states 5 :semantic-id])
+;; => :request-claim/helper/rejected
 #+end_src
 
 Production execution never calls:
@@ -15140,7 +15245,7 @@ inputs:
 (step
   executable-plan
   runtime-state
-  normalized-event)
+  settled-event)
 #+end_src
 
 A development observer may watch that exact step result:
@@ -15151,11 +15256,13 @@ A development observer may watch that exact step result:
    sidecar]
 
   (when-not
-    (= (:executable-digest sidecar)
-       (artifact/digest
-         {:algorithm :sha-256
-          :encoding :canonical-edn-v1
-          :value plan}))
+    (and
+      (= (:plan/id sidecar) (:plan/id plan))
+      (= (:executable-digest sidecar)
+         (artifact/digest
+           {:algorithm :sha-256
+            :encoding :canonical-edn-v1
+            :value plan})))
     (throw
       (ex-info
         "Diagnostic sidecar does not describe this executable."
@@ -15174,9 +15281,11 @@ A development observer may watch that exact step result:
       :event (:event/type event)
       :result (:result result)}
 
+     ;; This is an untrusted diagnostic claim unless build provenance and
+     ;; checker result are independently verified.
+     :explanation/status :unverified-sidecar-claim
      :explanation
-     (get-in sidecar
-       [:transitions locator])}))
+     (get-in sidecar [:transitions locator])}))
 #+end_src
 
 Its output can be rich:
@@ -15187,6 +15296,7 @@ Its output can be rich:
   :event :claim/settled
   :result :accepted}
 
+ :explanation/status :unverified-sidecar-claim
  :explanation
  {:semantic-id
   :request-claim/helper/accepted-settlement
@@ -15209,18 +15319,22 @@ But observer failure must remain diagnostic:
   (let [result
         (step plan state event)]
 
-    (try
-      (observer
-        {:plan plan
-         :state-before state
-         :event event
-         :result result}
-        sidecar)
+    (when observer
+      (try
+        (observer
+          {:plan plan
+           :state-before state
+           :event event
+           :result result}
+          sidecar)
 
-      (catch Throwable t
-        (diagnostics/report!
-          {:error/type :diagnostic/observer-failed
-           :cause t})))
+        (catch Throwable t
+          (try
+            (diagnostics/report!
+              {:error/type :diagnostic/observer-failed
+               :cause t})
+            (catch Throwable _
+              nil)))))
 
     ;; Semantic result is returned regardless of observer success.
     result))
@@ -15260,6 +15374,11 @@ The exact artifact identity is stricter than runtime compatibility. A rebuilt
 plan could have different state indices or emitted bytes while remaining
 compatible enough for ordinary execution under the server/runtime contract. A
 sidecar for the old bytes still cannot explain the new runtime coordinates.
+Matching the executable digest alone does not authenticate the explanation:
+a fabricated sidecar can copy that digest. Tooling that labels derivations as
+checker-verified must also validate sidecar provenance, its binding to the
+build/checker result, and the checked obligations. Otherwise it displays
+sidecar content only as an unverified diagnostic claim.
 
 That is why the build needs both:
 
@@ -15544,7 +15663,6 @@ The [[#req-assembly-construction-phases][assembly construction and admission pha
 own the complete production artifact gate.
 
 #+LATEX: \newpage
-
 * Part VI — Browser realization and recovery
 :PROPERTIES:
 :CUSTOM_ID: part-06-browser-realization-and-recovery

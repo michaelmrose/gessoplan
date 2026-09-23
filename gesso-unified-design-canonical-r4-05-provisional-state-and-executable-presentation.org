@@ -80,8 +80,8 @@ Assume the browser has already acquired an authoritative Request card:
 
 #+begin_src clojure
 (def authoritative-card
-  ;; `projection/admitted` denotes the result of the trusted acquisition
-  ;; boundary.  Matching browser data cannot manufacture this value.
+  ;; Fixture notation for a trusted acquisition result, not a browser
+  ;; constructor. A copied tag or map cannot establish admission.
   (projection/admitted
     {:projection/type :request/card
      :authority :authoritative
@@ -121,6 +121,12 @@ a provisional projection:
 (def C42
   #uuid "c4200000-0000-0000-0000-000000000042")
 
+(def E42
+  #uuid "e4200000-0000-0000-0000-000000000042")
+
+(def T42
+  #uuid "91000000-0000-0000-0000-000000000001")
+
 (def provisional-claim
   {:projection/type :request/card
    :authority :provisional
@@ -150,13 +156,19 @@ The runtime can make the transition explicit:
 
 #+begin_src clojure
 (defn begin-claim
-  [{:keys [authoritative-card]} command-id principal]
+  [{:keys [authoritative-card current-owner binding] :as runtime}
+   command-id]
+  (projection/require-admitted-for!
+    runtime authoritative-card current-owner binding)
   (let [card
-        (projection/value authoritative-card)]
+        (projection/value authoritative-card)
+        principal
+        (binding/authorized-principal binding)]
 
     {:machine/state :claim/pending
 
      :command/id command-id
+     :execution/id (:execution/id current-owner)
 
      :authoritative-basis
      {:scope (:scope card)
@@ -175,10 +187,16 @@ The runtime can make the transition explicit:
      :resources
      {:settlement-timeout
       {:resource-instance/id
-       #uuid "91000000-0000-0000-0000-000000000001"
-       :owner [:execution :current]
+       (:settlement-timeout/id runtime)
+       :owner current-owner
        :status :active}}}))
 #+end_src
+
+Here the admitted start context carries ={:execution/id E42}= as its current
+owner and =T42= as its allocated settlement-timeout instance. The binding's
+principal is authenticated by trusted preparation; it is also subject to the
+server's independent authorization when the command arrives. A browser label
+or request body cannot create that authentication.
 
 Now consider four legitimate endings.
 
@@ -186,12 +204,14 @@ First, direct confirmation:
 
 #+begin_src clojure
 (def accepted-settlement
-  ;; Produced only after the trusted settlement boundary has authenticated
-  ;; the source, correlated C42, admitted the authoritative result, and
-  ;; established the covered scope/basis.
+  ;; Fixture notation for a trusted settlement result, not a browser
+  ;; constructor. Boundary admission authenticates source and correlates
+  ;; execution, command, resource, outcome, and scoped progression.
   (settlement/admitted
     {:event/type :request/claim-settled
+     :execution/id E42
      :command/id C42
+     :resource-instance/id T42
      :outcome :accepted}
 
     (projection/admitted
@@ -207,7 +227,9 @@ First, direct confirmation:
 
 (defn settle-accepted
   [runtime admitted-settlement]
-  (settlement/require-admitted! admitted-settlement)
+  (settlement/require-admitted-for!
+    runtime admitted-settlement
+    {:outcome :accepted :target :request/card})
 
   (-> runtime
       (assoc
@@ -225,7 +247,9 @@ Second, authoritative rejection because Bob claimed first:
 (def rejected-settlement
   (settlement/admitted
     {:event/type :request/claim-settled
+     :execution/id E42
      :command/id C42
+     :resource-instance/id T42
      :outcome :rejected
      :reason :request-not-open}
 
@@ -242,7 +266,9 @@ Second, authoritative rejection because Bob claimed first:
 
 (defn settle-rejected
   [runtime admitted-settlement]
-  (settlement/require-admitted! admitted-settlement)
+  (settlement/require-admitted-for!
+    runtime admitted-settlement
+    {:outcome :rejected :target :request/card})
 
   (-> runtime
       (assoc
@@ -261,12 +287,18 @@ Third, local timeout with outcome still unknown:
 #+begin_src clojure
 (def timeout-event
   {:event/type :resource/timeout
-   :resource-instance/id
-   #uuid "91000000-0000-0000-0000-000000000001"})
+   :execution/id E42
+   :command/id C42
+   :resource-instance/id T42})
 
 (defn settle-timeout
-  [runtime _timeout]
-  (-> runtime
+  [runtime timeout]
+  (if-not
+    (and (= :claim/pending (:machine/state runtime))
+         (event/current-resource-owner?
+           runtime timeout :settlement-timeout))
+    runtime
+    (-> runtime
       (assoc
         :machine/state :claim/outcome-unknown
 
@@ -284,8 +316,8 @@ Third, local timeout with outcome still unknown:
         :recovery
         {:kind :authoritative-reacquisition
          :scope
-         {:projection :request/card
-          :request/id R}})))
+         (get-in runtime
+           [:authoritative-basis :scope])}))))
 #+end_src
 
 The timeout does not synthesize =:rejected=. If the server committed before the
@@ -319,21 +351,18 @@ without command-specific settlement:
 
 (defn install-authoritative-reread
   [runtime admitted-observation]
-  (acquisition/require-admitted! admitted-observation)
-
-  (let [observation
-        (acquisition/value admitted-observation)]
-
-    (if
-      (scope/covers?
-        (:scope observation)
-        (get-in runtime
-          [:authoritative-basis :scope]))
-
-      (-> runtime
+  ;; Admission is relative to the current target owner, authorized scope,
+  ;; installed observation, and declared progression rule.
+  (if
+    (acquisition/admitted-for-current-target?
+      runtime admitted-observation
+      (get-in runtime [:authoritative-basis :scope]))
+    (-> runtime
           (assoc
             :machine/state :claim/recovered
-            :authoritative admitted-observation
+            :authoritative
+            (acquisition/authoritative-projection
+              admitted-observation)
             :provisional nil)
 
           ;; The current view is now authoritative even if command attribution
@@ -351,7 +380,7 @@ without command-specific settlement:
             :resources
             retire-owned-resources))
 
-      runtime)))
+    runtime))
 #+end_src
 
 The browser can now render the correct authoritative Request card while still
@@ -369,6 +398,12 @@ browser preserved the old open card as a local snapshot:
    :request/status :open
    :request/helper-id nil
    :basis :X17})
+
+(def optimistic-capture
+  {:admitted-basis
+   (projection/admission-id authoritative-card)
+   :presentation optimistic-snapshot
+   :owner {:execution/id E42}})
 #+end_src
 
 After =reread-result= at X19 has been admitted and installed, a late failure
@@ -390,22 +425,19 @@ A correct failure callback first checks current ownership and installation state
 
 #+begin_src clojure
 (defn maybe-restore-snapshot
-  [runtime event]
-  (cond
-    (not (event/current-owner? runtime event))
-    runtime
-
-    (authoritative/supersedes-provisional?
-      (:authoritative runtime)
-      {:command/id (:command/id runtime)})
-    runtime
-
-    :else
+  [runtime event captured]
+  (if
+    (and (event/current-provisional-owner? runtime event)
+         (snapshot/same-admitted-basis?
+           captured (:authoritative-basis runtime))
+         (not (authoritative/installed-after-capture?
+                runtime captured)))
     (assoc runtime
       :presentation
       {:source :prior-justified-presentation
-       :snapshot optimistic-snapshot
-       :status :recovery-pending})))
+       :snapshot (:presentation captured)
+       :status :recovery-pending})
+    runtime))
 #+end_src
 
 Even in the last branch, restoring a familiar visual shape does not assert that
@@ -782,10 +814,22 @@ result and local interaction continuity can be represented separately:
 
 #+begin_src clojure
 (def authoritative-board
+  ;; Illustration of the value inside an admitted board observation.
   {:projection/type :request/board
    :authority :authoritative
    :basis :X31
-   :requests [R12 R17 R22 R30]})
+   :requests [{:request/id R12}
+              {:request/id R17}
+              {:request/id R22}
+              {:request/id R30}]})
+
+(def admitted-board
+  ;; Fixture notation: issued only by authorized, trusted acquisition.
+  (acquisition/admitted
+    authoritative-board
+    {:scope {:projection :request/board}
+     :authorized-principal [:user Bob]
+     :covered-through :X31}))
 
 (def continuity-capture
   {:slot :request-board
@@ -825,6 +869,8 @@ The replacement adapter can treat continuity as a local effect transaction:
   [browser
    {:keys [observation replacement-id]}]
 
+  (acquisition/require-admitted-for-current-target!
+    browser :request-board observation)
   (let [capture
         (continuity/capture
           browser
@@ -833,7 +879,7 @@ The replacement adapter can treat continuity as a local effect transaction:
            {:replacement/id replacement-id}})
 
         install
-        (dom/install-authoritative!
+        (dom/install-authoritative-if-current!
           browser
           {:target :request-board
            :observation observation})]
@@ -844,18 +890,19 @@ The replacement adapter can treat continuity as a local effect transaction:
         :observation observation}
 
        :continuity
-       (continuity/restore!
+       (continuity/restore-if-current!
          browser
          {:capture capture
-          :current-owner
-          {:replacement/id replacement-id}})}
+          :slot :request-board
+          :installed-observation observation})}
 
-      {:semantic
-       {:status :installation-failed
-        :observation observation}
-
-       :continuity
-       {:status :not-attempted}})))
+      (do
+        (continuity/retire-capture-if-current! browser capture)
+        {:semantic
+         {:status :installation-failed
+          :observation observation}
+         :continuity
+         {:status :not-attempted}}))))
 #+end_src
 
 Suppose restore succeeds:
@@ -863,7 +910,7 @@ Suppose restore succeeds:
 #+begin_src clojure
 {:semantic
  {:status :authoritative-installed
-  :observation authoritative-board}
+  :observation admitted-board}
 
  :continuity
  {:status :restored
@@ -873,6 +920,9 @@ Suppose restore succeeds:
 
 The new DOM can show authoritative Request membership from X31 while preserving
 Bob's search text and open details locally.
+The install operation itself compares current ownership and scoped progression
+at its mutation boundary. The earlier admission check cannot substitute for
+that check if another replacement can intervene.
 
 Now suppose focus restoration fails because the Refresh button is absent from
 the newly authorized rendering:
@@ -880,7 +930,7 @@ the newly authorized rendering:
 #+begin_src clojure
 {:semantic
  {:status :authoritative-installed
-  :observation authoritative-board}
+  :observation admitted-board}
 
  :continuity
  {:status :partial
@@ -930,6 +980,12 @@ A delayed callback for I1 must be rejected:
 (defn current-continuity-capture?
   [runtime capture]
   (and
+    (some? (get-in runtime [:current :capture-instance/id]))
+    (some? (:capture-instance/id capture))
+    (some? (get-in runtime [:current :owner]))
+    (some? (:owner capture))
+    (= (get-in runtime [:current :slot])
+       (:slot capture))
     (=
       (get-in runtime
         [:current :capture-instance/id])
@@ -953,7 +1009,9 @@ A delayed callback for I1 must be rejected:
 
 The important state is not "which capture number is numerically larger?" It is
 which concrete capture is currently owned by the replacement scope that may
-restore this continuity slot.
+restore this continuity slot. The adapter checks its own current slot registry
+immediately before restoration rather than trusting a callback's owner claim.
+It retires the capture after restoration or failed installation.
 
 A continuity implementation may also filter captured values against the new
 authoritative rendering:
@@ -964,7 +1022,7 @@ authoritative rendering:
   (let [authorized-ids
         (set
           (map :request/id
-               (:requests observation)))]
+               (:requests (acquisition/value observation))))]
 
     {:open-request-ids
      (set/intersection
@@ -1299,7 +1357,8 @@ A view can render those cases without knowing the underlying business rule:
    [:p.status
     (name (:status request))]
 
-   (case (get-in actions [:claim :availability])
+   (case (action/require-prepared-availability!
+           :request/claim (:claim actions))
      :available
      (gesso/action
        {:binding
@@ -1309,11 +1368,10 @@ A view can render those cases without knowing the underlying business rule:
        "Claim")
 
      :unavailable
-     nil
-
      nil)
 
-   (case (get-in actions [:cancel :availability])
+   (case (action/require-prepared-availability!
+           :request/cancel (:cancel actions))
      :available
      (gesso/action
        {:binding
@@ -1321,11 +1379,10 @@ A view can render those cases without knowing the underlying business rule:
        "Cancel")
 
      :unavailable
-     nil
-
      nil)
 
-   (case (get-in actions [:reassign :availability])
+   (case (action/require-prepared-availability!
+           :request/reassign (:reassign actions))
      :available
      (gesso/action
        {:binding
@@ -1333,16 +1390,14 @@ A view can render those cases without knowing the underlying business rule:
        "Reassign")
 
      :unavailable
-     (when
-       (= :application/missing-required-target
-          (get-in actions [:reassign :reason]))
-       (throw
-         (ex-info
-           "Request card cannot realize Reassign."
-           (get-in actions [:reassign :diagnostic]))))
-
      nil)])
 #+end_src
+
+Here =action/require-prepared-availability!= accepts only a validated
+=:available= binding or a declared policy-based =:unavailable= reason. It
+throws for missing/unknown availability, missing required input (including
+Reassign's =:helper/id= above), or a plan/binding construction defect for
+*every* action. A broken intended action cannot silently disappear.
 
 The view never asks:
 
@@ -1815,55 +1870,78 @@ A small projected Claim machine makes the desired portability more concrete.
 The immutable plan can be ordinary portable data:
 
 #+begin_src clojure
-(def claim-plan
+(def executable-plan
   {:plan/version 3
    :plan/id :plan/request-claim
+   :compatibility/id :humanhelp-live-v12
    :operation :request/claim
 
    :states
-   {:idle
-    [{:event :ui/invoke
-      :guard [:binding/complete]
-      :next :pending
-      :effects
-      [[:command/allocate]
-       [:projection/install-provisional]
-       [:transport/start]]}]
+   [{:state :idle
+     :transitions
+     [{:event :ui/invoke
+       :guard [:binding/complete]
+       :next 1
+       :effects
+       [[:command/allocate]
+        [:projection/install-provisional]
+        [:transport/start]]}]}
 
-    :pending
-    [{:event :claim/settled
-      :guard
-      [:and
-       [:event/current-owner]
-       [:event/matches-command]]
-      :next :settled
-      :effects
-      [[:projection/install-authoritative]
-       [:resources/retire-owned]]}
+    {:state :pending
+     :transitions
+     [{:event :claim/settled
+       :guard
+       [:and
+        [:event/current-owner]
+        [:event/matches-command]
+        [:settlement/admitted-current-outcome]
+        [:observation/admitted-progressive]]
+       :next 2
+       :effects
+       [[:command/record-accepted]
+        [:projection/install-authoritative]
+        [:resources/retire-owned]]}
 
-     {:event :claim/rejected
-      :guard
-      [:and
-       [:event/current-owner]
-       [:event/matches-command]]
-      :next :rejected
-      :effects
-      [[:projection/install-authoritative]
-       [:resources/retire-owned]]}
+      {:event :claim/timeout
+       :guard [:event/current-resource-owner]
+       :next 3
+       :effects
+       [[:command/record-unknown]
+        [:resources/retire-owned]
+        [:recovery/request-authoritative-acquisition]]}
 
-     {:event :claim/timeout
-      :guard [:event/current-resource]
-      :next :unknown
-      :effects
-      [[:resources/retire-owned]
-       [:recovery/request-authoritative-acquisition]]}]
+      {:event :claim/rejected
+       :guard
+       [:and
+        [:event/current-owner]
+        [:event/matches-command]
+        [:settlement/admitted-current-outcome]
+        [:observation/admitted-progressive]]
+       :next 5
+       :effects
+       [[:command/record-rejected]
+        [:projection/install-authoritative]
+        [:resources/retire-owned]]}]}
 
-    :unknown
+    {:state :settled
+     :transitions []}
+
+    {:state :unknown
+     :transitions
     [{:event :authority/acquired
-      :guard [:observation/covers-target]
-      :next :recovered
-      :effects
-      [[:projection/install-authoritative]]}]}})
+       :guard
+       [:and
+        [:event/current-recovery-target-owner]
+        [:observation/admitted-authorized-current-progressive]]
+       :next 4
+       :effects
+       [[:projection/install-authoritative]]}]}
+
+    {:state :recovered
+     :transitions []}
+
+    {:state :rejected
+     :transitions []}]})
 #+end_src
 
 Runtime state is separate from the plan:
@@ -1881,11 +1959,21 @@ Runtime state is separate from the plan:
    :resources
    {:transport
     {:resource-instance/id
-     #uuid "b3000000-0000-0000-0000-000000000006"}
+     #uuid "b3000000-0000-0000-0000-000000000006"
+     :owner [:execution
+             #uuid "b1000000-0000-0000-0000-000000000010"]
+     :status :active}
 
     :timeout
     {:resource-instance/id
-     #uuid "b3000000-0000-0000-0000-000000000007"}}
+     #uuid "b3000000-0000-0000-0000-000000000007"
+     :owner [:execution
+             #uuid "b1000000-0000-0000-0000-000000000010"]
+     :status :active}}
+
+   :authoritative-basis
+   {:scope {:projection :request/card :request/id R}
+    :basis :X49}
 
    :projection
    {:authority :provisional
@@ -1908,11 +1996,23 @@ A normalized event likewise contains runtime-specific values:
    :resource-instance/id
    #uuid "b3000000-0000-0000-0000-000000000006"
 
-   :authoritative
-   {:request/id R
-    :request/status :claimed
-    :request/helper-id Alice
-    :basis :X50}})
+   ;; Supplied by the trusted settlement admission boundary. The map by
+   ;; itself would not satisfy :settlement/admitted-current-outcome.
+   :settlement
+   (settlement/admitted-fixture
+     {:execution/id
+      #uuid "b1000000-0000-0000-0000-000000000010"
+      :command/id
+      #uuid "b2000000-0000-0000-0000-000000000042"
+      :resource-instance/id
+      #uuid "b3000000-0000-0000-0000-000000000006"
+      :outcome :accepted
+      :scope {:projection :request/card :request/id R}
+      :authoritative
+      {:request/id R
+       :request/status :claimed
+       :request/helper-id Alice
+       :basis :X50}})})
 #+end_src
 
 The portable transition function can remain pure:
@@ -1920,20 +2020,13 @@ The portable transition function can remain pure:
 #+begin_src clojure
 (defn step
   [plan state event]
-  (let [state-id
-        (:machine/state state)
-
+  (let [state-index
+        (plan/state-index plan (:machine/state state))
         candidates
-        (get-in plan
-          [:states state-id])
-
+        (get-in plan [:states state-index :transitions])
         transition
-        (some
-          #(when
-             (= (:event %)
-                (:event/type event))
-             %)
-          candidates)]
+        (some #(when (= (:event %) (:event/type event)) %)
+              candidates)]
 
     (cond
       (nil? transition)
@@ -1953,16 +2046,18 @@ The portable transition function can remain pure:
        :effects []}
 
       :else
-      {:result :accepted
-       :state
-       (assoc state
-         :machine/state
-         (:next transition))
-       :effects
-       (effects/elaborate
-         (:effects transition)
-         {:state state
-          :event event})})))
+      (let [next-state
+            (get-in plan [:states (:next transition) :state])
+            elaborated
+            (effects/elaborate (:effects transition)
+              {:state state :event event})]
+        ;; The *same pure core* updates semantic state and returns physical
+        ;; requests. The browser adapter cannot invent a competing state.
+        {:result :accepted
+         :state (effects/apply-semantic
+                  (assoc state :machine/state next-state)
+                  elaborated)
+         :effects (effects/physical-requests elaborated)}))))
 #+end_src
 
 Running the same input under JVM Clojure and ClojureScript should produce the
@@ -1970,7 +2065,7 @@ same semantic result:
 
 #+begin_src clojure
 (step
-  claim-plan
+  executable-plan
   runtime-state
   settled-event)
 ;; =>
@@ -1980,8 +2075,12 @@ same semantic result:
  {:machine/state :settled
   :execution/id ...
   :command/id ...
-  :resources ...
-  :projection ...}
+  :resources {:transport {:status :retired} :timeout {:status :retired}}
+  :projection {:authority :authoritative
+               :request/id R
+               :request/status :claimed
+               :request/helper-id Alice
+               :basis :X50}}
 
  :effects
  [[:projection/install-authoritative
@@ -1995,6 +2094,25 @@ same semantic result:
     #uuid "b1000000-0000-0000-0000-000000000010"}]]}
 #+end_src
 
+The notation =settlement/admitted-fixture= represents a value supplied only
+by a trusted admission boundary, not a constructor exposed to the browser.
+=guards/holds?= checks the current execution/resource and admitted outcome;
+=effects/elaborate= extracts only the authorized projection from that admitted
+settlement. =effects/apply-semantic= is pure: it records the authoritative
+projection, accepted command disposition, and retired resource ownership.
+=:claim/timeout= records unknown disposition, and an admitted reread can
+recover presentation while leaving command attribution unknown.
+=:event/current-recovery-target-owner= refers to the adapter's recovery
+target owner after the timed-out execution retires; it never resurrects that
+execution. Acquisition events still require their own resource-instance
+correlation and current scoped installation admission.
+=:claim/rejected= requires its own admitted settlement; observing the current
+Request state does not by itself establish why the command failed.
+=effects/physical-requests= returns adapter instructions separately. An
+installation failure must enter the declared physical-effect recovery contract;
+the shell cannot silently reverse the semantic admission or pretend the DOM
+was installed. The abbreviated displayed result omits unrelated state fields.
+
 The browser shell interprets abstract effects:
 
 #+begin_src clojure
@@ -2003,7 +2121,7 @@ The browser shell interprets abstract effects:
   (case (first effect)
 
     :projection/install-authoritative
-    (dom/install-authoritative!
+    (dom/install-if-current!
       browser
       (second effect))
 
@@ -2438,58 +2556,9 @@ correspondence.
 
 A concrete build can make the separation mechanical.
 
-Suppose projection emits this canonical runtime plan:
-
-#+begin_src clojure
-(def executable-plan
-  {:plan/version 3
-   :plan/id :plan/request-claim
-   :compatibility/id :humanhelp-live-v12
-
-   :states
-   [{:state :idle
-     :transitions
-     [{:event :ui/invoke
-       :guard [:binding/complete]
-       :next 1
-       :effects
-       [[:command/allocate]
-        [:projection/install-provisional]
-        [:transport/start]]}]}
-
-    {:state :pending
-     :transitions
-     [{:event :claim/settled
-       :guard
-       [:and
-        [:event/current-owner]
-        [:event/matches-command]]
-       :next 2
-       :effects
-       [[:projection/install-authoritative]
-        [:resources/retire-owned]]}
-
-      {:event :claim/timeout
-       :guard [:event/current-resource]
-       :next 3
-       :effects
-       [[:resources/retire-owned]
-        [:recovery/request-authoritative-acquisition]]}]}
-
-    {:state :settled
-     :transitions []}
-
-    {:state :unknown
-     :transitions
-     [{:event :authority/acquired
-       :guard [:observation/covers-target]
-       :next 4
-       :effects
-       [[:projection/install-authoritative]]}]}
-
-    {:state :recovered
-     :transitions []}]})
-#+end_src
+The plan above is the canonical emitted runtime artifact. The build uses this
+very object for production, portable tests, and exact diagnostic correspondence;
+there is no second handwritten machine for the sidecar to explain.
 
 The build computes an exact identity over the canonical executable payload:
 
@@ -2528,7 +2597,10 @@ The sidecar can then explain the compact coordinates:
     {:semantic-id :request-claim/helper/outcome-unknown}
 
     4
-    {:semantic-id :request-claim/helper/recovered}}
+    {:semantic-id :request-claim/helper/recovered}
+
+    5
+    {:semantic-id :request-claim/helper/rejected}}
 
    :transitions
    {[1 0]
@@ -2555,7 +2627,8 @@ The sidecar can then explain the compact coordinates:
 
      :proof-obligations
      [:obligation/settlement-command-correlation
-      :obligation/stale-owner-rejected]}
+      :obligation/stale-owner-rejected
+      :obligation/scoped-progression-admitted]}
 
     [1 1]
     {:semantic-id
@@ -2563,13 +2636,36 @@ The sidecar can then explain the compact coordinates:
 
      :knowledge-derivation
      {:premises
-      [[:timeout/current-resource]]
+      [[:timeout/current-resource-owner]]
 
       :conclusion
       [:command/disposition :unknown]}
 
      :proof-obligations
-     [:obligation/timeout-does-not-imply-rejection]}}})
+     [:obligation/timeout-does-not-imply-rejection]}
+
+    [1 2]
+    {:semantic-id
+     :request-claim/helper/rejected-settlement
+
+     :knowledge-derivation
+     {:premises
+      [[:event/current-owner]
+       [:event/matches-command]
+       [:settlement/admitted-current-outcome]]
+      :conclusion [:command/disposition :rejected]}
+
+     :proof-obligations
+     [:obligation/settlement-command-correlation
+      :obligation/rejection-requires-admitted-outcome]}}})
+#+end_src
+
+The sidecar locates the rejected settlement at [1 2]. A missing explanation
+cannot be silently interpreted as proof that the transition is safe.
+
+#+begin_src clojure
+(get-in diagnostic-sidecar [:states 5 :semantic-id])
+;; => :request-claim/helper/rejected
 #+end_src
 
 Production execution never calls:
@@ -2588,7 +2684,7 @@ inputs:
 (step
   executable-plan
   runtime-state
-  normalized-event)
+  settled-event)
 #+end_src
 
 A development observer may watch that exact step result:
@@ -2599,11 +2695,13 @@ A development observer may watch that exact step result:
    sidecar]
 
   (when-not
-    (= (:executable-digest sidecar)
-       (artifact/digest
-         {:algorithm :sha-256
-          :encoding :canonical-edn-v1
-          :value plan}))
+    (and
+      (= (:plan/id sidecar) (:plan/id plan))
+      (= (:executable-digest sidecar)
+         (artifact/digest
+           {:algorithm :sha-256
+            :encoding :canonical-edn-v1
+            :value plan})))
     (throw
       (ex-info
         "Diagnostic sidecar does not describe this executable."
@@ -2622,9 +2720,11 @@ A development observer may watch that exact step result:
       :event (:event/type event)
       :result (:result result)}
 
+     ;; This is an untrusted diagnostic claim unless build provenance and
+     ;; checker result are independently verified.
+     :explanation/status :unverified-sidecar-claim
      :explanation
-     (get-in sidecar
-       [:transitions locator])}))
+     (get-in sidecar [:transitions locator])}))
 #+end_src
 
 Its output can be rich:
@@ -2635,6 +2735,7 @@ Its output can be rich:
   :event :claim/settled
   :result :accepted}
 
+ :explanation/status :unverified-sidecar-claim
  :explanation
  {:semantic-id
   :request-claim/helper/accepted-settlement
@@ -2657,18 +2758,22 @@ But observer failure must remain diagnostic:
   (let [result
         (step plan state event)]
 
-    (try
-      (observer
-        {:plan plan
-         :state-before state
-         :event event
-         :result result}
-        sidecar)
+    (when observer
+      (try
+        (observer
+          {:plan plan
+           :state-before state
+           :event event
+           :result result}
+          sidecar)
 
-      (catch Throwable t
-        (diagnostics/report!
-          {:error/type :diagnostic/observer-failed
-           :cause t})))
+        (catch Throwable t
+          (try
+            (diagnostics/report!
+              {:error/type :diagnostic/observer-failed
+               :cause t})
+            (catch Throwable _
+              nil)))))
 
     ;; Semantic result is returned regardless of observer success.
     result))
@@ -2708,6 +2813,11 @@ The exact artifact identity is stricter than runtime compatibility. A rebuilt
 plan could have different state indices or emitted bytes while remaining
 compatible enough for ordinary execution under the server/runtime contract. A
 sidecar for the old bytes still cannot explain the new runtime coordinates.
+Matching the executable digest alone does not authenticate the explanation:
+a fabricated sidecar can copy that digest. Tooling that labels derivations as
+checker-verified must also validate sidecar provenance, its binding to the
+build/checker result, and the checked obligations. Otherwise it displays
+sidecar content only as an unverified diagnostic claim.
 
 That is why the build needs both:
 
@@ -2992,4 +3102,3 @@ The [[#req-assembly-construction-phases][assembly construction and admission pha
 own the complete production artifact gate.
 
 #+LATEX: \newpage
-
