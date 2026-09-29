@@ -3980,20 +3980,50 @@ A host does not acquire semantic authority merely because it executes authority
 code.
 
 #+LATEX: \newpage
-
 *** Authority
 
-An *authority* is the locus entitled to establish some class of authoritative
-fact.
+An *authority* is the semantic locus entitled to establish some class of
+authoritative fact.
 
-Examples:
+An authority is named by an authority identifier such as:
 
 #+begin_example
 [:authority :request]
 [:authority :request request-id]
 #+end_example
 
-Authority is semantic.
+The identifier does not itself contain an authoritative fact, nor does it name
+a particular database record or server process. It names a locus in the
+application's semantic model. Application rules, together with Gesso's
+execution rules, determine which facts and transitions that locus is entitled
+to establish and under which premises.
+
+For example:
+
+#+begin_example
+[:authority :request R]
+#+end_example
+
+may govern authoritative facts concerning Request =R=, such as its current
+lifecycle state, ownership, or the incorporation of a command affecting it.
+The concrete facts may be represented by one or several XTDB documents and may
+depend on other authoritative observations, such as Membership or Organization
+state. Those storage objects help realize the authority; they are not
+themselves its semantic identity.
+
+This distinction permits the physical representation to change without
+changing what the application means by:
+
+#+begin_example
+[:authority :request R]
+#+end_example
+
+For example, the same authority could be realized using a different document
+layout, a different database, or a different web node while continuing to
+govern the same class of semantic facts.
+
+Authority is therefore distinct from both *storage location* and *execution
+location*.
 
 A physical web node may temporarily realize an authoritative operation without
 becoming the authority itself.
@@ -4011,7 +4041,19 @@ retry host
     [:web-node C]
 #+end_example
 
+Node =A= and node =C= may each exercise the same semantic authority while
+executing different attempts of the operation. Process-local identity or
+process-local memory does not determine the authority.
+
 The authority survives host replacement.
+
+Consequently, any fact that must survive retries, failover, or migration
+cannot derive its semantic force merely from having been remembered by the
+same process. It must instead be recoverable from authoritative state, from
+evidence validly issued on behalf of the semantic authority, or from another
+mechanism whose semantics are explicitly admitted by the application and
+Gesso.
+
 
 *** Server is not a universal semantic identity
 
@@ -4036,8 +4078,6 @@ different server process
 #+end_example
 
 Neither equivalence is generally valid.
-
-#+LATEX: \newpage
 
 *** Relationship among role, principal, actor, host, and authority
 
