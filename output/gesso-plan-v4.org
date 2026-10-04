@@ -3734,6 +3734,194 @@ simple cases but must remain separable when later correctness depends on the
 difference. A good public API should preserve that distinction while hiding most
 of the ceremony from ordinary downstream code.
 
+
+** Business rules and the auditable semantic surface
+:PROPERTIES:
+:CUSTOM_ID: req-auditable-semantic-surface
+:END:
+
+A correctness-relevant business rule should not exist only as an incidental
+condition buried inside arbitrary implementation code.
+
+For Gesso's purposes, a *business rule* is a named semantic proposition,
+relation, precondition, postcondition, transition restriction, authorization
+condition, disclosure condition, or other application judgment whose truth or
+applicability affects a correctness-relevant operation.
+
+Possible application rules include the following. This list illustrates the
+kind of policy that belongs on the surface; it does not assert that each rule
+has already been adopted by HumanHelp:
+
+- a Request may be claimed only while it is open;
+- the claimant must have an active Membership in the Request's Organization;
+- a requester may not claim their own Request;
+- a completed Request is terminal;
+- a protected observation may be disclosed only to an authorized principal;
+- a command may be incorporated only under the authority and argument binding
+  established for that command.
+
+The semantic rule is distinct from any one Clojure expression that happens to
+implement or test it.  A condition such as:
+
+#+begin_src clojure
+(= :active (:membership/status membership))
+#+end_src
+
+may participate in the realization of a rule such as
+=:membership/active-for-request-operation=.  By itself, however, this
+expression establishes only that the particular =membership= value supplied to
+it has status =:active=. It does not establish whose Membership it is, whether
+it belongs to the Request's Organization, whether the authenticated principal
+is the claimant, or whether the Membership is still active when Claim commits.
+Those bindings and timing requirements belong in the rule's meaning. The
+expression is one implementation step; the named rule is the semantic
+proposition whose meaning should remain stable across refactoring, generated
+realization, formal translation, diagnostics, and audit views.
+
+A Gesso application therefore has an *auditable semantic surface*: the compact
+set of named rules, operations, authorities, lifecycle transitions, invariants,
+knowledge/agreement requirements, and explicit trusted premises that determine
+its correctness-relevant behavior.
+
+That surface should normally be substantially smaller than the application's
+full implementation.  A large application may contain tens or hundreds of
+thousands of lines concerned with rendering, formatting, queries, adapters,
+integration plumbing, logging, caching, and incidental computation while its
+business semantics consist of a much smaller collection of rules and
+operations.  Gesso should preserve that compression rather than require an
+auditor to rediscover policy by rereading the entire implementation.
+
+The requirement is not that every conditional expression become a business
+rule.  Conditions concerned only with presentation mechanics, formatting,
+local optimization, or other behavior outside the claimed semantic boundary
+need not be promoted merely because they are written with =if=, =when=, or a
+predicate call.
+
+A condition is a strong candidate for the semantic surface when it controls or
+materially contributes to matters such as:
+
+- authorization or eligibility;
+- protected disclosure or observation;
+- ownership or responsibility;
+- lifecycle admission or transition;
+- authoritative mutation;
+- transfer of money, value, quota, inventory, or another conserved resource;
+- command acceptance, incorporation, settlement, or retry meaning;
+- establishment or use of authoritative knowledge;
+- a domain invariant or cross-operation consistency rule.
+
+The application may represent such rules using ordinary Clojure data, pure
+functions, checked constructors, existing model contracts, thin macro sugar,
+or another representation that preserves their semantic identity.  This design
+does not require a second policy language or a macro-heavy pseudo-language.
+What matters is that the supported Gesso path can identify the rule and the
+semantic judgment it contributes, rather than knowing only that some opaque
+branch occurred in host code.
+
+A rule representation may conceptually carry information such as:
+
+#+begin_src clojure
+{:rule/id :request/claim-requires-active-membership
+
+ ;; Meaning:
+ ;;   The authenticated helper must have an active Membership in the
+ ;;   Organization of the Request being claimed when Claim commits.
+ ;;
+ ;; Rationale:
+ ;;   Claiming transfers operational responsibility for the Request.
+ ;;
+ ;; Correctness significance:
+ ;;   Principal binding, Request/Organization association, Membership
+ ;;   ownership, and active status must be mutually compatible and
+ ;;   protected or re-established at the authoritative commit boundary.
+ ;;   A stale browser or server pre-read is not sufficient.
+
+ :proposition
+ [:and
+  [:= [:membership/user-id]
+      [:authenticated-principal/user-id]]
+  [:= [:membership/organization-id]
+      [:request/organization-id]]
+  [:= [:membership/status] :active]]
+
+ :subjects
+ {:principal :trusted-authenticated-principal
+  :request :current-authoritative-request
+  :membership :current-authoritative-membership}
+
+ :required-at :request/claim-authoritative-commit
+
+ :applies-to
+ #{:request/claim}}
+#+end_src
+
+The exact representation above is illustrative; its =:subjects= and
+=:required-at= entries express obligations, not evidence that current facts
+were acquired or that a transaction guard was implemented. The three field
+tests must refer to the *same* Membership, the trusted current principal, and
+the Request selected by this Claim. Part IV determines how an authoritative
+realization protects those facts and their relationship at commit. The semantic
+requirements are that the rule has stable identity, that its checked meaning is
+available to the parts of Gesso that rely on it, and that enough correspondence
+is retained for later assembly, diagnostics, certification, and formal artifacts
+to refer back to the same rule. An opaque Clojure predicate with the same name
+does not make that proposition mechanically established.
+
+Business rules should also be generously explained in ordinary source.  Where
+practical, the declaration or function that defines a rule should be surrounded
+by comments explaining at least:
+
+- what the rule means in domain terms;
+- why the rule exists;
+- which subtle correctness boundary matters to its enforcement;
+- any intentionally surprising exception or asymmetry.
+
+Comments improve human and model review, but comments alone cannot be premises
+of a mechanical assurance claim because ordinary Clojure reading/compilation
+need not preserve them.  Prose that must survive elaboration into generated
+semantic inventories, diagnostics, or assurance artifacts must therefore be
+retained as checked metadata, documentation strings, source metadata, or
+another explicit representation.  The machine-checked semantic core remains
+distinct from its explanatory prose.
+
+This produces two complementary views of the same rule:
+
+#+begin_example
+machine-checkable semantic core
+    : request/claim requires a current active Membership held by the
+      authenticated helper in this Request's Organization at commit
+
+human-auditable explanation
+    : what "active" means here, why it matters, and why the check must
+      participate in the authoritative transition rather than rely on an
+      earlier browser observation
+#+end_example
+
+Neither view should silently substitute for the other.  Explanatory prose does
+not prove the rule, and a terse machine predicate is not sufficient by itself
+for an application intended to remain auditable by humans.
+
+When a correctness-relevant decision necessarily depends on application code
+whose semantics Gesso cannot inspect or derive, that dependency should still
+have an explicit semantic name and boundary.  It may be represented as an
+opaque or trusted premise rather than being allowed to disappear into an
+unnamed implementation branch.  Later certification and whole-application
+assembly determine what assurance may be claimed from such a premise; this part
+requires only that the semantic dependency itself remain visible.
+
+The semantic-surface acceptance criterion is:
+
+#+begin_quote
+A reviewer should be able to inspect the correctness-relevant business policy
+of a Gesso application as a compact set of named semantic rules and explicit
+premises without reconstructing that policy from unrelated implementation
+code.  Refactoring may change the physical Clojure realization without erasing
+or silently changing the identity of the rule being realized.  Any
+correctness-relevant dependency that cannot be represented or derived by the
+supported semantic path remains explicit rather than being mistaken for an
+assured rule merely because opaque host code returned a truthy value.
+#+end_quote
+
 #+LATEX: \newpage
 
 ** Facts, time, and authoritative progression
@@ -10172,6 +10360,161 @@ browser-render failure
 A caller must never be told "the mutation failed" merely because a later
 delivery mechanism failed after the authoritative transaction committed.
 
+*** Semantic rules become authoritative implementation obligations
+:PROPERTIES:
+:CUSTOM_ID: req-authoritative-semantic-obligations
+:END:
+
+The [[#req-auditable-semantic-surface][auditable semantic surface]] names the
+business rules that determine whether an operation is allowed and what it
+establishes.  An authoritative operation must not lose those identities when it
+crosses from model semantics into transaction implementation.
+
+For every correctness-relevant rule on which an authoritative transition
+depends, the operation must make clear how that rule participates in the
+transition contract.
+
+A rule may be discharged in different ways.  For example:
+
+- a trusted principal binding may already have been established by an admitted
+  server boundary and carried unchanged into the transaction;
+- an immutable command field may be checked against the command's retained
+  binding;
+- a mutable authoritative fact may need to be read or asserted again at commit;
+- a relationship or uniqueness predicate may require a transaction mechanism
+  stronger than checking a previously read entity version;
+- a postcondition may follow from the complete atomic write set rather than
+  from a separate guard;
+- an external or otherwise opaque proposition may remain an explicit trusted
+  premise if the supported implementation cannot establish it mechanically.
+
+The design does not require every semantic rule to become a literal database
+=ASSERT=.  It requires a visible correspondence between the rule and the
+mechanism that is claimed to discharge it.
+
+Conceptually, an authoritative operation should be able to expose information
+of this shape:
+
+#+begin_src clojure
+{:operation/id :request/claim
+
+ :semantic/requires
+ #{:request/open
+   :request/unclaimed
+   :membership/active-for-principal
+   :membership/request-organization-match
+   :organization/claiming-enabled}
+
+ :semantic/establishes
+ #{:request/claimed-by-principal
+   :command/incorporated-result-recorded}
+
+ :commit
+ {:obligations
+  [{:rule/id :request/open
+    :discharged-by :transaction-current-guard}
+
+   {:rule/id :request/unclaimed
+    :discharged-by :transaction-current-guard}
+
+   {:rule/id :membership/active-for-principal
+    :discharged-by :transaction-current-guard}
+
+   {:rule/id :membership/request-organization-match
+    :discharged-by :transaction-current-relationship-check}
+
+   {:rule/id :organization/claiming-enabled
+    :discharged-by :transaction-current-guard}
+
+   {:rule/id :request/claimed-by-principal
+    :discharged-by :atomic-write-set}
+
+   {:rule/id :command/incorporated-result-recorded
+    :discharged-by :atomic-write-set}]}}
+#+end_src
+
+The exact representation and names above are illustrative.  A real operation
+may derive several rules from one database predicate, or one rule may require
+several transaction primitives.  The semantic identity must nevertheless
+remain available so later diagnostics, whole-application assembly, and formal
+correspondence can say *which rule* a mechanism is intended to establish.
+
+This correspondence is especially important when preparation has already
+computed the same predicate.  An earlier successful evaluation such as:
+
+#+begin_src clojure
+(= :active (:membership/status membership))
+#+end_src
+
+is evidence about the observation used during preparation.  It is not by
+itself evidence that =:membership/active-for-principal= still holds when the
+claim commits.  If that rule is required at commit, the authoritative
+realization must protect or re-establish it under the selected transaction
+semantics.
+
+Conversely, an implementation need not repeat a rule mechanically when the
+operation contract establishes that its truth cannot change across the
+relevant boundary.  What matters is that this reason is represented rather
+than inferred from incidental code layout.
+
+This produces an explicit chain:
+
+#+begin_example
+named business rule
+        |
+        v
+operation precondition / postcondition
+        |
+        v
+commit obligation
+        |
+        v
+concrete authoritative mechanism
+#+end_example
+
+A failure in the last link is an implementation defect even if the pure domain
+predicate and the formal semantic rule are both correct.  For example, if
+=:request/open= is modeled as a commit precondition but the XTDB realization
+performs only an earlier ordinary read followed by an unconditional write, the
+implementation has not discharged the operation's atomicity obligation.
+
+The operation must also avoid the opposite failure: acquiring additional
+correctness-relevant policy only in incidental implementation code.
+
+For example:
+
+#+begin_src clojure
+;; Suspicious unless this condition corresponds to a named semantic rule or
+;; an explicit trusted premise.
+(when (some-complicated-business-predicate ctx request)
+  (submit-authoritative-write! ...))
+#+end_src
+
+If the branch changes whether an authoritative transition is admitted, what it
+writes, who may cause it, or what protected fact may be disclosed, then its
+semantic contribution belongs on the auditable surface described in Part II.
+The implementation should promote the predicate to a named rule, derive it from
+already named rules, or expose it as an explicit opaque/trusted premise.  It
+must not gain assurance merely by being hidden inside ordinary host code.
+
+This requirement does not turn every implementation detail into model
+semantics.  Retry loops, logging branches, serialization choices, rendering
+mechanics, query optimizations, and other incidental conditions remain ordinary
+implementation when they do not alter a correctness-relevant judgment.
+
+The authoritative-operation acceptance criterion is therefore stronger than
+"the transaction is atomic":
+
+#+begin_quote
+Every correctness-relevant premise and result claimed by an authoritative
+operation must retain a visible path from its named semantic rule to the
+mechanism that establishes, protects, derives, or explicitly assumes it at the
+authoritative boundary.  Atomic transaction machinery may discharge that
+obligation in implementation-specific ways, but an earlier observation or an
+unnamed host-language branch may not silently substitute for the declared
+semantic requirement.
+#+end_quote
+
 *** Preparation may be rich without weakening atomic publication
 
 The computation that prepares an authoritative transition may involve:
@@ -10263,7 +10606,9 @@ principal is deliberately separate from the command:
 #+end_src
 
 The domain decision can remain pure while using the trusted principal supplied
-by preparation rather than a helper identity asserted by command data:
+by preparation rather than a helper identity asserted by command data. It
+checks that the Organization whose policy is consulted is the one owning both
+the Request and the helper's Membership:
 
 #+begin_src clojure
 (defn claim-decision
@@ -10285,6 +10630,12 @@ by preparation rather than a helper identity asserted by command data:
       (not=
         (:request/organization-id request)
         (:membership/organization-id membership))
+      {:decision :rejected
+       :reason :wrong-organization}
+
+      (not=
+        (:request/organization-id request)
+        (:organization/id organization))
       {:decision :rejected
        :reason :wrong-organization}
 
@@ -10328,19 +10679,22 @@ one declared atomic decision contract.
 
      ;; Only for a new command, guard transaction-current facts and any
      ;; dependent relationship predicates; failure produces typed rejection.
+     ;; The Request's organization association is guarded along with its
+     ;; status. The Membership and policy checks refer to that same O.
      :commit/new-command
      {:guards
       [[:request/still-open
         {:request-id (:request/id request)
+         :expected-organization-id (:request/organization-id request)
          :expected-version (:model/version request)}]
 
        [:membership/still-active-for-principal
         {:user-id helper-id
-         :organization-id (:membership/organization-id membership)
+         :organization-id (:request/organization-id request)
          :expected-version (:model/version membership)}]
 
        [:organization/still-allows-claim
-        {:organization-id (:organization/id organization)
+        {:organization-id (:request/organization-id request)
          :expected-version (:model/version organization)}]]
 
       :writes
@@ -10391,32 +10745,31 @@ result
 #+end_src
 
 The key property is not that the implementation happened to notice a version
-number. It is that the authoritative transition was not allowed to publish a
-half-valid state.
-
-In particular, this must never be an observable result:
+number. It is that the authoritative transition could not incorporate the Claim
+while a required premise was false at commit. Nor could it publish only part of
+the promised write set. These are properties of the Claim transaction, not
+permanent restrictions on later Membership transitions:
 
 #+begin_src clojure
-;; Forbidden partial outcome.
+;; Both of these hypothetical Claim commit records violate the contract.
+;; In the first, a new Claim was incorporated despite a failed current guard.
+{:claim-commit/status :incorporated
+ :membership/status-at-claim-commit :inactive
+ :request/status-after-claim :claimed}
 
-{:request
- {:request/id R
-  :request/status :claimed
-  :request/helper-id U}
-
- :membership
- {:membership/user-id U
-  :membership/status :inactive}
-
- :command-record
- nil} ; mutation happened but command incorporation did not
+;; In the second, the Request mutation committed without its command result.
+{:claim-commit/status :incorporated
+ :request/status-after-claim :claimed
+ :command-result-record nil}
 #+end_src
 
 If claiming the Request and recording durable command incorporation jointly
 constitute the promised invariant, both writes belong to the same authoritative
 transaction. If Membership status must remain active for the claim to commit,
 the commit must protect that predicate as required by the selected database
-mechanism.
+mechanism. A subsequent valid deactivation of Membership U can leave the
+Request claimed while U's Membership is inactive; that later state does not
+retroactively invalidate the earlier Claim.
 
 Notice that the public model APIs can still remain separate:
 
@@ -23690,6 +24043,312 @@ trying to eliminate: a working-looking application whose browser, route, server,
 model, and test layers each tell a slightly different story about what operation
 is supposedly happening.
 
+
+*** Whole-application semantic audit surface
+:PROPERTIES:
+:CUSTOM_ID: req-whole-application-semantic-audit-surface
+:END:
+
+The whole-application assembly should expose the auditable semantic surface
+introduced in [[#req-auditable-semantic-surface][Part II]] as a compact,
+structured application artifact.
+
+This is not a second policy document maintained beside the application.  It is
+a view derived from the same admitted semantic identities, rules, operations,
+authorities, realization edges, trusted premises, and source correspondence
+that construction and preflight actually use.
+
+A large application may contain tens or hundreds of thousands of lines of
+Clojure, ClojureScript, Hiccup, CSS, adapters, queries, and integration code.
+Whole-application inspection should not require a reviewer to read all of that
+material merely to discover the correctness-relevant policy that the admitted
+application claims to implement.
+
+For an admitted generation, tooling should therefore be able to derive a
+semantic audit summary resembling:
+
+#+begin_example
+HumanHelp semantic surface
+
+scope: admitted declarations, checked construction products, and explicitly
+       registered opaque implementation boundaries
+
+business rules                     173
+authoritative operations            35
+lifecycle transitions               18
+authorization/disclosure policies   12
+cross-operation invariants           9
+explicit opaque/trusted premises     4
+unresolved declared bindings         0
+#+end_example
+
+The counts are illustrative.  Their purpose is not to create a quality score.
+Their purpose is to expose the size and shape of the application's claimed
+semantic surface and to make exceptional or opaque portions easy to find. Zero
+unresolved *declared* bindings means that the admitted graph closed over its
+declared scope. It does not establish that arbitrary Clojure bodies contain no
+undiscovered policy branch. Each body outside the supported checked subset
+whose conformance matters to a claim must remain an explicit implementation
+boundary or premise; the report must state what was inspected and what remains
+opaque. A count cannot certify the completeness of undeclared business intent.
+
+The audit surface should support at least the following derived views where the
+underlying application contains the corresponding semantics.
+
+**** Business-rule catalog
+
+The rule catalog enumerates each named correctness-relevant business rule with
+its stable semantic identity.
+
+Where available, an entry should preserve or link to:
+
+- its machine-checkable proposition or relation;
+- its domain meaning;
+- its rationale and intentionally surprising exceptions;
+- the operations, transitions, observations, or invariants that depend on it;
+- its authority or authorities where authority is relevant;
+- the source declaration that owns it;
+- the declared realization or enforcement mechanism and the separate evidence,
+  if any, that it actually discharges the rule;
+- any explicit opaque or trusted premise on which it depends;
+- the assurance classification currently justified for the rule.
+
+For example:
+
+#+begin_src clojure
+{:rule/id
+ :request/claim-requires-active-membership
+
+ :meaning
+ "At Claim commit, the authenticated helper has an active Membership in the
+  Organization of the Request being claimed."
+
+ :rationale
+ "Claiming transfers operational responsibility for the Request."
+
+ :applies-to
+ #{:request/claim}
+
+ :authority
+ :request
+
+ :enforcement
+ {:required-kind :authoritative-transaction-guard
+  :operation :request/claim}
+
+ :source
+ {:ns 'net.humanhelp.site.model.request.rules
+  :var 'claim-requires-active-membership}
+
+ :assurance
+ {:declared-rule-to-guard-binding
+  {:class :assembly-verified
+   :subject :request/claim-membership-guard-edge}
+
+  :guard-implementation-conformance
+  {:class :trusted
+   :premise :humanhelp/claim-transaction-guards-conform}}}
+#+end_src
+
+The exact data shape is illustrative.  The requirement is that a reviewer can
+move from semantic rule to meaning, use, source, and enforcement without
+reconstructing the relationship by repository-wide search. In this example,
+=:assembly-verified= applies to the checked declaration/closure edge. It does
+not establish that the XTDB transaction protects active Membership and the
+Request/Organization association against concurrent changes. The separate
+=:trusted= premise makes that unproved implementation obligation visible; a
+stronger applicable checker or concrete runtime evidence may justify a more
+specific classification. Neither classification is earned by writing the
+sample map or by giving a transaction the right name.
+
+**** Operation cards
+
+Each semantic operation should have a compact operation card summarizing the
+correctness-relevant contract already present in the assembly.
+
+An operation card may include:
+
+- actor or principal requirements;
+- named preconditions and business rules;
+- authority and authoritative observations;
+- atomic state transition or effect;
+- typed outcomes;
+- command identity and retry semantics;
+- delivery-uncertainty behavior;
+- settlement and reacquisition path;
+- source ownership and realization status.
+
+The operation card is a summary view of the canonical operation and its closure
+edges.  It must not become an independently editable source of semantics.
+
+**** Authorization and disclosure view
+
+Where operations or observations carry authorization or disclosure conditions,
+tooling should be able to present them together rather than forcing a reviewer
+to inspect each route or model function independently.
+
+A conceptual view might show:
+
+#+begin_example
+operation / observation        principal condition        protected by
+
+request/read                   Organization member         :request/read-policy
+request/claim                  active helper               :request/claim-policy
+request/complete               current claimant            :request/complete-policy
+request/private-note/read      current claimant or author  :request/note-read-policy
+#+end_example
+
+Such a view is especially useful for exposing asymmetry.  An unexpectedly
+weaker rule on one analogous operation becomes visible even when every
+individual operation is internally well formed.
+
+The view does not infer human intent.  It faithfully reports the semantics the
+application actually admitted.
+
+**** Lifecycle and transition view
+
+Where the semantic model defines lifecycle states or transition restrictions,
+whole-application explanation should be able to render the admitted transition
+relation compactly.
+
+For example:
+
+#+begin_example
+:open      -> :claimed
+:open      -> :cancelled
+:claimed   -> :completed
+:claimed   -> :cancelled
+:completed -> [terminal]
+:cancelled -> [terminal]
+#+end_example
+
+The representation may be structured data, a graph, a table, or another
+inspectable form.  It should be generated from admitted semantic transition
+facts rather than reconstructed from route names or UI affordances.
+
+**** Rule-dependency view
+
+Rules and invariants often depend on other semantic facts.  The assembly should
+retain enough dependency information to answer questions such as:
+
+#+begin_example
+which operations depend on :membership/active?
+which invariants depend on :request/single-owner?
+which rules rely on :organization/request-policy?
+which assured claims rely on an opaque premise?
+#+end_example
+
+This dependency view supports both local repair and impact analysis.  Changing
+a rule can reveal the semantic objects whose assurance must be reconsidered
+without pretending that ordinary source dependency alone captures semantic
+dependency.
+
+**** Opaque-premise report
+
+Every correctness-relevant dependency that crosses an admitted opaque or
+trusted boundary should be easy to enumerate.
+
+A report should identify at least:
+
+- the premise's semantic identity;
+- why it is opaque to the supported semantic path;
+- which rules, operations, or assurance claims depend on it;
+- the source or external system that supplies it;
+- the evidence classification permitted for claims that rely on it.
+
+A four-line opaque-premise report in a very large application is more useful
+than allowing those four dependencies to disappear among thousands of ordinary
+function calls.
+
+The presence of an opaque premise is not by itself an error. Hiding an opaque
+premise while presenting dependent conclusions as if they were mechanically
+established is an error in assurance accounting. This report enumerates
+registered boundaries. It cannot prove that uninspected arbitrary host code
+contains no additional policy simply because no such premise was registered.
+
+**** Assurance-coverage view
+
+Whole-application explanation should be able to summarize how the admitted
+semantic surface is covered. Each row names the particular proposition or
+obligation to which its evidence class applies. A checked assembly edge, a
+guard implemented by a production transaction, and an abstract invariant
+checked over a finite model are different subjects even when all concern
+Claim.
+
+Conceptually:
+
+#+begin_example
+subject / obligation                                 classification
+
+:request/open-at-claim declared guard binding         assembly-verified
+:request/open-at-claim transaction conformance        trusted
+:membership/current-at-claim transaction conformance  trusted
+:request/single-owner within stated finite model      exact-finite-checked
+:request/single-owner in production                    trusted
+:sms/provider-delivers-message                         trusted
+:browser/fetch-conforms-to-envelope                     tested
+#+end_example
+
+The vocabulary must use the assurance classifications defined elsewhere in this
+design; the report must not collapse distinct evidence classes into percentages
+or a single "verified" score. The illustrative =trusted= rows require named
+premises and explicit applicability; an implementation with stronger checked
+evidence can report that evidence for its exact subject. A finite model result
+does not by itself establish the corresponding property for arbitrary
+production behavior.
+
+Coverage views are diagnostic accounting.  Part IX determines what
+compositional certification may actually be claimed from the underlying
+evidence.
+
+**** One semantic source, many audit projections
+
+The business-rule catalog, operation cards, authorization view, transition
+view, dependency graph, opaque-premise report, and assurance-coverage view are
+multiple projections of one admitted semantic and assembly object.
+
+They must not become separately maintained documents whose contents may drift:
+
+#+begin_example
+source semantic declarations
+        |
+        v
+checked semantic / application assembly
+        |
+        +--> executable realization
+        +--> browser/server closure
+        +--> business-rule catalog
+        +--> operation cards
+        +--> authorization/transition views
+        +--> opaque-premise report
+        +--> assurance-coverage view
+#+end_example
+
+Explanatory prose retained from semantic declarations may appear in these
+views, but prose does not gain mechanical authority merely because it is
+rendered beside a checked proposition.
+
+Likewise, absence from an audit view must not be interpreted as proof that no
+corresponding real-world business rule exists. The report describes the
+semantic surface the application has expressed and admitted, together with its
+declared opaque boundaries. It must identify the inspected/generated subset
+for which rule/implementation correspondence is complete and the arbitrary
+host bodies for which conformance remains a premise. Human or heuristic
+review may still discover that an intended rule is missing entirely or that an
+uninspected host branch changes policy without a corresponding declaration.
+
+The whole-application audit acceptance criterion is:
+
+#+begin_quote
+A reviewer should be able to inspect the correctness-relevant semantic policy
+of an admitted Gesso application without reconstructing it from the complete
+implementation.  The audit views must be generated from the same semantic and
+assembly objects used for execution and assurance, must expose explicit opaque
+premises rather than bury them, must state their inspection and conformance
+scope, and must preserve enough source and dependency correspondence to move
+from a suspicious rule or claim back to the code that owns and realizes it.
+#+end_quote
+
 *** Explain exposed operations
 
 For each exposed semantic operation, explanation should identify at least:
@@ -30917,6 +31576,283 @@ Conceptual normalized term:
 The exact syntax is intentionally deferred until the proof vocabulary is small
 and explicit.
 
+*** Mechanical rejection, formal counterexample, and intent review
+
+The distinction above must remain visible in diagnostics and reports.  Gesso
+has at least three importantly different ways to say that something deserves
+attention:
+
+#+begin_example
+MECHANICALLY INVALID
+
+The submitted construction does not satisfy the admitted language or one of
+its checked semantic obligations.
+
+Examples:
+  enum compared as a number
+  unknown relationship endpoint
+  missing authoritative guard required by an operation contract
+  certified rule used where its facts are not known
+
+Result:
+  reject the construction or certification step
+
+
+COUNTEREXAMPLE
+
+The construction is meaningful and admitted, but the modeled semantics permit
+an execution that violates a declared invariant or other checked property.
+
+Result:
+  the affected formal claim is not established; report the counterexample and
+  its source-level correspondence
+
+
+SUSPICIOUS
+
+The construction is internally meaningful and may satisfy every declared
+invariant, but a human or heuristic reviewer finds the stated business policy
+surprising, asymmetric, unusually permissive, or apparently inconsistent with
+its explanatory prose or neighboring rules.
+
+Result:
+  review finding only; it does not become a proof premise, theorem, or
+  certification failure merely because the reviewer dislikes the policy
+#+end_example
+
+These classes must not be collapsed into one generic warning/error channel.
+In particular, a successful model check cannot establish that the organization
+chose a sensible business policy, and a heuristic reviewer cannot turn its
+opinion about product policy into a kernel-checked theorem.
+
+The distinction is also useful for automated repair.  A repair tool may be
+allowed to change implementation or declarations in response to a mechanical
+error or counterexample, but changing the *meaning* of a business rule is a
+policy change.  Such a change must remain visible as a semantic change rather
+than being disguised as an implementation repair.
+
+*** Correctness-relevant policy must remain semantically visible
+
+A large application may contain far more ordinary implementation code than
+business policy.  Certification should therefore operate over a deliberately
+small semantic surface rather than requiring reviewers to rediscover policy by
+reading the whole program.
+
+For a construction that claims Gesso assurance, conditions that determine a
+correctness-relevant semantic decision should be traceable to one of the
+following *within the semantic and implementation scope actually inspected*:
+
+- an admitted named rule or derivation;
+- another certified semantic interface that exports the required proposition;
+- a runtime-enforced premise with an explicit acquisition/enforcement
+  boundary;
+- an explicitly named opaque/trusted assumption.
+
+The last case can name the conformance of an entire arbitrary Clojure
+realization to its declared operation contract. It does not assert that Gesso
+has enumerated every branch inside that body. Reports identify the body,
+affected propositions, and the assurance profile under which this premise is
+permitted. Where complete correspondence is required, an opaque conformance
+premise cannot silently count as a checked derivation.
+
+Correctness-relevant decisions include at least those that can change:
+
+- authorization or capability;
+- disclosure or visibility of protected information;
+- eligibility for an authoritative operation;
+- ownership or assignment;
+- lifecycle/state-transition permission;
+- command admission or incorporation;
+- authoritative outcome classification;
+- value movement or other domain effects protected by an invariant;
+- whether a supposedly terminal fact may be superseded.
+
+This requirement does *not* make every conditional in application code a
+business rule.  Presentation formatting, collection plumbing, logging,
+resource cleanup, and other incidental branches need not pollute the semantic
+model merely because they use =if= or =case=.  The boundary is whether the
+condition participates in the semantic decision for which assurance is being
+claimed.
+
+The desired effect is semantic compression.  A hundred-thousand-line
+application may legitimately have a correctness-relevant surface consisting of
+hundreds of named rules, dozens of authoritative operations, and a much smaller
+set of cross-operation invariants.  Humans, formal tools, and optional
+heuristic reviewers should be able to inspect that smaller object without
+pretending it is the entire implementation.
+
+*** Semantic-policy escape is an assurance defect
+
+When Gesso can observe that a correctness-relevant decision depends on a
+predicate that is not represented by the admitted semantic model, it should
+report a semantic-policy escape rather than silently treating the host-language
+branch as implementation detail.
+
+Conceptually:
+
+#+begin_example
+SEMANTIC POLICY ESCAPE
+
+operation:
+  :request/claim
+
+source realization:
+  net.humanhelp.site.model.request/claim!
+
+observed dependency:
+  a branch in an inspected implementation subset affects whether the
+  authoritative ownership transition is admitted
+
+problem:
+  the predicate is not discharged by an admitted rule, certified dependency,
+  runtime-enforced premise, or named trusted assumption
+
+repair choices:
+  1. promote it to a named semantic rule;
+  2. derive it from existing admitted rules;
+  3. identify the certified/runtime boundary that establishes it; or
+  4. expose it explicitly as an opaque trusted premise
+#+end_example
+
+The checker must state where it can establish absence of such escapes. For code
+generated from the admitted semantic representation, or code written in a
+closed checked subset, Gesso can require complete correspondence over that
+specified subset. For an arbitrary Clojure body it does not analyze, silence
+does not establish that no hidden policy branch exists. The body remains an
+explicit implementation-conformance/trust boundary until applicable analysis,
+constrained lowering, or other checked evidence discharges that obligation.
+The report must not turn "no escapes detected" into "all business rules in this
+body were discovered."
+
+Once such a boundary is explicitly registered, it is a named opaque premise,
+not an unresolved *detected* escape. Its actual behavior still needs evidence
+or trust appropriate to the requested profile. Naming the premise is more
+honest than making the body invisible: its subject and dependencies appear in
+assurance coverage and the root report. It cannot establish the completeness of
+the application's intended business policy.
+
+*** Explanatory prose is review evidence, not an implicit theorem
+
+Named business rules should retain enough human-facing material to make their
+meaning auditable without reverse engineering the normalized proof term.
+Useful attached material includes:
+
+- a plain statement of the rule's meaning;
+- the business rationale for the rule;
+- a correctness note describing the stale-read, authority, atomicity, privacy,
+  or lifecycle mistake the rule is intended to prevent;
+- examples or counterexamples where they improve review.
+
+This prose should travel with the semantic subject through generated audit and
+diagnostic views where practical.  It is valuable input to humans and heuristic
+reviewers, and it can make a formal counterexample intelligible in application
+terms.
+
+However, prose does not silently become a checked proposition.  If a comment
+says "completed Requests are terminal" while the admitted transition model
+permits =:completed -> :open=, certification reasons from the admitted semantic
+model.  The mismatch is an excellent review finding, not permission to pretend
+that terminality was proved.
+
+The repair is to decide which statement expresses the intended policy and, when
+the prose is correct, promote that intent into an explicit rule or invariant.
+
+*** Heuristic intent review is deliberately outside the proof kernel
+
+A whole-application audit surface may be reviewed by a human, an LLM, a static
+heuristic, or another advisory tool for suspicious policy choices.  Such review
+can look for patterns that formal validity alone does not identify, for example:
+
+- one destructive operation has weaker authorization than analogous reads or
+  writes;
+- one lifecycle operation omits a requirement consistently present on its
+  peers;
+- a supposedly terminal state has a surprising outgoing transition;
+- two near-identical operations apply materially different disclosure rules;
+- an unusually permissive rule conflicts with its rationale or examples;
+- an important domain state is unreachable or an important restriction appears
+  conspicuously absent.
+
+The reviewer should receive the compressed semantic/audit representation when
+available rather than being forced to infer business policy from an entire
+repository.  This is particularly important for model-assisted review: the
+review task should be "inspect these explicit business rules and their
+relationships", not "discover all policy hidden somewhere in one hundred
+thousand lines of Clojure".
+
+A heuristic finding has no authority to issue, weaken, or invalidate a
+certificate by itself.  It should be represented separately, for example as:
+
+#+begin_example
+review finding:
+  :status :suspicious
+  :subject :request/complete
+  :observation "completion does not require active Membership although claim does"
+  :basis [:request/claim :request/complete]
+#+end_example
+
+If the application owner confirms that the finding identifies a real business
+requirement, the requirement is added to the semantic declarations and the
+normal admission/certification pipeline runs again.  At that point later
+violations can fail mechanically or produce formal counterexamples.
+
+This creates a useful one-way ratchet:
+
+#+begin_example
+heuristic suspicion
+        |
+        v
+human/application-policy confirmation
+        |
+        v
+explicit semantic rule or invariant
+        |
+        v
+normal mechanical/formal enforcement thereafter
+#+end_example
+
+The heuristic layer discovers candidate intent; only the admitted semantic
+layer establishes what the system is actually required to enforce.
+
+*** Assurance coverage is proposition coverage, not line coverage
+
+Reports should make the semantic surface, inspection scope, and assurance
+status inspectable. At minimum, a whole-application report should be able to
+account for named correctness-relevant rules and dependencies by their actual
+evidence class and identify the implementation code it did not inspect:
+
+#+begin_example
+semantic policy inventory for admitted generation G:
+  declared business-rule identities                    173
+  kernel-checked propositions                           80
+  exact-finite-checked propositions                     61
+  runtime-enforced premises                             18
+  explicit trusted/opaque premises                      14
+
+inspection coverage:
+  complete correspondence scope: generated/closed checked subset
+  unresolved *detected* escapes in that subset            0
+  registered opaque implementation bodies                4
+  absence of hidden policy within those bodies: not established
+
+advisory intent review:
+  open suspicious findings                              3
+#+end_example
+
+The exact numbers are illustrative and are not a partition of the 173 rules:
+one rule can have a checked proposition, a runtime premise, and a trusted
+implementation correspondence. The report must give the subject, evidence,
+assumptions, and applicable checked scope behind each count. In particular,
+zero unresolved detected escapes means only that the inspected subset has no
+such unresolved finding. It cannot certify the absence of undiscovered policy
+inside the four opaque bodies. An artifact-wide "certified" label must not
+conceal which propositions are checked, which are runtime enforced, which
+remain trusted, and which construction could not be accounted for.
+
+Advisory findings remain outside the assurance totals unless and until they are
+promoted into admitted propositions.  Conversely, an opaque premise remains in
+the assurance accounting even when tests or a reviewer make it look plausible.
+
 ** Semantic interfaces and certificate hierarchy
 
 The proof hierarchy follows semantic ownership.
@@ -35180,6 +36116,339 @@ acceptance test do not repair either gap.  Where arbitrary Clojure remains
 behind the public operation contract, its conformance remains an explicit
 trusted/tested premise until stronger evidence discharges that obligation.
 
+*** Formal obligations must return to executable production boundaries
+:PROPERTIES:
+:CUSTOM_ID: req-formal-obligations-return-to-production
+:END:
+
+A formally valid model is useful only to the extent that its correctness-relevant
+assumptions are either realized by production or remain visible as explicit
+premises. Gesso therefore requires both forward semantic correspondence from
+admitted source to its formal and production subjects, and reverse traceability
+from formal results and assumptions back to source and production obligations.
+Reverse traceability is not itself a proof that every formal transition is
+executable in production or that every production behavior is covered by the
+formal model.
+
+The forward direction is familiar:
+
+#+begin_example
+Gesso semantic object
+        |
+        v
+normalized semantic IR
+        |
+        +--> executable production realization
+        |
+        +--> formal subject / transition system
+#+end_example
+
+The reverse traceability path is equally required:
+
+#+begin_example
+formal assumption, obligation, or counterexample
+        |
+        v
+correspondence identity
+        |
+        v
+semantic rule / operation / transition
+        |
+        v
+production binding and source location
+#+end_example
+
+The purpose of the reverse path is not merely nicer error reporting.  It keeps a
+formal claim from floating free of the program whose behavior the claim is meant
+to constrain.
+
+**** Atomic formal actions create atomic production obligations
+
+If a formal transition treats several observations and writes as one atomic
+action, production must justify an equivalent atomic boundary for the claimed
+property.  The implementation need not resemble the formal syntax and need not
+run on one thread or one host.  It must provide the same correctness-relevant
+semantics.
+
+For example, an abstract Claim action may say that all of these belong to one
+atomic authoritative transition:
+
+#+begin_example
+Request is still open
+Membership is still active
+Membership and Request still belong to the same Organization
+command identity is still bound to this operation, principal, and Request
+Request ownership changes
+command result is durably recorded
+#+end_example
+
+Production may discharge that obligation through an XTDB transaction, a
+conditional write, another serializable authoritative mechanism, or a separately
+proved refinement.  A sequence of ordinary reads followed by an unconditional
+write does not discharge the obligation merely because every individual read
+was correct when performed.
+
+The same rule applies to other formal assumptions.  Examples include:
+
+- an authenticated principal used by a transition requires a production binding
+  to trusted authentication/session state rather than browser bytes;
+- a current authoritative observation requires a production read/guard whose
+  freshness semantics match the claim;
+- exactly-once incorporation may be realized through idempotent command
+  identity and durable result recording rather than literally once-only network
+  delivery;
+- resource retirement requires the browser realization to reject effects from
+  retired resource instances even if those callbacks physically arrive later;
+- an abstract nondeterministic failure or late delivery must be covered by the
+  concrete adapter/environment behavior admitted by the refinement claim.
+
+An obligation is discharged only by named evidence appropriate to the selected
+assurance profile.  If Gesso cannot establish the production mechanism, the
+assumption remains a visible trusted/tested premise.  It must not disappear
+because the generated formal model happened to be safe under that assumption.
+
+A correspondence record may therefore carry information of this shape:
+
+#+begin_src clojure
+{:obligation/id :request/claim-current-and-atomic
+ :formal-subject :formal/request-claim
+ :semantic-subject :semantic/request-claim-op-O31
+ :requires
+ #{:current-request
+   :current-membership
+   :current-organization
+   :bound-command-identity
+   :atomic-request-and-command-result-write}
+ :production-binding
+ {:operation :request/claim
+  :model-var 'net.humanhelp.site.model.request.core/claim}
+ :discharge
+ {:mechanism :xtdb/guarded-transaction
+  :evidence :correspondence/request-claim-X19}
+ :source
+ {:ns 'net.humanhelp.site.model.request.core
+  :var 'claim}}
+#+end_src
+
+This is illustrative semantic data, not a promise that source metadata alone
+proves atomicity.  The =:discharge= entry must itself be justified by whatever
+checked correspondence, constrained lowering, integration evidence, or trusted
+premise the active profile requires.
+
+**** Generated formal artifacts are derivatives, not a second application
+
+Where Gesso can derive a formal transition system mechanically from admitted
+semantic IR, that generated artifact is not an independently authored source of
+business meaning.  It is a derivative representation of the same admitted
+semantic object.
+
+The preferred path is therefore:
+
+#+begin_example
+application semantic declarations
+        |
+        v
+checked semantic IR
+        |
+        +--> production lowering
+        |
+        +--> formal/model-checking lowering
+#+end_example
+
+rather than:
+
+#+begin_example
+application Clojure  ---- manually synchronized ----  handwritten formal spec
+#+end_example
+
+A supported backend may render the derived transition system into TLA+/TLC,
+Quint, Recife/TLC, or another formal representation.  Backend choice does not
+change semantic ownership: the admitted Gesso object remains the source of the
+application meaning being transferred.
+
+Developers and reviewers may inspect generated formal artifacts.  Framework
+maintainers may of course work directly on backend translations.  But changing a
+generated formal file to make a failed check pass does not repair the
+application.  The repair must occur in the semantic source, production binding,
+formal lowering, or explicitly named assumption from which that artifact is
+derived, after which the artifact is regenerated and rechecked.
+
+This prevents a particularly dangerous false repair:
+
+#+begin_example
+counterexample found
+    -> weaken generated invariant
+    -> checker becomes green
+    -> production remains wrong
+#+end_example
+
+If the application owner intentionally weakens an application invariant, that
+is a semantic-policy change and must be visible as such.  It is not an
+implementation fix.
+
+**** Counterexamples must be interpreted back into application semantics
+
+Raw model-checker traces are valuable evidence but are a poor final diagnostic
+surface for ordinary Gesso development.  Gesso should retain enough provenance
+through formal lowering to translate a counterexample back into the semantic
+objects whose modeled behavior permits it. The production obligation ledger
+then identifies corresponding implementation questions. A trace of the formal
+subject alone does not establish that arbitrary production code took that trace
+or identify the production defect that caused it.
+
+For example, suppose a *candidate* Claim semantic transition checks that a
+Request was open when observed but omits the required current-open guard from
+the atomic commit action. A backend could then report an execution equivalent
+to:
+
+#+begin_example
+A observes Request open
+B observes Request open
+A commits Claim of R
+B also incorporates Claim of R without an intervening release
+the declared claim-from-open-at-commit property is false
+#+end_example
+
+This trace is possible in the defective modeled transition. It would not be a
+counterexample to a formal action that truly guards =:open= atomically with
+incorporation. If a purportedly guarded generated model nevertheless produces
+it, inspect the translation, property statement, bounds, and abstraction before
+claiming that the production transaction is at fault.
+
+The application-level interpretation should identify at least:
+
+- the violated named invariant or business rule;
+- the semantic operation and transition participating in the failure;
+- the relevant executions/actors/authorities where meaningful;
+- the smallest useful prefix of the counterexample;
+- the semantic rule, formal lowering, or stated assumption whose change would
+  exclude this modeled trace, to the extent the evidence identifies it;
+- the bound Clojure/Gesso source object or source span that owns that semantic
+  decision;
+- the related production obligation and its current evidence class, without
+  claiming the trace has demonstrated an implementation defect;
+- any abstraction or trusted premise relevant to interpreting the trace.
+
+A diagnostic may therefore read conceptually:
+
+#+begin_example
+COUNTEREXAMPLE IN THE FORMAL SUBJECT
+
+Declared property:
+  :request/claim-requires-open-at-commit
+
+Operation:
+  :request/claim
+
+Trace:
+  execution A observed Request R open
+  execution B observed Request R open
+  execution A incorporated Claim
+  execution B incorporated Claim without an intervening release
+
+Modeled cause:
+  the candidate Claim action tests the earlier observation but does not
+  require Request R to remain open at its atomic commit
+
+Semantic repair owner:
+  admitted :request/claim transition / current-open requirement
+
+Corresponding production binding:
+  net.humanhelp.site.model.request.core/claim
+
+Production obligation to check separately:
+  current-open guard, ownership write, and command-result write share the
+  required authoritative atomic transition
+
+Production conclusion from this formal trace alone:
+  not established
+#+end_example
+
+The formal result rejects the candidate model's claimed property. Repair the
+semantic source or a faulty formal lowering as appropriate, regenerate, and
+recheck it. A production realization might independently have a correct atomic
+guard or might share the defect; resolving that question requires the applicable
+production correspondence and implementation evidence. Conversely, a formal
+model with a correct atomic guard can pass while production uses an unguarded
+pre-read. In that case the failure is an unresolved or refuted production
+correspondence obligation, not a counterexample to the guarded formal model.
+
+The interpretation must not invent certainty that the formal result did not
+establish. If an abstract counterexample has not been concretized under the
+abstraction relation, it is labeled accordingly. Several possible semantic,
+translation, or implementation repair locations should remain alternatives
+until evidence distinguishes them.
+
+The same correspondence metadata is useful before failure.  A reviewer should
+be able to ask what a production operation means formally and what formal
+obligations depend on a source construct without manually comparing two
+languages.
+
+**** Source-level repair is the supported automation boundary
+
+This correspondence path is especially important for automated repair.  A tool
+or language model may be very good at ordinary Clojure and application concepts
+while being much less reliable at constructing or repairing temporal-logic
+specifications.  Gesso should exploit that asymmetry rather than make formal
+syntax the ordinary repair surface.
+
+A supported automated loop is:
+
+#+begin_example
+Clojure / Gesso semantic source
+        |
+        v
+preflight and elaboration
+        |
+        v
+generated formal model
+        |
+        v
+proof / model checking
+        |
+        v
+counterexample or unsatisfied obligation
+        |
+        v
+Gesso interpretation
+        |
+        v
+source-level proposed repair
+        |
+        v
+full regeneration and rechecking
+#+end_example
+
+The automated assistant may suggest correcting an admitted semantic transition,
+fixing a formal lowering, changing an authoritative transaction when separate
+implementation evidence identifies that defect, adding a missing admitted
+premise, refining choreography, or promoting a confirmed policy into an
+explicit invariant. It must label which evidence supports each proposed repair.
+It does not gain authority to edit generated proof/model artifacts as an
+independent way to obtain a green result.
+
+This does not make an automated repair trustworthy merely because it was
+suggested at the source level.  The repaired source must pass the same
+preflight, correspondence, proof/model-checking, concrete test, and admission
+boundaries as a human-authored change.
+
+**** Acceptance criterion
+
+For every formal or model-checked claim transferred to production, the
+assurance report can answer both directions:
+
+1. *What production semantic object and executable boundary does this formal
+   subject correspond to?*
+2. *What production evidence discharges each correctness-relevant assumption
+   used by the formal claim?*
+
+For a failed formal check, the report can identify the corresponding semantic
+rules/operations and their production bindings without requiring the developer
+to reverse-engineer backend syntax.  Unsupported or opaque implementation
+behavior remains explicit rather than being silently covered by the formal
+claim.
+
+
 *** External proof assistant role
 
 Lean is the leading candidate, but the architectural role matters more than the
@@ -36660,6 +37929,230 @@ state compatibility and recovery constraints before claiming that rollback is
 safe. This requirement does not introduce a universal database migration or
 workflow engine.
 
+*** Bounded rolling-release compatibility
+:PROPERTIES:
+:CUSTOM_ID: req-bounded-release-compatibility
+:END:
+
+A release boundary must distinguish at least four different identities that are
+easy to collapse incorrectly:
+
+- the semantic identity of an operation or plan;
+- the exact identity of emitted browser/server artifacts;
+- the admitted assembly-generation identity of a releasable whole application;
+- the compatibility relation that says whether an execution originating in one
+  admitted assembly generation may continue against another.
+
+Compatibility is not inferred from matching names, numerical version ordering,
+Git ancestry, build count, wall-clock recency, or the fact that two releases were
+produced from similar source.  It is a checked relation over the continuation-
+relevant semantics and deployment capabilities of the two admitted generations.
+
+The baseline operational policy is deliberately bounded.  Ordinary rolling
+deployment needs to support a small overlap between the generation being
+replaced and the generation replacing it; it does not require arbitrary old
+browser executions to remain live forever.  A typical supported window is:
+
+#+begin_example
+assembly generation N
+        <---- checked rolling compatibility ---->
+assembly generation N+1
+
+assembly generation N+2 activates
+        |
+        +-- N execution is outside the supported window
+            -> retire stale execution universe
+            -> preserve only explicitly recoverable semantic intent
+            -> reacquire current authoritative realization
+#+end_example
+
+The symbols =N=, =N+1=, and =N+2= name an example *activation order*, not
+numerical assembly-generation identities or a proof of compatibility. The exact
+supported overlap window is a release capability. An application may choose a
+different bound, but it must be explicit, finite, and checked.
+
+Part VII fixes when an admitted assembly generation exists: a complete
+realization is constructed and validated for serving. It may be admitted during
+development without being selected for a production release. Admission binds
+the actual routes, prepared operations, providers, plans, and generated artifact
+for that generation; relevant changes require a new admission or an explicitly
+checked transition even if the semantic continuation contract is unchanged.
+A release selects admitted generation(s) for activation and records their
+rolling compatibility. Development rebuilds or commits alone neither mutate an
+existing admitted generation nor imply that its release will be activated.
+Deployment/activation order and assembly-generation identity remain different
+coordinates.
+
+**** Direction matters during overlap
+
+Rolling compatibility may be directional.  If deployment/routing permits both
+of these situations:
+
+#+begin_example
+old browser / old plan  -> new server
+new browser / new plan  -> old server
+#+end_example
+
+then the release gate must establish both directions separately.  If routing or
+activation rules make one direction impossible, the report may rely on that
+operational fact, but it must name and test it rather than silently assuming
+symmetry.
+
+The compatibility question is therefore not merely:
+
+#+begin_example
+compatible?(N, N+1)
+#+end_example
+
+but, where direction matters:
+
+#+begin_example
+may-continue?(client-generation, server-generation, operation/plan)
+#+end_example
+
+A successful result means that every continuation-relevant assumption required by
+the suspended execution remains valid under the target generation, or that an
+explicit checked adaptation contract establishes the required refinement.
+
+**** Compatibility is derived from continuation-relevant semantics
+
+Where practical, Gesso should derive a normalized continuation contract from the
+same admitted semantic objects that produce the executable plan.  The contract
+contains the facts that can affect whether suspended work may safely continue,
+for example:
+
+- operation and plan semantics;
+- command argument, result, and outcome contracts;
+- authority and principal requirements;
+- event vocabulary and relevant state transitions;
+- retry, duplicate, uncertainty, and reconciliation semantics;
+- progression/acquisition obligations;
+- required runtime/browser capabilities;
+- route and transport envelope correspondence, including the target server's
+  actual decoder and the runtime artifact that may send the envelope;
+- settlement and continuation obligations;
+- any other dependency whose change can invalidate an already projected
+  continuation.
+
+A conservative implementation may use equality of a soundly normalized,
+complete continuation-contract identity for the *semantic* portion of the
+compatibility decision. That equality is useful because a change represented
+by the contract retires the old continuation unless a stronger rule has been
+justified. It is not by itself evidence that the target server actually serves
+the bound route/decoder, that the old client artifact and target runtime support
+the same envelope/events, or that the relevant implementation and assembly
+bindings passed admission. The release gate checks those concrete facts for
+each client-to-server direction it permits, and the runtime still re-establishes
+current authorization and other dynamic premises at use.
+
+A more permissive implementation may establish a directional compatibility or
+migration relation that proves an older continuation remains safe under newer
+semantics.  Such a relation is additional checked evidence.  A handwritten
+assertion that two plans are compatible is, at best, an explicit trusted premise
+unless the selected assurance profile supplies a checker for it.
+
+The release report records which rule established compatibility.  It must not
+reduce that fact to a label such as =v3= whose meaning depends on undocumented
+human convention. The report identifies both the semantic relation and the
+actual admitted client/server realizations and evidence to which it applies.
+
+**** Retirement preserves semantic intent, not stale execution authority
+
+When an execution falls outside the supported compatibility window, the safe
+default is retirement followed by authoritative reacquisition.  Retirement is
+not an attempt to deserialize and continue arbitrary old machine state under the
+new release.
+
+Some application context may survive because it denotes stable semantic intent.
+Examples can include, where explicitly supported:
+
+- the logical route or view the user was visiting;
+- stable domain subject identifiers, such as the Request being viewed;
+- filters, sort choices, tabs, or other local presentation choices whose meaning
+  is still admitted;
+- draft user input that the application has explicitly classified as recoverable.
+
+An outstanding semantic command has a different status from a browser
+execution. If its delivery or incorporation is uncertain, retirement must not
+silently erase the command-outcome question. Where the operation's declared
+retention and recovery contract permits it, the stable command identity,
+original semantic binding, and unresolved reconciliation obligation survive
+as recoverable *command-specific intent and knowledge*. They do not carry the
+old execution's authority, and a browser-held identifier is never proof of
+incorporation or permission to disclose a recorded result. A new generation
+must admit any lookup or compatible retry under the current authenticated
+principal and the model's command-binding and disclosure rules. If attribution
+cannot be recovered under the declared contract, the result remains unknown;
+current-state acquisition may still repair the displayed view.
+
+The following are execution artifacts and do not survive merely because they
+were present in the old browser:
+
+- execution and resource-instance identities;
+- pending callbacks or continuation handles;
+- old authority observations or knowledge frontiers;
+- provisional settlement state whose basis is no longer current;
+- old artifact bindings and runtime capabilities;
+- continuation rights established only by the retired plan;
+- assumptions about current authoritative domain state.
+
+Retiring provisional presentation therefore does not convert its uncertain
+command into a confirmed failure. Nor may recovery silently assign a fresh
+command ID and resubmit the same business intent as if the old command were
+known not to have committed.
+
+A recoverable draft may preserve bytes or structured user input, but the new
+generation must re-admit and revalidate that input under current semantics before
+it can affect authoritative state.  Recovery never turns possession of stale
+browser state into authority.
+
+The governing rule is:
+
+#+begin_quote
+Release recovery preserves stable application intent and reacquires its current
+authoritative realization; it does not preserve stale execution semantics merely
+because they were present in the old browser.
+#+end_quote
+
+For example, a user who was viewing Request =R= before retirement may be returned
+to the current authoritative view of =R=.  If =R= became completed while the old
+execution was suspended, recovery shows the completed Request.  It does not
+resume the old plan at an earlier lifecycle state merely to preserve continuity.
+
+Suppose Claim command =C42= was sent before a deployment, the response was lost,
+and the originating execution is then retired. Its callbacks and provisional
+card are discarded. An authorized recovery may retain =C42= to resolve its
+recorded result or retry that *same* command under the model's compatibility,
+retention, and disclosure contract. Rereading =R= can establish its current
+state without proving that =C42= caused it. If no permitted command-specific
+evidence is available, the participant's attribution remains unknown even
+when the current card is rendered correctly.
+
+**** Unsupported skew fails closed
+
+An incompatible or unsupported generation pairing must be detected before the
+stale execution can perform a continuation that relies on changed semantics.
+The permitted outcomes are bounded compatibility, semantic retirement/recovery,
+or an explicit typed rejection when recovery is not permitted.  Silent fallback
+to an older contract is forbidden.
+
+A release gate for a rolling deployment therefore checks at least:
+
+- the assembly generations that may coexist during activation;
+- every client/server direction that routing can actually expose;
+- the continuation contracts or checked compatibility evidence used for that
+  coexistence;
+- concrete admitted target route/decoder, runtime capability, and artifact
+  evidence for each permitted client/server direction;
+- the retirement/recovery behavior for generations outside the supported window;
+- preservation and re-admission rules for recoverable application intent;
+- preservation or honest unresolved status of command-specific outcome
+  obligations across execution retirement;
+- real runtime tests showing that unsupported skew does not continue silently.
+
+This bounded policy gives deployment overlap a precise meaning without turning
+Gesso into a general historical workflow-migration system.
+
 ** Global non-goals
 
 The following constraints keep Gesso's semantic and proof boundary deliberately
@@ -37530,6 +39023,18 @@ Required work:
 - dynamic pre-serialization rendered-surface preflight;
 - structured error kinds;
 - operation/application explanation;
+- a source-derived semantic audit surface containing the business-rule catalog,
+  operation cards, authorization/disclosure view, lifecycle/transition view,
+  rule-dependency view, opaque-premise report, and assurance-coverage view;
+- semantic-policy escape detection at every checked boundary able to determine
+  that a condition influences authorization, disclosure, eligibility, ownership,
+  authoritative transition, command acceptance, or another declared assurance;
+- complete classification of correctness-relevant predicates *within each
+  generated or closed checked subset* as admitted semantics, derived semantics,
+  or an explicitly named premise;
+- registration of arbitrary host-code realizations outside those subsets as
+  scoped implementation-conformance/trust boundaries, with the operation
+  contracts and assurance claims depending on them identified;
 - startup lifecycle integration.
 
 Gate:
@@ -37549,6 +39054,19 @@ Gate:
 - routes, providers, prepared server realizations, rendering, and served artifact
   stay bound to one admitted assembly generation or a checked compatible
   transition;
+- the whole-application semantic audit surface is generated from the same
+  admitted semantic/assembly objects that production uses rather than from a
+  separately maintained policy inventory, and states its inspection scope;
+- where a checked boundary can see that correctness-relevant host-language logic
+  affects an admitted operation but cannot associate it with admitted semantics,
+  that logic is promoted, derived, or exposed as an opaque/trusted premise rather
+  than silently counted as mechanically assured;
+- unresolved semantic-policy escapes prevent the affected stronger admission or
+  assurance claim;
+- zero detected escapes establishes closure only over the reported inspected
+  scope; an unanalysed Clojure body does not gain a complete policy inventory
+  by silence, and a profile requiring checked conformance cannot treat its
+  opaque implementation premise as discharged;
 - paired valid fixtures remain usable while controlled defects fail at the
   intended production boundary.
 
@@ -37848,17 +39366,44 @@ Required work:
 - explain application closure path;
 - explain stale dependency;
 - open-obligation report;
-- stable structured diagnostics;
+- generated semantic-policy inventory and assurance-coverage explanation;
+- a source-linked explanation format for formal/model-checking counterexamples
+  and unresolved production obligations, using correspondence metadata to
+  identify their respective semantic and implementation subjects;
+- stable structured diagnostics that distinguish mechanically invalid
+  construction, a formal counterexample to declared semantics, and a merely
+  suspicious but internally valid business policy;
 - source ownership;
-- valid candidate alternatives for closed registries.
+- valid candidate alternatives for closed registries;
+- optional human/LLM intent review over the compact semantic surface, kept
+  explicitly outside the trusted certification path.
 
 Gate:
 
 - malformed fixtures expose the failed obligation, actual/required evidence,
   responsible source, and appropriate repair boundary;
+- a representative counterexample fixture can be explained in application
+  vocabulary and traced to the semantic source and any related production
+  obligation without treating the abstract trace as proof of a production bug;
+- the explanation records its evidence class and whether the trace arose from
+  a real generated backend, a fixture, or an abstraction not yet concretized;
+- when generated TLA+/Quint/Recife or other formal artifacts exist, they are
+  inspectable derivatives, not an independent repair surface that may be
+  edited until the checker turns green;
 - suggested alternatives preserve declared semantics; diagnostics do not claim
   a uniquely correct business-policy repair where the product must decide;
-- explanation is read-only and cannot affect semantic execution.
+- heuristic intent review may label a well-formed policy suspicious, but such a
+  label neither proves a defect nor changes admission; a confirmed concern gains
+  mechanical force only after it is promoted into an admitted rule, invariant,
+  contract, or other checked semantic object;
+- explanation and heuristic review are read-only and cannot affect semantic
+  execution.
+
+Stage 15 establishes the explanation contract and tests its scope with an
+appropriate fixture. It does not require an external backend whose formalization
+and production correspondence are developed in later stages. A release that
+claims a generated-backend counterexample explanation must exercise that path
+with an actual generated trace under Stage 17's applicable evidence profile.
 
 *** Stage 16 -- Independent formalization of the stable small proof kernel
 
@@ -37904,6 +39449,19 @@ Required work:
   without a sound exhaustive-coverage argument;
 - bind formal subjects, complete obligations, dependencies, translations, and
   actual admitted production artifacts;
+- maintain an explicit obligation ledger from every formal assumption relevant
+  to a claimed result to the production mechanism, checked capability, or named
+  trusted premise that discharges it;
+- require an atomic action in the formal model to correspond to an executable
+  authoritative boundary providing the same required atomicity/serialization
+  property rather than merely to similarly named source code;
+- preserve reverse correspondence metadata sufficient to interpret formal
+  counterexamples in terms of admitted semantic objects and their source
+  bindings;
+- where a supported generated backend is included in the claimed profile,
+  exercise an actual counterexample through the source-level explanation path,
+  distinguishing the modeled violation from a separately evidenced production
+  correspondence failure;
 - deterministic certificate regeneration;
 - dependency-aware incremental rebuild;
 - build gates for unresolved obligations/stale semantic IDs;
@@ -37917,6 +39475,13 @@ Gate:
 - release cannot ship a stale certified plan after semantic dependency change;
 - formal checker story applies to actual production acceptance rather than a
   disconnected model;
+- every assumption needed by a requested formal claim is either discharged by
+  applicable production evidence with matching subject/scope or remains visible
+  as a trusted/open premise; model success cannot hide an unconnected
+  implementation obligation;
+- source repair after a formal failure regenerates the semantic/formal artifacts
+  and reruns their checks; editing a generated formal artifact cannot establish
+  production correspondence;
 - proof sidecars remain excluded from production semantics;
 - required unavailable or incomplete checking blocks the requested admission
   without silently weakening its assurance profile.
@@ -38589,6 +40154,58 @@ identities, incomplete checks, or tests on a different artifact cannot establish
 the requested gate.
 Finite models and conformance vectors retain the limits of their actual evidence.
 
+*** Gate N -- correctness-relevant policy remains visible
+
+The correctness-relevant semantics of an application must be inspectable as
+named rules, operations, obligations, and explicit premises, with source and
+realization correspondence. The audit surface should normally be much smaller
+than the implementation, but a large genuine policy inventory is not a defect
+and no universal size ratio is an acceptance gate.
+
+A condition that influences an admitted assurance cannot gain the appearance of
+mechanical coverage merely because it is buried in ordinary Clojure. At the
+boundaries where Gesso can identify such influence, the condition is represented
+as admitted semantics, derived from admitted semantics, or exposed as an
+opaque/trusted premise.
+
+Completeness is claimed only for the stated generated or closed checked subset.
+Arbitrary host bodies outside that subset carry named implementation-conformance
+premises and inspection limits; no absence of hidden policy is inferred from an
+empty escape report. The selected assurance profile decides whether such a
+premise is admissible or must be discharged by stronger evidence.
+
+The business-rule inventory, operation explanations, dependency views,
+opaque-premise report, and assurance coverage are derived from the same admitted
+semantic objects used by production. They are not a second policy database.
+
+*** Gate O -- formal assumptions become production obligations
+
+A formal model may abstract implementation detail, but an assumption essential
+to its result creates a production obligation.
+
+If the model treats a guard and mutation as one atomic action, the production
+realization must provide the corresponding atomic/serializable property, or the
+gap remains an explicit trusted premise. The same rule applies to authority,
+freshness, command identity, retry, settlement, progression, and other modeled
+semantics.
+
+A successful model check therefore cannot by itself establish that arbitrary
+Clojure implements the checked model. Requested assurance requires the declared
+correspondence from the formal subject and assumptions to the actual admitted
+production realization.
+
+*** Gate P -- intent review does not impersonate proof
+
+Human or LLM review may identify a well-formed rule as surprising, asymmetric,
+apparently incomplete, or otherwise suspicious.
+
+Such review is advisory. It cannot alter semantic execution, reject a valid
+program as a proof result, discharge an obligation, or weaken an admitted rule.
+
+When a reviewer identifies a real business requirement, that requirement is
+promoted into an explicit semantic rule, invariant, contract, or other checked
+object. Only the resulting admitted semantics gain mechanical force.
+
 
 *** Worked failed release -- one green-looking candidate stopped by the final gates
 
@@ -38957,6 +40574,15 @@ code should remain declaration-first and should not manually reproduce internal
 proof plumbing.  Stronger semantic status comes from the required construction,
 checking, trusted acquisition, or authorization boundary rather than from a map
 shape or type name.
+
+The correctness-relevant semantics of an application form an explicit,
+source-owned audit surface: named rules, operation requirements and effects,
+authority and disclosure policy, lifecycle transitions, dependencies, and
+trusted/opaque premises. The surface is presented as compactly as its actual
+policy permits, with its inspection scope and enough explanatory context for
+human or heuristic review. Such review can discover candidate mistakes in
+intent, but only admitted semantic rules and checked evidence participate in
+mechanical assurance.
 
 The word *proved* is reserved for properties derived by the formal semantics and
 its machine-checked proof/refinement machinery under named assumptions. Tests
