@@ -592,6 +592,194 @@ simple cases but must remain separable when later correctness depends on the
 difference. A good public API should preserve that distinction while hiding most
 of the ceremony from ordinary downstream code.
 
+
+** Business rules and the auditable semantic surface
+:PROPERTIES:
+:CUSTOM_ID: req-auditable-semantic-surface
+:END:
+
+A correctness-relevant business rule should not exist only as an incidental
+condition buried inside arbitrary implementation code.
+
+For Gesso's purposes, a *business rule* is a named semantic proposition,
+relation, precondition, postcondition, transition restriction, authorization
+condition, disclosure condition, or other application judgment whose truth or
+applicability affects a correctness-relevant operation.
+
+Possible application rules include the following. This list illustrates the
+kind of policy that belongs on the surface; it does not assert that each rule
+has already been adopted by HumanHelp:
+
+- a Request may be claimed only while it is open;
+- the claimant must have an active Membership in the Request's Organization;
+- a requester may not claim their own Request;
+- a completed Request is terminal;
+- a protected observation may be disclosed only to an authorized principal;
+- a command may be incorporated only under the authority and argument binding
+  established for that command.
+
+The semantic rule is distinct from any one Clojure expression that happens to
+implement or test it.  A condition such as:
+
+#+begin_src clojure
+(= :active (:membership/status membership))
+#+end_src
+
+may participate in the realization of a rule such as
+=:membership/active-for-request-operation=.  By itself, however, this
+expression establishes only that the particular =membership= value supplied to
+it has status =:active=. It does not establish whose Membership it is, whether
+it belongs to the Request's Organization, whether the authenticated principal
+is the claimant, or whether the Membership is still active when Claim commits.
+Those bindings and timing requirements belong in the rule's meaning. The
+expression is one implementation step; the named rule is the semantic
+proposition whose meaning should remain stable across refactoring, generated
+realization, formal translation, diagnostics, and audit views.
+
+A Gesso application therefore has an *auditable semantic surface*: the compact
+set of named rules, operations, authorities, lifecycle transitions, invariants,
+knowledge/agreement requirements, and explicit trusted premises that determine
+its correctness-relevant behavior.
+
+That surface should normally be substantially smaller than the application's
+full implementation.  A large application may contain tens or hundreds of
+thousands of lines concerned with rendering, formatting, queries, adapters,
+integration plumbing, logging, caching, and incidental computation while its
+business semantics consist of a much smaller collection of rules and
+operations.  Gesso should preserve that compression rather than require an
+auditor to rediscover policy by rereading the entire implementation.
+
+The requirement is not that every conditional expression become a business
+rule.  Conditions concerned only with presentation mechanics, formatting,
+local optimization, or other behavior outside the claimed semantic boundary
+need not be promoted merely because they are written with =if=, =when=, or a
+predicate call.
+
+A condition is a strong candidate for the semantic surface when it controls or
+materially contributes to matters such as:
+
+- authorization or eligibility;
+- protected disclosure or observation;
+- ownership or responsibility;
+- lifecycle admission or transition;
+- authoritative mutation;
+- transfer of money, value, quota, inventory, or another conserved resource;
+- command acceptance, incorporation, settlement, or retry meaning;
+- establishment or use of authoritative knowledge;
+- a domain invariant or cross-operation consistency rule.
+
+The application may represent such rules using ordinary Clojure data, pure
+functions, checked constructors, existing model contracts, thin macro sugar,
+or another representation that preserves their semantic identity.  This design
+does not require a second policy language or a macro-heavy pseudo-language.
+What matters is that the supported Gesso path can identify the rule and the
+semantic judgment it contributes, rather than knowing only that some opaque
+branch occurred in host code.
+
+A rule representation may conceptually carry information such as:
+
+#+begin_src clojure
+{:rule/id :request/claim-requires-active-membership
+
+ ;; Meaning:
+ ;;   The authenticated helper must have an active Membership in the
+ ;;   Organization of the Request being claimed when Claim commits.
+ ;;
+ ;; Rationale:
+ ;;   Claiming transfers operational responsibility for the Request.
+ ;;
+ ;; Correctness significance:
+ ;;   Principal binding, Request/Organization association, Membership
+ ;;   ownership, and active status must be mutually compatible and
+ ;;   protected or re-established at the authoritative commit boundary.
+ ;;   A stale browser or server pre-read is not sufficient.
+
+ :proposition
+ [:and
+  [:= [:membership/user-id]
+      [:authenticated-principal/user-id]]
+  [:= [:membership/organization-id]
+      [:request/organization-id]]
+  [:= [:membership/status] :active]]
+
+ :subjects
+ {:principal :trusted-authenticated-principal
+  :request :current-authoritative-request
+  :membership :current-authoritative-membership}
+
+ :required-at :request/claim-authoritative-commit
+
+ :applies-to
+ #{:request/claim}}
+#+end_src
+
+The exact representation above is illustrative; its =:subjects= and
+=:required-at= entries express obligations, not evidence that current facts
+were acquired or that a transaction guard was implemented. The three field
+tests must refer to the *same* Membership, the trusted current principal, and
+the Request selected by this Claim. Part IV determines how an authoritative
+realization protects those facts and their relationship at commit. The semantic
+requirements are that the rule has stable identity, that its checked meaning is
+available to the parts of Gesso that rely on it, and that enough correspondence
+is retained for later assembly, diagnostics, certification, and formal artifacts
+to refer back to the same rule. An opaque Clojure predicate with the same name
+does not make that proposition mechanically established.
+
+Business rules should also be generously explained in ordinary source.  Where
+practical, the declaration or function that defines a rule should be surrounded
+by comments explaining at least:
+
+- what the rule means in domain terms;
+- why the rule exists;
+- which subtle correctness boundary matters to its enforcement;
+- any intentionally surprising exception or asymmetry.
+
+Comments improve human and model review, but comments alone cannot be premises
+of a mechanical assurance claim because ordinary Clojure reading/compilation
+need not preserve them.  Prose that must survive elaboration into generated
+semantic inventories, diagnostics, or assurance artifacts must therefore be
+retained as checked metadata, documentation strings, source metadata, or
+another explicit representation.  The machine-checked semantic core remains
+distinct from its explanatory prose.
+
+This produces two complementary views of the same rule:
+
+#+begin_example
+machine-checkable semantic core
+    : request/claim requires a current active Membership held by the
+      authenticated helper in this Request's Organization at commit
+
+human-auditable explanation
+    : what "active" means here, why it matters, and why the check must
+      participate in the authoritative transition rather than rely on an
+      earlier browser observation
+#+end_example
+
+Neither view should silently substitute for the other.  Explanatory prose does
+not prove the rule, and a terse machine predicate is not sufficient by itself
+for an application intended to remain auditable by humans.
+
+When a correctness-relevant decision necessarily depends on application code
+whose semantics Gesso cannot inspect or derive, that dependency should still
+have an explicit semantic name and boundary.  It may be represented as an
+opaque or trusted premise rather than being allowed to disappear into an
+unnamed implementation branch.  Later certification and whole-application
+assembly determine what assurance may be claimed from such a premise; this part
+requires only that the semantic dependency itself remain visible.
+
+The semantic-surface acceptance criterion is:
+
+#+begin_quote
+A reviewer should be able to inspect the correctness-relevant business policy
+of a Gesso application as a compact set of named semantic rules and explicit
+premises without reconstructing that policy from unrelated implementation
+code.  Refactoring may change the physical Clojure realization without erasing
+or silently changing the identity of the rule being realized.  Any
+correctness-relevant dependency that cannot be represented or derived by the
+supported semantic path remains explicit rather than being mistaken for an
+assured rule merely because opaque host code returned a truthy value.
+#+end_quote
+
 #+LATEX: \newpage
 
 ** Facts, time, and authoritative progression

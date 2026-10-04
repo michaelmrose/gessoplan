@@ -4236,6 +4236,312 @@ trying to eliminate: a working-looking application whose browser, route, server,
 model, and test layers each tell a slightly different story about what operation
 is supposedly happening.
 
+
+*** Whole-application semantic audit surface
+:PROPERTIES:
+:CUSTOM_ID: req-whole-application-semantic-audit-surface
+:END:
+
+The whole-application assembly should expose the auditable semantic surface
+introduced in [[#req-auditable-semantic-surface][Part II]] as a compact,
+structured application artifact.
+
+This is not a second policy document maintained beside the application.  It is
+a view derived from the same admitted semantic identities, rules, operations,
+authorities, realization edges, trusted premises, and source correspondence
+that construction and preflight actually use.
+
+A large application may contain tens or hundreds of thousands of lines of
+Clojure, ClojureScript, Hiccup, CSS, adapters, queries, and integration code.
+Whole-application inspection should not require a reviewer to read all of that
+material merely to discover the correctness-relevant policy that the admitted
+application claims to implement.
+
+For an admitted generation, tooling should therefore be able to derive a
+semantic audit summary resembling:
+
+#+begin_example
+HumanHelp semantic surface
+
+scope: admitted declarations, checked construction products, and explicitly
+       registered opaque implementation boundaries
+
+business rules                     173
+authoritative operations            35
+lifecycle transitions               18
+authorization/disclosure policies   12
+cross-operation invariants           9
+explicit opaque/trusted premises     4
+unresolved declared bindings         0
+#+end_example
+
+The counts are illustrative.  Their purpose is not to create a quality score.
+Their purpose is to expose the size and shape of the application's claimed
+semantic surface and to make exceptional or opaque portions easy to find. Zero
+unresolved *declared* bindings means that the admitted graph closed over its
+declared scope. It does not establish that arbitrary Clojure bodies contain no
+undiscovered policy branch. Each body outside the supported checked subset
+whose conformance matters to a claim must remain an explicit implementation
+boundary or premise; the report must state what was inspected and what remains
+opaque. A count cannot certify the completeness of undeclared business intent.
+
+The audit surface should support at least the following derived views where the
+underlying application contains the corresponding semantics.
+
+**** Business-rule catalog
+
+The rule catalog enumerates each named correctness-relevant business rule with
+its stable semantic identity.
+
+Where available, an entry should preserve or link to:
+
+- its machine-checkable proposition or relation;
+- its domain meaning;
+- its rationale and intentionally surprising exceptions;
+- the operations, transitions, observations, or invariants that depend on it;
+- its authority or authorities where authority is relevant;
+- the source declaration that owns it;
+- the declared realization or enforcement mechanism and the separate evidence,
+  if any, that it actually discharges the rule;
+- any explicit opaque or trusted premise on which it depends;
+- the assurance classification currently justified for the rule.
+
+For example:
+
+#+begin_src clojure
+{:rule/id
+ :request/claim-requires-active-membership
+
+ :meaning
+ "At Claim commit, the authenticated helper has an active Membership in the
+  Organization of the Request being claimed."
+
+ :rationale
+ "Claiming transfers operational responsibility for the Request."
+
+ :applies-to
+ #{:request/claim}
+
+ :authority
+ :request
+
+ :enforcement
+ {:required-kind :authoritative-transaction-guard
+  :operation :request/claim}
+
+ :source
+ {:ns 'net.humanhelp.site.model.request.rules
+  :var 'claim-requires-active-membership}
+
+ :assurance
+ {:declared-rule-to-guard-binding
+  {:class :assembly-verified
+   :subject :request/claim-membership-guard-edge}
+
+  :guard-implementation-conformance
+  {:class :trusted
+   :premise :humanhelp/claim-transaction-guards-conform}}}
+#+end_src
+
+The exact data shape is illustrative.  The requirement is that a reviewer can
+move from semantic rule to meaning, use, source, and enforcement without
+reconstructing the relationship by repository-wide search. In this example,
+=:assembly-verified= applies to the checked declaration/closure edge. It does
+not establish that the XTDB transaction protects active Membership and the
+Request/Organization association against concurrent changes. The separate
+=:trusted= premise makes that unproved implementation obligation visible; a
+stronger applicable checker or concrete runtime evidence may justify a more
+specific classification. Neither classification is earned by writing the
+sample map or by giving a transaction the right name.
+
+**** Operation cards
+
+Each semantic operation should have a compact operation card summarizing the
+correctness-relevant contract already present in the assembly.
+
+An operation card may include:
+
+- actor or principal requirements;
+- named preconditions and business rules;
+- authority and authoritative observations;
+- atomic state transition or effect;
+- typed outcomes;
+- command identity and retry semantics;
+- delivery-uncertainty behavior;
+- settlement and reacquisition path;
+- source ownership and realization status.
+
+The operation card is a summary view of the canonical operation and its closure
+edges.  It must not become an independently editable source of semantics.
+
+**** Authorization and disclosure view
+
+Where operations or observations carry authorization or disclosure conditions,
+tooling should be able to present them together rather than forcing a reviewer
+to inspect each route or model function independently.
+
+A conceptual view might show:
+
+#+begin_example
+operation / observation        principal condition        protected by
+
+request/read                   Organization member         :request/read-policy
+request/claim                  active helper               :request/claim-policy
+request/complete               current claimant            :request/complete-policy
+request/private-note/read      current claimant or author  :request/note-read-policy
+#+end_example
+
+Such a view is especially useful for exposing asymmetry.  An unexpectedly
+weaker rule on one analogous operation becomes visible even when every
+individual operation is internally well formed.
+
+The view does not infer human intent.  It faithfully reports the semantics the
+application actually admitted.
+
+**** Lifecycle and transition view
+
+Where the semantic model defines lifecycle states or transition restrictions,
+whole-application explanation should be able to render the admitted transition
+relation compactly.
+
+For example:
+
+#+begin_example
+:open      -> :claimed
+:open      -> :cancelled
+:claimed   -> :completed
+:claimed   -> :cancelled
+:completed -> [terminal]
+:cancelled -> [terminal]
+#+end_example
+
+The representation may be structured data, a graph, a table, or another
+inspectable form.  It should be generated from admitted semantic transition
+facts rather than reconstructed from route names or UI affordances.
+
+**** Rule-dependency view
+
+Rules and invariants often depend on other semantic facts.  The assembly should
+retain enough dependency information to answer questions such as:
+
+#+begin_example
+which operations depend on :membership/active?
+which invariants depend on :request/single-owner?
+which rules rely on :organization/request-policy?
+which assured claims rely on an opaque premise?
+#+end_example
+
+This dependency view supports both local repair and impact analysis.  Changing
+a rule can reveal the semantic objects whose assurance must be reconsidered
+without pretending that ordinary source dependency alone captures semantic
+dependency.
+
+**** Opaque-premise report
+
+Every correctness-relevant dependency that crosses an admitted opaque or
+trusted boundary should be easy to enumerate.
+
+A report should identify at least:
+
+- the premise's semantic identity;
+- why it is opaque to the supported semantic path;
+- which rules, operations, or assurance claims depend on it;
+- the source or external system that supplies it;
+- the evidence classification permitted for claims that rely on it.
+
+A four-line opaque-premise report in a very large application is more useful
+than allowing those four dependencies to disappear among thousands of ordinary
+function calls.
+
+The presence of an opaque premise is not by itself an error. Hiding an opaque
+premise while presenting dependent conclusions as if they were mechanically
+established is an error in assurance accounting. This report enumerates
+registered boundaries. It cannot prove that uninspected arbitrary host code
+contains no additional policy simply because no such premise was registered.
+
+**** Assurance-coverage view
+
+Whole-application explanation should be able to summarize how the admitted
+semantic surface is covered. Each row names the particular proposition or
+obligation to which its evidence class applies. A checked assembly edge, a
+guard implemented by a production transaction, and an abstract invariant
+checked over a finite model are different subjects even when all concern
+Claim.
+
+Conceptually:
+
+#+begin_example
+subject / obligation                                 classification
+
+:request/open-at-claim declared guard binding         assembly-verified
+:request/open-at-claim transaction conformance        trusted
+:membership/current-at-claim transaction conformance  trusted
+:request/single-owner within stated finite model      exact-finite-checked
+:request/single-owner in production                    trusted
+:sms/provider-delivers-message                         trusted
+:browser/fetch-conforms-to-envelope                     tested
+#+end_example
+
+The vocabulary must use the assurance classifications defined elsewhere in this
+design; the report must not collapse distinct evidence classes into percentages
+or a single "verified" score. The illustrative =trusted= rows require named
+premises and explicit applicability; an implementation with stronger checked
+evidence can report that evidence for its exact subject. A finite model result
+does not by itself establish the corresponding property for arbitrary
+production behavior.
+
+Coverage views are diagnostic accounting.  Part IX determines what
+compositional certification may actually be claimed from the underlying
+evidence.
+
+**** One semantic source, many audit projections
+
+The business-rule catalog, operation cards, authorization view, transition
+view, dependency graph, opaque-premise report, and assurance-coverage view are
+multiple projections of one admitted semantic and assembly object.
+
+They must not become separately maintained documents whose contents may drift:
+
+#+begin_example
+source semantic declarations
+        |
+        v
+checked semantic / application assembly
+        |
+        +--> executable realization
+        +--> browser/server closure
+        +--> business-rule catalog
+        +--> operation cards
+        +--> authorization/transition views
+        +--> opaque-premise report
+        +--> assurance-coverage view
+#+end_example
+
+Explanatory prose retained from semantic declarations may appear in these
+views, but prose does not gain mechanical authority merely because it is
+rendered beside a checked proposition.
+
+Likewise, absence from an audit view must not be interpreted as proof that no
+corresponding real-world business rule exists. The report describes the
+semantic surface the application has expressed and admitted, together with its
+declared opaque boundaries. It must identify the inspected/generated subset
+for which rule/implementation correspondence is complete and the arbitrary
+host bodies for which conformance remains a premise. Human or heuristic
+review may still discover that an intended rule is missing entirely or that an
+uninspected host branch changes policy without a corresponding declaration.
+
+The whole-application audit acceptance criterion is:
+
+#+begin_quote
+A reviewer should be able to inspect the correctness-relevant semantic policy
+of an admitted Gesso application without reconstructing it from the complete
+implementation.  The audit views must be generated from the same semantic and
+assembly objects used for execution and assurance, must expose explicit opaque
+premises rather than bury them, must state their inspection and conformance
+scope, and must preserve enough source and dependency correspondence to move
+from a suspicious rule or claim back to the code that owns and realizes it.
+#+end_quote
+
 *** Explain exposed operations
 
 For each exposed semantic operation, explanation should identify at least:

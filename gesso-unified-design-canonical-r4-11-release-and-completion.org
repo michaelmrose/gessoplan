@@ -442,6 +442,230 @@ state compatibility and recovery constraints before claiming that rollback is
 safe. This requirement does not introduce a universal database migration or
 workflow engine.
 
+*** Bounded rolling-release compatibility
+:PROPERTIES:
+:CUSTOM_ID: req-bounded-release-compatibility
+:END:
+
+A release boundary must distinguish at least four different identities that are
+easy to collapse incorrectly:
+
+- the semantic identity of an operation or plan;
+- the exact identity of emitted browser/server artifacts;
+- the admitted assembly-generation identity of a releasable whole application;
+- the compatibility relation that says whether an execution originating in one
+  admitted assembly generation may continue against another.
+
+Compatibility is not inferred from matching names, numerical version ordering,
+Git ancestry, build count, wall-clock recency, or the fact that two releases were
+produced from similar source.  It is a checked relation over the continuation-
+relevant semantics and deployment capabilities of the two admitted generations.
+
+The baseline operational policy is deliberately bounded.  Ordinary rolling
+deployment needs to support a small overlap between the generation being
+replaced and the generation replacing it; it does not require arbitrary old
+browser executions to remain live forever.  A typical supported window is:
+
+#+begin_example
+assembly generation N
+        <---- checked rolling compatibility ---->
+assembly generation N+1
+
+assembly generation N+2 activates
+        |
+        +-- N execution is outside the supported window
+            -> retire stale execution universe
+            -> preserve only explicitly recoverable semantic intent
+            -> reacquire current authoritative realization
+#+end_example
+
+The symbols =N=, =N+1=, and =N+2= name an example *activation order*, not
+numerical assembly-generation identities or a proof of compatibility. The exact
+supported overlap window is a release capability. An application may choose a
+different bound, but it must be explicit, finite, and checked.
+
+Part VII fixes when an admitted assembly generation exists: a complete
+realization is constructed and validated for serving. It may be admitted during
+development without being selected for a production release. Admission binds
+the actual routes, prepared operations, providers, plans, and generated artifact
+for that generation; relevant changes require a new admission or an explicitly
+checked transition even if the semantic continuation contract is unchanged.
+A release selects admitted generation(s) for activation and records their
+rolling compatibility. Development rebuilds or commits alone neither mutate an
+existing admitted generation nor imply that its release will be activated.
+Deployment/activation order and assembly-generation identity remain different
+coordinates.
+
+**** Direction matters during overlap
+
+Rolling compatibility may be directional.  If deployment/routing permits both
+of these situations:
+
+#+begin_example
+old browser / old plan  -> new server
+new browser / new plan  -> old server
+#+end_example
+
+then the release gate must establish both directions separately.  If routing or
+activation rules make one direction impossible, the report may rely on that
+operational fact, but it must name and test it rather than silently assuming
+symmetry.
+
+The compatibility question is therefore not merely:
+
+#+begin_example
+compatible?(N, N+1)
+#+end_example
+
+but, where direction matters:
+
+#+begin_example
+may-continue?(client-generation, server-generation, operation/plan)
+#+end_example
+
+A successful result means that every continuation-relevant assumption required by
+the suspended execution remains valid under the target generation, or that an
+explicit checked adaptation contract establishes the required refinement.
+
+**** Compatibility is derived from continuation-relevant semantics
+
+Where practical, Gesso should derive a normalized continuation contract from the
+same admitted semantic objects that produce the executable plan.  The contract
+contains the facts that can affect whether suspended work may safely continue,
+for example:
+
+- operation and plan semantics;
+- command argument, result, and outcome contracts;
+- authority and principal requirements;
+- event vocabulary and relevant state transitions;
+- retry, duplicate, uncertainty, and reconciliation semantics;
+- progression/acquisition obligations;
+- required runtime/browser capabilities;
+- route and transport envelope correspondence, including the target server's
+  actual decoder and the runtime artifact that may send the envelope;
+- settlement and continuation obligations;
+- any other dependency whose change can invalidate an already projected
+  continuation.
+
+A conservative implementation may use equality of a soundly normalized,
+complete continuation-contract identity for the *semantic* portion of the
+compatibility decision. That equality is useful because a change represented
+by the contract retires the old continuation unless a stronger rule has been
+justified. It is not by itself evidence that the target server actually serves
+the bound route/decoder, that the old client artifact and target runtime support
+the same envelope/events, or that the relevant implementation and assembly
+bindings passed admission. The release gate checks those concrete facts for
+each client-to-server direction it permits, and the runtime still re-establishes
+current authorization and other dynamic premises at use.
+
+A more permissive implementation may establish a directional compatibility or
+migration relation that proves an older continuation remains safe under newer
+semantics.  Such a relation is additional checked evidence.  A handwritten
+assertion that two plans are compatible is, at best, an explicit trusted premise
+unless the selected assurance profile supplies a checker for it.
+
+The release report records which rule established compatibility.  It must not
+reduce that fact to a label such as =v3= whose meaning depends on undocumented
+human convention. The report identifies both the semantic relation and the
+actual admitted client/server realizations and evidence to which it applies.
+
+**** Retirement preserves semantic intent, not stale execution authority
+
+When an execution falls outside the supported compatibility window, the safe
+default is retirement followed by authoritative reacquisition.  Retirement is
+not an attempt to deserialize and continue arbitrary old machine state under the
+new release.
+
+Some application context may survive because it denotes stable semantic intent.
+Examples can include, where explicitly supported:
+
+- the logical route or view the user was visiting;
+- stable domain subject identifiers, such as the Request being viewed;
+- filters, sort choices, tabs, or other local presentation choices whose meaning
+  is still admitted;
+- draft user input that the application has explicitly classified as recoverable.
+
+An outstanding semantic command has a different status from a browser
+execution. If its delivery or incorporation is uncertain, retirement must not
+silently erase the command-outcome question. Where the operation's declared
+retention and recovery contract permits it, the stable command identity,
+original semantic binding, and unresolved reconciliation obligation survive
+as recoverable *command-specific intent and knowledge*. They do not carry the
+old execution's authority, and a browser-held identifier is never proof of
+incorporation or permission to disclose a recorded result. A new generation
+must admit any lookup or compatible retry under the current authenticated
+principal and the model's command-binding and disclosure rules. If attribution
+cannot be recovered under the declared contract, the result remains unknown;
+current-state acquisition may still repair the displayed view.
+
+The following are execution artifacts and do not survive merely because they
+were present in the old browser:
+
+- execution and resource-instance identities;
+- pending callbacks or continuation handles;
+- old authority observations or knowledge frontiers;
+- provisional settlement state whose basis is no longer current;
+- old artifact bindings and runtime capabilities;
+- continuation rights established only by the retired plan;
+- assumptions about current authoritative domain state.
+
+Retiring provisional presentation therefore does not convert its uncertain
+command into a confirmed failure. Nor may recovery silently assign a fresh
+command ID and resubmit the same business intent as if the old command were
+known not to have committed.
+
+A recoverable draft may preserve bytes or structured user input, but the new
+generation must re-admit and revalidate that input under current semantics before
+it can affect authoritative state.  Recovery never turns possession of stale
+browser state into authority.
+
+The governing rule is:
+
+#+begin_quote
+Release recovery preserves stable application intent and reacquires its current
+authoritative realization; it does not preserve stale execution semantics merely
+because they were present in the old browser.
+#+end_quote
+
+For example, a user who was viewing Request =R= before retirement may be returned
+to the current authoritative view of =R=.  If =R= became completed while the old
+execution was suspended, recovery shows the completed Request.  It does not
+resume the old plan at an earlier lifecycle state merely to preserve continuity.
+
+Suppose Claim command =C42= was sent before a deployment, the response was lost,
+and the originating execution is then retired. Its callbacks and provisional
+card are discarded. An authorized recovery may retain =C42= to resolve its
+recorded result or retry that *same* command under the model's compatibility,
+retention, and disclosure contract. Rereading =R= can establish its current
+state without proving that =C42= caused it. If no permitted command-specific
+evidence is available, the participant's attribution remains unknown even
+when the current card is rendered correctly.
+
+**** Unsupported skew fails closed
+
+An incompatible or unsupported generation pairing must be detected before the
+stale execution can perform a continuation that relies on changed semantics.
+The permitted outcomes are bounded compatibility, semantic retirement/recovery,
+or an explicit typed rejection when recovery is not permitted.  Silent fallback
+to an older contract is forbidden.
+
+A release gate for a rolling deployment therefore checks at least:
+
+- the assembly generations that may coexist during activation;
+- every client/server direction that routing can actually expose;
+- the continuation contracts or checked compatibility evidence used for that
+  coexistence;
+- concrete admitted target route/decoder, runtime capability, and artifact
+  evidence for each permitted client/server direction;
+- the retirement/recovery behavior for generations outside the supported window;
+- preservation and re-admission rules for recoverable application intent;
+- preservation or honest unresolved status of command-specific outcome
+  obligations across execution retirement;
+- real runtime tests showing that unsupported skew does not continue silently.
+
+This bounded policy gives deployment overlap a precise meaning without turning
+Gesso into a general historical workflow-migration system.
+
 ** Global non-goals
 
 The following constraints keep Gesso's semantic and proof boundary deliberately

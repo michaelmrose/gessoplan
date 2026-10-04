@@ -230,6 +230,18 @@ Required work:
 - dynamic pre-serialization rendered-surface preflight;
 - structured error kinds;
 - operation/application explanation;
+- a source-derived semantic audit surface containing the business-rule catalog,
+  operation cards, authorization/disclosure view, lifecycle/transition view,
+  rule-dependency view, opaque-premise report, and assurance-coverage view;
+- semantic-policy escape detection at every checked boundary able to determine
+  that a condition influences authorization, disclosure, eligibility, ownership,
+  authoritative transition, command acceptance, or another declared assurance;
+- complete classification of correctness-relevant predicates *within each
+  generated or closed checked subset* as admitted semantics, derived semantics,
+  or an explicitly named premise;
+- registration of arbitrary host-code realizations outside those subsets as
+  scoped implementation-conformance/trust boundaries, with the operation
+  contracts and assurance claims depending on them identified;
 - startup lifecycle integration.
 
 Gate:
@@ -249,6 +261,19 @@ Gate:
 - routes, providers, prepared server realizations, rendering, and served artifact
   stay bound to one admitted assembly generation or a checked compatible
   transition;
+- the whole-application semantic audit surface is generated from the same
+  admitted semantic/assembly objects that production uses rather than from a
+  separately maintained policy inventory, and states its inspection scope;
+- where a checked boundary can see that correctness-relevant host-language logic
+  affects an admitted operation but cannot associate it with admitted semantics,
+  that logic is promoted, derived, or exposed as an opaque/trusted premise rather
+  than silently counted as mechanically assured;
+- unresolved semantic-policy escapes prevent the affected stronger admission or
+  assurance claim;
+- zero detected escapes establishes closure only over the reported inspected
+  scope; an unanalysed Clojure body does not gain a complete policy inventory
+  by silence, and a profile requiring checked conformance cannot treat its
+  opaque implementation premise as discharged;
 - paired valid fixtures remain usable while controlled defects fail at the
   intended production boundary.
 
@@ -548,17 +573,44 @@ Required work:
 - explain application closure path;
 - explain stale dependency;
 - open-obligation report;
-- stable structured diagnostics;
+- generated semantic-policy inventory and assurance-coverage explanation;
+- a source-linked explanation format for formal/model-checking counterexamples
+  and unresolved production obligations, using correspondence metadata to
+  identify their respective semantic and implementation subjects;
+- stable structured diagnostics that distinguish mechanically invalid
+  construction, a formal counterexample to declared semantics, and a merely
+  suspicious but internally valid business policy;
 - source ownership;
-- valid candidate alternatives for closed registries.
+- valid candidate alternatives for closed registries;
+- optional human/LLM intent review over the compact semantic surface, kept
+  explicitly outside the trusted certification path.
 
 Gate:
 
 - malformed fixtures expose the failed obligation, actual/required evidence,
   responsible source, and appropriate repair boundary;
+- a representative counterexample fixture can be explained in application
+  vocabulary and traced to the semantic source and any related production
+  obligation without treating the abstract trace as proof of a production bug;
+- the explanation records its evidence class and whether the trace arose from
+  a real generated backend, a fixture, or an abstraction not yet concretized;
+- when generated TLA+/Quint/Recife or other formal artifacts exist, they are
+  inspectable derivatives, not an independent repair surface that may be
+  edited until the checker turns green;
 - suggested alternatives preserve declared semantics; diagnostics do not claim
   a uniquely correct business-policy repair where the product must decide;
-- explanation is read-only and cannot affect semantic execution.
+- heuristic intent review may label a well-formed policy suspicious, but such a
+  label neither proves a defect nor changes admission; a confirmed concern gains
+  mechanical force only after it is promoted into an admitted rule, invariant,
+  contract, or other checked semantic object;
+- explanation and heuristic review are read-only and cannot affect semantic
+  execution.
+
+Stage 15 establishes the explanation contract and tests its scope with an
+appropriate fixture. It does not require an external backend whose formalization
+and production correspondence are developed in later stages. A release that
+claims a generated-backend counterexample explanation must exercise that path
+with an actual generated trace under Stage 17's applicable evidence profile.
 
 *** Stage 16 -- Independent formalization of the stable small proof kernel
 
@@ -604,6 +656,19 @@ Required work:
   without a sound exhaustive-coverage argument;
 - bind formal subjects, complete obligations, dependencies, translations, and
   actual admitted production artifacts;
+- maintain an explicit obligation ledger from every formal assumption relevant
+  to a claimed result to the production mechanism, checked capability, or named
+  trusted premise that discharges it;
+- require an atomic action in the formal model to correspond to an executable
+  authoritative boundary providing the same required atomicity/serialization
+  property rather than merely to similarly named source code;
+- preserve reverse correspondence metadata sufficient to interpret formal
+  counterexamples in terms of admitted semantic objects and their source
+  bindings;
+- where a supported generated backend is included in the claimed profile,
+  exercise an actual counterexample through the source-level explanation path,
+  distinguishing the modeled violation from a separately evidenced production
+  correspondence failure;
 - deterministic certificate regeneration;
 - dependency-aware incremental rebuild;
 - build gates for unresolved obligations/stale semantic IDs;
@@ -617,6 +682,13 @@ Gate:
 - release cannot ship a stale certified plan after semantic dependency change;
 - formal checker story applies to actual production acceptance rather than a
   disconnected model;
+- every assumption needed by a requested formal claim is either discharged by
+  applicable production evidence with matching subject/scope or remains visible
+  as a trusted/open premise; model success cannot hide an unconnected
+  implementation obligation;
+- source repair after a formal failure regenerates the semantic/formal artifacts
+  and reruns their checks; editing a generated formal artifact cannot establish
+  production correspondence;
 - proof sidecars remain excluded from production semantics;
 - required unavailable or incomplete checking blocks the requested admission
   without silently weakening its assurance profile.
@@ -1289,6 +1361,58 @@ identities, incomplete checks, or tests on a different artifact cannot establish
 the requested gate.
 Finite models and conformance vectors retain the limits of their actual evidence.
 
+*** Gate N -- correctness-relevant policy remains visible
+
+The correctness-relevant semantics of an application must be inspectable as
+named rules, operations, obligations, and explicit premises, with source and
+realization correspondence. The audit surface should normally be much smaller
+than the implementation, but a large genuine policy inventory is not a defect
+and no universal size ratio is an acceptance gate.
+
+A condition that influences an admitted assurance cannot gain the appearance of
+mechanical coverage merely because it is buried in ordinary Clojure. At the
+boundaries where Gesso can identify such influence, the condition is represented
+as admitted semantics, derived from admitted semantics, or exposed as an
+opaque/trusted premise.
+
+Completeness is claimed only for the stated generated or closed checked subset.
+Arbitrary host bodies outside that subset carry named implementation-conformance
+premises and inspection limits; no absence of hidden policy is inferred from an
+empty escape report. The selected assurance profile decides whether such a
+premise is admissible or must be discharged by stronger evidence.
+
+The business-rule inventory, operation explanations, dependency views,
+opaque-premise report, and assurance coverage are derived from the same admitted
+semantic objects used by production. They are not a second policy database.
+
+*** Gate O -- formal assumptions become production obligations
+
+A formal model may abstract implementation detail, but an assumption essential
+to its result creates a production obligation.
+
+If the model treats a guard and mutation as one atomic action, the production
+realization must provide the corresponding atomic/serializable property, or the
+gap remains an explicit trusted premise. The same rule applies to authority,
+freshness, command identity, retry, settlement, progression, and other modeled
+semantics.
+
+A successful model check therefore cannot by itself establish that arbitrary
+Clojure implements the checked model. Requested assurance requires the declared
+correspondence from the formal subject and assumptions to the actual admitted
+production realization.
+
+*** Gate P -- intent review does not impersonate proof
+
+Human or LLM review may identify a well-formed rule as surprising, asymmetric,
+apparently incomplete, or otherwise suspicious.
+
+Such review is advisory. It cannot alter semantic execution, reject a valid
+program as a proof result, discharge an obligation, or weaken an admitted rule.
+
+When a reviewer identifies a real business requirement, that requirement is
+promoted into an explicit semantic rule, invariant, contract, or other checked
+object. Only the resulting admitted semantics gain mechanical force.
+
 
 *** Worked failed release -- one green-looking candidate stopped by the final gates
 
@@ -1657,6 +1781,15 @@ code should remain declaration-first and should not manually reproduce internal
 proof plumbing.  Stronger semantic status comes from the required construction,
 checking, trusted acquisition, or authorization boundary rather than from a map
 shape or type name.
+
+The correctness-relevant semantics of an application form an explicit,
+source-owned audit surface: named rules, operation requirements and effects,
+authority and disclosure policy, lifecycle transitions, dependencies, and
+trusted/opaque premises. The surface is presented as compactly as its actual
+policy permits, with its inspection scope and enough explanatory context for
+human or heuristic review. Such review can discover candidate mistakes in
+intent, but only admitted semantic rules and checked evidence participate in
+mechanical assurance.
 
 The word *proved* is reserved for properties derived by the formal semantics and
 its machine-checked proof/refinement machinery under named assumptions. Tests

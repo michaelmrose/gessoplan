@@ -700,6 +700,339 @@ acceptance test do not repair either gap.  Where arbitrary Clojure remains
 behind the public operation contract, its conformance remains an explicit
 trusted/tested premise until stronger evidence discharges that obligation.
 
+*** Formal obligations must return to executable production boundaries
+:PROPERTIES:
+:CUSTOM_ID: req-formal-obligations-return-to-production
+:END:
+
+A formally valid model is useful only to the extent that its correctness-relevant
+assumptions are either realized by production or remain visible as explicit
+premises. Gesso therefore requires both forward semantic correspondence from
+admitted source to its formal and production subjects, and reverse traceability
+from formal results and assumptions back to source and production obligations.
+Reverse traceability is not itself a proof that every formal transition is
+executable in production or that every production behavior is covered by the
+formal model.
+
+The forward direction is familiar:
+
+#+begin_example
+Gesso semantic object
+        |
+        v
+normalized semantic IR
+        |
+        +--> executable production realization
+        |
+        +--> formal subject / transition system
+#+end_example
+
+The reverse traceability path is equally required:
+
+#+begin_example
+formal assumption, obligation, or counterexample
+        |
+        v
+correspondence identity
+        |
+        v
+semantic rule / operation / transition
+        |
+        v
+production binding and source location
+#+end_example
+
+The purpose of the reverse path is not merely nicer error reporting.  It keeps a
+formal claim from floating free of the program whose behavior the claim is meant
+to constrain.
+
+**** Atomic formal actions create atomic production obligations
+
+If a formal transition treats several observations and writes as one atomic
+action, production must justify an equivalent atomic boundary for the claimed
+property.  The implementation need not resemble the formal syntax and need not
+run on one thread or one host.  It must provide the same correctness-relevant
+semantics.
+
+For example, an abstract Claim action may say that all of these belong to one
+atomic authoritative transition:
+
+#+begin_example
+Request is still open
+Membership is still active
+Membership and Request still belong to the same Organization
+command identity is still bound to this operation, principal, and Request
+Request ownership changes
+command result is durably recorded
+#+end_example
+
+Production may discharge that obligation through an XTDB transaction, a
+conditional write, another serializable authoritative mechanism, or a separately
+proved refinement.  A sequence of ordinary reads followed by an unconditional
+write does not discharge the obligation merely because every individual read
+was correct when performed.
+
+The same rule applies to other formal assumptions.  Examples include:
+
+- an authenticated principal used by a transition requires a production binding
+  to trusted authentication/session state rather than browser bytes;
+- a current authoritative observation requires a production read/guard whose
+  freshness semantics match the claim;
+- exactly-once incorporation may be realized through idempotent command
+  identity and durable result recording rather than literally once-only network
+  delivery;
+- resource retirement requires the browser realization to reject effects from
+  retired resource instances even if those callbacks physically arrive later;
+- an abstract nondeterministic failure or late delivery must be covered by the
+  concrete adapter/environment behavior admitted by the refinement claim.
+
+An obligation is discharged only by named evidence appropriate to the selected
+assurance profile.  If Gesso cannot establish the production mechanism, the
+assumption remains a visible trusted/tested premise.  It must not disappear
+because the generated formal model happened to be safe under that assumption.
+
+A correspondence record may therefore carry information of this shape:
+
+#+begin_src clojure
+{:obligation/id :request/claim-current-and-atomic
+ :formal-subject :formal/request-claim
+ :semantic-subject :semantic/request-claim-op-O31
+ :requires
+ #{:current-request
+   :current-membership
+   :current-organization
+   :bound-command-identity
+   :atomic-request-and-command-result-write}
+ :production-binding
+ {:operation :request/claim
+  :model-var 'net.humanhelp.site.model.request.core/claim}
+ :discharge
+ {:mechanism :xtdb/guarded-transaction
+  :evidence :correspondence/request-claim-X19}
+ :source
+ {:ns 'net.humanhelp.site.model.request.core
+  :var 'claim}}
+#+end_src
+
+This is illustrative semantic data, not a promise that source metadata alone
+proves atomicity.  The =:discharge= entry must itself be justified by whatever
+checked correspondence, constrained lowering, integration evidence, or trusted
+premise the active profile requires.
+
+**** Generated formal artifacts are derivatives, not a second application
+
+Where Gesso can derive a formal transition system mechanically from admitted
+semantic IR, that generated artifact is not an independently authored source of
+business meaning.  It is a derivative representation of the same admitted
+semantic object.
+
+The preferred path is therefore:
+
+#+begin_example
+application semantic declarations
+        |
+        v
+checked semantic IR
+        |
+        +--> production lowering
+        |
+        +--> formal/model-checking lowering
+#+end_example
+
+rather than:
+
+#+begin_example
+application Clojure  ---- manually synchronized ----  handwritten formal spec
+#+end_example
+
+A supported backend may render the derived transition system into TLA+/TLC,
+Quint, Recife/TLC, or another formal representation.  Backend choice does not
+change semantic ownership: the admitted Gesso object remains the source of the
+application meaning being transferred.
+
+Developers and reviewers may inspect generated formal artifacts.  Framework
+maintainers may of course work directly on backend translations.  But changing a
+generated formal file to make a failed check pass does not repair the
+application.  The repair must occur in the semantic source, production binding,
+formal lowering, or explicitly named assumption from which that artifact is
+derived, after which the artifact is regenerated and rechecked.
+
+This prevents a particularly dangerous false repair:
+
+#+begin_example
+counterexample found
+    -> weaken generated invariant
+    -> checker becomes green
+    -> production remains wrong
+#+end_example
+
+If the application owner intentionally weakens an application invariant, that
+is a semantic-policy change and must be visible as such.  It is not an
+implementation fix.
+
+**** Counterexamples must be interpreted back into application semantics
+
+Raw model-checker traces are valuable evidence but are a poor final diagnostic
+surface for ordinary Gesso development.  Gesso should retain enough provenance
+through formal lowering to translate a counterexample back into the semantic
+objects whose modeled behavior permits it. The production obligation ledger
+then identifies corresponding implementation questions. A trace of the formal
+subject alone does not establish that arbitrary production code took that trace
+or identify the production defect that caused it.
+
+For example, suppose a *candidate* Claim semantic transition checks that a
+Request was open when observed but omits the required current-open guard from
+the atomic commit action. A backend could then report an execution equivalent
+to:
+
+#+begin_example
+A observes Request open
+B observes Request open
+A commits Claim of R
+B also incorporates Claim of R without an intervening release
+the declared claim-from-open-at-commit property is false
+#+end_example
+
+This trace is possible in the defective modeled transition. It would not be a
+counterexample to a formal action that truly guards =:open= atomically with
+incorporation. If a purportedly guarded generated model nevertheless produces
+it, inspect the translation, property statement, bounds, and abstraction before
+claiming that the production transaction is at fault.
+
+The application-level interpretation should identify at least:
+
+- the violated named invariant or business rule;
+- the semantic operation and transition participating in the failure;
+- the relevant executions/actors/authorities where meaningful;
+- the smallest useful prefix of the counterexample;
+- the semantic rule, formal lowering, or stated assumption whose change would
+  exclude this modeled trace, to the extent the evidence identifies it;
+- the bound Clojure/Gesso source object or source span that owns that semantic
+  decision;
+- the related production obligation and its current evidence class, without
+  claiming the trace has demonstrated an implementation defect;
+- any abstraction or trusted premise relevant to interpreting the trace.
+
+A diagnostic may therefore read conceptually:
+
+#+begin_example
+COUNTEREXAMPLE IN THE FORMAL SUBJECT
+
+Declared property:
+  :request/claim-requires-open-at-commit
+
+Operation:
+  :request/claim
+
+Trace:
+  execution A observed Request R open
+  execution B observed Request R open
+  execution A incorporated Claim
+  execution B incorporated Claim without an intervening release
+
+Modeled cause:
+  the candidate Claim action tests the earlier observation but does not
+  require Request R to remain open at its atomic commit
+
+Semantic repair owner:
+  admitted :request/claim transition / current-open requirement
+
+Corresponding production binding:
+  net.humanhelp.site.model.request.core/claim
+
+Production obligation to check separately:
+  current-open guard, ownership write, and command-result write share the
+  required authoritative atomic transition
+
+Production conclusion from this formal trace alone:
+  not established
+#+end_example
+
+The formal result rejects the candidate model's claimed property. Repair the
+semantic source or a faulty formal lowering as appropriate, regenerate, and
+recheck it. A production realization might independently have a correct atomic
+guard or might share the defect; resolving that question requires the applicable
+production correspondence and implementation evidence. Conversely, a formal
+model with a correct atomic guard can pass while production uses an unguarded
+pre-read. In that case the failure is an unresolved or refuted production
+correspondence obligation, not a counterexample to the guarded formal model.
+
+The interpretation must not invent certainty that the formal result did not
+establish. If an abstract counterexample has not been concretized under the
+abstraction relation, it is labeled accordingly. Several possible semantic,
+translation, or implementation repair locations should remain alternatives
+until evidence distinguishes them.
+
+The same correspondence metadata is useful before failure.  A reviewer should
+be able to ask what a production operation means formally and what formal
+obligations depend on a source construct without manually comparing two
+languages.
+
+**** Source-level repair is the supported automation boundary
+
+This correspondence path is especially important for automated repair.  A tool
+or language model may be very good at ordinary Clojure and application concepts
+while being much less reliable at constructing or repairing temporal-logic
+specifications.  Gesso should exploit that asymmetry rather than make formal
+syntax the ordinary repair surface.
+
+A supported automated loop is:
+
+#+begin_example
+Clojure / Gesso semantic source
+        |
+        v
+preflight and elaboration
+        |
+        v
+generated formal model
+        |
+        v
+proof / model checking
+        |
+        v
+counterexample or unsatisfied obligation
+        |
+        v
+Gesso interpretation
+        |
+        v
+source-level proposed repair
+        |
+        v
+full regeneration and rechecking
+#+end_example
+
+The automated assistant may suggest correcting an admitted semantic transition,
+fixing a formal lowering, changing an authoritative transaction when separate
+implementation evidence identifies that defect, adding a missing admitted
+premise, refining choreography, or promoting a confirmed policy into an
+explicit invariant. It must label which evidence supports each proposed repair.
+It does not gain authority to edit generated proof/model artifacts as an
+independent way to obtain a green result.
+
+This does not make an automated repair trustworthy merely because it was
+suggested at the source level.  The repaired source must pass the same
+preflight, correspondence, proof/model-checking, concrete test, and admission
+boundaries as a human-authored change.
+
+**** Acceptance criterion
+
+For every formal or model-checked claim transferred to production, the
+assurance report can answer both directions:
+
+1. *What production semantic object and executable boundary does this formal
+   subject correspond to?*
+2. *What production evidence discharges each correctness-relevant assumption
+   used by the formal claim?*
+
+For a failed formal check, the report can identify the corresponding semantic
+rules/operations and their production bindings without requiring the developer
+to reverse-engineer backend syntax.  Unsupported or opaque implementation
+behavior remains explicit rather than being silently covered by the formal
+claim.
+
+
 *** External proof assistant role
 
 Lean is the leading candidate, but the architectural role matters more than the

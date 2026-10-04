@@ -1045,6 +1045,161 @@ browser-render failure
 A caller must never be told "the mutation failed" merely because a later
 delivery mechanism failed after the authoritative transaction committed.
 
+*** Semantic rules become authoritative implementation obligations
+:PROPERTIES:
+:CUSTOM_ID: req-authoritative-semantic-obligations
+:END:
+
+The [[#req-auditable-semantic-surface][auditable semantic surface]] names the
+business rules that determine whether an operation is allowed and what it
+establishes.  An authoritative operation must not lose those identities when it
+crosses from model semantics into transaction implementation.
+
+For every correctness-relevant rule on which an authoritative transition
+depends, the operation must make clear how that rule participates in the
+transition contract.
+
+A rule may be discharged in different ways.  For example:
+
+- a trusted principal binding may already have been established by an admitted
+  server boundary and carried unchanged into the transaction;
+- an immutable command field may be checked against the command's retained
+  binding;
+- a mutable authoritative fact may need to be read or asserted again at commit;
+- a relationship or uniqueness predicate may require a transaction mechanism
+  stronger than checking a previously read entity version;
+- a postcondition may follow from the complete atomic write set rather than
+  from a separate guard;
+- an external or otherwise opaque proposition may remain an explicit trusted
+  premise if the supported implementation cannot establish it mechanically.
+
+The design does not require every semantic rule to become a literal database
+=ASSERT=.  It requires a visible correspondence between the rule and the
+mechanism that is claimed to discharge it.
+
+Conceptually, an authoritative operation should be able to expose information
+of this shape:
+
+#+begin_src clojure
+{:operation/id :request/claim
+
+ :semantic/requires
+ #{:request/open
+   :request/unclaimed
+   :membership/active-for-principal
+   :membership/request-organization-match
+   :organization/claiming-enabled}
+
+ :semantic/establishes
+ #{:request/claimed-by-principal
+   :command/incorporated-result-recorded}
+
+ :commit
+ {:obligations
+  [{:rule/id :request/open
+    :discharged-by :transaction-current-guard}
+
+   {:rule/id :request/unclaimed
+    :discharged-by :transaction-current-guard}
+
+   {:rule/id :membership/active-for-principal
+    :discharged-by :transaction-current-guard}
+
+   {:rule/id :membership/request-organization-match
+    :discharged-by :transaction-current-relationship-check}
+
+   {:rule/id :organization/claiming-enabled
+    :discharged-by :transaction-current-guard}
+
+   {:rule/id :request/claimed-by-principal
+    :discharged-by :atomic-write-set}
+
+   {:rule/id :command/incorporated-result-recorded
+    :discharged-by :atomic-write-set}]}}
+#+end_src
+
+The exact representation and names above are illustrative.  A real operation
+may derive several rules from one database predicate, or one rule may require
+several transaction primitives.  The semantic identity must nevertheless
+remain available so later diagnostics, whole-application assembly, and formal
+correspondence can say *which rule* a mechanism is intended to establish.
+
+This correspondence is especially important when preparation has already
+computed the same predicate.  An earlier successful evaluation such as:
+
+#+begin_src clojure
+(= :active (:membership/status membership))
+#+end_src
+
+is evidence about the observation used during preparation.  It is not by
+itself evidence that =:membership/active-for-principal= still holds when the
+claim commits.  If that rule is required at commit, the authoritative
+realization must protect or re-establish it under the selected transaction
+semantics.
+
+Conversely, an implementation need not repeat a rule mechanically when the
+operation contract establishes that its truth cannot change across the
+relevant boundary.  What matters is that this reason is represented rather
+than inferred from incidental code layout.
+
+This produces an explicit chain:
+
+#+begin_example
+named business rule
+        |
+        v
+operation precondition / postcondition
+        |
+        v
+commit obligation
+        |
+        v
+concrete authoritative mechanism
+#+end_example
+
+A failure in the last link is an implementation defect even if the pure domain
+predicate and the formal semantic rule are both correct.  For example, if
+=:request/open= is modeled as a commit precondition but the XTDB realization
+performs only an earlier ordinary read followed by an unconditional write, the
+implementation has not discharged the operation's atomicity obligation.
+
+The operation must also avoid the opposite failure: acquiring additional
+correctness-relevant policy only in incidental implementation code.
+
+For example:
+
+#+begin_src clojure
+;; Suspicious unless this condition corresponds to a named semantic rule or
+;; an explicit trusted premise.
+(when (some-complicated-business-predicate ctx request)
+  (submit-authoritative-write! ...))
+#+end_src
+
+If the branch changes whether an authoritative transition is admitted, what it
+writes, who may cause it, or what protected fact may be disclosed, then its
+semantic contribution belongs on the auditable surface described in Part II.
+The implementation should promote the predicate to a named rule, derive it from
+already named rules, or expose it as an explicit opaque/trusted premise.  It
+must not gain assurance merely by being hidden inside ordinary host code.
+
+This requirement does not turn every implementation detail into model
+semantics.  Retry loops, logging branches, serialization choices, rendering
+mechanics, query optimizations, and other incidental conditions remain ordinary
+implementation when they do not alter a correctness-relevant judgment.
+
+The authoritative-operation acceptance criterion is therefore stronger than
+"the transaction is atomic":
+
+#+begin_quote
+Every correctness-relevant premise and result claimed by an authoritative
+operation must retain a visible path from its named semantic rule to the
+mechanism that establishes, protects, derives, or explicitly assumes it at the
+authoritative boundary.  Atomic transaction machinery may discharge that
+obligation in implementation-specific ways, but an earlier observation or an
+unnamed host-language branch may not silently substitute for the declared
+semantic requirement.
+#+end_quote
+
 *** Preparation may be rich without weakening atomic publication
 
 The computation that prepares an authoritative transition may involve:
@@ -1136,7 +1291,9 @@ principal is deliberately separate from the command:
 #+end_src
 
 The domain decision can remain pure while using the trusted principal supplied
-by preparation rather than a helper identity asserted by command data:
+by preparation rather than a helper identity asserted by command data. It
+checks that the Organization whose policy is consulted is the one owning both
+the Request and the helper's Membership:
 
 #+begin_src clojure
 (defn claim-decision
@@ -1158,6 +1315,12 @@ by preparation rather than a helper identity asserted by command data:
       (not=
         (:request/organization-id request)
         (:membership/organization-id membership))
+      {:decision :rejected
+       :reason :wrong-organization}
+
+      (not=
+        (:request/organization-id request)
+        (:organization/id organization))
       {:decision :rejected
        :reason :wrong-organization}
 
@@ -1201,19 +1364,22 @@ one declared atomic decision contract.
 
      ;; Only for a new command, guard transaction-current facts and any
      ;; dependent relationship predicates; failure produces typed rejection.
+     ;; The Request's organization association is guarded along with its
+     ;; status. The Membership and policy checks refer to that same O.
      :commit/new-command
      {:guards
       [[:request/still-open
         {:request-id (:request/id request)
+         :expected-organization-id (:request/organization-id request)
          :expected-version (:model/version request)}]
 
        [:membership/still-active-for-principal
         {:user-id helper-id
-         :organization-id (:membership/organization-id membership)
+         :organization-id (:request/organization-id request)
          :expected-version (:model/version membership)}]
 
        [:organization/still-allows-claim
-        {:organization-id (:organization/id organization)
+        {:organization-id (:request/organization-id request)
          :expected-version (:model/version organization)}]]
 
       :writes
@@ -1264,32 +1430,31 @@ result
 #+end_src
 
 The key property is not that the implementation happened to notice a version
-number. It is that the authoritative transition was not allowed to publish a
-half-valid state.
-
-In particular, this must never be an observable result:
+number. It is that the authoritative transition could not incorporate the Claim
+while a required premise was false at commit. Nor could it publish only part of
+the promised write set. These are properties of the Claim transaction, not
+permanent restrictions on later Membership transitions:
 
 #+begin_src clojure
-;; Forbidden partial outcome.
+;; Both of these hypothetical Claim commit records violate the contract.
+;; In the first, a new Claim was incorporated despite a failed current guard.
+{:claim-commit/status :incorporated
+ :membership/status-at-claim-commit :inactive
+ :request/status-after-claim :claimed}
 
-{:request
- {:request/id R
-  :request/status :claimed
-  :request/helper-id U}
-
- :membership
- {:membership/user-id U
-  :membership/status :inactive}
-
- :command-record
- nil} ; mutation happened but command incorporation did not
+;; In the second, the Request mutation committed without its command result.
+{:claim-commit/status :incorporated
+ :request/status-after-claim :claimed
+ :command-result-record nil}
 #+end_src
 
 If claiming the Request and recording durable command incorporation jointly
 constitute the promised invariant, both writes belong to the same authoritative
 transaction. If Membership status must remain active for the claim to commit,
 the commit must protect that predicate as required by the selected database
-mechanism.
+mechanism. A subsequent valid deactivation of Membership U can leave the
+Request claimed while U's Membership is inactive; that later state does not
+retroactively invalidate the earlier Claim.
 
 Notice that the public model APIs can still remain separate:
 

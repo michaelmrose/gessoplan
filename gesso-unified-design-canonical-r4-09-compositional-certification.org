@@ -1361,6 +1361,283 @@ Conceptual normalized term:
 The exact syntax is intentionally deferred until the proof vocabulary is small
 and explicit.
 
+*** Mechanical rejection, formal counterexample, and intent review
+
+The distinction above must remain visible in diagnostics and reports.  Gesso
+has at least three importantly different ways to say that something deserves
+attention:
+
+#+begin_example
+MECHANICALLY INVALID
+
+The submitted construction does not satisfy the admitted language or one of
+its checked semantic obligations.
+
+Examples:
+  enum compared as a number
+  unknown relationship endpoint
+  missing authoritative guard required by an operation contract
+  certified rule used where its facts are not known
+
+Result:
+  reject the construction or certification step
+
+
+COUNTEREXAMPLE
+
+The construction is meaningful and admitted, but the modeled semantics permit
+an execution that violates a declared invariant or other checked property.
+
+Result:
+  the affected formal claim is not established; report the counterexample and
+  its source-level correspondence
+
+
+SUSPICIOUS
+
+The construction is internally meaningful and may satisfy every declared
+invariant, but a human or heuristic reviewer finds the stated business policy
+surprising, asymmetric, unusually permissive, or apparently inconsistent with
+its explanatory prose or neighboring rules.
+
+Result:
+  review finding only; it does not become a proof premise, theorem, or
+  certification failure merely because the reviewer dislikes the policy
+#+end_example
+
+These classes must not be collapsed into one generic warning/error channel.
+In particular, a successful model check cannot establish that the organization
+chose a sensible business policy, and a heuristic reviewer cannot turn its
+opinion about product policy into a kernel-checked theorem.
+
+The distinction is also useful for automated repair.  A repair tool may be
+allowed to change implementation or declarations in response to a mechanical
+error or counterexample, but changing the *meaning* of a business rule is a
+policy change.  Such a change must remain visible as a semantic change rather
+than being disguised as an implementation repair.
+
+*** Correctness-relevant policy must remain semantically visible
+
+A large application may contain far more ordinary implementation code than
+business policy.  Certification should therefore operate over a deliberately
+small semantic surface rather than requiring reviewers to rediscover policy by
+reading the whole program.
+
+For a construction that claims Gesso assurance, conditions that determine a
+correctness-relevant semantic decision should be traceable to one of the
+following *within the semantic and implementation scope actually inspected*:
+
+- an admitted named rule or derivation;
+- another certified semantic interface that exports the required proposition;
+- a runtime-enforced premise with an explicit acquisition/enforcement
+  boundary;
+- an explicitly named opaque/trusted assumption.
+
+The last case can name the conformance of an entire arbitrary Clojure
+realization to its declared operation contract. It does not assert that Gesso
+has enumerated every branch inside that body. Reports identify the body,
+affected propositions, and the assurance profile under which this premise is
+permitted. Where complete correspondence is required, an opaque conformance
+premise cannot silently count as a checked derivation.
+
+Correctness-relevant decisions include at least those that can change:
+
+- authorization or capability;
+- disclosure or visibility of protected information;
+- eligibility for an authoritative operation;
+- ownership or assignment;
+- lifecycle/state-transition permission;
+- command admission or incorporation;
+- authoritative outcome classification;
+- value movement or other domain effects protected by an invariant;
+- whether a supposedly terminal fact may be superseded.
+
+This requirement does *not* make every conditional in application code a
+business rule.  Presentation formatting, collection plumbing, logging,
+resource cleanup, and other incidental branches need not pollute the semantic
+model merely because they use =if= or =case=.  The boundary is whether the
+condition participates in the semantic decision for which assurance is being
+claimed.
+
+The desired effect is semantic compression.  A hundred-thousand-line
+application may legitimately have a correctness-relevant surface consisting of
+hundreds of named rules, dozens of authoritative operations, and a much smaller
+set of cross-operation invariants.  Humans, formal tools, and optional
+heuristic reviewers should be able to inspect that smaller object without
+pretending it is the entire implementation.
+
+*** Semantic-policy escape is an assurance defect
+
+When Gesso can observe that a correctness-relevant decision depends on a
+predicate that is not represented by the admitted semantic model, it should
+report a semantic-policy escape rather than silently treating the host-language
+branch as implementation detail.
+
+Conceptually:
+
+#+begin_example
+SEMANTIC POLICY ESCAPE
+
+operation:
+  :request/claim
+
+source realization:
+  net.humanhelp.site.model.request/claim!
+
+observed dependency:
+  a branch in an inspected implementation subset affects whether the
+  authoritative ownership transition is admitted
+
+problem:
+  the predicate is not discharged by an admitted rule, certified dependency,
+  runtime-enforced premise, or named trusted assumption
+
+repair choices:
+  1. promote it to a named semantic rule;
+  2. derive it from existing admitted rules;
+  3. identify the certified/runtime boundary that establishes it; or
+  4. expose it explicitly as an opaque trusted premise
+#+end_example
+
+The checker must state where it can establish absence of such escapes. For code
+generated from the admitted semantic representation, or code written in a
+closed checked subset, Gesso can require complete correspondence over that
+specified subset. For an arbitrary Clojure body it does not analyze, silence
+does not establish that no hidden policy branch exists. The body remains an
+explicit implementation-conformance/trust boundary until applicable analysis,
+constrained lowering, or other checked evidence discharges that obligation.
+The report must not turn "no escapes detected" into "all business rules in this
+body were discovered."
+
+Once such a boundary is explicitly registered, it is a named opaque premise,
+not an unresolved *detected* escape. Its actual behavior still needs evidence
+or trust appropriate to the requested profile. Naming the premise is more
+honest than making the body invisible: its subject and dependencies appear in
+assurance coverage and the root report. It cannot establish the completeness of
+the application's intended business policy.
+
+*** Explanatory prose is review evidence, not an implicit theorem
+
+Named business rules should retain enough human-facing material to make their
+meaning auditable without reverse engineering the normalized proof term.
+Useful attached material includes:
+
+- a plain statement of the rule's meaning;
+- the business rationale for the rule;
+- a correctness note describing the stale-read, authority, atomicity, privacy,
+  or lifecycle mistake the rule is intended to prevent;
+- examples or counterexamples where they improve review.
+
+This prose should travel with the semantic subject through generated audit and
+diagnostic views where practical.  It is valuable input to humans and heuristic
+reviewers, and it can make a formal counterexample intelligible in application
+terms.
+
+However, prose does not silently become a checked proposition.  If a comment
+says "completed Requests are terminal" while the admitted transition model
+permits =:completed -> :open=, certification reasons from the admitted semantic
+model.  The mismatch is an excellent review finding, not permission to pretend
+that terminality was proved.
+
+The repair is to decide which statement expresses the intended policy and, when
+the prose is correct, promote that intent into an explicit rule or invariant.
+
+*** Heuristic intent review is deliberately outside the proof kernel
+
+A whole-application audit surface may be reviewed by a human, an LLM, a static
+heuristic, or another advisory tool for suspicious policy choices.  Such review
+can look for patterns that formal validity alone does not identify, for example:
+
+- one destructive operation has weaker authorization than analogous reads or
+  writes;
+- one lifecycle operation omits a requirement consistently present on its
+  peers;
+- a supposedly terminal state has a surprising outgoing transition;
+- two near-identical operations apply materially different disclosure rules;
+- an unusually permissive rule conflicts with its rationale or examples;
+- an important domain state is unreachable or an important restriction appears
+  conspicuously absent.
+
+The reviewer should receive the compressed semantic/audit representation when
+available rather than being forced to infer business policy from an entire
+repository.  This is particularly important for model-assisted review: the
+review task should be "inspect these explicit business rules and their
+relationships", not "discover all policy hidden somewhere in one hundred
+thousand lines of Clojure".
+
+A heuristic finding has no authority to issue, weaken, or invalidate a
+certificate by itself.  It should be represented separately, for example as:
+
+#+begin_example
+review finding:
+  :status :suspicious
+  :subject :request/complete
+  :observation "completion does not require active Membership although claim does"
+  :basis [:request/claim :request/complete]
+#+end_example
+
+If the application owner confirms that the finding identifies a real business
+requirement, the requirement is added to the semantic declarations and the
+normal admission/certification pipeline runs again.  At that point later
+violations can fail mechanically or produce formal counterexamples.
+
+This creates a useful one-way ratchet:
+
+#+begin_example
+heuristic suspicion
+        |
+        v
+human/application-policy confirmation
+        |
+        v
+explicit semantic rule or invariant
+        |
+        v
+normal mechanical/formal enforcement thereafter
+#+end_example
+
+The heuristic layer discovers candidate intent; only the admitted semantic
+layer establishes what the system is actually required to enforce.
+
+*** Assurance coverage is proposition coverage, not line coverage
+
+Reports should make the semantic surface, inspection scope, and assurance
+status inspectable. At minimum, a whole-application report should be able to
+account for named correctness-relevant rules and dependencies by their actual
+evidence class and identify the implementation code it did not inspect:
+
+#+begin_example
+semantic policy inventory for admitted generation G:
+  declared business-rule identities                    173
+  kernel-checked propositions                           80
+  exact-finite-checked propositions                     61
+  runtime-enforced premises                             18
+  explicit trusted/opaque premises                      14
+
+inspection coverage:
+  complete correspondence scope: generated/closed checked subset
+  unresolved *detected* escapes in that subset            0
+  registered opaque implementation bodies                4
+  absence of hidden policy within those bodies: not established
+
+advisory intent review:
+  open suspicious findings                              3
+#+end_example
+
+The exact numbers are illustrative and are not a partition of the 173 rules:
+one rule can have a checked proposition, a runtime premise, and a trusted
+implementation correspondence. The report must give the subject, evidence,
+assumptions, and applicable checked scope behind each count. In particular,
+zero unresolved detected escapes means only that the inspected subset has no
+such unresolved finding. It cannot certify the absence of undiscovered policy
+inside the four opaque bodies. An artifact-wide "certified" label must not
+conceal which propositions are checked, which are runtime enforced, which
+remain trusted, and which construction could not be accounted for.
+
+Advisory findings remain outside the assurance totals unless and until they are
+promoted into admitted propositions.  Conversely, an opaque premise remains in
+the assurance accounting even when tests or a reviewer make it look plausible.
+
 ** Semantic interfaces and certificate hierarchy
 
 The proof hierarchy follows semantic ownership.
