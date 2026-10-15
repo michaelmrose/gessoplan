@@ -1,0 +1,731 @@
+#+TITLE: Gesso R4 — Resolution Templates and Proof-Bearing Operations
+#+SUBTITLE: Exploratory architecture and vertical-slice plan
+#+AUTHOR: Gesso design working notes
+#+DATE: 2026-10-11
+#+LANGUAGE: en
+#+OPTIONS: toc:3 num:t H:4
+
+* Status, purpose, and authority
+:PROPERTIES:
+:CUSTOM_ID: status
+:END:
+
+This is an *exploratory planning note*, not an amendment to the canonical
+Gesso R4 design, a claim of implementation progress, or an approved public API.
+It records a possible route from today's application-preflight assurance to
+mechanically established properties of downstream authoritative operations.
+Any change to the canonical plan or implementation order requires an explicit
+design decision.
+
+The organizing conjecture is:
+
+#+begin_quote
+Many application mutations are instances of a small family of authoritative
+*resolution templates*.  If Gesso establishes the correctness of the reusable
+resolution mechanism and checks the domain-specific obligations of each
+instantiation, it may provide strong application guarantees without proving
+arbitrary Clojure programs from scratch.
+#+end_quote
+
+This approach should retain Gesso's existing fundamentals:
+
+- downstream developers write ordinary, inspectable Clojure constructions;
+- application policy belongs to the application, not to Gesso;
+- Gesso performs normalization, checks, proof bookkeeping, and diagnostics;
+- Choreo coordinates admitted authoritative operations, not private FX stages;
+- the browser cannot confer authority on itself;
+- an unchecked model implementation is never declared proved by naming it;
+- unsupported or missing evidence remains explicit under the selected
+  assurance profile; and
+- *admission correspondence* and *execution refinement* are distinct obligations.
+
+This note is intentionally concerned with *new classes of guarantees*, not
+additional assurance-report fields in isolation.
+
+* Why resolution templates may change the economics
+:PROPERTIES:
+:CUSTOM_ID: motivation
+:END:
+
+A typical model operation combines two quite different kinds of complexity.
+
+1. *Resolution mechanics*: admit a command, bind identity and authority, check
+   preconditions at a valid commit boundary, settle contention, record a durable
+   outcome, replay compatible retries, reconcile unknown delivery, and retain
+   after-commit work.
+2. *Domain meaning*: decide which request states, principals, memberships,
+   organizations, quantities, or temporal conditions permit the transition,
+   and what domain invariants the resulting state must satisfy.
+
+Resolution mechanics recur across many domains.  It is wasteful and dangerous
+for every application to reinvent them, and equally wasteful for verification
+to prove the entire retry/contention/recovery protocol afresh for every
+operation.
+
+The intended division of work is:
+
+| Responsibility                  | Primarily owned by                     |
+|---------------------------------+----------------------------------------|
+| Resolution protocol             | Gesso template                         |
+| Command identity and retry      | Gesso template                         |
+| Database-independent semantics  | Gesso template plus admitted instance  |
+| Domain guards and effects       | Application's admitted construction    |
+| Domain invariants               | Application's admitted construction    |
+| Template mechanism theorem      | Gesso verification effort              |
+| Instance-specific proof         | Gesso checker, from domain declarations|
+| Backend lowering/refinement     | Gesso implementation and evidence      |
+| External host implementations   | Trusted or independently checked       |
+| Browser optimism and recovery   | Choreo and existing Gesso runtime      |
+
+The important distinction: a correct template does not automatically imply a
+correct business rule, and a correct symbolic rule does not automatically imply
+that production executed the rule correctly.
+
+* Proposed family of resolution templates
+:PROPERTIES:
+:CUSTOM_ID: template-family
+:END:
+
+The following is a *candidate taxonomy*, not evidence that exactly six distinct
+primitives are necessary.  The goal is the smallest useful set with explicit,
+composable guarantees.
+
+** Guarded atomic transition
+
+Examples: claim, cancel, approve, complete, reject, transfer ownership.
+
+Contract: guard the decision-relevant authoritative facts and atomically
+incorporate the specified domain effects and bound command outcome.  On
+rejection, do not partially incorporate the proposed transition.  Preserve
+unknown delivery when the outcome cannot yet be determined.
+
+This should probably be the *first template* and perhaps the base from which
+several other templates are derived.
+
+** Conditional creation
+
+Examples: create Request, register Membership, open case, enroll participant.
+
+Contract: atomic creation subject to identity/uniqueness conditions, durable
+command association, and retry semantics.  Define what happens when another
+command creates an equivalent or conflicting entity first.
+
+It may be a guarded atomic transition with an absent-to-present state change,
+rather than a truly separate mechanism.
+
+** Guarded replacement or versioned mutation
+
+Examples: edit fields, change preferences, modify a budget, reassign owner.
+
+Contract: compare the relevant expected version or current predicates at
+commit; reject/re-evaluate stale decisions; prevent lost updates according to
+the declared conflict policy.
+
+A blind version comparison may be insufficient when correctness depends on
+other entities (for example active Membership or Organization policy).
+
+** Monotonic accumulation
+
+Examples: append a durable event, record an acknowledgement, add a fact to a
+set, collect approvals.
+
+Contract: declare an additive/monotone transition and duplicate policy.
+Convergence or commutativity must be established under the actual merge/order
+semantics, not inferred from the label =monotonic=.
+
+** Reservation or lease
+
+Examples: reserve capacity, temporarily assign a resource, hold a slot.
+
+Contract: guarded exclusive allocation, a well-defined expiration clock and
+boundary, renewal/release rules, and fencing or equivalent protection against
+stale holders.  Expiration is a domain transition, not just a browser timer.
+
+This adds temporal proof obligations and may compose with guarded atomic
+transition rather than requiring an independent commit engine.
+
+** Durable multistep process
+
+Examples: external payment, provisioning, delivery, third-party approval.
+
+Contract: each externally observable intermediate state is a valid domain
+state; progress, unknown outcomes, retry/compensation, and irreversible effects
+are explicit.  A single atomic local transaction does not make a remote side
+effect atomic.
+
+This is likely a larger protocol built out of smaller templates and must not
+inherit the guarantees of one atomic transaction across system boundaries.
+
+** Candidate operation classification exercise
+
+Before freezing the taxonomy, classify the actual HumanHelp production model
+operations.  Useful examples include Request creation, claim, cancel,
+reassignment, completion, expiration, Membership activation/deactivation, and
+Organization policy changes.  For each, record its natural template, involved
+authoritative entities, unusual failure semantics, and any escape hatch that
+would be needed.
+
+If almost every operation requires substantial bespoke handling, the taxonomy
+has not captured the real commonality.
+
+* Resolution as a product of semantic dimensions
+:PROPERTIES:
+:CUSTOM_ID: dimensions
+:END:
+
+An alternative hypothesis is that several apparent templates are compositions
+of a small number of independent *resolution dimensions*:
+
+| Dimension              | Candidate policies                                      |
+|------------------------+---------------------------------------------------------|
+| Commit discipline      | guarded atomic, additive, lease, staged process         |
+| Conflict policy        | reject, re-evaluate, compare-version, serialize         |
+| Identity and retry     | bound durable command, replay, duplicate suppression    |
+| Outcome knowledge      | known success, known rejection, unknown/reconcile       |
+| Temporal discipline    | immediate, deadline, lease, scheduled expiry            |
+| External effects       | durable debt, retryable delivery, compensation          |
+| Browser realization    | authoritative-only, provisional, advisory refresh      |
+
+Do not assume all combinations are meaningful or safe.  A type-like
+compatibility checker could accept approved compositions and reject impossible
+ones, while the public API exposes a few understandable defaults.
+
+In particular, *browser realization is not a transaction commit policy*.
+Choreo may select an optimistic presentation without changing authoritative
+claim eligibility, command identity, or the commit protocol.
+
+A promising internal design is one dominant default resolution protocol:
+
+#+begin_example
+bound-command
+  + authoritative-guarded-atomic-transition
+  + durable-command-outcome
+  + durable-after-commit-debt
+  + unknown-outcome-reconciliation
+#+end_example
+
+Conditional creation and versioned mutation may then be specializations of
+this protocol.  This is a hypothesis to test against actual operations.
+
+* The generic guarded-transition contract
+:PROPERTIES:
+:CUSTOM_ID: core-contract
+:END:
+
+** Symbols and intended meaning
+
+Let:
+
+- =S= be admitted authoritative state;
+- =C= be a command with stable identity, operation, arguments, and bound principal;
+- =G(S,C)= be the admitted domain guard;
+- =E(S,C)= be the admitted effect producing proposed authoritative state;
+- =I(S)= be a domain invariant;
+- =R= be a durable command-result record; and
+- =D= be durable debt for required after-commit delivery.
+
+The core template should establish, conditional on its backend assumptions:
+
+1. A fresh successful command incorporated only when =G= held at the authoritative
+   commit boundary under an appropriate transaction snapshot/isolation contract.
+2. The authoritative domain write, bound command-result record, and applicable
+   durable delivery debt are incorporated atomically.
+3. The command identity cannot be reused with incompatible operation,
+   arguments, or principal; permitted compatible replay returns the recorded
+   outcome without repeating the effect.
+4. Competing commands cannot each successfully incorporate a mutually
+   exclusive transition if the declared guards and effects really enforce that
+   exclusivity under the transaction substrate.
+5. A confirmed rejection cannot leave a partial transition from the rejected
+   attempt.  It does not assert that other concurrent operations made no
+   changes.
+6. A lost response after submission does not turn an unknown outcome into
+   known rejection.  Reconciliation consults authoritative outcome evidence.
+7. Failure to publish, notify, or render *after* incorporation does not undo
+   the incorporated result or reclassify it as failure; delivery debt remains
+   separately resolvable.
+8. Any replayed result is disclosed only when the caller is permitted to learn
+   it.  Matching command bytes are not themselves authentication.
+
+The words =at the commit boundary= are substantial.  A prepare-phase read is
+not a guard; a precheck is not a guard; a browser-observed basis is not a guard;
+and a later unconditional write cannot discharge the guard obligation.
+
+** Application-specific invariant obligation
+
+Even with all generic template guarantees established, an individual operation
+must show something like:
+
+#+begin_example
+I(S) AND G(S,C)  =>  I(E(S,C))
+#+end_example
+
+This is an application-specific proof obligation.  Other admitted operations
+must also preserve =I=, including operations that change a referenced
+Membership or Organization policy.  Otherwise the invariant is not global.
+
+For a temporal/history-sensitive property (for example eligibility *at claim
+time*), the state or proof subject must contain appropriate claim-time evidence.
+Current eligibility after an independent policy change is a different property.
+
+** Initiality and environment assumptions
+
+The preservation implication is not enough by itself.  A state invariant
+requires an admissible initial state and closure under *every* authoritative
+transition in the declared universe, including background jobs and
+administrative operations.
+
+A conditional theorem should state transaction atomicity/isolation,
+authentication reliability, backend correctness, and any timing/fairness
+assumptions as assumptions until stronger evidence discharges them.
+
+** Liveness differs from safety
+
+A proof that no competing Claim can assign two owners is a safety result.
+A proof that a Request is serviced, cancelled, or timed out within N minutes
+also needs assumptions about clock progression, scheduling, worker availability,
+and deadline execution.  Template selection cannot silently turn an enabled
+timeout into a guaranteed timely execution.
+
+* What an application author would supply
+:PROPERTIES:
+:CUSTOM_ID: authored-instance
+:END:
+
+The developer-facing form should remain ordinary Clojure and should not
+require author-written TLA+, Quint, Recife, or a pervasive macro DSL.
+
+One *illustrative* construction, not a finalized API:
+
+#+begin_src clojure
+(gesso.operation/construct
+ {:operation :request/claim
+  :resolution :guarded-atomic-command
+
+  ;; These are named, typed semantic rules, not arbitrary predicates
+  ;; whose internal behavior has magically been verified.
+  :requires
+  [[:= [:request :request/status] :open]
+   [:relationship :membership/for-request-organization]
+   [:rule :organization/permits-claim]
+   [:authorized? :request/claim]]
+
+  :transition
+  {:request/status :claimed
+   :request/helper-id [:principal :user/id]}
+
+  :preserves
+  #{:request/at-most-one-current-owner}
+
+  :outcomes
+  #{:incorporated :guard-rejected :unknown-needs-reconciliation}})
+#+end_src
+
+Requirements for a useful real design:
+
+- Each rule resolves to a declared, typed, source-owned semantic definition or
+  an explicitly trusted predicate with a conformance obligation.
+- Field/path references have nominal types, optionality, provenance, and
+  authority/knowledge rules as appropriate.
+- The transition has known writes, including required command/outcome data.
+- Decision-relevant reads can be identified and protected by the selected
+  lowering; queries, phantoms, and cross-entity predicates are not hand-waved.
+- The command carries correlation, never browser-selected authority.
+- The model public API remains the semantic boundary that Choreo invokes.
+- Source-derived rule evidence is not maintained in a second manual registry.
+- Errors explain *which proof obligation cannot be discharged* and why.
+
+An ordinary helper function may still compute presentation data or diagnostics.
+If an opaque helper determines whether an authoritative mutation occurs, the
+strong-profile checker must either require additional conformance evidence or
+reject that claimed guarantee.  Merely naming the helper must not prove it.
+
+* HumanHelp Claim: the first vertical slice
+:PROPERTIES:
+:CUSTOM_ID: claim-slice
+:END:
+
+** Admitted command and authority
+
+A Claim command includes the target Request and stable command identity.
+The authenticated helper principal is supplied by a trusted server boundary,
+not derived from a browser-provided actor ID.
+
+Before permitted replay, an existing command record must be checked for the
+correct operation, target Request, arguments, bound principal, and permission
+to disclose the previous outcome.
+
+A new command's candidacy depends at least on:
+
+- current Request status permits Claim;
+- current Membership is active and belongs to the relevant Organization;
+- Membership/Request/Organization associations are consistent;
+- Organization policy permits this helper to claim this Request;
+- the authenticated principal is authorized for this operation; and
+- command binding is valid and nonconflicting.
+
+** Transition and atomicity
+
+A successful Claim writes Request ownership and the durable command result in
+one authoritative transaction, together with required delivery debt.  The
+Request, Membership, Organization, association, and command facts whose change
+would invalidate the decision must be protected by effective commit guards.
+
+The exact XTDB lowering must be validated against the transaction and isolation
+semantics actually in use.  A read/write list alone is not proof of protection.
+
+** Candidate invariant(s)
+
+Start with a precise property, not the vague phrase =Claim is correct=:
+
+#+begin_example
+For any admitted Request state, at most one current owner is recorded.
+#+end_example
+
+A second, more demanding property could be:
+
+#+begin_example
+Every incorporated Claim has durable evidence that the bound principal
+passed the required eligibility and authorization decisions at the time
+of incorporation.
+#+end_example
+
+The second property needs a clear evidence/retention design and does not mean
+membership can never be revoked afterward.
+
+** Adversarial traces to cover
+
+- Two helpers attempt Claim concurrently.
+- Membership becomes inactive after preparation but before commit.
+- Organization policy changes after preparation but before commit.
+- A command succeeds; its HTTP response is lost.
+- The same command is retried after the Request is no longer open.
+- The same ID is reused with different arguments or principal.
+- The command commits, but publication or SSE delivery fails.
+- A different operation subsequently reassigns or cancels the Request.
+- The browser provides a forged actor or stale observed basis.
+- Existing result disclosure is attempted by a different principal.
+
+For each trace, distinguish *template behavior* from *domain-invariant
+obligations* and from *trusted execution assumptions*.
+
+* How proof reuse would work
+:PROPERTIES:
+:CUSTOM_ID: proof-reuse
+:END:
+
+** Prove the generic mechanism, check each instance
+
+A template proof is a theorem about a parameterized machine.  It should not
+be replaced by checking one representative concrete instance.
+
+For a guarded atomic template, expected generic judgments include:
+
+- successful incorporation implies effective guard satisfaction;
+- the durable effect/result/debt are atomic within the defined scope;
+- compatible retries do not duplicate authoritative effects;
+- conflicting bindings cannot share a successful command identity;
+- unknown outcome delivery does not imply rejection; and
+- recorded outcomes and after-commit effects maintain their distinct meanings.
+
+A particular operation then supplies the typed guard/effect pair and proves or
+checks the invariant-preservation, interference, disclosure, and
+relationship-specific obligations relevant to it.
+
+This is an instance of *conditional compositional certification*:
+
+#+begin_example
+verified template contract
+        +
+well-formed typed instantiation
+        +
+proved operation-specific invariant obligations
+        +
+checked execution refinement / declared trusted premises
+        |
+        v
+operation certificate with precise scope and assumptions
+#+end_example
+
+** Proof DAG and semantic identity
+
+The certificate should bind the normalized instance, template version,
+relevant rule/schema/relationship identities, chosen backend lowering,
+authoritative implementation evidence, and exact propositions.
+
+Changes to a relied-upon rule, policy, operation, template, compiler, or
+implementation should invalidate affected downstream evidence.  Equivalent
+structure alone should not impersonate a certified artifact.  The proof DAG
+should allow unaffected operations to retain their evidence.
+
+** Cross-operation interference
+
+Separately certified transitions do not automatically compose.
+
+If an Organization policy update or Membership revocation affects Claim's
+invariant, Gesso must establish the shared preservation/interference
+obligations.  The eventual checker needs a complete admitted set of operations
+that may modify relied-upon facts, or an explicit, limited-world assumption.
+
+Live-effect overlap is helpful for UI impact analysis but is *not* a substitute
+for authoritative-state dependency or transaction-conflict analysis.
+
+** Backend correspondence is a separate theorem/obligation
+
+Proving symbolic Claim and then executing an unrelated Clojure function proves
+nothing about the latter's behavior.
+
+Two possible implementation modes should be made explicit:
+
+- *Generated/controlled realization*: Gesso lowers admitted semantics to a
+  narrowly constrained commit plan and checks its lowering contract.  This is
+  the stronger long-term path for supported operations.
+- *Opaque implementation*: the application supplies a host function and a
+  named conformance premise, or independently checked refinement evidence.
+  The report must label it accordingly.
+
+A generated plan still depends on the backend's actual transaction semantics,
+correct lowering, and correct runtime execution.  Shared source of truth is
+valuable, but not itself a proof of compiler correctness.
+
+* The role of model checkers and the proof kernel
+:PROPERTIES:
+:CUSTOM_ID: checking-tools
+:END:
+
+** Gesso remains the semantic owner
+
+Developers should not author separate Quint/TLA+/Recife specifications.
+Gesso should derive its verification subjects from admitted constructions and
+make any counterexample understandable in terms of real operations and rules.
+
+Potential mechanisms:
+
+- *Direct Clojure semantic interpreter*: one reference meaning for the
+  admitted transition/rule subset, suitable for differential tests.
+- *Finite-state exploration*: find counterexample interleavings among a small
+  number of Requests, helpers, commands, and policy changes.
+- *Symbolic/bounded checking*: explore larger or parameterized bounded
+  obligations with an external solver/model checker where supported.
+- *Inductive proof obligations*: establish invariant preservation for all
+  states of a supported theory, rather than only tested finite cases.
+- *Small proof kernel*: validate derivations/certificates without trusting
+  every heuristic elaboration step.
+
+Quint and Recife remain candidates, not yet an architectural decision.
+The first milestone should compare them against *the same Gesso-derived Claim
+transition system*, including the ability to report understandable failing
+traces.  Choose tools by the properties they can actually establish and the
+cost of keeping them in correspondence with the production semantic core.
+
+** Assurance classification
+
+Do not flatten these different results into =proved=:
+
+| Evidence                                  | Meaning                               |
+|-------------------------------------------+---------------------------------------|
+| Shape/type checked                        | Admitted construction well formed     |
+| Assembly verified                         | Required declared runtime edges close |
+| Finite model checked                      | No counterexample in stated universe  |
+| Bounded symbolic checked                  | No counterexample within given bound  |
+| Inductively/kernel proved                 | Stated theorem under listed premises  |
+| Runtime enforced                          | Trusted execution guard is operational|
+| Conformance tested                        | Empirical behavior under tested cases |
+| Trusted assumption                        | Not discharged by present evidence    |
+| Unknown or unsupported                    | No claimed guarantee                  |
+
+These are conceptual descriptions; use R4's canonical assurance taxonomy and
+certificate vocabulary when implementing them.
+
+** What model checking will not resolve
+
+- A bounded model is not an unbounded proof.
+- A proof of template semantics is not a proof of arbitrary host code.
+- Fair scheduling and timely external service require stated assumptions.
+- A correctly enforced but foolish business policy is still possible.
+- A forged or stale certificate must not become an authority token.
+
+* Relation to the existing Gesso R4 design
+:PROPERTIES:
+:CUSTOM_ID: canonical-crosswalk
+:END:
+
+This note is a proposed *reuse strategy inside the existing R4 architecture*.
+It should not create a rival semantics or a separately curated registry of
+business-policy truth.
+
+| Canonical R4 part | Relevant existing responsibility                     |
+|-------------------+------------------------------------------------------|
+| Part II           | Semantic model, authority, knowledge, domain meaning |
+| Part IV           | Atomic authoritative operations and progression     |
+| Part III/V/VI     | Choreo, optimism, browser realization and recovery   |
+| Part VII          | Whole-application construction and preflight        |
+| Part VIII         | HumanHelp proving application, Claim witness        |
+| Part IX           | Compositional certification and proof DAG           |
+| Part X            | Production/formal correspondence; trust boundaries  |
+| Part XII          | Implementation order, especially Stages 9–12        |
+
+The present =semantic_audit= module reports established source-derived facts,
+missing model-policy evidence, and trusted boundaries.  That is useful and
+should remain honest.  A template checker would *establish new obligations and
+certificates upstream*; the audit can then present those results.  Expanding the
+audit alone does not deliver this architecture.
+
+Current implementation evidence through v780 includes decomposed application
+preflight, direct and integration tests for semantic auditing, and the repaired
+projection of per-operation execution capabilities.  Those do *not* establish
+that a protected HumanHelp model transition has yet been proved.
+
+Template work should be reconciled with the canonical stages rather than
+implicitly jumping over Stage 6 gates or silently redefining Stage 10's typed
+rule language.
+
+* Proposed focused experiment and acceptance gates
+:PROPERTIES:
+:CUSTOM_ID: plan
+:END:
+
+** Phase A — Inventory and hypothesis test
+
+Inspect real HumanHelp public model operations and candidate generic examples.
+For each operation, record:
+
+- authoritative guard, effect, command identity, replay, and after-commit needs;
+- transaction participants and relevant cross-entity dependencies;
+- likely template and required semantic dimensions;
+- opaque decision points and unsupported constructs; and
+- whether the template avoids duplicating existing model policy.
+
+Deliverable: a small classification table and a concrete choice of *one* first
+resolution template.  Revisit the taxonomy if it requires too many exceptions.
+
+Acceptance: Claim, Create, and Cancel can be represented meaningfully without
+pretending that private host-code behavior has been analyzed.
+
+** Phase B — One admitted template and tiny rule subset
+
+Build the minimal semantic subject for guarded atomic command resolution.
+Reuse R4 typing, proposition, and identity concepts.  Include only rule forms
+needed to express one serious Claim property: equality, state membership,
+entity relationships, principal binding, and a typed named policy premise.
+
+Provide a reference interpreter and explicit error diagnostics.
+
+Acceptance: malformed rules are rejected; typed but substantively wrong rules
+remain representable and reviewable; opaque policy use leaves a clear premise.
+
+** Phase C — One authoritative executable realization
+
+Derive or check the Claim commit plan against the admitted subject.  The plan
+must incorporate Request ownership, durable command result, and required
+publication debt atomically and protect *all* decision-relevant facts at commit.
+Use the backend's documented transaction semantics, not assumptions inferred
+from an API name.
+
+Acceptance: forged principal, stale Membership, changed Organization policy,
+competing Claim, mismatched command replay, and lost acknowledgement have
+precisely defined outcomes, tested against the real transaction substrate.
+
+** Phase D — One actual safety result
+
+Establish at least one Claim invariant under explicitly listed premises.
+Start with one-owner preservation; extend to durable claim-time eligibility
+evidence only after specifying what history must be retained.
+
+Acceptance: a proof/certificate states the exact proposition, domain,
+assumptions, and implementation correspondence evidence.  Deliberately broken
+guards or transitions invalidate the proof or produce a reproducible
+counterexample.
+
+** Phase E — Composition and second instantiation
+
+Add Cancel (or another operation sharing an important invariant) under the same
+semantic template.  Check interference and stale-certificate invalidation.
+
+Acceptance: most resolution machinery is reused; only domain-specific
+obligations are new.  If the second operation needs substantial duplicated
+machinery, revisit the template boundary before expanding the catalog.
+
+** Phase F — Integration with Choreo and root assurance
+
+Feed established operation contracts into the existing Choreo construction,
+application preflight, and proof-DAG vocabulary.  Preserve the public Request
+model operation as Choreo's authoritative boundary.
+
+Acceptance: root assurance distinguishes checked theorem, runtime enforcement,
+external assumptions, and unproved model behavior.  A stale template/rule/
+implementation identity causes a meaningful failure in a stronger profile,
+not a silent downgrade.
+
+* What to measure as progress
+:PROPERTIES:
+:CUSTOM_ID: measures
+:END:
+
+Prefer measures that indicate new mechanically established properties:
+
+- number of *distinct verified propositions* and their assumption scopes;
+- number of real operations instantiated without bespoke resolution plumbing;
+- ability to reject missing commit-time guards *before deployment*;
+- ability to generate counterexamples for deliberately broken invariants;
+- ability to detect stale or forged evidence across the entire dependency DAG;
+- ratio of required opaque model premises to checked semantic dependencies;
+- proof/certificate reuse when adding a second and third operation; and
+- real XTDB/Chromium fault coverage for execution and recovery.
+
+Source lines, assertion totals, report size, and revision counts are useful
+maintenance signals but not evidence that downstream correctness has advanced.
+
+* Open design questions
+:PROPERTIES:
+:CUSTOM_ID: open-questions
+:END:
+
+1. Can guarded atomic command resolution cover most ordinary mutations, or
+   should creation, versioned replacement, and leases be first-class templates?
+2. Are resolution dimensions genuinely composable, and which combinations are
+   invalid or require extra obligations?
+3. What is the *smallest* closed typed rule vocabulary that expresses Claim's
+   meaningful guards without hiding business logic in an opaque escape hatch?
+4. Should a named typed policy predicate remain trusted initially, or can
+   source-owned semantic definitions be normalized and checked immediately?
+5. Which predicate dependencies can be statically extracted, and when must
+   a conservative whole-relation/database predicate be protected at commit?
+6. How is absence/uniqueness checked safely under concurrent creation and
+   phantom-producing queries in the specific XTDB transaction substrate?
+7. What is the right theorem boundary between template semantics and backend
+   lowering, and what evidence would genuinely discharge the latter?
+8. Can we establish generic template theorems parametrically, or would an
+   initially smaller, kernel-checked operational calculus be more economical?
+9. Where should a finite model checker be used for bug discovery, and where
+   does the desired guarantee demand an inductive or refinement proof?
+10. How much of the rule/operation representation can be reused directly from
+    canonical Parts II, IV, IX, and X instead of introducing another layer?
+11. What exactly must the selected certification profile forbid when only a
+    trusted host implementation is available?
+12. Can the second real operation reuse most of the first operation's proof
+    machinery?  This is the decisive abstraction-quality test.
+
+* Recommended next discussion
+:PROPERTIES:
+:CUSTOM_ID: next-discussion
+:END:
+
+Do *not* begin by implementing all candidate templates or a large general
+proof language.
+
+Begin with an authoritative-operation inventory and one sharp question:
+
+#+begin_quote
+Can Gesso represent HumanHelp Claim as a typed instance of a reusable guarded
+atomic command template, and mechanically establish one real domain invariant
+while preserving the distinction between admitted semantics and production
+execution?
+#+end_quote
+
+If yes, use the second operation to demonstrate reuse and composition.  If no,
+let the concrete failed obligations show which semantic primitive is missing.
+
+The goal is to make the right construction easy, an apparently working but
+incorrect construction difficult, and the remaining assumptions impossible to
+mistake for proofs.
