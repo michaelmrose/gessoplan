@@ -1,2071 +1,1447 @@
 * Part X — Formal correspondence and system boundaries
 :PROPERTIES:
 :CUSTOM_ID: part-10-formal-correspondence-and-system-boundaries
+:PART_REVISION: 10-20261108
 :END:
 
-This part specifies the scope of stronger proof claims and their connection to
-production, together with the trusted boundaries and multi-node contracts that
-those claims must acknowledge. It consolidates the repeated formalization
-material into one correspondence contract without treating test coverage as a
-substitute for a theorem.
+This part specifies how a checked semantic claim applies to the application
+that actually runs. It connects Part IX's judgments and certificates to
+executable plans, transaction boundaries, browser effects, deployed handlers,
+and external systems. It also defines the assumptions and recovery contracts
+under which the same application may run across several hosts.
 
-** Formal strengthening and system boundaries
+The design uses the full host language. A closed semantic subset supports
+stronger derivation; an opaque implementation has explicit, scoped premises.
+Neither a theorem about an abstract operation nor a successful application test
+silently establishes the missing relation between them. Required product
+capabilities, assembly closure, and production enforcement remain distinct
+claims under [[#req-application-assurance-claims]].
 
-This part connects the compositional architecture of Part IX to system-wide
-assurance claims, external formalization, trusted implementation boundaries,
-and physical multi-node realization. It introduces no second semantic layer.
-Release/completion gates and the ordered realization roadmap follow in Parts XI
-and XII. Historical plan ordering does not override the canonical contracts.
+Parts XI and XII own completion gates and realization ordering. This part is a
+normative architecture, not a statement that a particular release already
+satisfies every target. The canonical evidence classifications are those of
+[[#req-assurance-classification][Part I]].
 
-*** Assurance is layered rather than binary
+** Semantic ownership and the scope of assurance
 
-Gesso does not have one global state named =proved=.
+*** One application meaning, several checking mechanisms
 
-Different claims may legitimately have different evidence.
+The admitted semantic definitions own the application meaning that Gesso can
+inspect. A production plan and a generated formal subject derive from those
+definitions. They may use different representations, but the relation between
+them is itself an obligation with a named checking or trust mechanism.
 
-The accepted assurance classes are:
+The components have distinct roles:
 
-- *machine-proved / externally machine-checked* -- a theorem follows from an
-  explicit formal semantics under named assumptions;
-- *kernel-checked* -- a production proof term or derivation is accepted by the
-  small trusted proof kernel;
-- *exact-finite checked* -- the stated property was exhaustively checked over a
-  finite semantic state space, with the scope of that claim stated precisely;
-- *assembly-verified* -- a closed application graph/artifact correspondence
-  check succeeded;
-- *runtime-enforced* -- a concrete premise is validated or supplied at runtime;
-- *trusted* -- correctness depends on an external implementation or boundary
-  outside the current proof;
-- *asserted* -- the application explicitly supplies a domain proposition Gesso
-  cannot derive;
-- *tested* -- behavioral evidence exists, but the property is not promoted to a
-  stronger assurance class.
+| Component | Responsibility | Does not establish by its name alone |
+|-----------+----------------+-------------------------------------|
+| Executable semantic core | Defines and executes the supported transition semantics | Correctness of every physical shell action |
+| Semantic checkers | Check typing, projection, dependencies, progression, and other specified judgments | Universal soundness of their own implementation |
+| Proof kernel | Checks the closed derivation language of Part IX | Arbitrary Clojure correctness or current authorization |
+| External proof checker | Checks a formal theorem or proof object under its formal semantics | Correspondence with the Clojure checker or deployed application |
+| Runtime boundary | Acquires or enforces the concrete premises needed now | Unbounded correctness inferred from one successful invocation |
+| Integration harness | Exercises actual boundaries and challenges assumptions | A theorem outside the exercised domain |
 
-The root assurance report may contain all of these at once, with the meanings
-fixed by [[#req-assurance-classification][Part I]]. Conditional liveness qualifies
-a progress claim and its environmental premises; it is not an additional
-evidence mechanism. A conditional-liveness claim can be theorem-backed, model-
-checked, or supported by tests, and the report must say which.
+These components may share canonical definitions. Sharing reduces duplicated
+meaning, but also permits shared mistakes. Recomputing a result through the
+same checker protects against a forged report; it is not independent evidence
+that the checker implements the right judgment.
 
-The design must not collapse them into one marketing label.
+A formalization may strengthen confidence that Claim obeys the declared
+HumanHelp policy. It cannot establish that the policy is the right product
+choice without a separately stated requirement against which to judge it.
+HumanHelp continues to own Request, Membership, Organization, and assignment
+semantics. Gesso owns its language, construction, execution, and boundary
+contracts.
 
-*** Stronger proof never changes semantic ownership
+*** Evidence belongs to a claim, not to an application-wide adjective
 
-Formalization may strengthen confidence in:
+A claim records its subject, proposition, quantification domain, assumptions,
+evidence mechanism, enforcing boundary, and applicable artifact identities.
+The root report may contain machine-proved, kernel-checked, exact-finite
+checked, assembly-verified, runtime-enforced, trusted, asserted, and tested
+claims at the same time.
 
-- type safety;
-- knowledge/provenance use;
-- projection preservation;
-- certificate composition;
-- browser-adapter transition invariants;
-- progression algebra;
-- stale-dependency rejection;
-- whole-application correspondence.
+Conditional liveness qualifies a progress claim; it is not a ninth evidence
+class. A conditional liveness theorem and a fault test of its environmental
+premises remain separate evidence. Counts of assertions or passing tests are
+useful diagnostics, not probabilities of correctness.
 
-It does not move HumanHelp business truth into Gesso.
+The report must distinguish at least:
 
-For example, Gesso may prove that a distributed program invokes the declared
-=:request/claim= operation only under the modeled knowledge/authority conditions.
+- an obligation derived from source;
+- evidence offered for that obligation;
+- evidence accepted by the relevant checker or runtime boundary;
+- an explicitly admitted assumption;
+- an unsupported, incomplete, stale, or refuted claim;
+- the decision of the selected admission profile.
 
-It does not prove that HumanHelp product policy chose the correct Claim rule
-unless that rule itself is separately specified and verified against a stronger
-external requirement.
+These distinctions are reporting requirements, not a new outcome vocabulary
+for model operations. The model outcomes remain those of Part IV.
 
-*** The final formal boundary follows the production semantics
+A profile may explicitly admit an opaque implementation premise where Part I
+allows one. A failed mandatory proof cannot be relabeled as an assertion to
+make the same profile pass. An incomplete check is not a counterexample, and a
+counterexample is not merely missing evidence.
 
-The object of formal reasoning must remain the semantic object production uses.
+*** Opaque host code remains useful and visible
 
-The architecture rejects:
+Arbitrary Clojure and ClojureScript may compute values, implement application
+policy, interact with external services, and construct admitted semantic data.
+Gesso does not require those computations to become proof-language expressions.
+It requires their proof-relevant interfaces and effects to be explicit.
 
-#+begin_example
-formal model A
-    |
-proof of A
-    |
-handwritten production semantics B
-#+end_example
+For each opaque boundary, record the input and output contract, affected state,
+read and write footprint, authority used, possible effects and failures, and
+claims that depend on its asserted behavior. Runtime checks enforce the
+observable portions of that contract. Tests challenge the remainder. A
+separately proved implementation may later discharge a particular premise
+without changing unrelated application semantics.
 
-when the intended correctness claim concerns B.
+An opaque renderer does not invalidate an independent theorem about command
+binding. An opaque policy predicate does prevent claiming that the policy's
+truth follows from the small rule calculus unless the necessary premise is
+explicit. An undeclared database writer can invalidate a whole-domain invariant
+even when every declared operation has a sound preservation proof.
 
-The desired direction is:
-
-#+begin_example
-explicit production executable semantics
-        |
-        +--> executable use
-        |
-        +--> model checking
-        |
-        +--> proof-term generation
-        |
-        +--> external formal correspondence
-#+end_example
-
-The same rule applies to projected plans, browser transition semantics, and
-whole-application assembly.
-
-The executable semantic core realizes production transitions. The proof kernel
-checks derivations, while dedicated semantic checkers establish their particular
-judgments through declared mechanisms. These roles may share canonical semantic
-definitions without being one component or one assurance class. An external
-proof-assistant kernel is another explicitly named checking boundary, not an
-alternate application runtime. Correspondence connects the checked subject to
-the production object; terminology alone does not establish that connection.
-
-** System-wide assurance target matrix
+** System-wide assurance targets
 :PROPERTIES:
 :CUSTOM_ID: req-system-assurance-targets
 :END:
 
-The complete architecture aims to establish the following guarantees.
-
-Each guarantee must be accompanied by an honest assurance classification in the
-implementation/root report.
-
-The section states the desired property.
-
-It does not imply that every property has already reached its strongest target
-classification.
-
-*** Choreography language and projection
-
-The supported global choreography language has explicit transition semantics.
-
-The system should establish that:
-
-- a global choreography has a closed, inspectable semantic representation;
-- projected machines arise from an accepted global choreography;
-- the supported projection algorithm preserves the declared global/local trace
-  or refinement relation;
-- projected behavior does not invent undeclared communication;
-- projection preserves every knowledge-producing mechanism required by local
-  behavior;
-- behavior-sensitive branch divergence is allowed only after the local role has
-  justified knowledge of the required discriminator or an equivalent fact;
-- unsupported semantic constructs are rejected or explicitly classified outside
-  the proved subset rather than silently inheriting stronger guarantees.
-
-Target evidence:
-
-- explicit semantics;
-- proof-kernel checking or a dedicated exact-model checker for the stated
-  construction judgments;
-- external theorem support for stable projection rules where practical.
-
-*** Knowledge, provenance, and agreement
-
-The system should establish that:
-
-- senders know the values they send;
-- consumers know the facts they consume;
-- communication establishes knowledge only for the declared payload;
-- authoritative observation establishes only the facts justified by the
-  observed authoritative projection and its provenance/basis;
-- deterministic derivation establishes only declared outputs from known inputs;
-- asserted knowledge remains visibly asserted/trusted;
-- weaker provenance cannot silently become stronger provenance;
-- browser assertion alone cannot become authoritative provenance;
-- agreement claims are justified through declared communication, compatible
-  authoritative observation, checked derivation, or explicit assertion;
-- agreement over evolving facts is scoped to a meaningful frontier rather than
-  assumed from co-presence or shape equality;
-- privacy/authorization may intentionally produce different valid knowledge
-  projections for different actors.
-
-Target evidence:
-
-- proof-kernel-checkable knowledge/provenance rules for the closed semantic subset;
-- runtime enforcement for concrete authoritative reads and authentication;
-- application assertions where domain truth is external to Gesso.
-
-*** Types, schemas, and rule use
-
-The system should establish that:
-
-- message payloads satisfy declared Malli/value schemas;
-- machine contexts satisfy state schemas at checked boundaries;
-- supported typed rule operators are used only on values in their semantic
-  domains;
-- unknown fields/variants are rejected;
-- optional values are not dereferenced without a valid refinement;
-- required closed matches are exhaustive;
-- relationship predicates use valid endpoint/cardinality contracts;
-- operation output fields cannot be consumed before they are produced;
-- a rule that is intrinsically well typed is still rejected at a distributed
-  program point when required knowledge, provenance, authority, refinement, or
-  progression is absent.
-
-Target evidence:
-
-- runtime schemas;
-- typed rule elaboration;
-- kernel-checked semantic judgments;
-- mutation tests for unsupported/malformed expressions.
-
-*** Authoritative model transitions
-
-The system should establish that:
-
-- public model operations own authoritative business semantics;
-- authoritative transitions advertised as atomic have one atomic commit boundary;
-- failures established to precede commit cannot expose half of the promised
-  atomic authoritative transition;
-- failures after commit cannot reclassify or implicitly revert that transition;
-- lost outcomes after transaction submission preserve participant-relative
-  uncertainty rather than inventing rejection;
-- known post-commit publication/settlement failure creates delivery/recovery
-  obligations, not evidence that the mutation failed;
-- FX inputs and outputs are explicit and do not rely on hidden context mutation;
-- model operation contracts distinguish required capability, authority, typed
-  input/outcome, atomicity, and trusted assumptions;
-- Choreo depends on public model contracts rather than private model FX/graph
-  internals.
-
-Target evidence:
-
-- runtime-enforced transaction guards;
-- model/property tests;
-- certified operation contracts;
-- implementation conformance trusted initially where arbitrary Clojure bodies
-  are not formally verified.
-
-*** Progression and authoritative observation
-
-The system should establish that:
-
-- authoritative progression is distinct from domain revision, valid time,
-  command identity, and browser execution/resource-instance identities;
-- progression requirements are canonical;
-- composition of progression requirements is conservative;
-- commit-derived invalidation and reread preserve sufficient scoped progression
-  requirements when delivered;
-- loss between commit and publication follows the declared recovery contract,
-  with the assumptions needed for eventual acquisition made explicit;
-- advisory invalidation never fabricates authoritative content or claims that
-  the recipient has already adopted the advertised progression;
-- a raw browser-supplied basis is not proof of prior observation; any admitted
-  observation receipt establishes only its explicitly validated issuance and
-  scope contract, not delivery, installation, or human awareness;
-- stale basis is exposed to model policy rather than interpreted by Gesso as an
-  automatic conflict;
-- convergence may skip intermediate advisory events when a newer authoritative
-  observation satisfies the application's semantics.
-
-Target evidence:
-
-- explicit progression algebra;
-- XTDB integration tests;
-- exact finite/proof checks for algebraic properties where practical;
-- trusted XTDB consistency contract.
-
-*** Optimism
-
-The system should establish that:
-
-- optimistic state is distinguishable from authoritative state;
-- every optimistic projection carries semantic command and authoritative-basis
-  provenance;
-- provisional state cannot increase server authority;
-- every provisional trajectory has a declared resolution/recovery path;
-- direct settlement loss permits later authoritative supersession through the
-  declared recovery path under its availability and scheduling assumptions;
-- current-state supersession does not by itself settle command attribution;
-- newer authoritative installation revokes stale rollback rights;
-- multiple browsers may hold conflicting provisional projections without
-  creating multiple authoritative histories;
-- a semantic optimistic operation never silently downgrades to an anonymous
-  ordinary request because basis/command/plan data is absent.
-
-Target evidence:
-
-- portable transition semantics;
-- browser adapter invariant checking;
-- whole-application rendered-surface enforcement;
-- real Chromium adversarial scheduling tests.
-
-*** Browser transition safety
-
-The production browser semantic adapter should itself be the checked transition
-system.
-
-The system should establish that:
-
-- every semantically active async effect has one declared owner or explicit
-  shared-ownership class;
-- execution-private callbacks are admitted only for the current
-  execution identity and relevant resource-instance ownership state;
-- stale or duplicate events cannot resume an illegal machine state;
-- stale callbacks cannot acquire validity merely because a logical target still
-  exists;
-- authoritative install cannot be undone by an obsolete provisional callback;
-- semantic retirement revokes callback authority before best-effort physical
-  cleanup;
-- physical cancellation is an optimization rather than the sole safety gate;
-- fragment coordination satisfies its stated bound on logical active/queued
-  slots; retained metadata and retired physical requests have separately stated
-  bounds or abstractions;
-- shared fragment/subscription events use their declared owner-relative
-  admission path without fabricated command execution identity;
-- deferred physical mutation revalidates the relevant effect permission before
-  changing managed DOM, not only when its callback begins;
-- continuity may preserve local UI state but cannot alter domain/choreography
-  semantics;
-- incompatible stale projected plans retire and use the declared recovery or
-  authoritative reconstruction path, preserving the product's acquisition and
-  adoption policy rather than treating reconnect as automatic permission.
-
-Target evidence:
-
-- exact transition-system/model checking;
-- property tests over adversarial event orders;
-- JVM/Node/Chromium conformance;
-- real browser integration for FFI/HTMX assumptions.
-
-*** Portable execution and artifact identity
-
-The system should establish that:
-
-- the same portable semantic transition core runs under JVM, Node, and Chromium
-  for the supported subset;
-- production and proof-enabled tests execute the same canonical
-  =ExecutablePlan=;
-- proof/diagnostic sidecars are runtime-nonsemantic;
-- exact sidecar lookup requires exact executable-artifact identity;
-- compatibility identity remains distinct from exact artifact identity;
-- generated browser artifacts correspond exactly to the current required browser
-  manifest before the application is served.
-
-Target evidence:
-
-- deterministic plan/artifact identities;
-- conformance tests;
-- build/startup closure checks;
-- structural noninterference by runtime API shape, with optional diagnostics
-  isolated from semantic control flow and failures;
-- equivalence for the same initial state and admitted event stream, without
-  claiming identical wall-clock scheduling or external resource behavior.
-
-*** Whole-application closure
-
-The system should establish that every exposed Choreo-managed affordance has a
-coherent path through:
-
-#+begin_example
-view affordance
-    -> semantic operation
-    -> verified trajectory
-    -> projected browser plan
-    -> exact generated artifact
-    -> declared transport
-    -> trusted route
-    -> trusted server operation
-    -> authoritative model operation
-    -> settlement/progression
-    -> authoritative acquisition
-    -> renderable authoritative projection
-#+end_example
-
-The system should reject:
-
-- unknown semantic operations;
-- missing browser plans;
-- stale generated artifacts;
-- missing/incompatible transport;
-- missing trusted route/server operation;
-- missing required server capability;
-- missing acquisition path;
-- anonymous ordinary HTMX use of an assembled semantic route;
-- implicit semantic downgrade;
-- duplicate/incompatible identities.
-
-Target evidence:
-
-- =ApplicationAssembly= closure checking;
-- runtime rendered-surface enforcement;
-- lifecycle-enforced preflight before serving;
-- real-browser acceptance through the same admitted assembly generation.
-
-Closure quantifies over declared affordances. Independent required-capability
-acceptance must also fail when a promised action is omitted. Production
-entrypoint enforcement must demonstrate that the checked assembly and artifact
-are those actually used. These three claims remain separate under
-[[#req-application-assurance-claims]].
-
-*** Browser/server authority boundary
-
-Under named authentication/model/XTDB assumptions, arbitrary browser behavior
-must not grant additional authoritative privilege.
-
-The browser may propose:
-
-- operation;
-- arguments;
-- command ID;
-- observed basis;
-- correlation metadata.
-
-The browser may not establish:
-
-- authenticated principal;
-- server role entitlement;
-- authoritative provenance;
-- current model authorization;
-- protected read/subscription permission;
-- trusted server machine state.
-
-Target evidence:
-
-- trusted-side operation registry;
-- authenticated principal binding;
-- runtime authorization;
-- adversarial browser tests;
-- semantic authority-flow theorem for the modeled protocol boundary.
-
-*** Liveness and convergence
-
-The architecture should support explicit conditional claims such as:
-
-#+begin_quote
-If relevant authority eventually becomes reachable, the actor continues to
-execute, the declared acquisition/adoption policy permits the required work,
-any required user action occurs, the scheduler fairly selects enabled recovery,
-required messages/reads eventually succeed, and the authoritative world is
-quiescent long enough, then the specifically named presentation or agreement
-obligation resolves. Command attribution additionally requires command-specific
-outcome evidence when current-state observation is insufficient.
-#+end_quote
-
-The system must not infer unconditional liveness merely because:
-
-- a terminal path exists;
-- a timeout transition exists;
-- a refresh route exists;
-- a message could theoretically arrive.
-
-Every liveness/convergence claim names its environment assumptions and the exact
-obligation that eventually resolves. A reachable terminal state proves the
-possibility of progress, not eventual progress on every fair execution. Any
-argument over all fair executions must justify the fairness and progress steps
-it uses. Safety must continue to hold when liveness premises fail; remaining
-unresolved is preferable to inventing an outcome or permission.
-
-Target evidence:
-
-- graph/state-machine analysis;
-- conditional theorem statements;
-- integration/fault testing for the external assumptions.
-
-** Framework theorem families
-
-The following are the principal theorem families over the stable semantic
-definitions. Their subjects and evidence mechanisms must be stated separately;
-the executable semantic core is not itself the proof kernel.
-
-*** Certified composition soundness
-
-If certificate B is accepted using certificate A, every premise B attributes to
-A must follow from A's exported guarantees under checked scope/substitution and
-compatibility rules. Additional premises admitted at B remain explicit
-assumptions of the resulting conclusion, not guarantees attributed to A.
-Required obligation coverage and subject binding follow Part IX. A conditional
-composition theorem does not establish its external premises or the conformity
-of arbitrary implementation bodies.
-
-*** Business-rule type safety
-
-A certified rule cannot apply a supported operator to values outside the
-operator's declared semantic domain.
-
-*** Rule-use knowledge safety
-
-If a certified projected role branches/acts on a rule result, all facts required
-to evaluate that rule are justified by the role's certified knowledge at that
-point, modulo named assumptions.
-
-*** Provenance safety
-
-A stronger provenance class is never derived solely from a weaker class unless a
-declared inference rule permits it.
-
-In particular, browser assertion alone cannot become authoritative provenance.
-
-*** Authority derivation and non-escalation safety
-
-No projected/browser-supplied semantic artifact can increase the authority of the
-authenticated principal without a trusted server/model rule that establishes the
-capability.
-
-*** Projection preservation
-
-For the supported Choreo subset, accepted local projections preserve the stated
-global trace/refinement property.
-
-*** Executable-plan provenance
-
-Every certified production plan corresponds to one accepted projection under
-the recorded semantic dependencies and plan-format version.
-
-*** Stale certificate safety
-
-A certificate whose required semantic dependency identity no longer matches
-cannot be used to produce a certified downstream artifact.
-
-*** Progression preservation
-
-The existing progression algebra should eventually participate in the same proof
-story:
-
-- requirements are canonical;
-- composition is conservative;
-- success/failure rules preserve unsatisfied requirements appropriately;
-- advisory invalidation does not fabricate authoritative progression.
-
-*** Browser semantic adapter safety
-
-Existing adapter state-machine properties should eventually be connectable to
-the root proof report while the DOM/HTMX/browser shell remains an explicit
-trusted/tested realization boundary.
+Each row defines a claim family. The checker or theorem establishes only its
+stated domain; the production boundary supplies the concrete premises. The
+root report must expose both and retain any gap between them.
+
+| Claim family | Semantic target | Production obligation |
+|--------------+-----------------+-----------------------|
+| Choreography and projection | Local traces preserve the stated global relation; branches have justified discriminators | Execute the issued projection and validate actual messages |
+| Knowledge and provenance | Consumers have the required facts and provenance at the use point | Authenticate observations, principals, and message origins within the declared threat model |
+| Rules and values | Supported operators are well typed; optional and nullable values are handled correctly | Validate boundary values and preserve value semantics across runtimes |
+| Authoritative operations | The admitted transition preserves its stated invariant under its premises | Enforce current guards, command exclusion, and complete atomic writes |
+| Progression and observations | Requirements compose conservatively; discharge uses sufficient scoped evidence | Obtain the actual provider basis and bind it to the returned projection |
+| Optimism | Provisional state never becomes authority by assertion and has a resolution path | Correlate commands, preserve unknown outcomes, and gate actual installation |
+| Browser transitions | Ownership, retirement, and effect admission preserve adapter invariants | Normalize real lifecycle events and enforce permission at physical mutation |
+| Portable plans | Equivalent inputs and admitted events have equivalent semantic results | Run the supported codecs, operators, plans, and compiled payload |
+| Application closure | Every declared affordance has a complete compatible execution and recovery path | Serve the admitted assembly, handlers, artifacts, and render contract |
+| Authority boundaries | Untrusted proposals do not confer trusted privilege | Authorize each protected invocation, acquisition, and disclosure |
+| Conditional progress | The named obligation resolves under explicit scheduling and recovery premises | Provide the declared recovery mechanisms and report when their premises fail |
+
+*** Choreography, knowledge, and rules
+
+The supported choreography has a closed inspectable representation and explicit
+transition semantics. Projection must not invent communication or omit the
+knowledge-producing step on which a later local branch depends. A sender knows
+only what its admitted context justifies; receipt adds only the declared
+payload and provenance. Deterministic derivation adds only its declared results.
+
+Agreement is scoped to the facts and frontier actually established. Equal
+shapes, shared hosts, or similar observation timestamps do not establish it.
+Different authorized projections may legitimately disclose different facts to
+different actors. Privacy is not a failure of agreement when the contract does
+not promise identical knowledge.
+
+Value schemas, the typed rule language, and distributed rule-use judgments
+serve different purposes. Runtime schema acceptance does not prove that a role
+knows a field or may use it. Rule well-typedness does not prove the rule true.
+An optional field requires the applicable presence refinement; a present null
+requires its separate treatment. Exhaustiveness applies to a declared closed
+variant set, not to arbitrary future application data.
+
+Unsupported syntax must be rejected by the relevant closed checker or routed
+through an explicit opaque contract. It must not inherit a stronger claim
+because an outer declaration used a certified name.
+
+*** Authoritative operations, observation, and optimism
+
+Public model operations own business transitions. A transition advertised as
+atomic must bind all its correctness-relevant guards and writes to an atomic
+mechanism with the required semantics. A successful pre-read is not a current
+commit guard. A schema-valid transaction is not a proof of business authority.
+
+A failure established before incorporation may reject an attempt. A transport
+failure after possible submission leaves the participant uncertain unless
+stronger outcome evidence is available. Known commit followed by lost delivery
+or publication remains a commit with recovery obligations. Concurrent delivery
+of the same command requires particular care: failure of one attempt does not
+prove the logical command was never incorporated by another.
+
+Authoritative observations carry their actual provider evidence, authorized
+scope, interpretation, and projection coverage. Domain revision, provider
+basis, command identity, execution identity, resource instance, and assembly
+generation are different coordinates. None may be substituted for another.
+Acquisition, installation, adoption, command attribution, and human awareness
+are different facts.
+
+An optimistic projection records the intent and command it represents and the
+known facts or authoritative observation on which it depends. A Create intent
+need not invent an authoritative basis for an entity that does not yet exist.
+The applicable operation contract specifies any required enclosing observation
+or progression premise. An optimistic projection cannot create server
+permission, clear unrelated advisory debt, or convert current-state
+supersession into proof that its own command committed.
+
+*** Browser safety and portable execution
+
+The portable transition core is the semantic source for browser admission.
+Every active asynchronous effect has an execution, resource, or explicitly
+shared owner under Part VI. Retirement revokes permission before physical
+cleanup; aborting a network request is an optimization, not the only safety
+mechanism. Reusing a DOM identifier does not revive an old resource instance.
+
+Admission when a callback arrives is insufficient if mutation is deferred. The
+physical shell checks the current effect permission immediately before managed
+mutation and checks completion before recording authoritative adoption. A
+partly applied batch follows the declared repair contract; a multi-element DOM
+update is not claimed to be atomic merely because one semantic action requested
+it.
+
+The portability claim covers the declared value and operator subset, codecs,
+state representation, and event normalization. Exact integers, absent values,
+nulls, collections, and exception behavior must have an explicit cross-runtime
+meaning. JVM support for a value does not imply JavaScript support. Arbitrary
+server-side Clojure need not execute in a browser.
+
+The same initial semantic state, canonical plan, and admitted event stream must
+produce equivalent semantic results within the supported subset. This does not
+promise identical wall-clock schedules, browser layout, transport behavior, or
+external resource availability. Node execution checks a compiled JavaScript
+path; Chromium integration additionally checks the real browser shell.
+
+*** Closure, authority, and progress
+
+Whole-application closure joins the declared affordance, operation, projection,
+artifact, transport, route, public model operation, outcome mapping, progression,
+acquisition, and renderable successor. It also includes rejection, unknown
+outcome, stale-plan, and authority-loss handling where applicable. An independent
+product inventory detects a promised capability that was omitted altogether.
+
+Static preflight need not predict dynamic facts. It must require declared
+handling and recovery paths for dynamic conditions that can strand an operation,
+as specified by [[#req-preflight-dynamic-handling-coverage]]. Production entrypoint
+enforcement establishes that the checked objects are those actually used.
+
+A browser may propose an operation, arguments, command identifier, or observation
+reference. It cannot establish its authenticated principal, present authority,
+trusted server machine state, or permission to read a protected result. A
+certificate about the operation changes none of those boundaries.
+
+A liveness claim names the particular debt, provisional state, command outcome,
+or agreement obligation that eventually resolves. It also names needed
+availability, fairness, retention, disclosure permission, sufficient quiescence,
+and user actions. Under HumanHelp's explicit-Refresh policy, remote board
+adoption depends on the user's Refresh action. Continued activity or a delivered
+advisory alone does not imply eventual adoption.
+
+Safety must hold when progress premises fail. A retained unknown outcome is
+preferable to an invented rejection. A reachable terminal state proves the
+possibility of progress, not eventual progress on every fair execution.
+
+** Framework theorem contracts
+
+A theorem family is made concrete by its executable judgment, input domain,
+conclusion, assumptions, and representation relation. The judgment definitions
+in Part IX are canonical. This part states the additional transfer obligations;
+it does not introduce a competing calculus.
+
+*** Rule evaluation and proof checking
+
+For an admitted typed rule and an environment satisfying its exact reader
+contract, evaluation must be defined within the supported operator domain and
+produce the declared result type. Any failure permitted by the contract must be
+represented explicitly. Presence refinements and short-circuit order are part
+of the semantics; Boolean equivalence alone does not justify changing access
+order.
+
+For the small propositional kernel, the intended soundness theorem is:
+acceptance of a derivation entails its conclusion in every valuation satisfying
+its admitted premises. The theorem covers the actual closed inference rules,
+malformed-input rejection, and dependency interpretation. It does not make
+application atoms true. The typed-proposition bridge separately relates atom
+valuation to typed rule evaluation and its valid environments.
+
+Checking the truth table for one submitted derivation is exact evidence for
+that finite propositional instance. It is not a quantified theorem about all
+future derivations or about the Clojure implementation of the checker. Testing
+one instance of each inference tag does not quantify over all rule parameters.
+
+*** Guarded transitions and induction
+
+A guarded-transition theorem concerns the specified pre-state, input, guard,
+simultaneous assignments, and framed fields. The initial-state proof and every
+operation's preservation proof must cover every required invariant. Checked
+composition may combine supported proof families as specified in Part IX.
+
+The resulting induction theorem quantifies over finite executions generated by
+that abstract operation catalog from its initial states. Its application to a
+real database additionally requires:
+
+- a representation of physical state and input in the abstract domain;
+- actual initial-state establishment or another justified induction entry point;
+- every relevant physical writer refining an admitted transition;
+- preservation of fields and relationships outside each declared write set;
+- the backend semantics used by the refinement;
+- handling of physical observations and failures omitted by the abstraction.
+
+Initial-state satisfiability and useful admitted operations are separate checks
+against vacuous success. An invariant over an impossible initial state or a
+system that rejects every intended operation is not a completed application.
+
+*** Composition, provenance, and non-escalation
+
+Certificate composition must preserve the exact proposition, subject, scope,
+assumptions, and required dependencies. An exported guarantee may discharge a
+consumer premise only through the checked substitution rules. An assumption
+admitted by the consumer must not be attributed to its provider as a guarantee.
+
+Knowledge and provenance derivations cannot silently erase or substitute the
+identity of a fact's source. Authority derivation must not turn browser assertions
+or ordinary proof data into server capabilities. Logical reuse of a proposition
+is not duplication of a linear runtime capability. These claims depend on the
+runtime acquisition and enforcement boundaries actually supplying their premises.
+
+*** Projection, lowering, and browser refinement
+
+Projection specifies a relation between supported global traces and the local
+machines. Lowering specifies a relation between those machines and the issued
+executable plan. Each relation names its direction, observables, and allowed
+internal steps. Equal operation names are not a representation relation.
+
+Browser refinement relates portable state transitions to normalized events and
+physical effects. The relation must include late callbacks, retirement,
+duplicate events, deferred mutation, failed cancellation, and interrupted
+installation where those behaviors are possible. An invariant of the portable
+core transfers only while the physical shell satisfies the relevant relation.
+
+A safety relation that permits unbounded internal stuttering does not imply
+liveness. A progress transfer must also rule out the relevant divergent behavior
+and justify its scheduling or fairness assumptions.
+
+*** Progression and stale-evidence safety
+
+Progression composition must preserve all required scoped obligations. A
+sufficient observation may discharge what its actual basis and coverage justify;
+a weaker or incomparable observation cannot be relabeled sufficient. Theorems
+about the algebra do not prove that a provider returned the claimed basis.
+
+Evidence with an incompatible required dependency cannot support a new admitted
+artifact. Exact identity, semantic compatibility, and deployment applicability
+are distinct checks. A theorem may remain mathematically true while becoming
+inapplicable to a changed production binding. Compatible reuse follows checked
+interfaces; a raw digest match or an old successful check is insufficient.
 
 ** Formal proof strategy and production correspondence
 :PROPERTIES:
 :CUSTOM_ID: req-formal-production-correspondence
 :END:
 
-External formalization follows the stable production semantics. The intended
-progression is explicit semantic data, compositional Clojure certificates, a
-small proof kernel, proof-producing elaboration, stable proof-kernel semantics,
-external soundness theorems, and checked production/formal correspondence.
+Formal work reduces a named trusted gap. The permanent executable semantic core,
+small proof kernel, dedicated semantic checkers, generated formal subjects, and
+external checker are parts of one architecture. They are not alternative
+application implementations or a requirement to prove the whole host language.
 
-Formalization aims to reduce trust in Gesso's own verifier. It does not replace
-Clojure, Malli, XTDB, HTMX, or Chromium, and does not move HumanHelp business
-policy into the framework. This is a target architecture, not a statement that
-its theorems or correspondence mechanisms already exist.
+*** The correspondence record
 
+For every claim transferred to production, maintain a source-derived record
+containing:
 
-**** Worked correspondence slice: HumanHelp Claim has one production meaning
+1. The exact semantic subject, proposition, supported domain, and original
+   obligations.
+2. The formal definitions, proof or exploration result, assumptions, and checker
+   identity on which the claim depends.
+3. The production plan, implementation binding, physical boundary, and relevant
+   artifact and assembly identities.
+4. The representation relation, transfer direction, relevant observables, and
+   evidence for the relation itself.
+5. The required dependency closure and the selected profile's treatment of every
+   remaining premise.
+6. Reproducible checking instructions, source locations, result status, and
+   invalidation conditions.
 
-A Claim slice makes the correspondence direction concrete.  The formal and
-production objects may differ in representation, but transferred guarantees
-must concern both the object production admits and, where execution safety is
-claimed, the concrete behavior production can actually perform.  The example
-therefore keeps *admission correspondence* and *execution refinement* separate.
+The record is an inspectable report. It becomes accepted evidence only through
+the issuer and rechecking rules of Part IX. A map containing =:checked true= or
+a copied successful report never replaces those rules. Private application
+values may remain in controlled evidence storage while the public report exposes
+identities, scope, status, and redacted diagnostic locations.
 
-The browser command contributes correlation and domain intent.  It does not
-contribute the authenticated helper identity used by the authoritative
-transition:
+*** Admission soundness, execution safety, and progress are different
+
+Admission soundness asks whether every subject accepted by the production
+admission boundary satisfies the corresponding formal judgment under its
+premises. The required implication runs from production acceptance to formal
+validity. Agreement on rejected examples does not establish it. Completeness,
+meaning acceptance of every valid supported subject, is a separate property.
+Positive supported cases prevent reject-all behavior from masquerading as a
+successful implementation.
+
+Execution safety asks whether every relevant behavior of the admitted production
+object is represented safely by the semantic subject. It needs the appropriate
+trace inclusion, simulation, or refinement argument. An acceptance theorem does
+not prove that the issued object is the one invoked or that its shell executes
+its effects correctly.
+
+Progress additionally asks whether relevant concrete executions satisfy the
+fairness, divergence, delivery, and recovery conditions used by a liveness claim.
+An observational equivalence theorem about terminating calls does not establish
+termination or eventual recovery.
+
+*** Evidence must match the transfer mechanism
+
+| Mechanism | Warranted conclusion | Additional obligation |
+|-----------+----------------------+-----------------------|
+| Externally checked proof term | The encoded conclusion follows under the formal premises | Bind the encoding and proof to the admitted subject and enforcing boundary |
+| Generated or extracted checker | The production artifact derives from the formal definition through the stated process | Justify or explicitly trust extraction, compilation, runtime, and decoding |
+| Proved representation or refinement relation | The stated relation holds throughout its quantified domain | Establish that the production object and environment are in that domain |
+| Exhaustive finite comparison | The specified results agree on the entire enumerated domain | Establish finite coverage and do not silently extend it |
+| Conformance vectors or observed histories | The exercised executions agree with their expected results | Retain their tested scope and observation-origin premises |
+| Review of handwritten correspondence | A reviewer assessed the stated relation | Preserve review as review; do not call it a machine proof |
+
+A generated artifact is not self-validating. Generation and downstream checking
+should be separable where useful: an untrusted producer may construct a proof,
+while a smaller checker decides whether it is valid. If a translator is trusted,
+the report names that translator and the exact property dependent on it.
+
+*** Bind evidence before the object can be substituted
+
+The source, complete required obligations, dependency closure, derivation,
+semantic versions, and admitted plan must remain bound through construction.
+Build and startup additionally bind that plan to the browser artifact and server
+entrypoints actually served under Part VII.
+
+Immutable issued objects and currentness checks prevent later mutable registry
+lookups from replacing a checked subject. Immutable closure checks may be cached;
+there is no requirement to parse an unchanged proof on every click. Cache keys
+and invalidation cover the actual semantic dependencies. Current authorization,
+command state, effect ownership, and external-assumption applicability still
+require their own checks at the appropriate time.
+
+An external check required by the selected profile must complete successfully.
+Timeout, unavailable checker, unsupported syntax, stale evidence, and invalid
+proof prevent that admission. An already admitted assembly may continue only
+under its declared lifecycle and still-valid premises. A checker outage does
+not automatically invalidate an unrelated existing proof, and a known refutation
+of a required premise cannot be hidden behind an old successful admission.
+
+*** Production evidence has an origin and a limited meaning
+
+The design retains separate evidence for these boundaries. They are not a
+single confidence score, and later rows do not automatically discharge all
+obligations in earlier rows.
+
+| Evidence | What a positive result establishes | What remains separate |
+|----------+------------------------------------+-----------------------|
+| Supplied transaction vector matches canonical lowering | Structural agreement for those supplied values | Whether any process submitted that vector |
+| Source-rechecked issued executor and plan | The local issued object has the checked source and plan binding | Whether the deployed handler invokes it |
+| Gateway owns the exact submission call | The observed local attempt used that immutable lowered vector at that call site | Backend receipt, commit, and correctness of the backend semantics |
+| Gateway observes a return or exception | The actual local API interaction produced that observation | Command incorporation where the API result is insufficient |
+| Trusted backend outcome evidence is correlated to that attempt | The transaction outcome justified by the provider contract | Complete business guards, physical frame preservation, and other writers |
+| Pinned external pre-state or post-state observation | The projection held at the stated observed basis | Transaction-internal pre-state, uninterrupted history, or causal attribution |
+| Checked installed router and request wrapper | The inspected local handler path binds the operation and invocation scope | Adoption by the actual serving process and bypass paths |
+| Closed writer mediation and qualified backend contract | The covered writer paths satisfy their enforced construction rules under the named backend premises | A universal refinement theorem unless separately established |
+
+A matching ledger row can corroborate a transaction key without proving that a
+later application state was caused by that transaction. Another writer may have
+changed the state. A caller-supplied node reference or trace is not an
+authenticated observation merely because a checker can replay its contents.
+
+Authenticity is always relative to a trust boundary. A locally owned submission
+call with a captured backend client may provide runtime evidence under a trusted
+process assumption. It need not become a cryptographically signed remote
+attestation. Conversely, a transferable report loses local object-identity
+warrant unless revalidated through a supported persistence or attestation
+contract. The design must state which kind is required, not demand signatures
+as a substitute for defining trust.
+
+*** The selected transaction realization
+
+For operations whose physical transition can be constrained, the selected
+realization has one authoritative submission owner:
+
+1. Trusted invocation code binds the principal, public operation, canonical
+   arguments, authority scope, and stable command identity.
+2. The admitted operation constructs a typed transaction plan with explicit
+   guard dependencies, write footprint, command-resolution behavior, and
+   required durable publication intent.
+3. The gateway derives or independently checks the complete physical transaction
+   from that plan. Callers cannot append arbitrary operations, swap the backend
+   client, or supply a replacement submission callback through this boundary.
+4. The gateway submits the exact immutable transaction vector and records the
+   actual attempt and provider observation without promoting diagnostic data
+   into a commit witness.
+5. Public outcome resolution uses the provider's qualified outcome contract and
+   authoritative command evidence. Progression and disclosure follow Parts IV
+   and V.
+
+The checked lowering subset must define insertion, absence guards, updates,
+deletes where allowed, relationship constraints, and every supported value
+encoding it uses. Unsupported physical forms reject from that path. An opaque
+adapter remains possible through an explicit alternative contract; it does not
+silently inherit the constrained gateway's claim.
+
+A one-use submission capability belongs to one invocation attempt. Retries may
+acquire fresh attempt capabilities for the same bound command under its replay
+contract. Consumption of one capability is atomic with respect to competing
+local users; it does not replace durable exclusion between separately issued
+capabilities for the same command. Fresh independent requests may execute
+concurrently. Neither one
+process-global one-shot writer nor a single global request lease is the general
+application model. Capacity limits are explicit operational policy, not evidence
+of authority or a semantic requirement to serialize unrelated commands.
+
+Asynchronous and deferred execution require an explicit invocation context with
+scope, lifetime, ownership, and retirement. A thread-local binding alone cannot
+justify work scheduled after that binding ends. The same rule applies to jobs,
+subscriptions, maintenance tasks, and response completion callbacks.
+
+*** Guard dependencies and write footprints are different
+
+The operation's guard footprint includes every fact whose current truth the
+transition requires. Its write footprint includes every physical location it
+may change. They need not be equal. Claim may read Membership and Organization
+while writing Request, primary assignment, command outcome, and outbox intent.
+
+An abstract scalar projection cannot hide a physical whole-document overwrite.
+If lowering replaces a complete document using a prepared value, preserving
+unmodified fields requires one of the following, justified for the backend:
+
+- compare the complete relevant pre-state, including field presence, before
+  replacement;
+- compare a revision maintained by every relevant writer, where that discipline
+  really protects the complete replaced state;
+- derive the replacement from current transaction state while preserving the
+  required frame;
+- use a physical update whose semantics modify only the declared fields.
+
+Merely checking the business fields and then replacing all fields can lose a
+concurrent update to an unguarded field. A revision check protects nothing that
+another writer may change without advancing the revision. Positive-document
+checks also do not protect absence or uniqueness predicates: an insertion can
+invalidate “no active primary assignment” without changing any previously read
+row. Those predicates require an appropriate atomic constraint or conflict
+mechanism.
+
+The following executable Clojure example illustrates the lost-field problem.
+It models immutable maps only; it is neither XTDB code nor a certified operation.
+A complete-map comparison here includes presence and absence by map equality.
+A real backend lowering must establish equivalent treatment for its supported
+representation rather than assuming map equality is SQL equality.
 
 #+begin_src clojure
-(def claim-command-shape
-  {:operation :request/claim
-   :domain-input
-   {:request/id :uuid}
-   :correlation
-   {:command/id :uuid}
-   :observed-basis :optional-untrusted-observation-reference})
+(def prepared-before
+  {:request/status :open
+   :request/revision 7
+   :request/summary "Original summary"})
 
-(def claim-subject
-  {:operation :request/claim
-   :state-type :humanhelp/Request
-   :command-shape claim-command-shape
-   :trusted-context
-   {:principal :authenticated-principal
-    :membership :current-authoritative-membership
-    :request :current-authoritative-request
-    :organization :current-authoritative-organization}
-   :preconditions
-   [[:= [:trusted :request :request/status] :open]
-    [:= [:trusted :membership :membership/status] :active]
-    [:= [:trusted :membership :membership/organization-id]
-        [:trusted :request :request/organization-id]]
-    ;; Policy is a typed, named HumanHelp model premise. Whether its
-    ;; implementation conforms is separate trusted/checked evidence.
-    [:organization/allows-claim?
-     [:trusted :organization]
-     [:trusted :membership]
-     [:trusted :request]]
-    [:authorized? [:trusted :principal] :request/claim]]
-   :transition
-   {:request/status :claimed
-    :request/helper-id [:trusted :principal :user/id]}
-   :commit-contract
-   {:guard #{:current-request :current-membership
-             :current-organization :bound-command-identity}
-    :atomic-writes #{:request-ownership :command-result-record}}
-   :outcomes #{:accepted :rejected}
-   :delivery-uncertainty
-   {:recover {:acquire :request/card
-              :command-attribution :unknown}}})
+(def prepared-after
+  (assoc prepared-before
+         :request/status :claimed
+         :request/revision 8))
 
-(def claim-normalized
-  (gesso.semantics/normalize-operation claim-subject))
+;; A writer outside the revision discipline changes an unguarded field.
+(def current-before-commit
+  (assoc prepared-before :request/summary "Corrected summary"))
 
-(def claim-formal-subject
-  (gesso.formal/translate-operation claim-normalized))
+(defn checked-field-equal? [expected actual field]
+  (and (= (contains? expected field) (contains? actual field))
+       (= (get expected field) (get actual field))))
 
-(def claim-production-plan
-  (gesso.compile/executable-operation claim-normalized))
+(defn partial-guard? [expected actual]
+  (every? #(checked-field-equal? expected actual %)
+          [:request/status :request/revision]))
 
-;; An instance-level check for this normalized Claim subject. A theorem about
-;; every supported operation needs a separately checked quantified proof.
-(def claim-admission-correspondence
-  (gesso.formal/check-correspondence
-   {:formal-subject claim-formal-subject
-    :production-subject claim-production-plan
-    :proposition
-    [:this-normalized-subject
-     [:production-admits? :request/claim]
-     [:formal-judgment-holds? :claim-admissible]]
-    :direction :production-admission-implies-formal-validity
-    :representation :gesso.correspondence/operation-v1
-    :dependencies
-    {:rule-set :semantic/claim-rules-C21
-     :operation :semantic/request-claim-op-O31
-     :kernel :gesso-proof-kernel/K7}}))
+(defn complete-map-guard? [expected actual]
+  (= expected actual))
 
-;; This is a distinct obligation. An opaque arbitrary Clojure implementation
-;; cannot be proved to refine a plan by naming its artifact in a map.
-(def claim-execution-obligation
-  {:semantic-plan claim-production-plan
-   :production-binding
-   {:server-capability :server/request-claim
-    :model-var 'net.humanhelp.site.model.request.core/claim
-    :implementation-identity :fixture/claim-implementation-A44}
-   :observables
-    #{:authoritative-read
-      :authorization-decision
-      :durable-commit
-      :settlement
-      :progression-publication}
-   :proposition
-   [:every-relevant-production-trace
-    [:refines :request/claim-semantic-trace]]
-   :dependencies
-   {:lowering :gesso.lowering/L12
-    :adapter :humanhelp.request.adapter/A9
-    :runtime-profile :humanhelp.production/P4}})
-
-(def claim-execution-refinement
-  (gesso.formal/check-execution-refinement
-    claim-execution-obligation))
-
-;; The selected profile may admit a named trusted implementation premise,
-;; or require a checked refinement. An unsupported/unchecked result cannot
-;; satisfy the latter. Whole-application admission still follows Part VII.
-(def claim-correspondence-gate
-  {:normalized-subject claim-normalized
-   :plan claim-production-plan
-   :admission-evidence claim-admission-correspondence
-   :execution-evidence claim-execution-refinement
-   :selected-profile :gesso/external-formal-v1})
-
-;; Wrong shape: prove F, then independently execute G.
-(def formal-F
-  {:when :open
-   :then {:status :claimed
-          :helper :trusted-principal}})
-
-(defn production-G [request browser-command]
-  ;; Browser-controlled actor data has slipped into the authoritative write,
-  ;; and G also contains behavior not represented by F.
-  (if (:request/priority-lock? request)
-    request
-    (assoc request
-           :request/status :claimed
-           :request/helper-id (get-in browser-command [:actor :id]))))
+(assert (partial-guard? prepared-before current-before-commit))
+(assert (not (complete-map-guard? prepared-before current-before-commit)))
+(assert (= "Original summary" (:request/summary prepared-after)))
+(assert (not= (:request/summary prepared-after)
+              (:request/summary current-before-commit)))
 #+end_src
 
-The admitted shape does not treat a command-shaped map as an admitted semantic
-object merely because its keys look right.  Authentication, current Membership,
-current Request state, authorization, normalization, and the required
-correspondence evidence all belong to their declared trusted/admission
-boundaries.
+A pinned pre-read establishes what was observed at that read. It can be useful
+input to a prepared conditional transaction. It does not itself establish what
+the transaction will see. The transaction-time guard supplies that separate
+condition under the qualified backend semantics.
 
-The =:commit-contract= records an obligation, not evidence that an arbitrary
-Request implementation actually performs one atomic guarded write. Production
-Claim must check the command record's operation, Request argument, and bound
-principal before a permitted replay; guard the current Request, Membership,
-Organization, and association together with the ownership and command-result
-write; and retain unknown delivery as participant knowledge. The formal
-profile cannot report checked execution refinement of those actions without
-a real implementation binding and a proof or other justified correspondence
-mechanism. Calling =check-execution-refinement= in this illustrative code does
-not assert its result is =:checked=. In Part VII, preflight and admission apply
-to the whole assembled application after the profile's requirements are met.
+A complete value comparison can allow an ABA history: the value changed and
+later returned to the same value. This is not automatically a safety failure
+for a rule that depends only on current state. If the operation requires that
+no intervening change occurred, the contract needs a history-sensitive token or
+other mechanism. A strictly increasing, non-wrapping revision excludes reuse
+only under complete writer coverage, an explicit overflow policy, and appropriate
+identity treatment across deletion and recreation. Monotonicity is an actual
+ordering property here; ordinary identity propagation is preservation.
 
-The final =production-G= shape leaves two independent gaps.  First, the formal
-subject and the production behavior are not connected by a checked execution
-refinement.  Second, browser-controlled actor identity has escaped its proper
-trust boundary.  Shared names, examples, digest metadata, or agreement on an
-acceptance test do not repair either gap.  Where arbitrary Clojure remains
-behind the public operation contract, its conformance remains an explicit
-trusted/tested premise until stronger evidence discharges that obligation.
+*** Writer coverage reaches beyond HTTP routes
+
+The original operation catalog supplies the abstract operation set. The deployed
+writer inventory supplies the claimed physical coverage. The two are joined
+by checked operation and footprint bindings, not inferred from similar names.
+
+Every relevant writer must be covered: ordinary routes, background jobs, imports,
+maintenance tools, administrative paths, migrations, scheduled work, and external
+services with write credentials. A host-supplied enumerator is evidence of the
+inventory it returns; it does not prove that undeclared writers cannot exist.
+“No inventory available” is not an empty closed inventory.
+
+A stronger deployment claim restricts backend credentials and mutation entrypoints
+so application writers must use the admitted gateway. Operational exceptions
+have their own authority, audit, invariant-preservation, and requalification
+contract. A migration that changes the represented state or bypasses the
+invariant discipline requires an explicit transition or a new justified
+induction entry point before the dependent claim resumes.
+
+Handlers need not all be HTTP handlers, and every writer need not have a route.
+Requiring a fake route for a scheduled operation would confuse physical
+placement with semantic ownership. Coverage checks must join each supported
+entrypoint class to its actual invocation mechanism.
+
+*** HumanHelp Claim as a correspondence slice
+
+Claim's public semantic contract, admitted plan, physical transaction, and
+participant observation have one connected meaning. The example is the
+self-claim case. A separately authorized operation that assigns another helper
+must bind and guard that target helper's Membership as well as the actor's
+permission; it cannot reuse self-claim assumptions unchanged.
+
+The browser sends the domain Request identity and stable
+=:gesso/command-id= through the admitted command boundary. A transport may add
+=:http-request-id= for this delivery. The latter identifies neither the domain
+Request nor the command across retries. The server binds the principal from
+trusted context and validates the operation, interface, canonical arguments,
+and authority-domain binding of the command.
+
+The formal state projection includes the Request and the relationships relevant
+to its primary RequestAssignment, Membership, Organization, and durable command
+record. Primary ownership is not modeled by inventing a =:request/helper-id=
+field. A projection may summarize these relationships, but its representation
+relation must explain how the actual records establish that summary.
+
+The simplified candidate in Part IV illustrates a decision over supplied values.
+Using a nullable helper field in such a projection does not change HumanHelp's
+storage or authority model. Its production correspondence must still account for
+the primary assignment and every guarded relationship on which that value rests.
+
+The transition distinguishes these branches:
+
+| Branch | Required decision | Authoritative effect |
+|--------+-------------------+----------------------|
+| Existing compatible command | Validate its full binding and current permission to disclose its recorded result | Return the permitted recorded result without incorporating again |
+| Existing incompatible command | Detect disagreement in operation, arguments, principal, or authority binding | Reject incompatible reuse; do not disclose another binding's result |
+| New command with satisfied current guard | Enforce the complete current predicate and command exclusion atomically | Incorporate ownership change, command result, and required outbox intent |
+| New command with failed guard | Establish the typed nonincorporation outcome under the command-resolution protocol | No successful claim mutation; retain any separately required rejection record |
+| Outcome not established for participant | Preserve uncertainty and the command binding | Reconcile; do not invent a second successful incorporation or rejection |
+
+The existing-command branch is logically prior to applying the new-command
+business guard. A successful retry must not fail merely because the first
+incorporation made the Request claimed. It still requires compatible binding
+and permitted disclosure. A forbidden lookup must not leak whether a protected
+command record exists.
+
+For a new self-claim, the commit guard covers at least:
+
+- the Request exists in the permitted authority scope and is currently open;
+- the actor is the authenticated helper and has the required active Membership;
+- Membership, Request, and the guarded Organization refer to the same
+  Organization through the actual association paths;
+- the current Organization policy permits this Claim by this principal;
+- the primary-assignment conditions and any absence or uniqueness predicates
+  required by the public model contract hold;
+- the bound command has not already been incorporated incompatibly or won by a
+  concurrent delivery;
+- any other declared current policy dependencies are guarded as part of the
+  same atomic decision.
+
+Request lifecycle change, primary assignment change, durable command result,
+and required publication intent share the promised atomic boundary. An abstract
+single-record induction example does not establish this multi-record Claim
+contract. If the selected physical adapter supports only one-document updates,
+Claim's stronger claim remains unavailable until the complete operation has a
+qualified realization or an explicitly admitted implementation premise under a
+profile that permits it.
+
+The outcome mapping is explicit:
+
+| Model outcome | Presentation treatment | Evidence retained |
+|---------------+------------------------+-------------------|
+| =:committed= | =:accepted= for a successful Claim | Command-specific incorporated result and permitted projection |
+| =:rejected= | =:rejected= | Typed rejection justified by the public command-resolution contract |
+| =:already-incorporated= | Follow the permitted recorded outcome; a recorded successful Claim is accepted | Historical command attribution, with separate current-state provenance |
+| =:commit-unknown= | =:unknown= | Original command binding and unresolved outcome obligation |
+
+A card reacquisition can restore a current authorized presentation. It cannot
+by itself prove which command produced that state. Command-result reconciliation
+is a separate protected acquisition. Lost disclosure permission or expired
+outcome retention may prevent attribution even while a permitted card read can
+supersede the old provisional view. The liveness claim must include the needed
+retention and disclosure premises.
+
+For this slice the correspondence ledger must separately show:
+
+| Obligation | Suitable evidence or explicit premise |
+|------------+----------------------------------------|
+| Abstract Claim preserves the declared invariant | Checked guarded-transition or induction result over the exact projection |
+| Physical records represent that projection | Checked representation definition or scoped trusted mapping |
+| Current policy dependencies enter one atomic guard | Constrained lowering plus qualified backend guard semantics, or another justified refinement |
+| Physical writes implement only the admitted effects | Complete immutable transaction footprint and frame argument |
+| Retry cannot incorporate twice | Atomic command exclusion and durable binding/result contract, including retention |
+| Actual invocation uses the admitted plan | Installed entrypoint and gateway mediation evidence |
+| Commit and outcome are not confused with delivery | Provider outcome qualification and command-resolution enforcement |
+| Required remote notice survives the promised failures | Atomic outbox intent plus the selected dispatch/recovery contract |
+| Browser effect follows its permitted result | Explicit outcome mapping and final effect/adoption gates |
+
+There is no generic call that proves arbitrary Clojure execution refinement
+because an implementation Var was named in a map. Each row must identify the
+mechanism that actually establishes it, or retain the precise premise. Passing
+one Claim scenario is useful integration evidence; it is not a proof of all
+concurrent executions.
 
 *** Formal obligations must return to executable production boundaries
 :PROPERTIES:
 :CUSTOM_ID: req-formal-obligations-return-to-production
 :END:
 
-A formally valid model is useful only to the extent that its correctness-relevant
-assumptions are either realized by production or remain visible as explicit
-premises. Gesso therefore requires both forward semantic correspondence from
-admitted source to its formal and production subjects, and reverse traceability
-from formal results and assumptions back to source and production obligations.
-Reverse traceability is not itself a proof that every formal transition is
-executable in production or that every production behavior is covered by the
-formal model.
+Every formal action and correctness-relevant assumption must trace back to the
+semantic source that owns it and the production boundary responsible for it.
+This reverse traceability is required even when a claim remains conditional.
+It is not a reverse simulation and does not prove that every formal trace is
+physically executable.
 
-The forward direction is familiar:
+An atomic formal Claim action creates an atomic production obligation. A
+formal authenticated principal creates a trusted principal-acquisition
+obligation. A formal fresh resource identity creates an allocation and
+retirement obligation. A formal eventually delivered notification creates the
+specified delivery, retention, retry, and fairness premises. Naming these facts
+in a model does not establish them in the application.
 
-#+begin_example
-Gesso semantic object
-        |
-        v
-normalized semantic IR
-        |
-        +--> executable production realization
-        |
-        +--> formal subject / transition system
-#+end_example
+The record for each obligation must identify its source object, formal subject,
+production binding, relevant identities, evidence class, remaining premises,
+and responsible enforcing boundary. For a cross-model transaction it must retain
+the association and dependency edges, not collapse them into an uninformative
+“current state” label.
 
-The reverse traceability path is equally required:
+Generated formal subjects are derivative artifacts. A supported formal backend
+translates the admitted semantic definitions and property statements. Developers
+may inspect the generated artifact, but repairing it independently to make a
+check pass does not repair the application. A correction belongs in semantic
+source, a property statement, a lowering, a production binding, or an explicitly
+changed assumption, followed by regeneration and rechecking.
 
-#+begin_example
-formal assumption, obligation, or counterexample
-        |
-        v
-correspondence identity
-        |
-        v
-semantic rule / operation / transition
-        |
-        v
-production binding and source location
-#+end_example
+**** Counterexamples identify what actually failed
 
-The purpose of the reverse path is not merely nicer error reporting.  It keeps a
-formal claim from floating free of the program whose behavior the claim is meant
-to constrain.
-
-**** Atomic formal actions create atomic production obligations
-
-If a formal transition treats several observations and writes as one atomic
-action, production must justify an equivalent atomic boundary for the claimed
-property.  The implementation need not resemble the formal syntax and need not
-run on one thread or one host.  It must provide the same correctness-relevant
-semantics.
-
-For example, an abstract Claim action may say that all of these belong to one
-atomic authoritative transition:
+Suppose a candidate Claim model reads “open” before the atomic action and omits
+the current-open guard at incorporation. Its model checker may find:
 
 #+begin_example
-Request is still open
-Membership is still active
-Membership and Request still belong to the same Organization
-command identity is still bound to this operation, principal, and Request
-Request ownership changes
-command result is durably recorded
+A observes Request R open.
+B observes Request R open.
+A incorporates Claim of R.
+B incorporates Claim of R without an intervening release.
+The declared claim-from-open-at-commit property fails in this model.
 #+end_example
 
-Production may discharge that obligation through an XTDB transaction, a
-conditional write, another serializable authoritative mechanism, or a separately
-proved refinement.  A sequence of ordinary reads followed by an unconditional
-write does not discharge the obligation merely because every individual read
-was correct when performed.
+This is a counterexample to that candidate semantic transition. It is not a
+counterexample to a correctly guarded transition merely because both are named
+Claim. If the intended model has the current-open guard, inspect the translation,
+property, and abstraction before attributing the trace to production.
 
-The same rule applies to other formal assumptions.  Examples include:
+Conversely, a safe guarded model can pass while production uses an unguarded
+pre-read. That is a failed or unresolved production-correspondence obligation.
+The report must not suggest that the formal theorem has covered the physical
+transaction when the necessary relation is absent.
 
-- an authenticated principal used by a transition requires a production binding
-  to trusted authentication/session state rather than browser bytes;
-- a current authoritative observation requires a production read/guard whose
-  freshness semantics match the claim;
-- exactly-once incorporation may be realized through idempotent command
-  identity and durable result recording rather than literally once-only network
-  delivery;
-- resource retirement requires the browser realization to reject effects from
-  retired resource instances even if those callbacks physically arrive later;
-- an abstract nondeterministic failure or late delivery must be covered by the
-  concrete adapter/environment behavior admitted by the refinement claim.
+A useful diagnostic includes the violated property, semantic operation, smallest
+useful trace prefix, relevant actors and identities, formal abstraction and
+bounds, source location, corresponding production obligation, and current
+evidence for that obligation. It labels an unconfirmed abstract counterexample
+as abstract. Several possible repair owners remain alternatives until evidence
+distinguishes them.
 
-An obligation is discharged only by named evidence appropriate to the selected
-assurance profile.  If Gesso cannot establish the production mechanism, the
-assumption remains a visible trusted/tested premise.  It must not disappear
-because the generated formal model happened to be safe under that assumption.
+**** Automated repairs use the same evidence rules
 
-A correspondence record may therefore carry information of this shape:
+An assistant may propose a source-level correction, a lowering repair, a new
+explicit premise, or a clarified application policy. It must identify which
+evidence supports the proposal. Weakening an invariant or adding an assumption
+is a visible change to the claim, not an implementation repair disguised as a
+successful check.
+
+A proposed repair is re-elaborated, regenerated, checked, and exercised through
+the relevant production boundaries. It receives no exemption because it was
+automatically generated. The report can answer both “what does this theorem
+constrain in production?” and “which theorem or assumption depends on this
+production behavior?” without requiring manual comparison of two languages.
+
+*** External formalization has a concrete first target
+
+The first external soundness target is the small propositional kernel and its
+formal acceptance relation. Its syntax and rules are those of Part IX: premise,
+truth introduction, implication reflexivity, conjunction introduction and
+elimination, implication elimination, and disjunction introduction. The formal
+statement quantifies over the supported derivations and interpretations; it
+must not smuggle in atomic truth or an undeclared hypothetical-discharge rule.
+
+The external development must then distinguish:
+
+1. Soundness of those mathematical rules.
+2. Correctness of the formal derivation checker for those rules.
+3. Correspondence between that checker and the production Clojure acceptance
+   boundary, including parsing, normalization, rejection, and resource limits.
+4. The typed-proposition bridge from application rules to atom interpretations.
+5. Composition with the source-derived obligations and certificate issuer.
+
+These are separately reportable results. A formal proof of item 1 does not
+establish item 3. A finite audit of one production derivation may supplement
+these results without pretending to replace them.
+
+A proof assistant such as Lean may implement the external role. The required
+interface is an immutable theorem/checker identity, explicit axioms, canonical
+subject encoding, reproducible check, and supported evidence-import contract.
+No application developer must write tactics or maintain a second handwritten
+HumanHelp specification to use an ordinary admitted operation.
+
+Further formal targets are the typed evaluator, guarded-transition consequence
+rules, induction composition, knowledge/provenance judgments, progression
+algebra, projection, and browser refinement. Each target is selected to reduce a
+specific trusted surface, with its own production correspondence. Merely adding
+more formal code is not an assurance objective.
+
+*** Finite exploration and abstraction
+
+An exact-finite claim names its initial states, complete transition relation,
+data domains, property, bounds, and exploration result. It must say whether all
+reachable states were explored and how deadlock, invalid states, and terminal
+states were treated. A timeout, resource limit, missing transition case, or
+partially explored graph is incomplete evidence, not successful exhaustive
+checking.
+
+Bounded active and queued slots do not make the entire state space finite.
+Commands, resource identities, data values, dependency depth, retired metadata,
+and outstanding physical effects may remain unbounded. Checking a few UUIDs or
+counter values establishes only that chosen finite model without a further
+coverage or abstraction theorem.
+
+For a concrete safety transfer, the abstraction must cover every concrete initial
+state in scope, simulate every relevant concrete transition, and ensure that
+the abstract invariant implies the concrete safety property. State mapping alone
+is insufficient. For liveness, fairness and divergence conditions must also be
+preserved as required by the theorem. A finite over-approximation may admit
+spurious counterexamples; concretization determines what can be attributed to
+production.
+
+**** Resource ownership: a local abstraction with an explicit limit
+
+The following executable example isolates one ownership predicate. It uses
+opaque resource and effect identities and an active phase. Identity equality
+and phase are checked again at the point of mutation. It is not the complete
+Part VI adapter: execution ownership, plan compatibility, authority scope,
+observation coverage, and batch completion remain additional conditions there.
 
 #+begin_src clojure
-{:obligation/id :request/claim-current-and-atomic
- :formal-subject :formal/request-claim
- :semantic-subject :semantic/request-claim-op-O31
- :requires
- #{:current-request
-   :current-membership
-   :current-organization
-   :bound-command-identity
-   :atomic-request-and-command-result-write}
- :production-binding
- {:operation :request/claim
-  :model-var 'net.humanhelp.site.model.request.core/claim}
- :discharge
- {:mechanism :xtdb/guarded-transaction
-  :evidence :correspondence/request-claim-X19}
- :source
- {:ns 'net.humanhelp.site.model.request.core
-  :var 'claim}}
+(defn owned-effect? [state callback]
+  (and (= :active (:resource-phase state))
+       (some? (:resource-instance state))
+       (= (:resource-instance state) (:resource-instance callback))
+       (some? (:effect-id state))
+       (= (:effect-id state) (:effect-id callback))
+       (= :awaiting-effect (:effect-phase state))))
+
+(defn ownership-observation [state callback]
+  {:active? (= :active (:resource-phase state))
+   :same-resource? (and (some? (:resource-instance state))
+                        (= (:resource-instance state)
+                           (:resource-instance callback)))
+   :same-effect? (and (some? (:effect-id state))
+                      (= (:effect-id state) (:effect-id callback)))
+   :awaiting? (= :awaiting-effect (:effect-phase state))})
+
+(defn abstract-owned-effect? [observation]
+  (and (:active? observation)
+       (:same-resource? observation)
+       (:same-effect? observation)
+       (:awaiting? observation)))
+
+(def resource-a
+  {:resource-phase :active
+   :resource-instance :fixture/resource-a
+   :effect-id :fixture/effect-a
+   :effect-phase :awaiting-effect})
+
+(def callback-a
+  {:resource-instance :fixture/resource-a
+   :effect-id :fixture/effect-a})
+
+(def resource-b
+  (assoc resource-a
+         :resource-instance :fixture/resource-b
+         :effect-id :fixture/effect-b))
+
+(assert (owned-effect? resource-a callback-a))
+(assert (not (owned-effect? resource-b callback-a)))
+(assert (not (owned-effect? (assoc resource-a :resource-phase :retired)
+                           callback-a)))
+(assert (not (owned-effect? (assoc resource-a :effect-phase :completed)
+                           callback-a)))
+(assert (= (owned-effect? resource-b callback-a)
+           (abstract-owned-effect?
+            (ownership-observation resource-b callback-a))))
 #+end_src
 
-This is illustrative semantic data, not a promise that source metadata alone
-proves atomicity.  The =:discharge= entry must itself be justified by whatever
-checked correspondence, constrained lowering, integration evidence, or trusted
-premise the active profile requires.
-
-**** Generated formal artifacts are derivatives, not a second application
-
-Where Gesso can derive a formal transition system mechanically from admitted
-semantic IR, that generated artifact is not an independently authored source of
-business meaning.  It is a derivative representation of the same admitted
-semantic object.
-
-The preferred path is therefore:
-
-#+begin_example
-application semantic declarations
-        |
-        v
-checked semantic IR
-        |
-        +--> production lowering
-        |
-        +--> formal/model-checking lowering
-#+end_example
-
-rather than:
-
-#+begin_example
-application Clojure  ---- manually synchronized ----  handwritten formal spec
-#+end_example
-
-A supported backend may render the derived transition system into TLA+/TLC,
-Quint, Recife/TLC, or another formal representation.  Backend choice does not
-change semantic ownership: the admitted Gesso object remains the source of the
-application meaning being transferred.
-
-Developers and reviewers may inspect generated formal artifacts.  Framework
-maintainers may of course work directly on backend translations.  But changing a
-generated formal file to make a failed check pass does not repair the
-application.  The repair must occur in the semantic source, production binding,
-formal lowering, or explicitly named assumption from which that artifact is
-derived, after which the artifact is regenerated and rechecked.
-
-This prevents a particularly dangerous false repair:
-
-#+begin_example
-counterexample found
-    -> weaken generated invariant
-    -> checker becomes green
-    -> production remains wrong
-#+end_example
-
-If the application owner intentionally weakens an application invariant, that
-is a semantic-policy change and must be visible as such.  It is not an
-implementation fix.
-
-**** Counterexamples must be interpreted back into application semantics
-
-Raw model-checker traces are valuable evidence but are a poor final diagnostic
-surface for ordinary Gesso development.  Gesso should retain enough provenance
-through formal lowering to translate a counterexample back into the semantic
-objects whose modeled behavior permits it. The production obligation ledger
-then identifies corresponding implementation questions. A trace of the formal
-subject alone does not establish that arbitrary production code took that trace
-or identify the production defect that caused it.
-
-For example, suppose a *candidate* Claim semantic transition checks that a
-Request was open when observed but omits the required current-open guard from
-the atomic commit action. A backend could then report an execution equivalent
-to:
-
-#+begin_example
-A observes Request open
-B observes Request open
-A commits Claim of R
-B also incorporates Claim of R without an intervening release
-the declared claim-from-open-at-commit property is false
-#+end_example
-
-This trace is possible in the defective modeled transition. It would not be a
-counterexample to a formal action that truly guards =:open= atomically with
-incorporation. If a purportedly guarded generated model nevertheless produces
-it, inspect the translation, property statement, bounds, and abstraction before
-claiming that the production transaction is at fault.
-
-The application-level interpretation should identify at least:
-
-- the violated named invariant or business rule;
-- the semantic operation and transition participating in the failure;
-- the relevant executions/actors/authorities where meaningful;
-- the smallest useful prefix of the counterexample;
-- the semantic rule, formal lowering, or stated assumption whose change would
-  exclude this modeled trace, to the extent the evidence identifies it;
-- the bound Clojure/Gesso source object or source span that owns that semantic
-  decision;
-- the related production obligation and its current evidence class, without
-  claiming the trace has demonstrated an implementation defect;
-- any abstraction or trusted premise relevant to interpreting the trace.
-
-A diagnostic may therefore read conceptually:
-
-#+begin_example
-COUNTEREXAMPLE IN THE FORMAL SUBJECT
-
-Declared property:
-  :request/claim-requires-open-at-commit
-
-Operation:
-  :request/claim
-
-Trace:
-  execution A observed Request R open
-  execution B observed Request R open
-  execution A incorporated Claim
-  execution B incorporated Claim without an intervening release
-
-Modeled cause:
-  the candidate Claim action tests the earlier observation but does not
-  require Request R to remain open at its atomic commit
-
-Semantic repair owner:
-  admitted :request/claim transition / current-open requirement
-
-Corresponding production binding:
-  net.humanhelp.site.model.request.core/claim
-
-Production obligation to check separately:
-  current-open guard, ownership write, and command-result write share the
-  required authoritative atomic transition
-
-Production conclusion from this formal trace alone:
-  not established
-#+end_example
-
-The formal result rejects the candidate model's claimed property. Repair the
-semantic source or a faulty formal lowering as appropriate, regenerate, and
-recheck it. A production realization might independently have a correct atomic
-guard or might share the defect; resolving that question requires the applicable
-production correspondence and implementation evidence. Conversely, a formal
-model with a correct atomic guard can pass while production uses an unguarded
-pre-read. In that case the failure is an unresolved or refuted production
-correspondence obligation, not a counterexample to the guarded formal model.
-
-The interpretation must not invent certainty that the formal result did not
-establish. If an abstract counterexample has not been concretized under the
-abstraction relation, it is labeled accordingly. Several possible semantic,
-translation, or implementation repair locations should remain alternatives
-until evidence distinguishes them.
-
-The same correspondence metadata is useful before failure.  A reviewer should
-be able to ask what a production operation means formally and what formal
-obligations depend on a source construct without manually comparing two
-languages.
-
-**** Source-level repair is the supported automation boundary
-
-This correspondence path is especially important for automated repair.  A tool
-or language model may be very good at ordinary Clojure and application concepts
-while being much less reliable at constructing or repairing temporal-logic
-specifications.  Gesso should exploit that asymmetry rather than make formal
-syntax the ordinary repair surface.
-
-A supported automated loop is:
-
-#+begin_example
-Clojure / Gesso semantic source
-        |
-        v
-preflight and elaboration
-        |
-        v
-generated formal model
-        |
-        v
-proof / model checking
-        |
-        v
-counterexample or unsatisfied obligation
-        |
-        v
-Gesso interpretation
-        |
-        v
-source-level proposed repair
-        |
-        v
-full regeneration and rechecking
-#+end_example
-
-The automated assistant may suggest correcting an admitted semantic transition,
-fixing a formal lowering, changing an authoritative transaction when separate
-implementation evidence identifies that defect, adding a missing admitted
-premise, refining choreography, or promoting a confirmed policy into an
-explicit invariant. It must label which evidence supports each proposed repair.
-It does not gain authority to edit generated proof/model artifacts as an
-independent way to obtain a green result.
-
-This does not make an automated repair trustworthy merely because it was
-suggested at the source level.  The repaired source must pass the same
-preflight, correspondence, proof/model-checking, concrete test, and admission
-boundaries as a human-authored change.
-
-**** Acceptance criterion
-
-For every formal or model-checked claim transferred to production, the
-assurance report can answer both directions:
-
-1. *What production semantic object and executable boundary does this formal
-   subject correspond to?*
-2. *What production evidence discharges each correctness-relevant assumption
-   used by the formal claim?*
-
-For a failed formal check, the report can identify the corresponding semantic
-rules/operations and their production bindings without requiring the developer
-to reverse-engineer backend syntax.  Unsupported or opaque implementation
-behavior remains explicit rather than being silently covered by the formal
-claim.
-
-
-*** External proof assistant role
-
-Lean is the leading candidate, but the architectural role matters more than the
-particular proof assistant. Initial formal objects should remain smaller than
-the full implementation:
-
-- proposition syntax and semantic type judgments;
-- knowledge/provenance entailment;
-- authority/capability entailment;
-- the declared progression requirement algebra;
-- certificate dependency composition;
-- selected transition invariants and projection properties.
-
-Application developers continue to author Clojure/Clojure data and Gesso's
-closed semantic languages. Ordinary development does not require Lean, tactic
-knowledge, manual proof trees, or hand translation of HumanHelp rules into a
-second language. The framework derives the relevant formal objects where their
-meaning is mechanically available.
-
-*** Exact claim and correspondence direction
-
-A theorem about a formal checker is insufficient if production accepts different
-derivations or executes a different plan. Every transferred claim must identify:
-
-- the formal subject and proposition, including assumptions and supported subset;
-- the concrete production object and its immutable identity/version;
-- the representation relation between formal and production subjects;
-- the checking, translation, or refinement relation used for transfer;
-- the direction and scope of that relation;
-- the remaining implementation and toolchain trust premises.
-
-For sound admission, a typical required direction is: whenever the production
-boundary accepts a subject for guarantee G, the corresponding formal judgment
-holds under the recorded premises. Agreement on rejected examples alone does
-not establish this direction. Completeness, meaning acceptance of every valid
-supported subject, is a different property. A sound checker may be conservative;
-usability and supported-feature acceptance must still prevent “reject all” from
-being treated as a successful implementation.
-
-For execution safety, a trace/refinement argument must account for every
-relevant concrete behavior and its observable meaning. Mere acceptance-set
-agreement does not prove that the runtime executes the certified plan correctly.
-For liveness, correspondence must additionally address divergence, scheduling,
-and fairness as needed; a safety simulation that allows arbitrary stuttering
-cannot alone establish progress.
-
-*** Correspondence mechanisms and their evidence
-
-Select the smallest mechanism that demonstrably reduces the trusted gap. The
-following mechanisms have different assurance implications.
-
-| <24> | <38> | <38> |
-| Mechanism | What it can establish | Remaining obligation |
-|-----------+-----------------------+----------------------|
-| Externally checked proof terms | The particular admitted proposition follows from accepted premises | Bind proof, subject, dependencies, and actual production artifact; enforce the check |
-| Generated or extracted checker | Implementation originates from the formal definition | Justify translation/extraction and execution toolchain, or identify them as trusted |
-| Mechanically proved comparison/refinement | A stated relation holds for all objects in the proved domain | Identify domain, direction, representation relation, and assumptions |
-| Exhaustive comparison over a finite domain | Acceptance/results agree throughout that specified finite domain | Do not extend to unbounded inputs without a sound coverage argument |
-| Generated conformance vectors | Tested implementations agree on those vectors | Tests alone do not prove correspondence outside the exercised cases |
-
-Using every currently generated vector, or covering every inference-rule tag,
-does not establish coverage of all rule parameters, combinations, recursive
-proof trees, malformed encodings, or production paths. Such results remain
-conformance tests unless a separate argument establishes exhaustive coverage
-for the claimed domain. More than one mechanism may be needed.
-
-A source review saying “the Clojure rule looks like the Lean theorem” is review
-evidence, not formal correspondence. Similarly, using a formally specified
-algorithm does not prove a handwritten implementation conforms to it.
-
-*** Bind formal checking to the admitted production artifact
-
-The correspondence path must bind the normalized subject, complete required
-obligations, derivation, dependencies, proof-kernel semantics, and result to the object
-actually admitted. The boundaries identified in [[#req-proof-kernel-boundary]]
-remain relevant: normalization, projection, executable lowering, and runtime
-realization each need appropriate checked correspondence or named trust.
-
-An independently valid proof about subject A must not authorize construction of
-subject B. Copying A's identity onto B is insufficient. Build/startup must bind
-the admitted plan and generated artifact to the admitted assembly generation actually served,
-following Part VII. Immutable references or revalidation must prevent a later
-mutable lookup from substituting a different object after checking.
-
-If an external check is a required construction gate, unavailable checking,
-timeout, unsupported features, or invalid evidence prevent that admission. The
-system may retain an already admitted valid assembly generation under the declared
-lifecycle contract; it must not silently waive the requested certification
-profile. Proof sidecars remain unnecessary for runtime semantic decisions after
-admission and never become authorization capabilities.
-
-*** Formal work follows stable semantics
-
-Make the semantics explicit, use them in production, exercise adversarial cases,
-stabilize the relevant checking rules, and then formalize them. The aim is to
-reduce a specific trusted surface rather than repeatedly translating unstable
-representations or encoding the whole implementation wholesale.
-
-The selected formal scope may grow incrementally. Each report names the actual
-subset proved and the properties still checked, tested, or trusted. A theorem
-for one primitive cannot silently cover every expression using other primitives.
-
-*** Finite checking and abstraction
-
-Exact finite exploration establishes a property over its specified finite model.
-The model must name its initial states, transitions, data domains, property, and
-exploration completeness. A timeout or partially explored graph is incomplete
-evidence, not a successful exact check or a counterexample.
-
-Checking resource-instance counter values 0 through 3 establishes only that
-bounded result unless a sound abstraction argument covers all relevant concrete
-resource instances, counter scopes, and reuse/retirement behavior. Opaque instance
-identities may require a different abstraction; no universal counter is assumed.
-The same
-applies to command identities, progression tokens, dependency depth, queue
-metadata, and retired physical effects. Bounded queue slots do not imply a
-finite overall state space.
-
-An abstraction supporting a concrete safety claim must preserve the relevant
-initial states and simulate all concrete transitions needed for that claim,
-with the abstract invariant implying the concrete safety property. Merely
-mapping each state to some abstract state is insufficient. A liveness transfer
-needs the additional progress/fairness/divergence conditions its theorem uses.
-An abstract counterexample may require concretization before being reported as
-a realizable production failure.
-
-
-**** Worked abstraction slice: resource ownership without a fake finite universe
-
-Browser resource-instance identities may be unbounded even when the safety
-property depends on only a small relation among them.  Checking four chosen
-UUIDs would therefore prove only an artificial four-value model.
-
-#+begin_src clojure
-(def concrete-state
-  {:target :request-list
-   :current-resource-instance #uuid "62eae6bf-d8e5-4faa-9c65-5387408ec111"
-   :retired-resource-instances
-   #{#uuid "e3ff7f3d-a62e-4995-9ef9-314298250812"}
-   :pending
-   {#uuid "62eae6bf-d8e5-4faa-9c65-5387408ec111"
-    {:effect :fragment-fetch
-     :phase :awaiting-response}}})
-
-(defn callback-admitted? [state callback]
-  (and (= (:resource-instance callback)
-          (:current-resource-instance state))
-       (not (contains? (:retired-resource-instances state)
-                       (:resource-instance callback)))
-       (contains? (:pending state)
-                  (:resource-instance callback))))
-
-(defn abstract-instance [state instance]
-  (cond
-    (= instance (:current-resource-instance state)) :instance/current
-    (contains? (:retired-resource-instances state) instance) :instance/retired
-    :else :instance/other))
-
-(defn abstract-callback [state callback]
-  {:instance-class
-   (abstract-instance state (:resource-instance callback))
-   :pending?
-   (contains? (:pending state) (:resource-instance callback))
-   :retired?
-   (contains? (:retired-resource-instances state)
-              (:resource-instance callback))
-   :event (:event callback)})
-
-(defn abstract-admitted?
-  [{:keys [instance-class pending? retired?]}]
-  (and (= instance-class :instance/current)
-       pending?
-       (not retired?)))
-
-(def resource-ownership-obligation
-  {:initial :every-concrete-initial-state-has-related-abstract-state
-   :step :every-relevant-concrete-transition-is-simulated
-   :fresh-name :allocation-preserves-required-equality-and-inequality
-   :retirement :current-identity-cannot-remain-permitted-when-retired
-   :metadata :pending-and-retired-sets-are-bounded-or-soundly-abstracted
-   :property
-   [:implies
-    [:abstract-callback-admitted?]
-    [:concrete-callback-owned-by-current-resource?]]
-   :scope
-   #{:start-resource :retire-resource :receive-callback
-     :authoritative-install}})
-#+end_src
-
-If the abstraction relation and simulation obligation are machine-checked,
-exhaustive exploration of the finite abstract state space can support a claim
-about every concrete identity covered by that theorem.  Without that bridge,
-the same exploration is merely bounded evidence.  Liveness still needs its own
-scheduling/fairness argument rather than inheriting this safety result.
-Here =abstract-callback= is only a *local observation abstraction*, not a
-complete finite transition system. A real proof must specify the abstract
-state and all transitions, preserve equality and freshness when an arbitrary
-new identity becomes current, and account for unbounded pending/retired
-metadata. It must also state the invariant that a retired current instance
-cannot retain effect permission. This slice checks resource ownership alone;
-execution identity, effect phase, and deferred DOM mutation require their own
-admission conditions. None of the symbols in =resource-ownership-obligation=
-is itself a discharged theorem.
-
-*** Evidence package and maintenance
-
-A formal claim is reviewable only when its evidence identifies:
-
-- theorem statement and formal semantic definitions;
-- proof/checker versions, relevant options, and any admitted axioms;
-- normalized subject, dependency closure, and artifact identities;
-- representation/correspondence definitions and their evidence class;
-- exact finite bounds or abstraction soundness evidence where used;
-- the production boundary enforcing admission;
-- open assumptions and excluded behavior;
-- reproducible checking instructions and the observed result.
-
-A changed semantic rule, primitive, checker, translation, or production binding
-must trigger the rechecking appropriate to its dependency edges. Unchanged
-interface-level proofs may remain reusable while implementation correspondence
-needs renewed evidence. The maintenance contract must not confuse a theorem's
-continuing mathematical validity with applicability to a changed release.
+The four Boolean observations support a local predicate comparison. They are
+not by themselves a finite transition system. A finite abstraction for the
+whole adapter must also specify allocation, identity freshness, replacement,
+retirement, queues, and adversarial late events while preserving the necessary
+equality relationships. It must account for two callbacks that alias the same
+identity and callbacks that do not. Collapsing all old identities into one name
+without preserving the relevant relations can change the modeled behavior.
+
+The final-mutation requirement follows even before a universal abstraction
+proof exists: callback A may pass its first check, be deferred, and arrive at
+mutation after resource B has replaced A. The shell must evaluate ownership
+against B at that moment. Retaining the earlier Boolean =true= is not permission.
+The same distinction applies when a completed effect has consumed its phase but
+a duplicate callback arrives.
+
+*** Reproducible formal evidence and maintenance
+
+An evidence package includes the theorem or model property, semantic versions,
+canonical subject and dependency identities, checker and toolchain versions,
+options and axioms, exact bounds or abstraction proof, actual observed result,
+and instructions to reproduce it. It records the production enforcement and
+remaining assumptions separately from proof-generation diagnostics.
+
+A relevant semantic, primitive, codec, checker, translator, adapter, backend,
+or build change invalidates the applicable dependent evidence. The dependency
+graph determines scope: an unchanged interface theorem may be reused while its
+physical realization needs requalification. Content identities must include all
+meaning-changing fields without treating every irrelevant source edit as a new
+semantic interface.
+
+Admitted assumptions are not erased when a downstream check succeeds. Their
+continued applicability, revocation, and replacement follow the assumption
+propagation contract of Part IX. External theorem validity and applicability to
+a particular deployed assembly are reported separately.
 
 ** Trusted computing base, security boundaries, and failure modes
 :PROPERTIES:
 :CUSTOM_ID: req-trusted-system-boundaries
 :END:
 
-The formal architecture is credible only when the trusted computing base is
-named and kept small.
-
-*** Assurance ledger
-
-For each release/milestone, the root assurance report should identify:
-
-- proof-kernel namespaces/size;
-- elaborator/compiler namespaces;
-- runtime-enforced boundary namespaces;
-- trusted external libraries/systems;
-- application assertions;
-- properties machine-proved;
-- properties kernel-checked;
-- properties exact-finite checked;
-- properties assembly-verified;
-- properties runtime-enforced;
-- properties supported only by tests;
-- exact implementation, dependency, and semantic/checker versions in scope;
-- correspondence and admission boundaries that bind the evidence to production;
-- conditional-liveness premises and unresolved obligations.
-
-Namespace size is useful audit information, not a proof of soundness. The ledger
-must distinguish the logical trusted base from the larger runtime, security,
-and availability dependencies. Each claim identifies the relevant subset;
-listing every dependency without saying which claim relies on it is insufficient.
-
-A smaller explicitly named TCB is preferable to a much larger system described
-vaguely as formal.
-
-*** Typical trusted/external boundaries
-
-The exact list evolves with implementation, but likely boundaries include:
-
-- JVM/Clojure runtime;
-- ClojureScript/JavaScript engine;
-- browser primitive behavior;
-- supported HTMX lifecycle contract;
-- Aleph/Ring transport implementation;
-- authentication/session implementation;
-- XTDB transaction/consistency implementation;
-- operating system/network behavior;
-- external proof assistant and its proof-checking kernel implementation where used;
-- parsing, serialization, normalization, extraction/code generation, and build
-  tooling wherever their correctness is not independently checked;
-- primitive operator semantics and cryptographic assumptions used for identity
-  or authenticated evidence.
-
-These are not ignored.
-
-They are named premises.
-
-Real integration and adversarial testing exists partly to challenge them.
-
-*** Certificate system does not replace runtime authorization
-
-A malicious browser may forge:
-
-- serialized maps;
-- DOM;
-- JavaScript;
-- headers;
-- semantic IDs;
-- plan-looking objects;
-- certificate-looking objects;
-- role/principal fields;
-- basis/provenance claims.
-
-Therefore:
-
-- server authority comes from trusted server context and current model policy;
-- endpoints resolve operations through trusted registries;
-- protected reads/subscriptions remain server-authorized;
-- cached/persisted certificates re-enter through structural/semantic validation;
-- artifact signing may protect integrity but does not prove semantic correctness;
-- a structural certificate about a route never substitutes for validating its
-  concrete invocation before protected execution.
-
-The security claim is relative to its specified threat model and boundary. A
-browser may propose arbitrary bytes; hostile code already holding server-side
-transaction authority is a different trust condition. Server authorization must
-hold even if checked rendering is bypassed. Authentication, request-origin/CSRF
-controls where relevant, input/resource limits, and protected-data disclosure
-follow the actual transport contract; a non-escalation theorem about the modeled
-protocol does not automatically prove the security of the entire web stack.
-
-*** Hashes are identities, not proofs
-
-A checked digest provides correspondence evidence for specified bytes or
-normalized content under the canonicalization and collision-resistance
-assumptions. A digest string copied into unverified metadata provides no such
-binding by itself.
-
-It does not establish the truth of the proposition associated with those bytes.
-
-The architecture always distinguishes:
-
-#+begin_example
-identity evidence
-    from
-semantic proof evidence
-#+end_example
-
-
-A cache lookup makes the distinction operational. This small data example
-compares *claimed* artifact IDs; it does not inspect served bytes or establish
-that either ID is genuine. Even when the real Part VII currentness check has
-established byte identity, old semantic evidence can be stale under a new
-dependency closure.
-
-#+begin_src clojure
-(def cached-browser-artifact
-  {:artifact/id "sha256:91b..."
-   :proof-report/id :proof/request-board-R12
-   :dependencies
-   {:claim-operation :semantic/request-claim-op-O31
-    :membership :semantic/membership-M18}
-   :assembly-generation :assembly/H42})
-
-(def current-application
-  {:required-artifact/id "sha256:91b..."
-   :dependencies
-   {:claim-operation :semantic/request-claim-op-O31
-    :membership :semantic/membership-M19}
-   :assembly-generation :assembly/H43})
-
-(defn claimed-artifact-id-equal? [cached current]
-  (= (:artifact/id cached) (:required-artifact/id current)))
-
-(defn claim-compatible-with-current-closure? [cached current]
-  (and (claimed-artifact-id-equal? cached current)
-       (= (:dependencies cached) (:dependencies current))
-       (= (:assembly-generation cached) (:assembly-generation current))))
-
-(claimed-artifact-id-equal?
-  cached-browser-artifact current-application) ;=> true
-(claim-compatible-with-current-closure?
-  cached-browser-artifact current-application) ;=> false
-#+end_src
-
-The copied digest claim cannot authorize carrying the old Membership-dependent
-proposition into the new assembly. To establish actual byte correspondence,
-the checker must inspect the asset production will serve and relate its digest
-and emitted plan registry to the current manifest/receipt under Part VII's
-build and serving contract. Only then is artifact identity evidence available;
-it still does not prove the proposition associated with those bytes.
-
-*** Elaborator/checker shared-bug risk
-
-A rich elaborator and a checker implemented from the same misunderstanding may
-share a bug.
-
-Mitigations include:
-
-- deliberately small proof kernel;
-- adversarial malformed derivations;
-- independent rule tests;
-- external formalization;
-- production/formal correspondence.
-
-The purpose of the independent proof-kernel/formal step is specifically to reduce the
-amount of semantic correctness that depends on trusting the compiler that
-generated the evidence.
-
-*** Certificate forgery
-
-Same-shaped map construction must not enter certified APIs.
-
-A public API that accepts:
-
-#+begin_src clojure
-{:semantic-id X
- :valid? true}
-#+end_src
-
-as equivalent to a checker-issued certified value defeats the architecture.
-
-Certified values use checker-controlled constructors and validated persistence
-boundaries.
-
-*** Circular trust
-
-An operation contract cannot prove its own implementation merely by declaring
-the postcondition it wants.
-
-Likewise:
-
-- a rule cannot certify itself;
-- a certificate cannot accept itself as its own dependency;
-- a proof of projection cannot assume the preservation theorem it is intended to
-  establish.
-
-Certificate dependencies remain acyclic. Supported recursive semantics use an
-explicit checked fixed-point/induction rule within a component, with a soundness
-argument for that rule. They do not permit circular certificate justification.
-Unsupported cycles reject.
-
-*** Assertion inflation
-
-=:asserted= is a legitimate proof-DAG leaf.
-
-It is not an escape hatch for every difficult obligation.
-
-Root reports should count and surface assertions prominently so an application
-whose "proof" is mostly assertion is visibly different from one with derived
-guarantees. Counts are diagnostic information, not a confidence score: one
-central opaque premise may matter more than many minor assertions. Reports must
-show which guarantees depend on each premise. Required proof-kernel obligations cannot
-be converted into assertions merely because checking them failed.
-
-*** Semantic-fingerprint under-approximation
-
-If normalization omits a semantically relevant field, a stale certificate may
-appear current.
-
-Fingerprint normalization therefore needs adversarial mutation tests.
-
-*** Semantic-fingerprint over-approximation
-
-If normalization includes irrelevant implementation/source details, harmless
-edits invalidate too much of the proof DAG and developers are incentivized to
-bypass certification.
-
-Semantic interfaces should therefore be minimal.
-
-*** Proof artifacts must remain noninterfering
-
-Proof sidecars, derivation trees, theorem metadata, and diagnostics never become
-inputs to production transition decisions.
-
-A proof system that changes runtime meaning when enabled has created a second
-semantic channel.
-
-*** "Verified" remains qualified
-
-Public reports should prefer specific classifications:
-
-- machine-proved;
-- kernel-checked;
-- exact-finite checked;
-- assembly-verified;
-- runtime-enforced;
-- trusted;
-- asserted;
-- tested.
-
-The unqualified word =verified= should not be allowed to hide materially
-different evidence. Conditional-liveness qualifications remain attached to the
-relevant claim alongside, rather than in place of, its evidence classification.
-
-*** Arbitrary Clojure is not the formal target
-
-The strongest proof effort concerns:
-
-- the closed semantic rule language;
-- semantic interfaces;
-- choreography;
-- projection;
-- adapter transition semantics;
-- certificate composition.
-
-It does not attempt to prove arbitrary host-language behavior by pretending all
-Clojure is inside the small logic.
-
-Implementation conformance outside the closed semantic subset stays explicitly
-trusted/tested until separately constrained or verified.
-
-** Validation ladder
-
-Stronger formal assurance does not remove the need for concrete testing layers.
-
-Retain:
-
-- unit tests;
-- property tests;
-- exact finite-state exhaustive checks;
-- JVM/Node/Chromium portable conformance;
-- real HTMX/SSE/EventSource integration;
-- adversarial browser tests;
-- XTDB integration tests;
-- multi-node tests when multi-node Live exists;
-- generated-artifact freshness tests.
-
-Their role becomes clearer:
-
-#+begin_example
-formal proof
-  -> semantic theorem
-
-certificate checking
-  -> downstream theorem composition
-
-runtime checks
-  -> concrete premises
-
-integration/adversarial tests
-  -> scoped evidence about shell correspondence and external assumptions
-#+end_example
-
-*** Evidence layers are complementary
-
-A useful failure can live outside the theorem boundary.
-
-For example:
-
-- a proof may establish adapter execution/resource-instance isolation;
-- a Chromium test may reveal that an HTMX lifecycle event is normalized
-  incorrectly;
-- a property test may find an elaborator bug before the proof kernel sees its output;
-- an XTDB integration test may reveal an incorrect assumption about snapshot
-  propagation;
-- a HumanHelp multi-client test may reveal a missing whole-application edge.
-
-The correction may occur in:
-
-- semantics;
-- implementation;
-- trusted-assumption definition;
-- application assembly;
-- application policy.
-
-The framework should not distort the proof boundary merely to make every bug a
-theorem violation. Acceptance records the first enforcing boundary, the actual
-admitted assembly generation, and the evidence scope. Expected network/console failures
-in fault scenarios are asserted precisely; unrelated failures still fail the
-scenario. A test-only wrapper rejecting before the real boundary is reached is
-not evidence that production enforces that boundary.
+Every claim identifies its trusted base. The logical trusted base, physical
+execution dependencies, security boundary, and availability premises overlap
+but are not identical. Listing every library without indicating which claim
+depends on it is insufficient.
+
+*** The assurance ledger
+
+The root ledger identifies the executable semantic core, proof kernel, semantic
+checkers, normalizers, elaborators, lowerings, runtime gates, build process,
+external checkers, and implementation or dependency versions in scope. It joins
+these to original obligations, accepted evidence, application assertions,
+external assumptions, and enforcing boundaries.
+
+For a physical claim, include the actual serving process's assembly identity,
+installed handler binding, artifact manifest, backend connection identity, and
+relevant runtime configuration under their stated trust contracts. An identity
+is recorded only where it has been acquired or verified appropriately. A value
+copied from caller metadata is labeled as claimed, not observed.
+
+The ledger exposes which claims are conditional, unsupported, stale, refuted, or
+blocked by profile requirements. It preserves the reason and first boundary of
+failure without leaking protected inputs, command records, document contents,
+credentials, or raw provider exceptions into public diagnostics.
+
+Source size and namespace inventories help focus review. They are not proof of
+soundness. A small explicitly described kernel is valuable because it reduces
+the surface requiring trust and analysis, not because short code is inherently
+correct.
+
+*** Backend assumptions are qualified contracts
+
+The goal is not to prove all of XTDB. The goal is to state exactly which backend
+behaviors the application's claims use, qualify the concrete backend and adapter
+combination against those behaviors, and invalidate dependent applicability when
+that qualification no longer holds. This follows
+[[#req-backend-assumption-qualification][Part I]].
+
+Each assumption record contains:
+
+- a stable proposition and the scope of the operations relying on it;
+- the backend product and exact version or justified compatible version range;
+- the adapter, client, query or transaction subset, codecs, topology, and relevant
+  configuration;
+- its source of justification and evidence classification;
+- the executable qualification cases and their expected semantic outcomes;
+- the recorded observations and known limits of those cases;
+- invalidation triggers, responsible owner, and the admission/runtime response.
+
+Qualification tests must use the production lowering and actual backend boundary
+for the claim in question. A fake adapter that returns expected statuses tests
+the fake, not backend semantics. Conversely, backend tests do not establish that
+all production writers use the tested lowering.
+
+The qualification contract covers the behaviors actually used:
+
+| Assumption | Required challenge cases | Consequence of failure |
+|------------+--------------------------+------------------------|
+| Guard and mutation share the promised atomic semantics | Concurrent conflicting changes; guard failure; no partial promised writes | Dependent atomic-transition claim cannot be admitted |
+| Physical replacement preserves the declared frame | Concurrent edits outside business fields; added/absent/null fields; unsupported values | Reject the lowering or strengthen its guard/update mechanism |
+| Relationship and absence constraints hold | Competing inserts, reassignment, association changes, duplicate command deliveries | Dependent uniqueness, authorization, or deduplication claim fails |
+| Provider outcome means what the adapter reports | Submission/return/exception distinctions; abort; lost reply; restart and reconciliation | Preserve uncertainty unless authoritative evidence resolves it |
+| Read basis and coverage have the declared meaning | Lagging readers; pinned multi-query projections; insufficient progression; reconnect | Refuse false discharge or authoritative-currentness claims |
+| Required intent survives commit failure windows | Crash before commit, after commit before dispatch, during retry, and after acknowledgment | Narrow or reject the claimed publication-recovery guarantee |
+| Revision discipline supports a history claim | Competing writers, delete/recreate, restoration, and numeric exhaustion | Do not claim ABA exclusion without the complete discipline |
+
+Provider time semantics are explicit. Valid time, system or transaction time,
+application domain revision, and a basis sufficient for progression are not
+interchangeable. A transaction receipt that establishes one does not fabricate
+the others. A read option must be qualified for the actual provider version;
+returning the caller's requested token in response metadata is not evidence
+that the read satisfied it.
+
+The tests must distinguish a property violation from an unavailable environment
+or inconclusive run. A passed finite corpus is tested evidence under the named
+external premise, not proof that every backend defect will be detected. No
+finite suite can guarantee discovery of every future incompatible behavior.
+The operational guarantee is that relevant changes and observed contradictions
+invalidate qualification and trigger its declared response; the evidence report
+must not promise omniscient detection.
+
+*** Qualification is enforced, not merely documented
+
+Build/startup checks the selected backend profile and required qualification
+identity. Changing the backend, adapter, transaction shape, relevant codec,
+configuration, or topology requires the applicable requalification. A compatibility
+range is allowed only with an explicit justification; a floating dependency
+version cannot silently inherit the old result.
+
+When a required premise is known to be violated, the affected guarantee is no
+longer applicable. The selected strict profile blocks new affected mutations or
+admission and exposes the failure. It may preserve safe reads or unaffected
+operations where their premises still hold. It must not silently downgrade the
+same requested claim to “tested.”
+
+An operational incident may require reconciliation of already submitted commands.
+Stopping new submissions does not undo past commits or turn in-flight outcomes
+into rejections. Command evidence and admitted recovery paths remain available
+under their own authorization and safety contracts. A pre-existing theorem can
+remain valid as a conditional statement while its failed production premise is
+reported as unsatisfied.
+
+*** Runtime authority survives every formal boundary
+
+The browser is permitted to send arbitrary bytes. It may forge command-looking
+maps, DOM, headers, semantic IDs, certificate-looking objects, roles, principal
+fields, basis tokens, and resource references. Server authority still comes
+from trusted context and current public model policy.
+
+Trusted registries resolve operations; protected reads, command lookups, and
+subscriptions are authorized at their actual boundaries. Artifact signing may
+establish origin or integrity under its key assumptions. It does not establish
+semantic correctness or authorize a principal. A checked rendering path does
+not replace endpoint authorization when the rendering is bypassed.
+
+The transport contract also owns request-origin controls, input limits,
+authentication/session handling, and protected-data disclosure. A theorem about
+modeled non-escalation is not a proof of the entire web stack. Hostile code with
+arbitrary JVM introspection or direct database credentials is outside an ordinary
+cooperating-process capability model unless a separate isolation mechanism is
+part of the stated threat model.
+
+Local opaque handles and captured function identities prevent common accidental
+substitution and forged report use. They are not a JVM sandbox, persistent
+revocation service, or defense against arbitrary modification of trusted code.
+A weak registry's garbage collection is not semantic retirement. Persisted data
+re-enters through validation; it does not regain issuance merely by preserving
+a printed identifier.
+
+*** Hashes, compatibility, and installed artifacts
+
+A recomputed digest binds specified bytes or normalized content under its
+canonicalization and collision assumptions. A copied digest string does not.
+Neither proves the proposition associated with the bytes.
+
+An unchanged browser asset can still have stale evidence if a required semantic
+dependency changed. Conversely, a newly built compatible artifact need not
+invalidate every interface theorem. Exact artifact identity, semantic interface
+compatibility, and assembly applicability are checked separately according to
+Parts VII and IX.
+
+The browser build receipt binds canonical manifest input, trusted compiler
+identity, emitted plan registry, and actual output bytes. Startup verifies the
+asset that will be served. A manifest string embedded by an arbitrary emitter
+is not proof that its JavaScript implements the plan. The compiler and runtime
+remain named premises unless separately justified by correspondence evidence.
+
+The serving process must adopt the final checked handler, not a retained earlier
+closure. A local system-map assignment or router certificate is evidence about
+that inspected binding; the deployed-handler claim requires the actual server
+handoff. Deferred response bodies and streams retain the appropriate assembly
+and output-validation scope through emission. Versioned assets and protocol
+compatibility follow the coherent activation and retirement rules of Part VII.
+
+*** Circular trust, shared bugs, and assertion inflation
+
+An operation cannot prove its own implementation by declaring its desired
+postcondition. A certificate cannot count itself as its dependency. Recursive
+semantics require an explicit sound fixed-point or induction rule, not a cycle
+of mutually approving reports.
+
+Source-rechecking, independent negative examples, mutation tests, independently
+implemented checks, external formalization, and actual-boundary integration
+challenge different failures. They should remain separate mechanisms. Two
+wrappers around the same faulty predicate do not become independent evidence
+because they produce different report types.
+
+Original obligations remain visible. A report must show which root guarantees
+depend on each asserted or trusted premise. One central opaque premise may
+matter more than dozens of small checked facts. Required evidence cannot be
+removed from the ledger or made optional merely because the current checker
+cannot establish it.
+
+Semantic fingerprints need both negative and positive controls: meaning-changing
+mutations must invalidate the applicable claims, while harmless source or
+formatting changes should preserve compatible interfaces. Under-approximation
+admits stale meaning; over-approximation encourages unnecessary proof churn.
+
+*** Sidecar noninterference and required gates
+
+Optional proof trees, theorem metadata, debugging traces, and diagnostic sidecars
+must not become inputs to production transition decisions. For the same admitted
+plan, initial state, and event stream, their presence or absence must not change
+the semantic result. Failure of optional reporting must not invent a commit,
+rejection, or effect permission.
+
+Required admission checks are different: they determine whether construction or
+execution is permitted under the selected profile. Their failure may prevent
+admission. Runtime authorization and currentness checks likewise enforce real
+premises. Noninterference does not require bypassing either kind of gate.
+
+If durable audit or publication is required for the operation's semantics, it is
+an explicit operation obligation with a failure contract, not an optional
+sidecar. Required effects cannot be hidden as diagnostics and then discarded
+under a noninterference rule.
+
+** Validation through the real enforcing boundaries
+
+Formal and concrete evidence are complementary. Retain unit and property tests,
+exact finite checks, portable-runtime conformance, real browser integration,
+backend qualification, installed-application acceptance, and multi-node fault
+scenarios where their claim depends on physical deployment.
+
+An acceptance case records its admitted assembly and artifact, input and fault
+schedule, expected semantic result, first enforcing boundary, actual observation
+origin, and remaining assumptions. A negative test must reach the boundary it
+claims to test. A test-only wrapper that rejects earlier is not evidence that
+the production gateway, endpoint, or browser mutation gate enforced the rule.
+
+*** Required mutation and positive-control pairs
+
+| Mutation or failure | Expected enforcing boundary | Positive control |
+|---------------------+----------------------------+------------------|
+| Change a proof premise or dependency after issuance | Certificate currentness and required-closure admission | Unchanged immutable closure remains reusable |
+| Copy a successful report into a new map | Issuer or persistence revalidation | Original source is rechecked and legitimately issued |
+| Append a physical write after canonical lowering | Owned gateway payload and footprint check | Exact admitted transaction reaches the provider |
+| Change an unguarded field before a replacement write | Qualified frame/guard contract | Independent safe fields are preserved by the selected mechanism |
+| Supply a stale principal or Organization association | Trusted invocation and atomic current-policy guard | Authorized compatible self-claim succeeds |
+| Retry an incorporated Claim after Request becomes claimed | Binding and permitted recorded-result branch | Same command returns its allowed historical outcome |
+| Lose one attempt while another delivery commits | Command-resolution boundary | Outcome remains unknown until sufficient command evidence arrives |
+| Replace a resource after callback admission but before mutation | Final physical effect gate | Current owned effect can install and complete |
+| Break actual server adoption while retaining a checked router object | Installed production-entrypoint validation | Real request reaches the issued handler and gateway |
+| Change provider version or relevant adapter semantics | Qualification applicability gate | Qualified supported configuration admits the same operation |
+| Exhaust the finite checker before exploration completes | Evidence result classifier | Completed exhaustive run reports its exact bounds |
+| Supply an unsupported host function to a closed rule checker | Closed-language admission | Explicit opaque contract remains usable under a permitted profile |
+
+Positive controls establish useful acceptance, not just rejection. The test
+suite must also preserve a known formal counterexample, an incomplete exploration,
+and an unsupported feature as distinct statuses. “Nothing unsafe happened” is
+not enough if the intended operation never executed.
+
+*** Physical concurrency and failure windows
+
+Backend scenarios must include competing commands, repeated delivery of one
+command, policy changes between preparation and commit, changed relationship
+members, and concurrent writes outside the nominal business fields. The
+transaction tests inspect authoritative outcomes and state under the declared
+provider contract, not only HTTP status codes.
+
+Browser scenarios include reordered callbacks, duplicate completion, failed
+abort, resource replacement, deferred mutation, insufficient observations, stale
+plans, and partial installation repair. Expected network or console failures in
+fault injection are asserted precisely; unrelated failures still fail the case.
+A successful portable test does not substitute for the real HTMX or browser
+lifecycle event that the shell normalizes.
+
+Host scenarios include concurrent independent requests and any supported deferred
+execution. They must demonstrate that one request's identity, writer capability,
+result, or admission limit cannot be silently inherited by another. Thread-bound
+APIs that intentionally exclude deferred work must reject it clearly rather than
+claiming it was mediated.
+
+No single passing history establishes universal refinement. These tests make
+premises falsifiable, exercise real boundaries, and provide reproducible
+regressions while the report retains their scope.
 
 ** Multi-node realization and authoritative rendezvous
 :PROPERTIES:
 :CUSTOM_ID: req-multi-node-realization
 :END:
 
-Multi-node deployment realizes the semantic distinctions already established.
-
-It does not introduce a second authority model.
-
-*** Roles, actors, hosts, and authorities remain distinct
-
-When several Aleph nodes exist:
-
-- a role remains a semantic choreography role;
-- an actor remains a role/principal realization;
-- a host remains a physical process/node;
-- an authority remains the trusted semantic owner of authoritative facts or
-  operations.
-
-A concrete node may temporarily realize an authority projection.
-
-The node itself does not become semantic authority.
-
-For example:
-
-#+begin_example
-role:
-    :request-authority
-
-host for invocation:
-    web-node A
-
-retry host:
-    web-node C
-
-semantic authority:
-    [:authority :request R]
-#+end_example
-
-Host replacement must not change command identity or authoritative meaning.
-The new host must recover or receive the actual command identity through its
-trusted protocol; physical relocation does not reconstruct missing intent.
-Retry safety follows the model's explicit idempotency/deduplication and retention
-contract. A node-local cache or the same command string alone cannot establish
-cross-node exactly-once effects. Outcome loss after submission can remain
-unknown even when another node can read current authoritative state.
-
-*** Durable model state remains the ordinary rendezvous point
-
-For ordinary HumanHelp cross-user interactions:
-
-#+begin_example
-Alice browser
-    |
-Aleph node A
-    |
-Request authoritative operation
-    |
-XTDB commit
-    |
-distributed advisory invalidation
-    |
-Aleph node C
-    |
-Bob browser receives advisory
-    |
-product policy or explicit Refresh authorizes acquisition/adoption
-    |
-authorized authoritative reread
-#+end_example
-
-Alice and Bob do not require a persistent cross-node participant-message process
-merely because they interact with the same Request.
-
-The durable Request fact is the rendezvous point.
-
-*** Distributed invalidation is not participant messaging
-
-A distributed invalidation says approximately:
-
-#+begin_quote
-Relevant authority may have changed. A future acquisition must satisfy the
-advertised scope/progression requirement; the application's policy determines
-when acquisition and adoption are permitted.
-#+end_quote
-
-A choreography participant message says approximately:
-
-#+begin_quote
-This execution received this declared message.
-#+end_quote
-
-A future implementation may transport both through related infrastructure.
-
-Their semantics remain different.
-
-*** Direct participant routing is opt-in
-
-A genuinely ephemeral protocol may require receipt of a participant message
-itself to carry semantic meaning.
-
-That use case may introduce:
-
-- distributed actor-interest registration;
-- message routing;
-- correlation;
-- duplicate/loss semantics;
-- retry/delivery policy;
-- authenticated routing, protected payload disclosure, and recipient admission;
-- resource-instance retirement and the applicable compatibility contract across
-  host replacement or a change of admitted assembly generation.
-
-Delivery acknowledgments, broker persistence, execution admission, and domain
-commit are distinct facts. Any stronger delivery guarantee must name its scope
-and recovery assumptions rather than inheriting them from the broker's label.
-
-Those mechanisms should be added when a real choreography requires them.
-
-They must not redefine ordinary authoritative convergence.
-
-
-**** Worked multi-node contrast: durable Request versus ephemeral typing message
-
-Two cross-user features may traverse the same cluster while requiring different
-semantics.  First, Alice submits a Claim intent through node A.  The wire command
-contains correlation plus the domain Request identity; the authoritative helper
-identity is rebound from node A's authenticated server context rather than
-accepted from the browser:
-
-#+begin_src clojure
-(def browser-claim-command
-  {:command/id #uuid "76d7d7e1-fd03-47f7-82f7-66915ec283d9"
-   :operation :request/claim
-   :request/id #uuid "412090ce-0e79-4bc8-9d66-a4690ee52022"})
-
-(defn admit-claim-through-node-a
-  [http-request wire-command]
-  (let [principal
-        (auth/require-authenticated-principal node-a-system http-request)
-
-        request
-        (request/read-current-authoritative
-         node-a-system
-         (:request/id wire-command))
-
-        membership
-        (membership/read-current-authoritative
-         node-a-system
-         {:organization/id (:request/organization-id request)
-          :user/id (:user/id principal)})
-
-        organization
-        (organization/read-current-authoritative
-         node-a-system
-         (:request/organization-id request))]
-
-    ;; Admission validates the wire contract and binds these trusted facts;
-    ;; execute-admitted-claim! rechecks mutable facts and policy in its
-    ;; atomic commit. Declaring a requirement is not proof it was satisfied.
-    (choreo/admit-command
-     {:operation :request/claim
-      :wire-command wire-command
-      :trusted
-      {:principal principal
-       :request request
-       :membership membership
-       :organization organization}
-      :requirements
-      #{:authenticated-principal
-        :current-request
-        :current-membership
-        :current-organization}})))
-
-(def admitted-claim
-  (admit-claim-through-node-a incoming-http-request browser-claim-command))
-
-(def claim-result
-  (request/execute-admitted-claim! node-a-system admitted-claim))
-
-;; A rejected result has no committed Request and produces no success advisory.
-;; A response lost after submission is uncertain to the browser until it has
-;; command-specific evidence; a current-state read alone may not attribute it.
-(def committed-request
-  (when (= :committed (:outcome claim-result))
-    (:authoritative/request claim-result)))
-
-(when committed-request
-  (assert (= (:request/helper-id committed-request)
-             (:user/id
-              (choreo/admitted-trusted-principal admitted-claim)))))
-
-;; This publication attempt may itself fail after a successful commit. It
-;; carries board progression information, not protected Request contents.
-(def advisory
-  (when committed-request
-    {:kind :request/authority-may-have-advanced
-     :scope
-     {:projection :request/board
-      :organization-id (:request/organization-id committed-request)
-      :coverage :complete-authorized-membership}
-     :requires
-     (progression/require-board-requirement!
-       claim-result)}))
-
-(defn refresh-through-node-c
-  [http-request trigger]
-  (let [principal
-        (auth/require-authenticated-principal node-c-system http-request)
-
-        scope
-        (board/require-current-authorized-scope!
-         node-c-system principal)
-
-        ;; An admitted advisory may add a progression requirement. Explicit
-        ;; Refresh still works when no advisory arrived at Bob's browser.
-        requirement
-        (advisory/requirement-if-admitted-for-scope
-         trigger scope)
-
-        acquisition
-        (board/admit-authoritative-acquisition
-         node-c-system
-         {:principal principal
-          :scope scope
-          :requirement requirement
-          :trigger trigger})
-
-        observation
-        (board/read-authoritative node-c-system acquisition)]
-
-    (if (and requirement
-             (not (progression/satisfies?
-                    observation requirement)))
-      {:status :retryable-insufficient-progression
-       :required requirement}
-      {:status :acquired
-       :observation observation})))
-#+end_src
-
-If publication is lost before Bob sees it, Bob cannot supply its requirement;
-his explicit Refresh or another declared recovery trigger must perform a new
-authorized authoritative acquisition against the durable model. With a
-previously received advisory, the acquisition must satisfy its scoped
-progression requirement; a lagging node returns retryable insufficiency
-without discharging it. Acquisition alone does not establish browser
-installation: the adapter admits and installs the observation under the
-current resource-instance and adoption policy.
-The advisory branch illustrates one selected remote-lifecycle notification
-policy; Part VIII leaves automatic adoption of already-visible remote
-lifecycle changes as an explicit HumanHelp product decision.
-It does not reconstruct the Claim from node A's process memory, and possession
-of the advisory does not itself authorize the read.  The reread can establish
-current Request state without proving whether Alice received her direct
-settlement response or even whether node C can identify the exact execution
-that produced that state.
-
-Now contrast an ephemeral typing signal whose *admitted participant-message
-receipt* is itself the semantic event.  The browser still does not get to assert
-a trusted sender or recipient identity.  The routing boundary binds those from
-authenticated/current collaboration state:
-
-#+begin_src clojure
-(def browser-typing-intent
-  {:message/id #uuid "0a675872-2ba3-4575-a76f-4024d2c73938"
-   :kind :collaboration/typing
-   :document/id #uuid "389bdfac-48c9-4563-8b83-83bfae42d32e"})
-
-(def typing-route-contract
-  {:delivery :best-effort
-   :durability :ephemeral
-   :duplicates :permitted
-   :late-message :discard
-   :sender-binding :authenticated-principal
-   :recipient-binding :current-collaboration-route
-   :authorization :current-document-membership
-   :semantic-effect :recipient-observed-admitted-message})
-
-(defn route-typing-intent!
-  [http-request wire-intent]
-  (let [sender
-        (auth/require-authenticated-principal node-a-system http-request)
-
-        document
-        (document/read-current-authoritative
-         node-a-system
-         (:document/id wire-intent))
-
-        _
-        (auth/require-current-document-membership!
-         node-a-system sender document)
-
-        recipients
-        (routing/current-collaboration-recipients
-         node-a-system
-         {:document document
-          :excluding (:user/id sender)})
-
-        admitted-message
-        (routing/admit-participant-message
-         {:intent wire-intent
-          :trusted
-          {:sender sender
-           :recipients recipients
-           :document document}
-          :execution/id (execution/new-id)
-          :expires-at (time/plus (time/now) (time/seconds 4))
-          :contract typing-route-contract})]
-
-    (routing/deliver! node-a-system admitted-message)))
-
-(defn receive-typing!
-  [recipient-session delivered-message]
-  (let [receipt
-        ;; Checks trusted sender/recipient binding, current recipient access,
-        ;; admitted routing scope, expiry, and current execution/resource owner.
-        ;; A wire map or broker delivery by itself is not a receipt.
-        (routing/admit-recipient-receipt
-         {:recipient-session recipient-session
-          :message delivered-message
-          :contract typing-route-contract})]
-
-    (when receipt
-      (ui/show-typing-indicator!
-       (get-in receipt [:trusted :sender :display-name])))))
-#+end_src
-
-There may be no durable business fact for node C to reread later.  If the typing
-message is lost, its declared best-effort semantics permit that loss; a stronger
-product guarantee would need an explicit stronger routing, persistence,
-acknowledgment, or recovery contract.  Conversely, broker persistence or a
-delivery acknowledgment would not by itself turn the message into an
-authoritative domain commit.  Reusing Request invalidation semantics would
-conflate two meanings merely because both can travel through the same broker or
-load-balanced hosts.
-
-*** First physical multi-node topology may be simple
-
-The first useful multi-node environment does not need sophisticated
-orchestration.
-
-A development harness may use, as concretely useful:
-
-- multiple Aleph nodes;
-- HAProxy or another load balancer;
-- shared XTDB/object-store dependencies;
-- Valkey or another Live invalidation-routing substrate;
-- Redpanda or another log only where a concrete requirement warrants it.
-
-The service list is implementation-specific.
-
-The semantic gate is real host replacement and cross-node propagation through
-the same trusted model/protocol boundaries. Naming services is not evidence of
-those properties. The selected topology must record the actual dependency
-versions and supported consistency/durability contracts; this document neither
-requires every listed service nor certifies an unspecified deployment.
-
-*** Multi-node assumptions enter the assurance graph
-
-Once the physical implementation exists, the root assurance report should name
-the contracts needed for:
-
-- host replacement;
-- distributed invalidation routing;
-- interest registration;
-- post-commit publication;
-- duplicate publication;
-- lost publication;
-- stale routing knowledge;
-- reconnect through another node;
-- node-local process loss;
-- progression-safe reread from another node;
-- command identity/deduplication scope and retention where retry guarantees rely
-  on them;
-- cross-node session/principal binding and compatible application realizations
-  under the declared plan/protocol and admitted assembly contracts;
-- acquisition/adoption policy across reconnect and initial reconstruction.
-
-Authority committed while publication was lost must remain discoverable through
-the implemented [[#req-post-commit-recovery][post-commit recovery contract]]. If
-that contract relies on explicit Refresh, the liveness claim includes that user
-action. Reconnect alone is not evidence that lost advisory information has been
-recovered. A lagging node must not label an insufficient read as satisfying the
-requested progression merely because it returned successfully.
-
-These assumptions arise from the actual implementation.
-
-They should not be invented speculatively before the topology exists.
-
-*** Required multi-node acceptance evidence
-
-The multi-node milestone must identify the actual topology and test at least:
-
-- a mutation on one node becoming authoritatively observable through another;
-- an already connected remote browser receiving advisory without unauthorized
-  new-Request adoption, followed by successful permitted Refresh;
-- a node lost before submission versus one lost after submission/commit, with
-  participant uncertainty and any permitted retry handled distinctly;
-- crash after commit before publication, followed by the declared recovery path;
-- duplicate or reordered advisory delivery preserving scoped outstanding debt;
-- reconnect through a different node preserving the declared adoption policy;
-- a read unable to meet the required progression preserving recovery rather than
-  falsely claiming current authority;
-- current authentication and authorization at the replacement host;
-- incompatible old/new plan versions following the selected compatibility or
-  retirement contract.
-
-These cases use real node/transport boundaries where the claimed failure depends
-on physical deployment. Portable model tests remain complementary evidence.
-The report separates safety under interruption from progress after the named
-recovery conditions hold. A single successful load-balanced request does not
-establish the multi-node milestone.
-
-*** Multi-node does not require durable suspended choreography machines
-
-A node may disappear while the durable business process survives.
-
-Ordinary long waits remain represented as authoritative model state and later
-short choreographies.
-
-Persisting arbitrary suspended choreography-machine state across process death is
-a separate opt-in facility with its own:
-
-- persistence;
-- versioning;
-- migration;
-- ownership;
-- recovery;
-- delivery semantics.
-
-*** Proof work and multi-node work can overlap
-
-Full multi-node productionization is not a prerequisite for compositional proof
-hardening.
-
-Conversely, a small real multi-node prototype may expose missing semantic
-distinctions that should be corrected before deeper formalization.
-
-The correct relationship is iterative:
-
-#+begin_example
-stable semantic model
-    |
-small real multi-node realization
-    |
-new failure evidence
-    |
-refine named assumptions / semantics if necessary
-    |
-proof/root report incorporates the actual contracts
-#+end_example
-
-The semantic invariant remains constant:
-
-#+begin_quote
-Physical topology may change; semantic authority does not derive from host
-identity.
-#+end_quote
-
+Multi-node deployment changes physical placement. It does not create a second
+authority model, a second command meaning, or automatic permission to adopt
+remote state.
+
+*** Roles, principals, authorities, and hosts remain distinct
+
+A role is a choreography role. An actor realizes that role under a principal and
+context. An authority owns specified authoritative facts or operations. A host
+is a physical process that may realize an authority projection for an invocation.
+None of these identities is interchangeable.
+
+A Claim sent through host A and retried through host C retains its bound
+=:gesso/command-id= and public operation meaning. Each delivery may have a new
+=:http-request-id= and attempt identity. Host C must authenticate its own
+invocation, validate the existing command binding, and use the shared authoritative
+command-resolution mechanism. Node-local caches cannot establish cross-node
+deduplication.
+
+The retention contract names the period and scope in which replay is supported.
+A deleted command record cannot silently make an old command identifier a fresh
+intent. The protocol must either preserve sufficient tombstone/exclusion evidence,
+use an enforced expiry or epoch contract that rejects expired reuse, or narrow
+the claimed retry guarantee explicitly. A client must not work around uncertainty
+by allocating a new command identifier for the same pending intent.
+
+Physical relocation cannot reconstruct an intent whose binding was never retained.
+A current-state read at host C may establish the Request's present state while
+leaving the originating participant's command outcome unknown.
+
+*** The selected ordinary topology is deliberately small
+
+The baseline multi-node realization uses:
+
+- at least two independently running application processes behind a request
+  distributor that can route a retry or reconnect to another process;
+- one qualified authoritative backend deployment shared by those processes;
+- durable publication intent stored atomically with the model operation where
+  the application requires post-commit notice recovery;
+- a dispatcher and advisory distribution path that can reach interested
+  sessions on either application process;
+- shared or otherwise compatible authentication, command resolution, protocol,
+  artifact, and assembly-compatibility contracts.
+
+These are responsibilities, not a required list of infrastructure products. A
+separate broker is warranted only when the selected delivery contract needs it.
+Multiple processes and a shared database are sufficient to test meaningful host
+replacement; a single process with two labels is not.
+
+The topology qualification identifies concrete services, versions, transport
+configuration, credentials, failure model, and consistency assumptions. A backend
+being shared does not prove that two read paths have identical freshness.
+Qualified progression checks still apply at each host.
+
+*** Durable facts are the ordinary rendezvous
+
+For HumanHelp's ordinary cross-user work, Alice submits a public authoritative
+operation, its durable state and command result are incorporated, and a durable
+outbox intent supports advisory publication. Bob's session may receive an
+advisory through another host. That advisory records a possible need to acquire
+new authority; it does not carry permission to adopt protected domain content.
+
+Bob's explicit Refresh authorizes a board acquisition under the current
+principal, scope, required progression, and Part VIII policy. Host C reads the
+qualified authoritative projection. The browser admits the response under its
+current resource ownership, then installs and records adoption only when the
+required batch completion succeeds.
+
+The durable Request and assignment facts are the rendezvous. Ordinary Claim,
+Reassign, lifecycle updates, and later reads do not require a persistent
+participant-message process or a suspended choreography stack for every user.
+The public model contracts and short choreographies connect those interactions.
+
+*** Outbox dispatch and advisory recovery have separate guarantees
+
+The outbox record establishes durable publication intent, not delivered notice.
+The dispatcher claims pending work through a qualified concurrency mechanism,
+retries failures, and records completion according to the chosen publication
+acknowledgment contract. A crash after publish but before recording completion
+may duplicate publication. Receivers must handle duplicates without duplicating
+commands or inventing progression.
+
+A durable outbox identifier, command identifier, provider progression requirement,
+and subscriber cursor serve different purposes. One may be related to another
+by checked evidence; they are not the same token.
+
+The selected delivery contract is at least once to its named distribution
+boundary under dispatcher availability and retry premises. It must state whether
+that boundary is a durable log, broker acknowledgment, or another qualified
+acceptance point. It must not describe this as at-least-once delivery to every
+browser unless retention, recipient acknowledgment, replay, and authorization
+actually establish that stronger claim.
+
+Outbox draining alone does not close a subscriber's registration gap. If a notice
+was published before a new interest became effective, a live-only subscriber
+may miss it. The baseline subscription protocol therefore establishes a fence
+or equivalent qualified handshake relating initial observation, registered
+interest, and replay/gap evidence. A gap is recorded even if no advisory arrives.
+Reconnect carries the same obligation; silence is not evidence of no change.
+
+Interest filtering is an optimization over authorized scope. It must either
+avoid missed relevant changes under its stated contract or expose conservative
+gap/recovery evidence. Stale interest registration, dropped transport messages,
+retention expiry, or node loss cannot be treated as proof that the user's view
+is current.
+
+Advisories and interest topics can themselves disclose protected information.
+Their payloads and scope references are minimal and authorized; routing membership
+does not grant permission to read the underlying Request. A notice may carry an
+opaque progression requirement without revealing protected content or counts.
+
+*** HumanHelp preserves explicit Refresh across hosts
+
+Part VIII selects explicit Refresh for both remote creation and remote lifecycle
+changes to already visible cards. This policy is settled for this plan; only the
+separate response-flow product contract remains unresolved there.
+
+Remote advisories may update scoped outstanding debt or indicate a recovery gap.
+They do not automatically fetch and adopt a new board. Own-command outcomes and
+the specifically permitted local rejection/unknown recovery paths remain the
+exceptions defined in Part VIII. Those exceptions do not authorize unrelated
+membership changes or clear unrelated remote debt.
+
+One Refresh grant authorizes one board acquisition under that contract. It does
+not schedule an automatic successor read when a newer advisory arrives during
+the request. A user action explicitly coalesced under the permitted policy is
+accounted for as that action, not invented by the scheduler. An actually newer
+qualified observation may discharge additional covered debt where the scoped
+progression relation proves it sufficient.
+
+A board observation must be coherent across Request, primary assignment, and
+permitted User projection at its declared provider context. A lagging host that
+cannot satisfy the required progression returns insufficiency and preserves
+recovery. It must not echo the requested basis as if it had observed it. A
+successful HTTP response is not evidence that the required frontier was reached.
+
+No acquired board is adopted if its resource is retired, its scope is no longer
+permitted, or it would regress newer locally installed authority. Installation
+of toolbar, collection, and associated evidence follows the adoption-batch
+contract, including repair after partial failure. Reconnect and host replacement
+do not waive that contract.
+
+A known authorization-context change retires the affected protected projection
+and subscriptions according to their lifetime contract. It cannot erase data
+already disclosed to an offline browser. Protected rereads and subscription
+renewal still require current authorization at the replacement host.
+
+*** A concrete two-host failure schedule
+
+The following schedule exercises distinct facts; it is an acceptance scenario,
+not a proof that every deployment execution behaves this way.
+
+| Step | Authoritative or transport fact | Permitted participant conclusion |
+|------+---------------------------------+----------------------------------|
+| 1 | Alice's bound Claim reaches host A | Submission may proceed; no commit is inferred from arrival |
+| 2 | Guarded Request, primary assignment, command result, and outbox intent commit | The authoritative command is incorporated |
+| 3 | Host A dies before delivering Alice's response or dispatching the outbox | Alice may still have =:commit-unknown=; the commit remains durable |
+| 4 | A dispatcher on another surviving process publishes the retained intent | Notice reaches the declared distribution boundary; browser receipt is separate |
+| 5 | Bob receives a valid scoped advisory through host C | Record debt; do not automatically adopt the remote lifecycle change |
+| 6 | Alice reconciles or replays the same bound command through host C | After binding and disclosure checks, return the permitted recorded result |
+| 7 | Bob presses Refresh and host C obtains sufficient coherent authority | Acquire a candidate observation; current browser admission and installation remain necessary |
+| 8 | Bob's current resource successfully installs the admitted batch | Record the permitted adoption and discharge only justified covered debt |
+
+Variants lose the advisory, expire a cursor, duplicate publication, reject a
+lagging read, change Membership, or replace Bob's resource between receipt and
+mutation. Each variant must preserve its unresolved obligations until the
+appropriate evidence and permission exist. Host C's ability to read the current
+Request does not by itself attribute Alice's command.
+
+*** Direct participant routing is an explicit extension
+
+An ephemeral feature can have different semantics. For a typing indicator, the
+meaningful event may be an admitted participant-message receipt, with no durable
+business fact to reread. Its contract must say so instead of borrowing the
+Request invalidation protocol.
+
+A minimal typing contract binds sender identity through authentication, resolves
+recipients from current authorized collaboration scope, limits payload, defines
+message and execution correlation, admits receipt under the recipient's current
+resource, and specifies best-effort delivery, duplicate handling, and expiry.
+The UI effect still passes its final ownership gate. Loss is permitted by that
+best-effort contract; persistent replay is not automatically useful for an
+expired typing signal.
+
+If expiry uses clocks across hosts, the contract names the clock and skew
+assumptions, or uses a receiver-local lifetime with appropriately narrower
+meaning. A timestamp alone does not prove that a remote message is fresh. A
+broker's acknowledgment, transport delivery, admitted receipt, rendered indicator,
+and domain commit are distinct events.
+
+Stronger direct-message guarantees require explicit persistence, recipient
+admission, acknowledgment, deduplication, retry, retirement, and version
+compatibility contracts. Infrastructure reuse is allowed; semantic conflation
+is not. Direct participant routing must not redefine ordinary authoritative
+convergence or bypass protected-data authorization.
+
+*** Multi-node assumptions and acceptance
+
+The root assurance graph includes actual host replacement, backend qualification,
+writer coverage, command retention, outbox recovery, dispatch acknowledgment,
+interest registration, replay/gap detection, and current authorization contracts.
+It also includes old/new assembly compatibility and browser artifact availability
+across rolling activation. Merely sharing a database or load balancer establishes
+none of these joins.
+
+The multi-node acceptance suite uses real process and transport boundaries and
+must include:
+
+- mutation through one host becoming authoritatively observable through another;
+- compatible retries through a different host, including concurrent deliveries;
+- loss before submission, after possible submission, after known commit, and
+  after publication but before dispatch acknowledgment;
+- duplicate and reordered advisories with preserved scoped debt;
+- initial-subscription and reconnect gaps, including a silent missed notice;
+- expired replay retention and explicit recovery without false currentness;
+- remote creation and lifecycle change remaining unadopted until permitted
+  Refresh, with own-command exceptions exercised separately;
+- insufficient progression at the replacement host without false discharge;
+- Membership or scope loss affecting reads, command-result disclosure, and
+  subscription renewal;
+- concurrent independent request contexts without capability or identity leakage;
+- incompatible plan or assembly replacement following the declared retirement
+  and recovery path;
+- eventual successful recovery once the named availability, permission,
+  retention, and user-action premises hold.
+
+The report separates safety during interruption from progress once those premises
+hold. If current authorization no longer permits result disclosure, the suite
+expects nondisclosure rather than assuming eventual command attribution. If
+explicit Refresh never occurs, the remote-adoption liveness claim is not enabled.
+
+Persisting arbitrary suspended choreography machines remains a separate facility
+with persistence, migration, ownership, and recovery contracts. Ordinary long
+waits use durable model state and later short choreographies. Multi-node support
+does not require converting those waits into serialized process stacks.
 
 ** Formal correspondence and system-boundary invariant
 
 #+begin_quote
-A formal theorem applies to production only through its stated representation,
-checking, or refinement relation. Conformance vectors remain tests unless their
-coverage justifies a stronger claim. Complete obligation coverage, immutable
-subject/artifact binding, and explicit translation assumptions prevent a proof
-of one object from being attributed to another. Exact finite checking does not
-silently become an unbounded theorem, and safety correspondence does not
-silently establish liveness.
+A claim applies to production only through its stated representation, checking,
+or refinement relation and the continued applicability of its premises. The
+executable semantic core, proof kernel, dedicated checkers, external formal
+checker, physical gateways, and deployed entrypoints have distinct obligations.
+Source-derived coverage, observed execution, trusted backend behavior, and
+universal theorems are not interchangeable evidence.
 
-The root report preserves the evidence class, open assumptions, trusted boundary,
-and applicable subject/artifact identities and admitted assembly generation of
-each claim where relevant. Runtime authorization and protected
-acquisition remain necessary regardless of certificates. Multi-node placement
-changes hosts, not authority; retries, publication recovery, current reads, and
-command attribution follow their explicit contracts. HumanHelp's selective
-adoption policy survives these realizations. Operational success, compositional
-certification, external formal correspondence, and multi-node completion remain
-distinct milestones with distinct evidence.
+Full host-language implementations remain available through explicit contracts.
+Finite checking remains finite unless a justified abstraction transfers it.
+Physical guards and writes enforce current authority; certificates do not.
+Known commits remain commits despite delivery loss, while participants preserve
+unknown outcomes until permitted authoritative evidence resolves them.
+
+Every relevant backend or implementation change triggers the appropriate
+qualification and correspondence checks. Multi-node placement changes hosts,
+not authority, command meaning, resource ownership, or HumanHelp's adoption
+policy. The root report preserves the evidence class, scope, assumptions,
+applicable identities, enforcing boundary, and unresolved obligations of each
+claim.
 #+end_quote
