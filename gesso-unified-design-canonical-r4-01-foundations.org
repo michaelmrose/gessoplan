@@ -1,23 +1,11 @@
-# #+title: Gesso Unified Design
-# #+subtitle: Canonical architecture, assurance model, and reference application
-# #+date: 2026-09-22
-# #+startup: nofold
-# #+options: toc:3 num:nil
-# #+property: canonical-revision r4-draft
-# #+property: supersedes gesso-unified-design-canonical-r3
-
-#+LATEX_HEADER: \renewcommand{\maketitle}{}
-
-#+BEGIN_EXPORT latex
-\newgeometry{margin=0pt}
-\thispagestyle{empty}
-\noindent
-\vbox to \paperheight{%
-  \includegraphics[width=\paperwidth,height=\paperheight]{smallercover.png}%
-  \vss
-}
-\restoregeometry
-#+END_EXPORT
+#+title: Gesso Unified Design
+#+subtitle: Canonical architecture, assurance model, and reference application
+#+date: 2026-11-07
+#+startup: nofold
+#+options: toc:3 num:nil
+#+property: canonical-revision r4-draft
+#+property: part-revision 01-20261107
+#+property: supersedes gesso-unified-design-canonical-r3
 
 * Part I — Foundations
 :PROPERTIES:
@@ -52,18 +40,32 @@ The principal source lineage is:
 | Gesso Unified Design | canonical r3; direct textual predecessor |
 | Gesso Unified Design Revision and Validation Plan | plan revision 2; r3 review discipline |
 
-Canonical r4 preserves those commitments except where this document explicitly
-clarifies, reconciles, or supersedes wording.  A change in implementation does
-not by itself change the requirement.
+Historical plans explain the origin of the design. The requirements in the
+reviewed r4 assembly govern the intended system, including explicit corrections
+to earlier approaches. A change in implementation does not by itself change a
+requirement, and an implementation restriction does not become a design
+restriction merely because it made one proving experiment tractable.
+
+This specification describes the intended architecture from zero. It does not
+classify features as implemented or unfinished, prescribe patches to a current
+checkout, or treat a passing implementation test as a normative decision.
+Implementation-specific remediation belongs in a separate document.
 
 *** Revision scope
 
-R4 preserves the semantic commitments of r3 while making their construction,
-runtime, acceptance, and assurance boundaries more uniform. Its requirements
-remain owned by the sections that define them; this summary is a navigation aid.
+R4 specifies the semantic, construction, runtime, acceptance, and assurance
+boundaries of Gesso as one coherent architecture. Its requirements remain owned
+by the sections that define them; this summary is a navigation aid.
 
 The revision emphasizes:
 
+- the full host language within checked managed application construction;
+- explicit contracts for opaque computations, with assumptions preserved through
+  every dependent guarantee;
+- typed semantic transitions, derived obligations, and controlled realization
+  of admitted effects;
+- backend contracts supported by versioned qualification and adversarial
+  conformance evidence;
 - owner-relative admission for asynchronous events, including shared events;
 - scope-preserving acquisition requirements and precisely stated resource bounds;
 - independent required-capability acceptance alongside assembly closure and
@@ -121,6 +123,10 @@ linked sections are the authoritative homes of the corresponding requirements.
 | Requirement / decision | Authoritative section |
 |------------------------+-----------------------|
 | Assurance classification | [[#req-assurance-classification][Assurance model]] |
+| Full-language construction | [[#req-full-language-construction][Full-language application logic and checked construction]] |
+| Admission and proof results | [[#req-admission-assurance-policy][Admission policy and unresolved proof obligations]] |
+| Backend assumptions | [[#req-backend-assumption-qualification][Backend contracts and qualification]] |
+| Canonical transition construction | [[#req-canonical-transition-construction][Canonical semantic construction and controlled effects]] |
 | Semantic category and admission | [[#req-semantic-admission][Semantic category, representation, and admission]] |
 | Trusted-code boundary | [[#req-trust-boundary][Trusted application code and accidental misuse]] |
 | Observation evidence | [[#req-observation-evidence][Observation claims, receipts, and authority]] |
@@ -177,8 +183,15 @@ include:
 - a stale callback mutating a newer execution merely because both refer to the
   same logical DOM target.
 
-Those are framework-recognizable contradictions and should be rejected as
-early and descriptively as feasible.
+Those are framework-recognizable contradictions and must be rejected when the
+applicable supported checker has the information needed to establish them.
+Diagnostics must identify the violated obligation and its owning boundary.
+
+A computation being outside the supported proof fragment is a different matter.
+It is not thereby malformed or prohibited. Ordinary Clojure remains available
+within checked construction, with precisely stated interfaces, effects, and
+assumptions. The framework must distinguish an invalid construction from an
+unproved proposition and from an explicitly accepted asserted contract.
 
 
 The distinction is easier to see in a small but nontrivial application slice.
@@ -188,12 +201,13 @@ it shows the amount of semantic structure Gesso should be able to reason about
 without requiring the application author to reproduce framework internals.
 
 #+begin_src clojure
-(defschema Money
-  [:decimal
-   {:semantic/type :money
-    :semantic/currency :usd}])
+(def Money
+  [:int
+   {:min 0
+    :max 9007199254740991
+    :semantic/type :money/usd-cents}])
 
-(defschema Expense
+(def Expense
   [:map
    [:expense/id uuid?]
    [:expense/employee-id uuid?]
@@ -206,7 +220,7 @@ without requiring the application author to reproduce framework internals.
            :rejected
            :needs-finance]]])
 
-(defschema ApprovalPolicy
+(def ApprovalPolicy
   [:map
    [:policy/department keyword?]
    [:policy/manager-limit Money]
@@ -235,9 +249,19 @@ without requiring the application author to reproduce framework internals.
 ;; Suppose this is what the Organization actually intends.
 (def accounting-policy
   {:policy/department :accounting
-   :policy/manager-limit 500M
-   :policy/finance-threshold 500M})
+   :policy/manager-limit 50000
+   :policy/finance-threshold 50000})
 #+end_src
+
+Here =Money= declares a nominal semantic type backed by nonnegative,
+exactly represented integer USD cents. The schema and rule declarations must
+cross their construction checks before downstream code treats them as admitted
+semantic interfaces; a metadata key or a Var name does not itself admit them. Its maximum is part of this example's
+portable numeric profile. Arithmetic must preserve that bound or return a
+declared failure; a JavaScript floating-point approximation must not silently
+replace exact monetary semantics. A different currency or decimal profile needs
+its own declared encoding and operations. Malli shape validation alone does not
+establish nominal semantic identity.
 
 Now imagine that the application author accidentally changes only the policy
 data:
@@ -245,15 +269,16 @@ data:
 #+begin_src clojure
 (def accounting-policy
   {:policy/department :accounting
-   :policy/manager-limit 5000M
-   :policy/finance-threshold 5000M})
+   :policy/manager-limit 500000
+   :policy/finance-threshold 500000})
 #+end_src
 
-The program may still be perfectly coherent. =5000M= is a valid monetary value.
+The program may still be perfectly coherent. =500000= is a valid amount in
+this USD-cent representation: $5,000 rather than $500.
 The rule is well typed. The operation may project correctly. The authoritative
 transaction may apply the rule exactly as declared. Gesso has no basis for
 inventing the unstated product intention that the limit should have been
-=500M=.
+=50000= cents.
 
 Contrast that with a malformed rule whose own semantic structure is
 contradictory:
@@ -285,7 +310,7 @@ could identify both the location and the expected semantic categories:
  :left       {:type [:enum :draft :submitted :approved
                      :rejected :needs-finance]
               :source [:expense/status :expense]}
- :right      {:type :money
+ :right      {:type :money/usd-cents
               :source [:policy/manager-limit :policy]}
  :required   {:operator :<
               :operands [:ordered :ordered]}}
@@ -294,7 +319,7 @@ could identify both the location and the expected semantic categories:
  :rule       'malformed-manager-rule
  :at         [:and 1]
  :operator   :=
- :left       {:type :money
+ :left       {:type :money/usd-cents
               :source [:expense/amount :expense]}
  :right      {:type [:enum-value :submitted]}
  :required   {:operator :=
@@ -313,7 +338,8 @@ ownership, application assembly, and proof evidence.
 The choreography system should provide the following broad properties:
 
 - one global choreography describes an allowed distributed interaction;
-- the global choreography is verified before execution;
+- the global choreography crosses checked construction before execution, with
+  the supported semantic judgments established and accepted assumptions retained;
 - the choreography is projected into actor-local machines;
 - local machines execute independently in Clojure and ClojureScript;
 - actors acquire justified knowledge through declared provenance paths such as
@@ -350,9 +376,9 @@ The choreography system should provide the following broad properties:
   operation, projected plan, browser artifact, transport, trusted server
   capability, authoritative operation, settlement/progression, and permitted
   authoritative reacquisition;
-- claimed safety properties are backed by machine-checked derivations,
-  exhaustive semantic checking over justified abstractions, or refinement
-  arguments rather than by test coverage alone;
+- safety properties called proved identify their checked derivations or sound
+  exhaustive/refinement arguments; asserted contracts and tested properties
+  remain separately identified;
 - tests remain essential for trusted assumptions, implementation
   correspondence, real browsers, external libraries, operational behavior, and
   application policy.
@@ -365,6 +391,140 @@ repair paths are more important than minimizing implementation size.
 
 #+LATEX: \newpage
 
+** Full-language application logic and checked construction
+:PROPERTIES:
+:CUSTOM_ID: req-full-language-construction
+:END:
+
+Gesso supports ordinary Clojure application logic. Functions, recursion,
+collections, libraries, and computations outside a decidable or supported proof
+fragment remain available. The checked rule language is a reasoning
+representation, not the boundary of the application programming language.
+
+The normal application path is checked managed construction. An application
+does not move to an unmanaged second architecture because one policy predicate
+or computation is opaque to a prover. Its operation identities, contracts,
+authority boundaries, effects, settlement, and recovery still compose through
+the same admission system.
+
+Full-language support is relative to the declared execution target. A
+JVM-specific Clojure function does not become browser-executable merely because
+its interface can be serialized. Server logic may remain behind a public model
+operation; a portable or browser-local realization must separately satisfy its
+target contract. Projection preserves the declared placement and communication
+boundaries rather than pretending to translate arbitrary host code.
+
+An opaque implementation exports a semantic contract. The contract states the
+input and output meanings, relevant preconditions and postconditions, permitted
+effects, and the assumptions on which dependent reasoning relies. Claims of
+purity, determinism, termination, or bounded resource use are required only when
+the enclosing guarantee depends on them. Their evidence must then be explicit.
+No such property follows merely from the function's name or declared result type.
+
+There are three complementary ways to establish a needed property:
+
+- derive it from supported semantic definitions and checked inference rules;
+- enforce an instance-specific premise at the appropriate runtime boundary;
+- accept a named asserted contract under the applicable admission policy and
+  retain it in every dependent claim.
+
+These mechanisms may be combined within one operation. An opaque business
+predicate need not prevent proof that a transition preserves an unrelated
+field, that a command identifier survives retries, or that a retired execution
+cannot mutate a replacement owner. A conclusion that depends on that predicate
+implementing the intended policy remains conditional on its contract.
+
+*** Ordinary Clojure behind an explicit semantic interface
+
+The following sample Organization policy requires the helper to hold the skills
+listed for the Request's category and requires claiming to be enabled. This is
+an illustrative policy for the example, not a mandatory HumanHelp product rule.
+HumanHelp's actual policy remains application-owned.
+
+#+begin_src clojure
+(defn organization-allows?
+  [{:keys [organization membership request]}]
+  (let [policy (:organization/policy organization)
+        required (get-in policy
+                         [:skills-by-category (:request/category request)]
+                         #{})
+        held (set (:membership/skills membership))]
+    (and (= :enabled (:claim policy))
+         (every? #(contains? held %) required))))
+
+(def organization-claim-policy-contract
+  {:contract/id :organization/claim-policy
+   :inputs {:organization Organization
+            :membership Membership
+            :request Request}
+   :returns :boolean
+   :state-inputs #{:organization/policy
+                   :membership/skills
+                   :request/category}
+   :effects #{}
+   :meaning
+   {:true-iff [:and
+               [:policy/claim-enabled]
+               [:membership/holds-required-category-skills]]}})
+
+(def organization-claim-policy-binding
+  {:contract organization-claim-policy-contract
+   :implementation #'organization-allows?
+   :assertions
+   [{:id :organization/policy-implementation-contract
+     :proposition [:implementation/refines-contract
+                   :organization/claim-policy]
+     :owner :humanhelp/model-maintainer}
+    {:id :organization/policy-effect-contract
+     :proposition [:implementation/has-no-undeclared-effects
+                   :organization/claim-policy]
+     :owner :humanhelp/model-maintainer}]})
+#+end_src
+
+The two symbolic policy clauses refer to the displayed policy meaning: claiming
+is enabled, and every required category skill is held. The contract vocabulary
+and binding syntax are illustrative. Admission must resolve each symbol and
+schema, validate its interface, and bind the assertions to the exact contract,
+implementation realization, and applicability scope. Merely placing an
+assertion map next to a function is not admission.
+
+The framework can check declared argument/result categories and the surrounding
+operation's use of them. It can evaluate the function on bound current inputs.
+It must not label the implementation's policy correctness or lack of hidden
+effects proved solely because those declarations are well formed.
+
+For this effect-free contract, the declared state inputs determine which
+authoritative facts must be protected when its result is used to authorize a
+new commit. Data obtained before submission is suitable only when the commit
+mechanism validates all relevant dependencies or recomputes the decision under
+an equivalent atomic contract. A caller assertion that a pre-read is current
+does not close that race.
+
+An effectful computation instead declares its effects and their realization
+boundaries. External service calls, clocks, randomness, mutable process state,
+and asynchronous completion must not be hidden inside a contract claiming
+deterministic evaluation over supplied values. Full-language support permits
+these operations; their semantics and assumptions remain explicit.
+
+*** A small authoring surface and a richer internal representation
+
+Application authors provide domain meaning and genuine implementation choices.
+Gesso derives the information it can derive soundly, including references,
+footprints for supported expressions, obligations, and evidence dependencies.
+Generated artifacts must be independently validated at their required boundary.
+
+For opaque code, a declared effect or read footprint is an explicit contract,
+not automatically an exact static analysis result. The assembly must retain
+the evidence or assumption that connects it to the implementation. Where a
+managed capability or candidate validator enforces a narrower property, that
+property can have stronger evidence without upgrading the rest of the contract.
+
+Ordinary authors must not have to write theorem-prover languages, proof DAGs,
+transitive certificate maps, or hand-maintained copies of derivable metadata.
+Proof-producing elaboration and dedicated checking belong inside Gesso.
+Explicit data and ordinary functions are the canonical authoring basis; helper
+macros may improve ergonomics but must not define a competing semantic system.
+
 ** Design priority and dependency direction
 
 Gesso is organized around a strict distinction between semantic truth,
@@ -373,39 +533,20 @@ realization.
 
 At the highest level:
 
-#+begin_example
-domain truth
-    |
-    v
-public authoritative model operations
-    |
-    v
-global choreography
-    |
-    v
-verified role projections
-    |
-    v
-canonical executable plans
-    |
-    v
-runtime adapters / transport / browser realization
-#+end_example
+| Layer | Responsibility |
+|-------+----------------|
+| Domain model | Own business meaning and authoritative state transitions |
+| Public model operations | Expose admitted operations and their contracts |
+| Global choreography | Coordinate operations and participant knowledge |
+| Role projections | Derive actor-local machines from the choreography |
+| Executable plans | Carry canonical executable semantics and identities |
+| Runtime realization | Perform declared effects through adapters and transport |
 
 Evidence flows alongside this path:
 
-#+begin_example
-semantic declaration
-    |
-    v
-normalized semantic interface
-    |
-    v
-checked obligations / derivations
-    |
-    v
-certificate / proof sidecar / application explanation
-#+end_example
+Declarations export normalized semantic interfaces. Checking derives and
+validates their obligations. Certificates, proof sidecars, and explanations
+record the resulting judgments, evidence, and premises.
 
 Evidence may justify acceptance of an executable artifact, but evidence does not
 become an executable authority channel.
@@ -423,8 +564,9 @@ discriminators, or current authorization.
 For example, a certificate may establish:
 
 #+begin_quote
-This Claim plan can reach the production Request claim operation only through a
-path that requires the declared claim-authority premise.
+A new incorporation of this Claim command can occur only through a declared
+path requiring its current claim-authority premise. A compatible replay reaches
+its recorded result through a separately declared disclosure-authority check.
 #+end_quote
 
 The certificate does not establish:
@@ -439,234 +581,223 @@ state, runtime authorization, and other declared runtime boundaries.
 
 
 A fuller HumanHelp Claim slice makes that separation visible in code. The
-application may define a checked rule and semantic operation approximately like
-this:
+operation is defined once and reused by later assembly and view examples.
+The declaration syntax is illustrative; its distinctions are required.
 
 #+begin_src clojure
-(defschema ClaimInput
-  [:map
-   [:request/id uuid?]])
+(def ClaimInput
+  [:map [:request/id uuid?]])
 
-(defrule claimable?
-  {:inputs {:request Request
+(def claimable-rule
+  {:rule/id :request/new-claim-allowed
+   :inputs {:principal Principal
+            :arguments ClaimInput
+            :request Request
             :membership Membership
             :organization Organization}
-   :returns :boolean}
-  [:and
-   [:= [:request/status :request] :open]
-   [:= [:membership/status :membership] :active]
-   [:= [:membership/organization-id :membership]
-       [:request/organization-id :request]]
-   [organization-allows?
-    :organization
-    :membership
-    :request]])
+   :returns :boolean
+   :expression
+   [:and
+    [:= [:request/id :request] [:request/id :arguments]]
+    [:= [:membership/user-id :membership] [:user/id :principal]]
+    [:= [:membership/organization-id :membership]
+        [:request/organization-id :request]]
+    [:= [:organization/id :organization]
+        [:request/organization-id :request]]
+    [:= [:request/status :request] :open]
+    [:= [:membership/status :membership] :active]
+    [:call :organization/claim-policy
+     {:organization :organization
+      :membership :membership
+      :request :request}]]})
 
-(defoperation claim-request
+(def claim-request
   {:operation/id :request/claim
-
-   ;; This describes the semantic participant position. It is not a browser
-   ;; assertion that the current user is a helper.
    :actor :helper
-
    :input ClaimInput
+   :entry-knowledge [[:knows? :helper [:request/id]]]
 
-   :requires
-   [[:knows? :helper [:request/id]]
-    [:runtime-premise :authenticated-principal]
-    [:runtime-premise :current-membership]
-    [:runtime-premise :current-request]
-    [:runtime-premise :current-organization]
-    [:rule claimable?
-     {:request :current-request
-      :membership :current-membership
-      :organization :current-organization}]]
+   :invocation
+   {:requires [:authenticated-principal :admitted-command-binding]
+    :model-operation :request/claim}
 
-   :authority
-   [:request/claim-authority
-    {:principal :authenticated-principal
-     :request   :current-request}]
+   :new-incorporation
+   {:guard claimable-rule
+    :policy-binding organization-claim-policy-binding
+    :transition
+    {:set {:request/status :claimed
+           :request/helper [:user/id :principal]}
+     :preserve :other-request-domain-fields}
+    :atomic-with :command/result-record}
+
+   :repetition
+   {:binding [:operation :semantic-arguments :principal :authority-scope]
+    :requires :command/result-disclosure-authority
+    :result :permitted-recorded-outcome
+    :incorporate-again? false}
 
    :effect
    [:model/invoke :request/claim
-    {:request-id [:request/id :current-request]
-     :principal  :authenticated-principal
-     ;; Allocated once by the admitted command boundary, then preserved
-     ;; through retries and reconciliation. Browser-carried values are
-     ;; validated and bound; their bytes alone grant no authority.
+    {:request-id [:request/id :arguments]
+     :principal :authenticated-principal
      :command-id :gesso/command-id}]
+
+   :provisional
+   {:view :request/claiming
+    :owner :gesso/execution-id
+    :correlate :gesso/command-id}
 
    :settlement
    {:accepted
-    {:learns [[:request/status :claimed]
-              [:request/helper :authenticated-principal]]
-     :reacquire [:request/card :request/id]}
-
+    {:learns [:command/recorded-success :gesso/command-id]
+     :reacquire [:request/card [:request/id :arguments]]}
     :rejected
-    {:learns [:claim/rejected]
-     :reacquire [:request/card :request/id]}
-
+    {:learns [:command/typed-rejection :gesso/command-id]
+     :reacquire [:request/card [:request/id :arguments]]}
     :unknown
-    {:learns [:claim/outcome-unknown]
-     :recover [:request/reconcile-claim
-               {:request-id :request/id
+    {:recover [:request/reconcile-claim
+               {:request-id [:request/id :arguments]
                 :command-id :gesso/command-id}]}}})
 #+end_src
 
-Verification can establish a structural proposition about that declaration. A
-certificate or checked report might contain evidence resembling:
+=:actor= describes a semantic participant position; it does not authenticate a
+browser. Schema names denote admitted domain interfaces. Their relationship
+fields are shown explicitly so that a same-shaped Membership or Organization
+cannot be substituted merely because it is active or has a permissive policy.
+An implementation may establish these bindings through checked acquisition
+contracts, explicit guards, or both; the obligation is not optional.
 
-#+begin_src clojure
-{:certificate/class :gesso/choreography
- :semantic-object   :request/claim
- :guarantees
- [{:proposition
-   [:plan/reaching-model-invoke-requires
-    :request/claim
-    #{:authenticated-principal
-      :current-membership
-      :current-request
-      :current-organization
-      :claimable-rule-guard}]
-   :evidence :kernel-checked
-   :scope :admitted-semantic-plan}
+The policy call uses the contract defined above. Its argument/result checking
+is mechanically available. Any undischarged implementation or effect assertion
+remains a dependency of the corresponding Claim guarantee.
 
-  {:proposition [:rule/well-typed :claimable?]
-   :evidence :kernel-checked}
+The guard belongs to new incorporation. It is not a precondition for recognizing
+an already incorporated command. Otherwise a successful retry would be rejected
+because its own first incorporation changed the Request from open to claimed.
+Disclosure of a recorded result has its own current authorization policy; it
+must not be confused with permission to perform a new claim.
 
-  {:proposition
-   [:projection/does-not-create
-    :request/claim-authority]
-   :evidence :kernel-checked}
+Verification of the declaration produces claim-specific evidence. For example:
 
-  {:proposition
-   [:settlement/covered
-    #{:accepted :rejected :unknown}]
-   :evidence :exact-finite-checked}]}
-#+end_src
+| Proposition | Required evidence and scope |
+|-------------+-----------------------------|
+| The new-claim guard is well typed | Dedicated semantic checking over its declared inputs and policy-call interface |
+| New incorporation requires the guard | A checked reachability/transition argument over the admitted operation semantics |
+| Compatible replay does not incorporate again | A checked command-protocol argument, conditional on the authoritative command-record contract |
+| Replay disclosure requires its own authority | Checked semantic requirement plus concrete runtime enforcement |
+| The declaration covers accepted, rejected, and unknown settlements | Exhaustive checking over that finite declared outcome set |
+| The policy implementation realizes its contract | The named assertion unless stronger corresponding evidence is supplied |
 
-That is useful evidence about the *plan*, provided the checker actually proves
-the stated reachability obligation. A rule checker can validate a rule's type
-and semantics; it cannot certify that the rule holds for a future invocation's
-current Request and Membership. Nor does a plan certificate alone establish
-that an independently authored production handler implements the checked guard.
-The server binding and model transaction require their own admission and
-runtime-enforcement evidence. This certificate cannot answer whether Alice may
-claim Request R now.
+These are separate judgments. A certificate may collect them only with their
+actual evidence, scope, and premises. Merely emitting the table as a map does
+not establish any row. A rule checker cannot decide whether Alice's future
+Membership is active, and a plan proof cannot by itself establish that an
+independently written handler enforces its declared guard.
 
-A trusted invocation boundary must bind the concrete principal and pass the
-semantic command to the public authoritative model operation. The operation
-owns current domain authorization and the decision about a repeated command:
+A trusted invocation boundary binds the concrete caller and passes the command
+to the public authoritative model operation:
 
 #+begin_src clojure
 (defn invoke-claim!
   [{:keys [session now] :as ctx}
    {:request/keys [id] :gesso/keys [command-id]}]
-
-  ;; Authentication establishes the principal for this concrete request;
-  ;; the admitted command binding validates the command id and arguments.
-  (let [principal
-        (auth/current-principal! session)]
-
-    ;; The model checks transaction-current facts and recognizes compatible
-    ;; repetitions before interpreting the now-claimed Request as a new claim.
+  (let [principal (auth/current-principal! session)]
+    ;; The admitted model binding validates the command envelope and owns
+    ;; replay, current disclosure permission, and new-incorporation guards.
     (request-model/claim!
-      (assoc ctx
-        :biff.fx/now now
-        :principal principal)
-      {:request-id id
-       :helper-id (:user/id principal)
-       :command-id command-id})))
+      (assoc ctx :biff.fx/now now :principal principal)
+      {:request-id id :command-id command-id})))
 #+end_src
 
-#+begin_quote
-Why can a Claim be retried without claiming the Request twice?
-#+end_quote
+The context is supplied through the admitted server binding. The principal does
+not come from the command body. The public model operation must establish the
+relationship between the principal and the Membership it uses, rather than
+trust a browser-supplied helper identifier.
 
-Before the first possible send, the admitted command boundary assigns a stable
-=:gesso/command-id= to the Claim command. It binds that identity to the
-operation, its arguments, and the authenticated principal, and preserves the
-identity across retries. The browser may carry the identifier back to the server.
-Choosing or presenting its bytes does not authenticate the browser, authorize
-the Claim, or prove that the command committed.
+*** Claim command identity, replay, and uncertainty
 
-The public =request-model/claim!= operation handles an existing command record
-before treating an invocation as a new Claim. It checks that the recorded
-operation, arguments, and principal match the admitted command. It also checks
-whether the current principal may learn the recorded result. A compatible retry
-returns that permitted result without applying the transition again. Thus, a
-retry of a successful Claim may return success even though the Request is now
-claimed. Reusing the identifier for a different command is rejected, and the
-existence of a record must not disclose another principal's result.
+Before the command's first possible submission, its command boundary allocates
+a stable =:gesso/command-id=. Its allocation may be local or use an earlier
+trusted issuance protocol. Allocating the bytes is separate from establishing
+their trusted binding. At the authoritative boundary, authentication and command
+admission establish or validate the operation, canonical semantic arguments,
+principal, and authority scope to which the identity is bound. The binding must
+be compatible with the admitted operation version. Browser-carried bytes alone
+confer no authority.
 
-For a new command, Claim must check the current Request state, the helper's
-active Membership, the Organization policy, and the Request/Organization
-association as part of the atomic transition. The ownership change and
-successful command-result record commit together. If a required guard fails,
-the model returns a typed rejection and permits authoritative card
-reacquisition under the declared contract.
+A retry preserves that command identity. A new transport attempt has a new
+transport-request identity, and a new presentation execution has its own
+execution and resource-instance identities. Neither changes which command is
+being reconciled.
 
-Separate pre-reads cannot provide this guarantee. A relevant fact may change
-between a pre-read and commit. Conversely, checking only the Request's current
-status before consulting the command record could reject a retry because its
-first attempt already succeeded. The record establishes whether this command
-was incorporated; the atomic guards decide whether a new command can commit.
+The public =request-model/claim!= operation checks for a compatible recorded
+command before interpreting the Request as a new claim. It validates the
+recorded binding and current permission to disclose the result. A permitted
+successful replay returns the recorded success without another transition,
+including when the Request is now claimed or has subsequently changed again.
+Incompatible identity reuse is rejected without disclosing another principal's
+record or outcome.
 
-Part IV distinguishes the model outcomes =:committed=, =:rejected=,
+For new incorporation, the Request identity and state, the principal's active
+Membership, the Organization identity and policy, and every relevant
+relationship or predicate dependency are protected by the same atomic contract
+as the ownership change and successful command-result record. A pre-read may
+prepare a candidate; it cannot replace commit-time protection of those facts.
+
+Two attempts can both initially observe no command record. If one commits and
+the other's guard fails, the failing attempt must use the command protocol to
+determine whether the same command was incorporated concurrently. It must not
+report a fresh domain rejection merely because its attempt lost a race.
+Similarly, absence observed at one read basis does not establish that an
+outstanding attempt cannot later commit. Part IV owns the authoritative
+resolution, retry, retention, and terminal-rejection contracts.
+
+Part IV distinguishes model outcomes =:committed=, =:rejected=,
 =:already-incorporated=, and =:commit-unknown=. This example presents
-=:accepted=, =:rejected=, or =:unknown= to the participant. The assembly must
-check the explicit mapping:
+=:accepted=, =:rejected=, or =:unknown= to the participant:
 
 | Model outcome | Presentation settlement |
 |---------------+-------------------------|
-| =:committed= | =:accepted= when the successful result is delivered |
-| =:rejected= | =:rejected= when the typed rejection is delivered |
-| =:already-incorporated= | The permitted recorded result; a recorded successful Claim maps to =:accepted= without another transition |
-| =:commit-unknown= | =:unknown= until authorized command-outcome evidence resolves it |
+| =:committed= | =:accepted= when permitted successful command evidence is delivered |
+| =:rejected= | =:rejected= when an authoritative typed rejection for the applicable command scope is delivered |
+| =:already-incorporated= | The permitted recorded result; recorded success maps to =:accepted= without a second transition |
+| =:commit-unknown= | =:unknown= until authorized outcome evidence resolves it |
 
-A delivery failure can leave the participant uncertain even if the transaction
-committed. Reading a Request that is currently claimed may settle its displayed
-state, but that observation alone does not establish which command claimed it.
+A delivery failure may leave the participant uncertain even after a commit.
+Conversely, accepted command evidence establishes that the command succeeded at
+its recorded point; it does not establish that the Request is still owned by
+that helper at every later observation. Current presentation comes from an
+authorized acquisition with its own basis and scope. Reading a currently
+claimed Request does not by itself identify the command that claimed it.
 
-The exact declaration, certificate representation, and handler API are
-illustrative. A checked certificate can justify admitting the Claim plan when
-its obligations are discharged. Separate production and transaction evidence
-must show that the running realization enforces command binding, permitted
-result disclosure, current authority, and the atomic guards. A certificate
-cannot manufacture the authenticated principal, active Membership, current
-Request state, Organization policy, or present authorization.
+The assembly checks these mappings and the required acquisition/reconciliation
+paths. Acquisitions still enforce current read permission and must represent
+denial, absence, or an unavailable dependency under their declared contracts.
+Neither accepted nor rejected settlement grants a new right to read the card.
 
-Sending that certificate back from the browser would add no authority. The
-browser may carry a reference to an admitted operation or plan; the trusted
-runtime boundaries must still establish the current facts and permissions they
-own.
+An admitted Claim plan may have strong structural and transition guarantees
+while remaining conditional on a policy assertion, an authentication boundary,
+or a qualified backend contract. Production correspondence must establish which
+realization enforces those requirements. A certificate cannot manufacture the
+principal, Membership, Request state, Organization policy, or current authority.
+Sending it back from the browser adds no authority.
+
 #+LATEX: \newpage
 
-Therefore:
+The two decisions remain separate:
 
-#+begin_example
-proof / certificate / preflight evidence
-        |
-        v
-artifact admitted for execution
+| Stage | Basis of the decision |
+|-------+-----------------------|
+| Artifact admission | Appropriate proof, checking, and preflight evidence under the admission policy |
+| Concrete execution | The admitted runtime semantics and current trusted premises |
+| Authority decision | The applicable principal, resource, policy, scope, and current state |
 
-artifact executes
-        |
-        v
-runtime semantics + current trusted premises
-        |
-        v
-concrete authority decision
-#+end_example
+The following inference is forbidden:
 
-must not collapse into:
-
-#+begin_example
-certificate says "valid"
-        |
-        v
-grant authority / accept fact / choose branch
-#+end_example
+#+begin_quote
+A certificate says "valid", so the runtime grants authority, accepts a current
+fact, or selects a semantic branch without establishing its required premises.
+#+end_quote
 
 This applies more broadly than authorization.  Assurance evidence must not
 secretly decide which role the current user has, which principal is
@@ -697,7 +828,7 @@ The dependency direction is intentional:
   effects under explicit assumptions.
 
 A lower layer must not acquire higher-level meaning merely because doing so
-would make an implementation convenient. E.G.
+would make an implementation convenient. For example:
 
 - a DOM node does not become a semantic Request merely because it has an id;
 - a web node does not become Request authority merely because it handles the
@@ -748,6 +879,11 @@ Examples illustrate the enclosing contract. Their concrete syntax is
 illustrative unless the owning section explicitly defines it as the required
 public or wire representation. Their stated required behavior must still obey
 the normative invariants.
+
+Examples using symbolic operators must identify their semantic contract and
+whether they denote checked expressions, runtime premises, opaque calls, or
+inspection output. Unknown operators and unresolved references are construction
+errors; illustrative syntax is not permission to accept arbitrary forms.
 
 An abbreviated diagram does not waive an authorization, admission, scope,
 ownership, or outcome-attribution condition merely because the diagram omits
@@ -832,44 +968,29 @@ It must preserve:
 
 Individually valid components can still form an impossible application.
 
-The assembled application therefore has its own closure boundary.  A rendered
-semantic affordance must have a coherent path through the entire application:
+The assembled application therefore has its own closure boundary.  For an authoritative browser command, a rendered
+semantic affordance must have a coherent path through the applicable application
+boundaries:
 
-#+begin_example
-rendered affordance
-    |
-    v
-semantic operation
-    |
-    v
-valid choreography trajectory
-    |
-    v
-projected local plan
-    |
-    v
-exact current browser artifact
-    |
-    v
-declared transport
-    |
-    v
-trusted server capability
-    |
-    v
-public authoritative model operation
-    |
-    v
-typed settlement / authoritative progression
-    |
-    v
-permitted authoritative reacquisition
-    |
-    v
-renderable authoritative successor
-#+end_example
+| Closure step | Required relationship |
+|--------------+-----------------------|
+| Affordance | Resolves to the declared semantic operation and valid arguments |
+| Choreography | Supplies an admitted trajectory for that operation |
+| Projection | Produces the required actor-local plan |
+| Browser artifact | Realizes that plan under the admitted compatibility contract |
+| Transport | Reaches the declared trusted server capability |
+| Model binding | Invokes the public authoritative operation with bound inputs |
+| Outcome handling | Preserves typed settlement and progression obligations |
+| Acquisition | Obtains a permitted authoritative successor under current read authority |
+| Presentation | Renders that successor through the admitted ownership and lifecycle rules |
 
-Later parts of this design specify that closure in detail.  Its inclusion here
+This is the path for the stated browser-command case. A read-only operation,
+subscription, background task, or workflow with no browser presentation has its
+own declared effects, outcomes, and lifecycle; it need not manufacture a browser
+plan, domain write, or card reacquisition. Closure checks follow the obligations
+of the declared operation kind.
+
+Later parts of this design specify that closure in detail. Its inclusion here
 establishes an important foundational rule: local correctness does not imply
 whole-application correctness.
 
@@ -912,8 +1033,12 @@ For example, trusted application code that intentionally obtains a lower-level
 transaction capability may bypass the model/Gesso path.  The ordinary assurance
 goal inside that trusted boundary is misuse prevention: supported application
 construction should make accidental semantic bypass difficult, explicit, and
-diagnosable.  A deliberate departure from that supported path exits the
-corresponding assurance claim unless separately checked.
+diagnosable. A deliberate departure from that supported path requires an
+explicit boundary
+and assurance scope. A raw writer can invalidate dependent invariants for later
+operations over the affected state, not just the assurance of its own request.
+The dependency graph must represent that impact. Ordinary opaque computation
+inside a managed contract is not itself such a departure.
 
 These distinctions are foundational for later HumanHelp acceptance:
 
@@ -929,78 +1054,58 @@ all required HumanHelp capabilities present
 One Claim implementation can be used to see all three application-level claims
 without inventing three unrelated examples.
 
-Suppose the application assembly describes the supported production pieces as
-data:
+The author supplies operation declarations and independent realization choices.
+The following source is an excerpt of an application declaration; named view,
+acquisition, recovery, and artifact providers must be supplied by the surrounding
+application. Admission rejects unresolved providers.
 
 #+begin_src clojure
-(def humanhelp-assembly
+(def humanhelp-application
   {:assembly/id :humanhelp/web
-
-   ;; Each referenced identity is backed by a source-owned declaration;
-   ;; these abbreviated entries show the edges needed by this slice.
-   :choreographies
-   {:request/claim {:operation :request/claim}}
-
-   :plans
-   {:plan/request-claim {:from :request/claim
-                         :artifact :artifact/gesso-live}}
-
-   :operations
+   :operations [claim-request]
+   :views [:request/card]
+   :realizations
    {:request/claim
-    {:choreography :request/claim
-     :plan         :plan/request-claim
-     :artifact     :artifact/gesso-live
-     :transport    :transport/trusted-post
-     :route        :route/request-claim
-     :capability   :server/request-claim
-     :model-op     :request/claim
-     :settlement   :request/claim-settlement
-     :reacquire    :request/card}}
+    {:model-implementation #'request-model/claim!
+     :transport {:kind :http/post :path "/requests/claim"}}}
+   :providers
+   {:request/card request-card-provider
+    :request/reconcile-claim claim-outcome-provider
+    :browser/runtime gesso-browser-artifact-provider}
+   :assurance-policy :humanhelp/managed-application})
 
-   :transports
-   {:transport/trusted-post {:kind :http/post
-                             :route :route/request-claim}}
-
-   :routes
-   {:route/request-claim {:transport :transport/trusted-post
-                          :capability :server/request-claim}}
-
-   :views
-   {:request/card
-    {:affordances
-     {:claim
-      {:operation :request/claim
-       :when      :request/claim-visible?}}}}
-
-   :server-capabilities
-   {:server/request-claim
-    {:route    :route/request-claim
-     :model-op :request/claim}}
-
-   :model-operations
-   {:request/claim {:public-entry :request-model/claim!}}
-
-   :settlements
-   {:request/claim-settlement
-    {:outcomes #{:accepted :rejected :unknown}
-     :reacquire {:accepted :request/card
-                 :rejected :request/card}
-     :recover {:unknown :request/reconcile-claim}}}
-
-   :acquisitions
-   {:request/card {:result :request/card}}
-
-   :recovery-capabilities
-   {:request/reconcile-claim
-    {:by :gesso/command-id
-     :model-op :request/claim}}
-
-   :artifacts
-   {:artifact/gesso-live
-    {:contains-plans #{:plan/request-claim}}}})
+(def humanhelp-assembly
+  (assembly/prepare humanhelp-application))
 #+end_src
 
-A closure checker can establish relationships *inside that declaration*:
+The operation supplies its semantic identity, input, settlement, and recovery
+requirements. The realization supplies a concrete model implementation and a
+transport choice. Framework-owned plan, route, and capability identities are
+derived and resolved; the author does not reproduce them in several registries.
+The policy reference resolves to the application's declared admission policy.
+
+Inspection can expose the expanded graph without making that graph a second
+source of truth:
+
+#+begin_src clojure
+(assembly/inspect humanhelp-assembly)
+;; illustrative derived output, not an author-maintained input:
+{:assembly/id :humanhelp/web
+ :operation :request/claim
+ :edges
+ [[:request/card :claim :request/claim]
+  [:request/claim :plan :plan/request-claim]
+  [:plan/request-claim :artifact :artifact/gesso-live]
+  [:request/claim :transport :transport/trusted-post]
+  [:transport/trusted-post :route :route/request-claim]
+  [:route/request-claim :capability :server/request-claim]
+  [:server/request-claim :model-operation :request/claim]
+  [:request/claim :settlement :request/claim-settlement]
+  [:request/claim-settlement :acquisition :request/card]
+  [:request/claim-settlement :recovery :request/reconcile-claim]]}
+#+end_src
+
+A closure checker establishes relationships over the resolved sources:
 
 #+begin_src clojure
 (assembly/check humanhelp-assembly)
@@ -1034,36 +1139,27 @@ request path must make the admitted assembly unavoidable for the claimed
 supported path. Conceptually, production wiring might look like:
 
 #+begin_src clojure
-(def humanhelp-module
-  {:biff.core/id :humanhelp/web
-
-   :biff.core/start
-   (fn [ctx]
-     ;; Failure prevents the semantic web application from starting.
-     (let [admitted
-           (assembly/admit!
-             {:assembly humanhelp-assembly
-              :artifact (browser/current-artifact ctx)
-              :routes (server/current-route-table ctx)})]
-
-       {:admitted-assembly admitted
-        :handler
-        (-> (routes/build admitted)
-            (wrap-session)
-            (wrap-current-assembly admitted))}))})
+(defn start-humanhelp!
+  [ctx]
+  (let [prepared (assembly/prepare humanhelp-application ctx)
+        admitted (assembly/admit! prepared)
+        handler (routes/build admitted)]
+    ;; The Biff integration owns installation and the before-serving gate.
+    ;; Returning a handler in an unused map is not installation evidence.
+    (biff-host/start!
+      ctx
+      {:biff.ring/handler handler
+       :before-serving
+       (fn [installed-runtime]
+         (assembly/require-installed! admitted installed-runtime))})))
 
 (defn claim-handler
   [ctx request]
-  ;; Route lookup comes from the admitted assembly. The handler does not
-  ;; reconstruct an operation id from arbitrary request fields.
   (let [binding
         (assembly/require-route-binding!
           (:admitted-assembly ctx)
           :route/request-claim)]
-    (server/invoke-bound-operation!
-      ctx
-      binding
-      request)))
+    (server/invoke-bound-operation! ctx binding request)))
 #+end_src
 
 Now the relevant malformed production fixture is not merely passed to an
@@ -1081,7 +1177,15 @@ isolated checker. It is sent through the same startup boundary:
           artifact-without-request-claim-plan)))))
 #+end_src
 
-That supplies evidence for production enforcement of this boundary.
+The Biff-host calls are an illustrative integration contract, not additional
+public Biff APIs. The integration must own the actual module lifecycle, final
+handler installation, and ordering before requests are served. Checking a
+detached route table or accepting an unused handler does not satisfy it.
+
+The controlled defect supplies tested evidence for production enforcement of
+this boundary. A corresponding valid startup and usable Claim path must also
+succeed. Broader production enforcement requires the other applicable
+boundaries to have their own evidence.
 
 Behavioral completeness still needs an independent statement of what the user
 must actually be able to do:
@@ -1179,6 +1283,24 @@ What proposition is being claimed, over what object, under what assumptions,
 and what evidence justifies accepting it?
 #+end_quote
 
+Every claim has separately identifiable dimensions:
+
+| Dimension | Required meaning |
+|-----------+------------------|
+| Proposition | The statement, variable bindings, quantifiers, and observation scope |
+| Subject | The semantic interface and, where relevant, concrete implementation or artifact |
+| Mechanism | Derivation checking, dedicated checking, runtime enforcement, testing, or an explicit assertion |
+| Premises | Assumptions, dependency guarantees, and concrete premises required for application |
+| Coverage | Supported language, bounds, abstractions, and correspondence relation |
+| Applicability | Versions, configuration, validity conditions, and evidence that the claim still applies |
+| Status | Established at the stated scope, accepted as a premise, open, contradicted, or inapplicable |
+
+These dimensions need not appear as one literal map in every API, but they must
+be recoverable in the assurance explanation. Conditionality and boundedness
+qualify a claim; neither supplies an evidence mechanism. Several mechanisms can
+support different parts of the same argument. There is no single total ranking
+that turns all evidence into a universal confidence score.
+
 The assurance model distinguishes:
 
 1. properties established mechanically from explicit semantics or checked
@@ -1217,48 +1339,48 @@ crosses nearly every assurance class without any one class subsuming the rest.
 Suppose the semantic operation is declared approximately as:
 
 #+begin_src clojure
-(defoperation place-order
+(def place-order
   {:operation/id :checkout/place-order
-
    :actor :customer
-
-   :input
-   [:map
-    [:cart/id uuid?]
-    [:checkout/command-id uuid?]]
-
-   :requires
-   [[:runtime-premise :authenticated-customer]
-    [:authoritative :current-cart]
-    [:rule :cart/checkout-eligible? :current-cart]]
-
+   :input [:map [:cart/id uuid?]]
+   :invocation
+   {:requires [:authenticated-customer :admitted-command-binding]}
+   :new-incorporation
+   {:guard :cart/checkout-eligible?
+    :requires [:bound-current-cart]
+    :atomic-with :command/result-record}
+   :repetition
+   {:requires :command/result-disclosure-authority
+    :result :permitted-recorded-outcome}
    :provisional
    {:view :checkout/submitting
-    :owned-by :checkout/command-id}
-
+    :owner :gesso/execution-id
+    :correlate :gesso/command-id}
    :effect
    [:model/invoke :order/place
-    {:cart-id [:cart/id :current-cart]
+    {:cart-id [:cart/id :arguments]
      :customer :authenticated-customer
-     :command-id :checkout/command-id}]
-
+     :command-id :gesso/command-id}]
    :settlement
    {:accepted
-    {:learns [:order/placed]
-     :reacquire [:order/by-command :checkout/command-id]}
-
+    {:learns [:command/recorded-success :gesso/command-id]
+     :reacquire [:order/by-command :gesso/command-id]}
     :rejected
-    {:learns [:checkout/rejected]
-     :reacquire [:cart/current :cart/id]}
-
+    {:learns [:command/typed-rejection :gesso/command-id]
+     :reacquire [:cart/current [:cart/id :arguments]]}
     :unknown
-    {:learns [:checkout/outcome-unknown]
-     :recover [:order/reconcile-command
-               :checkout/command-id]}}})
+    {:recover [:order/reconcile-command :gesso/command-id]}}})
 #+end_src
 
-A release report for one concrete assembly might preserve evidence instead of
-flattening it:
+The command envelope supplies the stable command identity. Every presentation
+execution and managed resource has its own applicable ownership identity.
+Payment authorization, if required, is a separately declared external protocol;
+a database transaction must not pretend to make a payment provider atomic with
+an order write. The operation must define which provider outcome or durable
+obligation permits order placement and how unknown external outcomes recover.
+
+An assurance report during assembly may include both accepted claims and an
+open progress obligation:
 
 #+begin_src clojure
 {:subject
@@ -1269,64 +1391,71 @@ flattening it:
 
  :claims
  [{:id :checkout/rule-well-typed
-   :proposition
-   [:rule/well-typed :cart/checkout-eligible?]
-   :evidence
-   {:class :kernel-checked
-    :certificate :cert/cart-checkout-rule}}
+   :proposition [:rule/well-typed :cart/checkout-eligible?]
+   :status :established
+   :evidence {:class :semantic-checked
+              :mechanism :typed-rule-checker
+              :result :check/cart-checkout-rule}}
 
-  {:id :checkout/principal-bound-at-runtime
-   :proposition
-   [:runtime/binds-current-principal
-    :checkout/place-order]
-   :evidence
-   {:class :runtime-enforced
-    :boundary :server/authenticated-checkout-handler}}
+  {:id :checkout/principal-required-at-runtime
+   :proposition [:runtime/requires-current-principal
+                 :checkout/place-order]
+   :status :enforcement-bound
+   :evidence {:class :runtime-enforced
+              :boundary :server/authenticated-checkout-handler}
+   :premises #{:authentication/correct-principal-binding}}
 
   {:id :checkout/payment-provider-contract
-   :proposition
-   [:provider/acceptance-means
-    :payment-authorized]
-   :evidence
-   {:class :trusted
-    :owner :external/payment-provider
-    :assumption :payment/provider-contract-v4}}
+   :proposition [:provider/validated-acceptance-means
+                 :payment-authorized]
+   :status :accepted-as-premise
+   :evidence {:class :trusted
+              :owner :external/payment-provider
+              :assumption :payment/provider-contract-v4}}
 
   {:id :checkout/application-path-closed
-   :proposition
-   [:application/closed-path
-    :checkout/place-order]
-   :evidence
-   {:class :assembly-verified
-    :report :assembly/store-web-A12}}
+   :proposition [:application/closed-path :checkout/place-order]
+   :status :established
+   :evidence {:class :assembly-verified
+              :report :assembly/store-web-A12}}
 
   {:id :checkout/browser-realization-tested
-   :proposition
-   [:implementation-corresponds-in-scenarios
-    :checkout/place-order
-    #{:accepted :rejected :unknown}]
-   :evidence
-   {:class :tested
-    :suite :chromium/checkout-lifecycle}}
+   :proposition [:implementation-corresponds-in-scenarios
+                 :checkout/place-order
+                 #{:accepted :rejected :unknown}]
+   :status :tested
+   :evidence {:class :tested
+              :suite :chromium/checkout-lifecycle}}
 
   {:id :checkout/retry-eventually-recovers
-   :proposition
-   [:eventually
-    [:checkout/settled-or-reconciled]]
-   :evidence
-   {:class :conditional
-    :premises
-    #{:eventual-provider-availability
-      :eventual-authoritative-read
-      :continued-participant-execution}}}]}
+   :proposition [:eventually [:checkout/settled-or-reconciled]]
+   :status :open-obligation
+   :environment-premises
+   #{:eventual-provider-availability
+     :eventual-authoritative-read
+     :continued-participant-execution
+     :fair-recovery-scheduling}
+   :required-evidence :checked-progress-argument
+   :evidence []}]}
 #+end_src
+
+Names in this report resolve to source-bound evidence or accepted premises;
+they are not self-authenticating flags. In particular, the runtime row identifies
+the required enforcing boundary, not a principal for every future request.
+Production enforcement of that boundary has its own evidence.
+
+The last row is deliberately open. Naming environmental premises is not a
+progress proof. A release whose acceptance policy requires that progress
+argument cannot claim completion from this report. If a suitable argument is
+later checked, its mechanism and scope replace the open status while its
+environmental premises remain attached.
 
 The report is deliberately heterogeneous. Consider what happens if each claim is
 misread as another:
 
 #+begin_src clojure
-;; Wrong: a theorem about the checked rule does not authenticate this request.
-(when (certificate/valid? :cert/cart-checkout-rule)
+;; Wrong: a type-check result does not authenticate this request.
+(when (checking/accepted? :check/cart-checkout-rule)
   (treat-request-as-authenticated! request))
 
 ;; Wrong: a green Chromium test does not prove the provider contract.
@@ -1379,20 +1508,61 @@ provenance.
 This distinction prevents the implementation convenience of nominal typing from
 being mistaken for proof:
 
-#+begin_example
-schema / representation validation
-    -> representation has permitted shape
-
-semantic-category admission
-    -> supported code may treat value as category C
-
-checked judgment / certificate
-    -> stated semantic proposition follows under named premises
-#+end_example
+| Boundary | What acceptance establishes |
+|----------+-----------------------------|
+| Representation validation | The value has the permitted shape |
+| Semantic-category admission | Supported code may treat the value as category C at this boundary |
+| Checked judgment or certificate | The stated proposition follows under the recorded premises and mechanism |
 
 Those stages may be represented by different types, by checked constructors, or
 by other existing mechanisms.  Their assurance meaning remains distinct even
 if an implementation combines some of the physical representations.
+
+*** Admission policy and unresolved proof obligations
+:PROPERTIES:
+:CUSTOM_ID: req-admission-assurance-policy
+:END:
+
+Admission is a decision under a declared policy, not a synonym for proving every
+application function. The policy identifies mandatory structural checks,
+required evidence for particular claims, and which explicitly owned contracts
+may remain asserted. The normal policy supports full-language implementations
+while retaining their assumption dependencies.
+
+Construction derives the obligations relevant to its declared claims and runs
+the supported automated checks under an explicit resource policy. Results must
+identify unsupported reasoning and exhausted checking budgets rather than omit
+the obligation. An accepted assumption must not hide an available failed check.
+
+Mandatory identity, interface, authority-source, effect-binding, and required
+recovery checks cannot be disabled by adding an assertion. A named opaque
+functional contract may be an accepted premise where policy permits it. The
+result remains conditional; the premise is not marked discharged.
+
+The checker and assembly must distinguish these outcomes:
+
+| Outcome | Meaning and consequence |
+|---------+-------------------------|
+| Established judgment | The stated proposition follows by the identified mechanism over its stated scope |
+| Accepted assumption | A named premise is permitted by policy and remains in dependent explanations |
+| Unsupported proof fragment | The reasoning mechanism lacks a rule or representation; this does not establish that the program is false |
+| Inconclusive check | A limit, cancellation, or tool failure prevented a result; no success may be inferred |
+| Counterexample | The checked model contains a violation; report its scope and whether concrete correspondence is established |
+| Malformed declaration | Required semantic structure does not compose; reject construction |
+| Failed runtime premise | A concrete execution cannot proceed on that premise; follow declared rejection or recovery |
+| Inapplicable evidence | The subject, scope, dependency, or backend profile no longer matches; dependent acceptance requires re-establishment |
+
+An unsupported or inconclusive proof obligation may be retained as an explicit
+assumption only by a policy that permits that exact kind of premise. The system
+must not silently convert a checker failure into trust. A known counterexample
+cannot be erased by asserting the contradicted proposition under the same
+claim. A correction to the specification, abstraction, implementation, or claim
+scope must itself be explicit and checked as applicable.
+
+The interface must make clear which obligations block admission and which
+remain accepted premises. A component may be structurally admitted yet lack a
+particular application theorem or release qualification. The root report must
+not confuse these states.
 
 *** Machine-checked semantic properties
 
@@ -1425,9 +1595,11 @@ Candidate framework properties include:
 The individual phrases above name different judgments rather than one generic
 notion of "verification":
 
-- *Well-typed checked rule expressions.*  A rule expression is checked against
-  the closed semantic rule language.  Referenced fields must exist on the
-  declared semantic type; operators must be applied to compatible operand
+- *Well-typed checked rule expressions.* An expression in the supported
+  reasoning fragment is checked against its closed semantic rule language. An
+  opaque call is checked against a resolved declared interface, and its
+  implementation assumptions remain explicit. Referenced fields must exist on
+  the declared semantic type; operators must be applied to compatible operand
   types; enum values must belong to the declared variant set; optional values
   must be refined before operations requiring presence; relationship
   predicates must use valid endpoint types; and closed case analysis must be
@@ -1474,37 +1646,24 @@ notion of "verification":
 
 #+LATEX: \newpage
 
-  Conceptually:
+  The following inference is invalid:
 
-  #+begin_example
-  browser says:
-      role = helper
-          |
-          X
-          |
-          v
-      helper authority
-  #+end_example
+  #+begin_quote
+  The browser says that its role is helper, therefore it has helper authority.
+  #+end_quote
 
-  is invalid, while a chain such as:
+  A valid new-incorporation path instead establishes the relevant premises:
 
-  #+begin_example
-  trusted authentication
-      establishes principal P
-          |
-  authoritative Membership observation
-      establishes active helper relationship
-          |
-  authoritative Request / Organization facts
-      +
-  model policy
-          |
-          v
-  claim operation is currently admissible for P over R
-  #+end_example
+  | Establishing boundary | Required premise |
+  |-----------------------+------------------|
+  | Trusted authentication | This invocation represents principal P |
+  | Bound authoritative state | The Membership belongs to P and the applicable Organization |
+  | Atomic new-incorporation guard | Membership, Request, Organization policy, and their relationships permit this transition for P |
+  | Authoritative operation | Incorporation is permitted only under those current guarded premises |
 
-  may be valid when every edge is declared and discharged at the appropriate
-  assurance boundary.
+  Every establishing edge must have the appropriate declared evidence and
+  current runtime enforcement. An observation from an earlier basis does not
+  silently satisfy a transaction-current premise.
 
 - *Message payload closure and knowledge-transfer constraints.*  A semantic
   message defines the information flow permitted by one choreography
@@ -1752,14 +1911,24 @@ if P fails:
     reject or follow declared recovery semantics
 #+end_example
 
-Runtime enforcement therefore does not weaken the static result.  It connects
-that result to the concrete execution.
+Runtime enforcement connects the static result to a concrete execution only
+when it establishes the required premise for the relevant subject, basis,
+scope, and time. A pre-read followed by an unguarded write does not establish a
+commit-time premise. A postcondition check after an irreversible effect cannot
+be described as preventing that effect.
+
+An instance check does not discharge a universally quantified implementation
+contract. Validating one returned candidate does not prove that the callback
+was pure, that it had no earlier hidden effect, or that it returns valid
+candidates on every input. The enforcement mechanism and its correspondence to
+the checked predicate are themselves part of the assurance argument.
 
 For example, a static semantic result may establish:
 
 #+begin_quote
-=:request/claim= may execute only with an authenticated principal possessing a
-currently valid claim-authority premise.
+A new incorporation of =:request/claim= requires an authenticated principal
+and a transaction-current claim-authority premise. A replay requires the
+compatible command binding and current disclosure authority instead.
 #+end_quote
 
 The runtime system must still establish which principal this HTTP request
@@ -1776,12 +1945,10 @@ semantic recovery path.  It must not silently weaken the operation.
 
 In particular:
 
-#+begin_example
-required Choreo premise fails
-    X
-    |
-    +--> silently perform ordinary weaker HTMX action
-#+end_example
+#+begin_quote
+A required choreography premise fails, but the runtime performs an ordinary
+weaker HTMX action anyway.
+#+end_quote
 
 is forbidden.
 
@@ -1795,8 +1962,8 @@ Some propositions remain outside the currently mechanically discharged core.
 Examples include:
 
 - authentication middleware establishes the named principal correctly;
-- XTDB supplies the documented transaction and consistency semantics on which
-  Gesso relies;
+- the qualified XTDB backend profile supplies the specific guarded transaction,
+  outcome, and consistency semantics on which the claim relies;
 - an application model operation satisfies a semantic contract not yet
   discharged by a stronger model certificate;
 - HTMX follows the documented lifecycle subset Gesso depends on;
@@ -1830,6 +1997,79 @@ Useful classifications include:
 - =:compiler-runtime=;
 - =:environment-liveness=.
 
+*** Backend contracts and qualification
+:PROPERTIES:
+:CUSTOM_ID: req-backend-assumption-qualification
+:END:
+
+Gesso proves or checks its own semantic and realization properties relative to
+explicit backend assumptions. A proof of XTDB's implementation is not required
+to make such a conditional argument useful. The exact behavior relied upon must
+nevertheless be stated and actively challenged by qualification evidence.
+
+A backend profile records:
+
+- backend product, exact version or build, and relevant configuration;
+- Gesso adapter/lowering identity and supported transaction forms;
+- value encodings, schema/storage mapping, and relevant time/basis semantics;
+- the named assumptions on which each dependent claim relies;
+- conformance cases, adversarial schedules, results, and their coverage limits;
+- conditions requiring requalification or invalidating applicability.
+
+The profile is derived from resolved dependencies and actual deployment
+configuration. A manually entered version label or passing report for another
+configuration does not qualify the deployment.
+
+The contract must distinguish at least these obligations where a claim uses
+them:
+
+| Obligation | Required backend behavior and challenge |
+|------------+-----------------------------------------|
+| Atomic guarded transition | Relevant assertions and writes form the declared atomic operation; a failed assertion cannot leave a partial domain or ledger write |
+| Current dependency protection | Point reads, cross-document relationships, absence, and predicate dependencies used for the decision receive the protection assumed by the proof |
+| Write and frame semantics | Replacement, update, deletion, metadata, and missing-field behavior match the compiler's interpretation |
+| Command incorporation | Domain effects and the compatible command-result record cannot be committed independently where the contract requires atomicity |
+| Outcome evidence | A reported committed or rejected result has the stated authoritative meaning; delivery failure remains distinguishable from rejection |
+| Observation basis | Read tokens, visibility, valid/system time where relevant, and progression requirements have the stated scope and interpretation |
+
+A generic claim of transactional support is insufficient. For example, two
+blind writes and two guarded writes may have different conflict behavior. A
+revision check protects a dependency only if all relevant changes advance the
+revision under the accepted writer contract. A per-document check does not
+automatically protect a predicate over a changing collection.
+
+Qualification tests must be indexed by the assumption they challenge. Required
+cases include conflicting guarded attempts, aborted writes, ledger/domain
+agreement, missing and extra fields, concurrent changes to protected
+relationships, outcome loss, and basis-sensitive reads where applicable.
+Independent expected results and deliberately weakened guards must demonstrate
+that the suite can expose the relevant violation. Merely replaying the same
+compiler logic as an oracle is insufficient independent evidence.
+
+Finite testing cannot guarantee discovery of every possible backend violation.
+Successful qualification supports an explicitly accepted backend premise; it
+does not convert that premise into a theorem about all backend executions.
+Part X specifies the required evidence scope and correspondence argument.
+
+A relevant backend, adapter, configuration, encoding, or transaction-form change
+requires requalification before the affected qualified claim is reused.
+Contradictory evidence marks the premise violated; a mismatched or expired
+applicability condition marks it unavailable. Both propagate to dependent
+deployment claims. The system must identify the affected operations and apply
+their declared admission or operational failure policy, rather than continue
+advertising the old guarantee. Existing uncertain commands remain subject to
+their outcome protocol; withdrawing qualification does not invent their result.
+
+The conditional abstract theorem may remain valid when a backend violates a
+premise. What becomes unavailable is its application to that realization.
+Reports must distinguish theorem validity from deployment qualification.
+
+An externally observable transaction-internal prestate is one possible evidence
+mechanism, not a universal prerequisite. A valid realization argument may rely
+on the specified atomic assertion/write semantics and a correct lowering under
+the qualified contract. The proof obligation is semantic correspondence, not
+possession of a particular internal snapshot token.
+
 *** Application assertions
 
 Application assertions remain distinct from framework/trusted implementation
@@ -1849,9 +2089,12 @@ example:
 Such statements may be necessary premises.  They must not be represented as
 though Gesso proved them.
 
-An =:application-asserted= proposition therefore remains an explicit leaf in
-the assurance graph until a stronger certificate or runtime enforcement
-discharges it.
+An =:application-asserted= proposition remains an explicit premise until
+evidence establishes that same proposition over the required scope. A runtime
+check may discharge an invocation-specific premise; it must not be used to
+silently discharge a universal implementation contract. If another accepted
+assumption replaces a premise, the explanation retains that dependency rather
+than reporting an assumption-free result.
 
 This distinction is useful because:
 
@@ -1872,10 +2115,10 @@ checked as graph/assembly properties.
 Examples include:
 
 - every rendered semantic affordance names a declared semantic operation;
-- every rendered semantic operation has a projected executable plan;
-- every plan has a corresponding current browser artifact;
-- every semantic command has a declared physical transport;
-- every transport resolves to a trusted server route/capability;
+- every browser-managed semantic operation has its required projected plan;
+- every browser plan has a corresponding compatible browser artifact;
+- every operation requiring transport has a declared transport realization;
+- every such transport resolves to its declared trusted boundary;
 - every trusted capability resolves to the declared authoritative operation;
 - required execution capabilities are supplied;
 - settlement/progression obligations have declared realization paths;
@@ -1917,8 +2160,9 @@ Assembly checks should therefore be classified with precise language such as:
 
 rather than being upgraded automatically to =proved=.
 
-A future proof system may discharge some assembly propositions more formally.
-Until then, the distinction remains explicit.
+Where an assembly proposition is established by a formal proof mechanism, its
+evidence may state that stronger result with the exact proposition and scope.
+Ordinary graph checking does not acquire that classification by association.
 
 #+LATEX: \newpage
 
@@ -1965,8 +2209,8 @@ proposition.
 The design must distinguish:
 
 - *reachability:* there exists a path to a terminal/resolving state;
-- *deadlock freedom:* no admitted nonterminal state is permanently stuck under
-  the modeled transition relation;
+- *deadlock freedom:* every reachable nonterminal state has an enabled modeled
+  continuation; this does not by itself require that the continuation is taken;
 - *fairness-dependent progress:* enabled progress eventually occurs under a
   fairness assumption;
 - *environment-dependent convergence:* the system converges if specified
@@ -2034,36 +2278,15 @@ without losing its classification.
 
 A downstream artifact should be able to say conceptually:
 
-#+begin_example
-Claim ExecutablePlan
-
-depends on:
-
-    rule well-typed
-        evidence: kernel-checked
-
-    helper knows request-id
-        evidence: machine-checked derivation
-
-    claim authority available
-        evidence:
-            semantic requirement machine-checked
-            concrete current authorization runtime-enforced
-
-    Request claim model contract
-        evidence: trusted-model-contract
-
-    projection preserves supported semantics
-        evidence: exact-finite-checked under abstraction A
-
-    browser realization complete
-        evidence: assembly-verified
-
-    browser shell follows adapter contract
-        evidence:
-            trusted runtime primitives
-            Chromium integration tested
-#+end_example
+| Claim-plan dependency | Evidence and retained premises |
+|-----------------------+--------------------------------|
+| Rule well typed | Dedicated typed semantic check |
+| Helper knows the Request identity | Checked knowledge derivation |
+| New-incorporation authority | Checked semantic requirement and concrete atomic runtime enforcement |
+| Model implementation contract | Proof where supplied; otherwise an explicitly accepted implementation premise |
+| Projection preservation | Appropriate checked argument; a finite abstraction requires a sound refinement argument for an unbounded concrete claim |
+| Browser realization closure | Assembly verification against actual admitted sources and artifacts |
+| Browser shell correspondence | Stated implementation argument, trusted primitive contracts, and independently classified browser tests |
 
 The resulting assurance claim must not erase those differences and simply say
 "Claim is verified."
@@ -2111,37 +2334,18 @@ The assurance classification should tell the developer where repair belongs.
 
 Typical relationships include:
 
-#+begin_example
-rule typing failure
-    -> repair rule/domain declaration
-
-knowledge entailment failure
-    -> add justified information path or change behavior
-
-authority derivation failure
-    -> repair authority premise/policy boundary
-
-message payload closure failure
-    -> repair message contract or remove undeclared semantic transfer
-
-projection-preservation failure
-    -> repair choreography/projector/semantics
-
-assembly closure failure
-    -> repair application wiring
-
-runtime authorization failure
-    -> current concrete operation is not admissible
-
-trusted assumption violated
-    -> trusted boundary or assumption definition is wrong
-
-Chromium integration failure with semantic theorem still valid
-    -> implementation-correspondence/trusted shell defect
-
-liveness premise absent
-    -> liveness conclusion is not currently available
-#+end_example
+| Failure | Owner of repair or interpretation |
+|---------+-----------------------------------|
+| Rule typing | Rule or domain declaration |
+| Knowledge entailment | Justified information path or the consuming behavior |
+| Authority derivation | Authority premise, binding, or policy boundary |
+| Message payload closure | Message contract or undeclared information transfer |
+| Projection preservation | Choreography, projector, or semantic definitions |
+| Assembly closure | Application construction and bindings |
+| Runtime authorization | The attempted concrete operation is not presently admissible |
+| Contradicted assumption | The trusted boundary or applicability of the assumption |
+| Browser failure despite a valid abstract theorem | Runtime correspondence or an assumed primitive |
+| Missing liveness premise | The dependent progress conclusion is unavailable |
 
 This is why precise assurance terminology is not cosmetic.  It makes a failed
 claim point toward the layer that owns the repair.
@@ -2191,6 +2395,11 @@ binding depends on it. The canonical distinctions include:
   reusable logical resource/target name.
 - *Transport-request identity:* one transport attempt, distinct from the domain
   object being acted upon and from the command it may carry.
+- *Submission-attempt identity:* one attempt to incorporate a command at an
+  authoritative boundary; one transport request need not imply exactly one
+  backend attempt.
+- *Capability-instance identity:* a concrete grant to perform a scoped action
+  under its lifetime and usage contract; it is not the command identifier.
 - *Admitted assembly generation:* the immutable application realization admitted
   together, including its routes, providers, prepared operations, and artifacts.
 - *Compatibility identity/version:* the declared protocol or plan compatibility
@@ -2247,8 +2456,28 @@ an explicit correspondence obligation. Canonical terminology calls the runtime
 component the executable semantic core, reserving =proof kernel= for derivation
 checking; external proof-assistant kernels must be identified as external.
 
-These definitions fix terminology and boundaries. They do not select a namespace
-layout or specify the later judgment calculus by implication.
+The trust base of a claim includes every component that establishes a judgment
+without supplying evidence checked by another identified mechanism. Depending
+on the claim, this includes parsing, typing, normalization, substitution,
+transition interpretation, frame rules, initiality, invariant preservation,
+induction, certificate admission, and source-to-artifact binding.
+
+A small propositional kernel does not make the whole assurance system equally
+small if other modules directly establish additional semantic judgments. Those
+modules must either produce evidence accepted by the appropriate checker or
+remain explicit parts of the trusted checker implementation. Part IX owns their
+rules; Part X owns the corresponding soundness and implementation arguments.
+
+The architecture separates semantic definitions, elaboration, derivation
+checking, runtime realization, and observations/reports. Checking a derivation
+does not submit a database transaction. An integration runner may perform real
+effects to collect evidence, but it is then an effectful realization boundary,
+not part of the pure proof kernel. The runtime consumes admitted semantics and
+current premises, not a diagnostic report standing in for either.
+
+These definitions fix responsibilities without requiring one monolithic
+namespace. Shared definitions reduce drift; independent correspondence checks
+and soundness arguments address mistakes shared by execution and checking.
 
 *** Raw declaration
 
@@ -2345,8 +2574,11 @@ relative to its certified dependencies and named assumptions.
 
 *** Obligation
 
-An *obligation* is a proposition that must be established before a particular
-checked result or certificate may be issued.
+An *obligation* is a proposition required for a particular judgment, admission,
+or assurance claim. A mandatory check must be established before its result is
+issued. Where admission policy permits an unproved contract as a premise, the
+resulting certificate states the dependent conditional judgment; it does not
+claim that the original contract obligation was discharged.
 
 An unresolved obligation must remain visible.
 
@@ -2364,14 +2596,17 @@ Derivations are useful for:
 - diagnostics;
 - explanation;
 - repair;
-- trusted-computing-base reduction when an independent checker is introduced.
+- trusted-computing-base reduction through independently checked evidence.
 
 A derivation is evidence, not runtime authority.
 
 *** Certificate
 
 A *certificate* is a closed evidence artifact stating enough information for an
-appropriate checker to decide the claims it represents.
+appropriate checker to decide the claims it represents. Closed means that its
+required references and dependencies are accounted for, including named
+assumption leaves. It does not mean that those assumptions have been proved or
+that future runtime premises already hold.
 
 A certificate may include:
 
@@ -2395,8 +2630,10 @@ certificate class.
 
 *** Semantic identity
 
-A *semantic identity* is a deterministic identity of normalized semantic
-meaning.
+A *semantic identity* is a deterministic identity of the semantic material
+normalized under a declared encoding and normalization contract. It identifies
+that material; it is not a decision procedure for equivalence of arbitrary
+Clojure programs.
 
 It is deliberately distinct from:
 
@@ -2407,10 +2644,15 @@ It is deliberately distinct from:
 - runtime locator;
 - physical artifact location.
 
-Whitespace, comments, local helper names, and semantically irrelevant
-implementation refactors should not necessarily invalidate downstream evidence.
+Whitespace, comments, local helper names, and implementation details outside
+the exported contract need not alter its semantic identity. A claim about the
+concrete implementation may nevertheless need a new implementation binding or
+new correspondence evidence after such a change.
 
-Changes to relied-upon semantic commitments must.
+Changes to relied-upon semantic commitments must invalidate dependent evidence
+unless a checked compatibility or implication argument justifies reuse. A
+matching contract identity alone does not authorize evidence reuse across
+different implementations.
 
 Examples include changes to:
 
@@ -2428,36 +2670,30 @@ self-authenticating evidence that the corresponding material was checked.
 
 Semantic identity by itself does not prove the truth of that material. Evidence
 about a particular generated artifact or implementation must also remain bound
-to the concrete object to which that evidence applies. Semantic equivalence
-does not automatically transfer test results or physical artifact correspondence
-from an earlier build to a different one.
+to the concrete object to which that evidence applies. Equality of normalized
+contract material does not automatically transfer test
+results or physical artifact correspondence from an earlier build to a different
+one. For opaque functions, the exported contract, admitted implementation
+binding, and evidence applicability are separate identities. Gesso does not
+require deciding extensional equivalence of those functions.
 
 *** Proof DAG
 
 A *proof DAG* is the dependency graph from a root checked artifact through all
 certified semantic dependencies and named assumptions.
 
-A realistic root may eventually depend on:
+A root may depend on the following semantic layers; actual dependencies form
+a DAG, not necessarily one linear chain:
 
-#+begin_example
-schema certificates
-    |
-domain certificates
-    |
-relationship certificates
-    |
-business-rule certificates
-    |
-model-operation certificates
-    |
-choreography certificate
-    |
-projection certificate
-    |
-executable-plan certificate
-    |
-whole-application closure evidence
-#+end_example
+| Semantic layer | Typical exported evidence |
+|----------------+----------------------------|
+| Schemas, domains, and relationships | Typed interfaces and relationship constraints |
+| Business rules | Well-formedness, proved properties, and explicit opaque contracts |
+| Model operations | Transition obligations, invariants, and realization premises |
+| Choreography | Knowledge, authority, coordination, and resource judgments |
+| Projection | The stated global-to-local behavior relation |
+| Executable plans | Semantic and artifact identity bindings |
+| Whole application | Closure, production enforcement, and independent acceptance evidence |
 
 A later stage may rely only on propositions actually exported by its certified
 dependencies or named as assumptions.
@@ -2486,6 +2722,145 @@ The following principles apply throughout the design.
 They are not implementation-history advice.  They are properties of the
 intended finished system.
 
+*** Canonical semantic construction and controlled effects
+:PROPERTIES:
+:CUSTOM_ID: req-canonical-transition-construction
+:END:
+
+The operation's canonical semantic source determines the obligations of its
+realization. For an authoritative state-changing operation, that source contains
+or references:
+
+1. The typed state projection and input contract, including optionality, nominal
+   distinctions, identity bindings, and supported value representations.
+2. Its invocation, repetition, and new-incorporation protocols.
+3. Its guard and declared dependencies on authoritative state or external facts.
+4. Its permitted transition relation, writes, preserved fields, and other
+   declared effects.
+5. Its result meanings, command outcome protocol, and required acquisition or
+   recovery successors.
+6. Its opaque implementation contracts, assumptions, and evidence requirements.
+
+State semantics distinguish absence, present nil where permitted, and false.
+An accessor, serializer, predicate, or physical database mapping must not erase
+that distinction when the declared semantics uses it. Numeric ranges, overflow,
+comparison, nominal enums, and time representations are equally explicit; host
+runtime defaults do not define portable semantics by accident.
+
+For a guarded assignment, all right-hand sides refer to the same prestate and
+admitted inputs unless the operation explicitly declares sequential intermediate
+steps. Its frame identifies state required to preserve both presence and value.
+The compiler derives the write set from assignments and the required read
+footprint from supported expressions. It derives the default unchanged-field
+frame relative to the declared state projection. Independently supplied
+footprints are checked for agreement rather than treated as extra authority.
+
+An abstract frame over three declared fields does not prove that every other
+physical database field is preserved. The storage mapping must account for
+domain fields, framework revision/time metadata, replacement versus patch
+semantics, and any fields outside the projection. Mapped identities must not
+collide through key normalization or encoding. Part IV specifies that mapping
+and its authoritative effect contract.
+
+An opaque computation may supply a candidate result or change plan. Admission
+can check its typed result, target binding, supported guard/assignment/frame
+relation, and effect footprint before those effects are submitted. Such a check
+can establish those instance properties without proving the computation for
+all inputs. It does not prove that the computation had no earlier hidden effect;
+effect containment still needs its own enforcement or retained assumption.
+
+*** From an admitted candidate to an authoritative outcome
+
+A candidate is neither a committed transition nor a receipt. The controlled
+realization has these distinct responsibilities:
+
+| Boundary | Required responsibility |
+|----------+-------------------------|
+| Preparation | Obtain appropriately bound inputs and observations; construct the candidate using admitted semantic sources |
+| Candidate admission | Check the actual proposed targets, changes, frame, declared effects, and command binding rather than a caller-supplied success report |
+| Lowering | Translate the admitted semantic operation to a physical transaction/effect plan under the applicable storage and backend contract |
+| Submission | Submit that admitted plan through the scoped capability; reject unnoticed substitution or additional effects |
+| Incorporation | Enforce current dependencies atomically with the required domain and command-record changes |
+| Outcome admission | Interpret authoritative result evidence at its actual scope; preserve unknown status where evidence is insufficient |
+| Delivery and recovery | Resolve participant knowledge and declared propagation obligations without inventing a commit outcome |
+
+The boundaries may be combined in an implementation, but their obligations
+cannot disappear. A candidate validated against an earlier observation needs
+commit-time guards or an equivalent atomic realization. Independently writing
+the ledger after the domain change does not implement an atomic command
+protocol. Postcommit invalidation or external delivery requires its own durable
+or otherwise justified recovery contract; a successful domain write does not
+prove that an interested browser learned about it.
+
+The physical transaction may involve several resources. A Request guard may
+depend on Membership and Organization state while its writes include a Request
+and command record. The design must represent this composition. A supported
+backend profile may impose explicit limits, but prototype restrictions such as
+one document, literal-only assignments, or disabled notifications are not the
+general semantic model.
+
+*** Invariant obligations and coverage
+
+For a stated invariant =I=, a closed operation catalog supports induction only
+when the relevant obligations are established:
+
+- every admitted initial state satisfies =I=;
+- each admitted transition preserves =I= from a state satisfying =I=;
+- all state-changing behavior relevant to the claim is represented by those
+  transitions or by explicit environment assumptions;
+- the concrete realization corresponds to the stated transition semantics under
+  its retained premises.
+
+Conceptually, the base and step obligations are:
+
+#+begin_example
+For every s:
+    Init(s) implies I(s)
+
+For every admitted operation o and every s, x, s':
+    I(s) and T_o(s, x, s') imply I(s')
+#+end_example
+
+=T_o= includes that operation's permitted guards, assignments, and effects at
+the stated abstraction. The proof scope names the state projection and operation
+catalog; it does not silently include every possible database writer. Feasible
+initialization and usable required operations need separate positive evidence,
+so an impossible initial condition or a guard rejecting every invocation cannot
+be used to satisfy product completeness.
+
+Initializers, migrations, imports, administrative operations, scheduled work,
+and external writers must have an explicit place in the coverage argument.
+Their absence from a developer-maintained list is not evidence that they do not
+exist. A proof about the supported catalog remains a conditional catalog proof
+until production writer coverage and correspondence justify its application.
+
+*** Managed capabilities and admitted realizations
+
+The ordinary application assembly supplies the capabilities needed to realize
+declared effects. Code receives the scoped capabilities required by its role;
+it should not ordinarily obtain raw database submission authority merely to
+construct a candidate. Read-only and static routes do not need writer
+capabilities. Background and asynchronous work receive explicit lifetime and
+transfer rules rather than borrowing an HTTP request's identity indefinitely.
+
+A one-use capability bounds one grant's use. It does not make a logical command
+idempotent across new grants or retries. That requires the authoritative command
+binding and record protocol. Conversely, a command record does not prove that
+every write occurred through the intended scoped capability.
+
+An admitted assembly generation binds the semantic sources, implementations,
+providers, routes, artifact identities, qualification profiles, and policy used
+by its realization. A relevant replacement requires re-admission or a checked
+compatibility transition. Supported development reload and deployment overlap
+must make that transition explicit; repeatedly checking mutable Var identities
+is not a substitute for a declared lifecycle and dependency contract.
+
+Managed capability construction prevents accidental bypass in trusted
+application code. It is not a sandbox against hostile code sharing the JVM.
+Any additional containment claim must identify the actual isolation mechanism
+and its assumptions. Neither opaque Clojure nor explicit assertions excuse
+undeclared interference with protected state.
+
 *** State semantic intent once
 
 The ordinary coherent formulation should state semantic intent in one
@@ -2507,75 +2882,40 @@ genuinely exists.
 
 Prefer:
 
-#+begin_example
-one semantic declaration
-    |
-    +--> derived browser metadata
-    |
-    +--> derived or checked transport binding
-    |
-    +--> derived diagnostics
-    |
-    +--> checked application closure edges
-#+end_example
+One semantic declaration supplies derived browser metadata, derived or checked
+transport bindings, diagnostics, and application closure edges.
 
 over:
 
-#+begin_example
-operation declaration
-+ unrelated button declaration
-+ unrelated plan-name declaration
-+ unrelated transport declaration
-+ route operation string
-+ bootstrap registry entry
-#+end_example
+An operation, button, plan name, transport, route string, and bootstrap entry
+are independently maintained as if they were unrelated declarations.
 
 When independently authored values must agree, correspondence must be checked
 explicitly.
 
 
-A Claim card shows what "state semantic intent once" should mean for ordinary
-application code. A plausible public authoring surface could let the operation
-own the semantic declaration and let presentation bind to that identity:
+A Claim card reuses the =claim-request= operation already defined. It does not
+introduce a second version of Claim's authority, replay, or recovery semantics.
+The view supplies only the operation reference, domain arguments, and local
+presentation choices:
 
 #+begin_src clojure
-(defoperation request-claim
-  {:operation/id :request/claim
-   :actor :helper
-
-   :input
-   [:map
-    [:request/id uuid?]]
-
-   :requires
-   [[:knows? :helper [:request/id]]
-    [:runtime-premise :current-claim-authority]]
-
-   :effect
-   [:model/invoke :request/claim
-    {:request-id :request/id
-     :principal :authenticated-principal}]
-
-   :provisional
-   {:view :request/claiming}
-
-   :settlement
-   {:accepted {:reacquire [:request/card :request/id]}
-    :rejected {:reacquire [:request/card :request/id]}
-    :unknown  {:recover [:request/reconcile-claim :request/id]}}})
-
-(defview request-card
-  [{:request/keys [id status title] :as request}]
+(defn request-card
+  [{:request/keys [id status title]}]
   [:article.request
    [:h3 title]
    [:p (name status)]
-
    (when (= status :open)
      (gesso/action
        {:operation :request/claim
         :args {:request/id id}}
        "Claim"))])
 #+end_src
+
+Visibility is a presentation decision, not authorization. The action constructor
+resolves the admitted operation, validates the arguments before exposure, and
+obtains its command/execution protocol from that operation. The author does not
+manually create an authority token or a command-outcome query.
 
 From those semantic declarations, Gesso may derive or validate lower-level
 realization data:
@@ -2586,10 +2926,13 @@ realization data:
 {:plan/id :plan/request-claim
  :operation :request/claim
  :role :helper
- :command-schema
+ :argument-schema ClaimInput
+ :command-envelope-schema
  [:map
-  [:request/id uuid?]
+  [:arguments ClaimInput]
   [:gesso/command-id uuid?]]
+ :presentation-owner :gesso/execution-id
+ :command-correlation :gesso/command-id
  :transport-requirement :trusted-semantic-post
  :settlement
  {:accepted :request/card
@@ -2638,7 +2981,7 @@ The desirable API therefore pushes complexity inward. Application code states
 the semantic operation and domain arguments; Gesso derives what it owns and
 checks correspondence where an independent physical choice genuinely remains.
 The illustrative =gesso/action= form is not an API commitment. It is a usability
-constraint on whatever public API eventually replaces it.
+constraint on the supported public API.
 
 *** Derive rather than synchronize
 
@@ -2676,8 +3019,10 @@ Examples of build/application-preflight failures include:
 - authoritative successor with no permitted reacquisition path.
 
 An affordance introduced only while constructing a concrete view is checked
-before that rendered surface is serialized or exposed. Static assembly
-preflight checks the affordances and operation bindings available from its
+before that rendered surface is serialized or exposed through the managed
+renderer. Arbitrary Hiccup or raw HTML that bypasses that boundary does not
+inherit the rendered-surface assurance claim; supported semantic action
+construction must make this distinction explicit. Static assembly preflight checks the affordances and operation bindings available from its
 declarations; it cannot claim to have inspected future arbitrary view data.
 
 
@@ -2717,7 +3062,7 @@ target relationship:
 
 #+begin_src clojure
 (render
-  request-card
+  configurable-request-card
   {:request request
    :actions
    [{:operation :request/reassign
@@ -2728,7 +3073,7 @@ target relationship:
 
 ;; render preflight rejects before serialization:
 {:error/type :view/operation-arguments-incomplete
- :view :request/card
+ :view :request/configurable-card
  :operation :request/reassign
  :missing #{:helper/id}
  :available #{:request/id}}
@@ -2750,7 +3095,8 @@ Finally, current authorization may change after a completely valid render:
 
 ;; T2: Alice's Membership is withdrawn.
 
-;; T3: Alice clicks the still-visible affordance.
+;; T3: Alice submits a new command C42 from the still-visible affordance.
+;; The authoritative operation establishes this rejection and its reason.
 (invoke-claim!
   current-server-context
   {:request/id R :gesso/command-id C42})
@@ -2764,16 +3110,11 @@ must reject the concrete invocation using current authority.
 
 The three failures therefore form one continuous construction story:
 
-#+begin_example
-known from declarations
-    -> fail during assembly admission
-
-known only for a concrete rendered surface
-    -> fail before serialization / exposure
-
-known only from current external/model state
-    -> fail at trusted runtime invocation
-#+end_example
+| Information becomes available | Earliest legitimate rejection boundary |
+|-------------------------------+----------------------------------------|
+| From declarations | Construction or assembly admission |
+| From a concrete rendered surface | Before serialization and exposure |
+| From current external or model state | The trusted runtime boundary with the required current-state protection |
 
 "Fail early" means the earliest *legitimate* boundary, not the earliest point at
 which the framework could guess.
@@ -2848,9 +3189,16 @@ small executable contract rather than a prose-only promise.
      :seat/availability
      {:scope [:flight/id :seat/id]}]]
 
-   :requires
-   [[:runtime-premise :authenticated-traveler]
-    [:runtime-premise :current-seat-state]]
+   :invocation
+   {:requires [:authenticated-traveler :admitted-command-binding]}
+
+   :new-incorporation
+   {:requires [:current-seat-state :current-traveler-eligibility]
+    :atomic-with :command/result-record}
+
+   :repetition
+   {:requires :command/result-disclosure-authority
+    :result :permitted-recorded-outcome}
 
    :effect
    [:model/invoke :seat/reserve
@@ -2861,13 +3209,14 @@ small executable contract rather than a prose-only promise.
 
    :settlement
    {:accepted
-    {:learns [:seat/reserved-by-self]
+    {:learns [:command/reservation-recorded :gesso/command-id]
      :reacquire [:flight/seat-map :flight/id]}
 
     :rejected
     {:reason-set #{:seat/already-reserved
                    :seat/no-longer-offered
-                   :traveler/not-eligible}
+                   :traveler/not-eligible
+                   :reservation/precondition-changed}
      :reacquire [:flight/seat-map :flight/id]}
 
     :unknown
@@ -2878,11 +3227,13 @@ small executable contract rather than a prose-only promise.
        :command-id :gesso/command-id}]}}})
 #+end_src
 
-The admitted command boundary supplies =:gesso/command-id= once, before the
-first possible send. The authoritative model operation uses the identity for
-deduplication and reconciliation, and guards eligibility and seat availability
-*inside the same transaction* that records the reservation. Pre-reading seat
-state may provide a prompt rejection but cannot be the commit guard:
+The admitted command boundary allocates =:gesso/command-id= once, before the
+first possible submission, and the authoritative boundary establishes or
+validates its trusted binding as described for Claim. The model guards
+eligibility, the flight/seat association, and availability under the same atomic
+contract that records the reservation and command result. A pre-read may aid
+presentation or preparation but cannot replace that guard or authoritative
+command reconciliation:
 
 #+begin_src clojure
 (defn reserve-seat!
@@ -2895,30 +3246,42 @@ state may provide a prompt rejection but cannot be the commit guard:
      :traveler-id (:user/id principal)
      :command-id command-id
 
-     ;; All of these are evaluated against transaction-current state;
-     ;; the winning commit preserves them, or returns a typed rejection.
+     ;; New incorporation protects these transaction-current predicates.
+     ;; A compatible replay is handled before applying new-command guards.
      :commit-guards
      [[:traveler/eligible? (:user/id principal) flight-id]
+      [:seat/belongs-to-flight? flight-id seat-id]
       [:seat/offered? flight-id seat-id]
       [:seat/unreserved? flight-id seat-id]]
 
      ;; The scoped identity binds principal, operation, flight, and seat.
-     ;; A repeat returns the recorded outcome, never a second reservation.
+     ;; A compatible repeat returns the permitted recorded outcome,
+     ;; subject to current disclosure authority, without another reservation.
      :deduplicate-by
      [:flight/reserve-seat (:user/id principal) command-id]
      :bind-arguments
      {:flight-id flight-id :seat-id seat-id}}))
 #+end_src
 
-The transaction API above is schematic: the implementation must prove that
-its chosen database transaction or compare-and-set mechanism rejects a
-conflicting commit, that changes to any guard-owned eligibility record cannot
-slip between the guard and the write, and that command deduplication is atomic
-with the reservation. A failed guard maps to =:seat/already-reserved=,
-=:seat/no-longer-offered=, or =:traveler/not-eligible= based on current
-authoritative evidence. When delivery or commit status cannot be established,
-the client retains =:unknown= and reconciles by the bound command identity;
-it must not infer rejection from a timeout.
+The transaction API is schematic. Its realization must establish the stated
+guard, relationship, frame, and atomic command-record properties under the
+qualified backend contract. If ordinary Clojure computes eligibility outside
+the transaction, all facts on which it depends must receive equivalent
+commit-time protection; pre-read correctness alone is insufficient.
+
+An aggregate transaction-guard failure may not identify which predicate failed.
+The model can return =:reservation/precondition-changed= when that is the
+strongest supported reason. A more specific reason requires authoritative
+evidence of the stated scope. A later reread can describe current availability
+but must not be presented as proof of the historical cause of an earlier
+transaction failure.
+
+Before interpreting a failed attempt as command rejection, the outcome protocol
+must account for a compatible command incorporated by a concurrent attempt.
+When incorporation or delivery cannot be established, the participant retains
+=:unknown= and reconciles by the bound command identity. A timeout, a missing
+record at an insufficient read basis, or an unavailable dependency is not
+authoritative rejection.
 
 A valid browser interaction may therefore begin from an authoritative observation
 at =T1= and still receive a typed rejection because Bob reserved the seat at
@@ -2991,19 +3354,12 @@ merely because required semantic metadata is absent.
 
 Forbidden examples include:
 
-#+begin_example
-missing authoritative basis
-    -> emit naked semantic hx-post anyway
-
-missing browser plan
-    -> guess a route and send anyway
-
-unknown browser-artifact correspondence
-    -> start runtime anyway
-
-missing optimistic command
-    -> perform ordinary mutation anyway
-#+end_example
+| Missing requirement | Forbidden silent fallback |
+|---------------------+---------------------------|
+| Required authoritative basis | Emit the semantic mutation without its basis |
+| Required browser plan | Guess a route and send anyway |
+| Admitted browser-artifact correspondence | Run the managed plan without establishing compatibility |
+| Required command envelope | Perform an ordinary mutation instead |
 
 If a semantically managed realization cannot be constructed, the correct
 behavior is a precise failure or an explicitly modeled unavailable operation.
@@ -3057,8 +3413,10 @@ implicit magic
 + weak runtime discovery
 #+end_example
 
-Escape hatches may exist for unusual requirements, but they must be explicit
-and must not weaken unrelated invariants.
+Ordinary Clojure behind an admitted contract is part of the normal path.
+Escape hatches for crossing a managed effect or authority boundary must instead
+be explicit, identify affected guarantees, and preserve unrelated invariants.
+An assertion is a declared premise, not a generic switch disabling checks.
 
 The same principle applies to semantic-category distinctions.  Stronger
 internal admission should reduce downstream ambiguity rather than impose a
@@ -3069,16 +3427,11 @@ transitive proof objects, or authority tokens by hand.
 
 The desirable developer experience is therefore asymmetric:
 
-#+begin_example
-correct ordinary path
-    -> little additional ceremony
-
-semantic-category mistake
-    -> early precise diagnostic
-
-manual crossing of a strong semantic boundary
-    -> deliberate, explicit API
-#+end_example
+| Authoring situation | Required developer experience |
+|---------------------+-------------------------------|
+| Correct ordinary construction | Little additional ceremony |
+| Semantic-category mistake | An early, precise diagnostic |
+| Crossing a managed boundary manually | A deliberate API and explicit assurance impact |
 
 *** Errors are part of the public correctness surface
 
@@ -3095,6 +3448,15 @@ A useful error should answer, where applicable:
 7. Which known alternatives are legal?
 8. Which assurance class was expected?
 9. Which assumption, if any, would be required to proceed?
+10. Is the result a contradiction, unsupported proof fragment, inconclusive
+    check, inapplicable evidence, or failed runtime premise?
+11. Is the reported fact about this attempt, the logical command, or a later
+    authoritative observation?
+
+Developer diagnostics may include more detail than a participant response.
+Disclosure policy must prevent errors or reconciliation endpoints from leaking
+protected records, prior outcomes, principal data, or existence information.
+Diagnostic detail is not an alternate authority channel.
 
 Fuzzy suggestions may help diagnostics but must not silently alter
 security-sensitive execution.
@@ -3117,7 +3479,12 @@ The finished system should be able to expose stable summaries of:
 - authoritative acquisition paths;
 - open obligations;
 - named assumptions;
-- result classification for each guarantee.
+- result classification, subject, scope, mechanism, and applicability for each
+  guarantee;
+- exact implementation and backend profile bindings where relevant;
+- accepted assertions distinguished from discharged obligations;
+- dependencies affected by changed or contradicted premises;
+- the actual admitted writer/effect coverage and its remaining assumptions.
 
 Inspection is diagnostic.
 
@@ -3133,10 +3500,14 @@ behavior becomes impossible or immediately recognizable because of this
 addition?
 #+end_quote
 
-If the answer is only theoretical elegance, the default is to defer the added
-formal machinery.
+Soundness work on an existing claimed guarantee also has concrete value: it
+establishes why the checker may be relied upon, even when it rejects no new
+surface syntax. Formal machinery should justify its complexity through such a
+guarantee, a useful class of accepted programs, or a recognizable defect.
 
-The proved language should grow vertically from real correctness requirements
-rather than horizontally toward maximal expressiveness.
+The proved fragment grows from real correctness requirements. The application
+language remains the full host language. Improving proof coverage must not
+force authors to abandon useful Clojure computation or silently reclassify
+accepted assertions as proofs.
 
 #+LATEX: \newpage

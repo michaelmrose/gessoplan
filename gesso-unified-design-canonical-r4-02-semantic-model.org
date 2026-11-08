@@ -1,6 +1,7 @@
 * Part II — Semantic model
 :PROPERTIES:
 :CUSTOM_ID: part-02-semantic-model
+:PART_REVISION: 02-20261107
 :END:
 
 This part defines the semantic distinctions shared by choreography, authoritative
@@ -8,6 +9,21 @@ operations, browser realization, and application assembly. It uses the assurance
 and admission vocabulary established in Part I. The definitions do not require
 a universal persisted fact graph, a new runtime class for every concept, or a
 single global revision coordinate.
+
+The model applies to full-language applications under the
+[[#req-full-language-construction][checked construction contract]]. An opaque
+Clojure computation has an explicit semantic interface and retained premises;
+it is not excluded from the application because its implementation is outside
+the proof fragment. This part defines what the surrounding claims mean.
+Part IX owns their checking judgments, and Part X owns soundness and concrete
+correspondence. The intended semantics does not inherit incidental limitations
+of one runtime representation.
+
+Examples use illustrative contract and API names unless explicitly identified
+as executable fixtures. Symbols such as R, U, B, and X17 stand for values bound
+by the surrounding example. An inspection map shows information that an admitted
+boundary must retain; writing that map does not establish admission. Later
+parts specify concrete construction, checking, and realization contracts.
 
 ** Values and evolving values
 
@@ -157,6 +173,40 @@ use ordinary value equality when the enclosing contract makes it sufficient.
 Gesso must not mistake matching schemas or encodings for equality of authority,
 provenance, subject, observation scope, or admission status.
 
+*** Typed values, absence, and portable interpretation
+
+The semantic interpretation of a value includes the type and context under
+which it is used. A nominal enum, currency amount, principal identifier, and
+resource identifier must not become interchangeable because their physical
+encodings overlap.
+
+The following cases are distinct:
+
+| Case | Meaning |
+|------+---------|
+| Field absent | The projection does not contain that field, or explicitly establishes its absence under its schema |
+| Field present with nil | A present value permitted only when the type admits nil |
+| Field present with false | A Boolean value, not absence |
+| Fact unknown | The actor lacks a justified proposition; this is not the proposition's negation |
+| Observation denied | The observation contract withholds disclosure; this need not establish either presence or absence |
+| Resource authoritatively absent | A justified negative result within a declared subject, basis, time, and query scope |
+
+Omission from a partial projection must not be interpreted as known absence.
+Similarly, a defaulting accessor must not collapse absent, nil, and false when
+the operation's guard, frame, or outcome depends on their distinction. The
+schema and acquisition contract determine which omissions have semantic meaning.
+
+Portable numeric and value profiles specify ranges, overflow, equality,
+ordering, strings, nominal categories, and serialization. A mathematically
+unbounded integer in a proof is not automatically a safely represented browser
+number. A canonical encoding can normalize =1= and =1N= as the same mathematical
+integer without proving that every host arithmetic operation preserves that
+meaning. Concrete interpretation has its own target and correspondence contract.
+
+Unsupported values at a wire or checked-IR boundary produce a typed rejection
+or use an explicitly admitted codec. This does not prohibit using those values
+inside an ordinary host-language computation whose exported interface is valid.
+
 *** Representation, semantic category, and admission
 :PROPERTIES:
 :CUSTOM_ID: req-semantic-admission
@@ -171,15 +221,15 @@ stronger status in which later code intends to use it.
 
 The design therefore distinguishes conceptually:
 
-#+begin_example
-representation has the required shape
-        !=
-value belongs to the required semantic category
-        !=
-value has crossed the admission/checking boundary for that category
-        !=
-the strongest propositions associated with that value have been proved
-#+end_example
+| Question | What a positive answer establishes |
+|----------+------------------------------------|
+| Does the representation have the required shape? | Structural validity under the selected schema |
+| Does it belong to the required semantic category? | The required meaning, such as command rather than execution identity |
+| Has it crossed the required admission boundary? | The boundary's checked bindings and applicability |
+| Which propositions have been proved? | Only the checked conclusions under their retained premises |
+
+A positive answer to an earlier question does not automatically answer the
+later ones.
 
 This distinction matters most where two values may have the same or nearly the
 same representation while differing materially in provenance, authority,
@@ -201,7 +251,7 @@ representation, matching discriminator keys, or compatible Malli schemas.
 
 This is an admission rule rather than a requirement to turn every semantic
 concept into a new runtime class.  Permitted realizations include, where they
-fit the existing implementation:
+satisfy the intended boundary contract:
 
 - nominal types or records;
 - opaque wrappers;
@@ -210,12 +260,12 @@ fit the existing implementation:
   acquisition path, or registry lookup;
 - tagged representations whose tags are validated by the appropriate trusted
   boundary;
-- existing Gesso representations that already make the distinction impossible
-  or immediately rejectable.
+- representations whose construction and use make the invalid substitution
+  impossible or immediately rejectable through the supported path.
 
 The design requires the semantic distinction and its enforcement at the
-supported boundary.  It does not prescribe a nominal-type rewrite when an
-existing mechanism already provides the required protection.
+supported boundary.  It does not prescribe a nominal-type rewrite when a
+chosen mechanism provides the required protection.
 
 Nominality is especially useful as misuse prevention inside cooperating trusted
 application code.  For example, if =CommandId= and =ExecutionId= are both
@@ -246,17 +296,12 @@ process-isolation boundary.
 Crossing an untrusted serialization boundary also strips any purely in-process
 admission status.  Conceptually:
 
-#+begin_example
-server-side admitted value
-        |
-        | encode / transmit
-        v
-untrusted bytes or client data
-        |
-        | decode + verify / re-establish trusted premises
-        v
-server-side admitted value, if justified
-#+end_example
+1. A trusted boundary admits a server-side value under its declared premises.
+2. Encoding and transmission produce bytes that may pass through an untrusted
+   participant. The original in-process admission status does not travel merely
+   because those bytes encode a familiar representation.
+3. Decoding reconstructs data. Verification or trusted reacquisition must
+   establish the premises required to admit that data for its new use.
 
 Deserializing data into the same nominal-looking representation must not by
 itself restore authority, trusted provenance, certification, or admission.
@@ -281,317 +326,145 @@ inventing a trustworthy origin from an untrusted tag.
 #+end_quote
 
 
-An expense-approval path shows what that criterion means in application code.
-The following records are only one possible realization; the design does not
-require Gesso to turn every semantic distinction into a record. They are useful
-here because they make the admission boundary visible.
+An expense-approval path shows what this means without requiring authors to
+create three record wrappers and a registry entry by hand for every value.
+The application declares an observation contract and supplies its model-owned
+acquisition implementation. Gesso owns admission and downstream checks.
 
 #+begin_src clojure
-(defschema EmployeeValue
+(def EmployeeValue
   [:map
    [:employee/id uuid?]
    [:employee/department keyword?]
-   [:employee/risk-band
-    [:enum :ordinary :enhanced-review]]])
+   [:employee/risk-band [:enum :ordinary :enhanced-review]]])
 
-(defschema ExpenseValue
+(def ExpenseValue
   [:map
    [:expense/id uuid?]
    [:expense/employee-id uuid?]
    [:expense/department keyword?]
-   [:expense/amount decimal?]
-   [:expense/status
-    [:enum :draft :submitted :approved :rejected]]])
+   [:expense/amount Money]
+   [:expense/status [:enum :draft :submitted :approved :rejected]]])
 
-(defrecord ProposedEmployee
-  [value])
+(def approval-inputs-contract
+  {:observation/id :expense/approval-inputs
+   :input [:map [:expense/id uuid?]]
+   :projection {:expense ExpenseValue :employee EmployeeValue}
+   :purpose :expense/approval-preparation
+   :authorization :expense/observe-approval-inputs
+   :bindings
+   [[:= [:expense/id :expense] [:expense/id :arguments]]
+    [:= [:employee/id :employee] [:expense/employee-id :expense]]]
+   :consistency :compatible-authoritative-read-context
+   :implementation #'expense-model/read-approval-inputs!})
 
-(defrecord ObservedEmployee
-  [value
-   authority
-   basis
-   projection
-   observation-id])
-
-(defrecord AdmittedEmployee
-  [value
-   authority
-   basis
-   projection
-   principal
-   admission-id])
-
-(defn decode-employee-form
-  [params]
-  (let [value
-        {:employee/id
-         (parse-uuid (:employee-id params))
-
-         :employee/department
-         (keyword (:department params))
-
-         :employee/risk-band
-         (keyword (:risk-band params))}]
-
-    ;; Malli establishes representation shape here.
-    (m/assert EmployeeValue value)
-
-    ;; The browser supplied the data, so shape success does not promote it
-    ;; into authoritative employee knowledge.
-    (->ProposedEmployee value)))
-
-(defn observe-employee!
-  [{:keys [db principal authorization employee-admission-registry]}
-   employee-id]
-  (let [{:keys [value basis]}
-        (employee-model/read-authorized-current!
-          db
-          {:principal principal
-           :authorization authorization
-           :purpose :expense/approval
-           :employee-id employee-id
-           :projection :employee/approval-facts})]
-
-    (m/assert EmployeeValue value)
-
-    ;; This value has crossed the model-owned authoritative acquisition
-    ;; boundary, so it carries provenance that the form value does not.
-    (let [authority [:authority :employee employee-id]
-          projection :employee/approval-facts
-          observation-id
-          (admission/issue-observation!
-            employee-admission-registry
-            {:principal (:user/id principal)
-             :value value
-             :authority authority
-             :basis basis
-             :projection projection})]
-      (->ObservedEmployee
-        value authority basis projection observation-id))))
-
-(defn admit-employee-for-approval!
-  [{:keys [principal authorization employee-admission-registry]}
-   observed]
-
-  (when-not (instance? ObservedEmployee observed)
-    (throw
-      (ex-info
-        "Approval requires an authoritative Employee observation."
-        {:error/type :semantic/wrong-category
-         :expected :employee/observed
-         :supplied
-         (cond
-           (instance? ProposedEmployee observed)
-           :employee/proposed
-
-           (map? observed)
-           :representation/raw-map
-
-           :else
-           :semantic/unknown)})))
-
-  ;; The record class is only a local category hint. This checks a
-  ;; server-owned issuance binding before admitting its contents.
-  (admission/require-observation!
-    employee-admission-registry
-    (:observation-id observed)
-    {:principal (:user/id principal)
-     :value (:value observed)
-     :authority (:authority observed)
-     :basis (:basis observed)
-     :projection (:projection observed)})
-
-  (when-not
-    (authorization/can-observe-employee-for-approval?
-      authorization
-      principal
-      (:authority observed))
-    (throw
-      (ex-info
-        "Principal is not authorized to use this Employee observation."
-        {:error/type :semantic/admission-denied
-         :principal (:user/id principal)
-         :authority (:authority observed)
-         :projection (:projection observed)})))
-
-  (let [admission-id
-        (admission/issue!
-          employee-admission-registry
-          {:purpose :expense/approval
-           :principal (:user/id principal)
-           :value (:value observed)
-           :authority (:authority observed)
-           :basis (:basis observed)
-           :projection (:projection observed)})]
-    (->AdmittedEmployee
-      (:value observed)
-      (:authority observed)
-      (:basis observed)
-      (:projection observed)
-      principal
-      admission-id)))
-
-(defn approval-context!
-  [{:keys [principal] :as ctx}
-   expense-id]
-
-  (let [expense
-        (expense-model/require-authorized-current!
-          ctx
-          expense-id
-          :expense/approval)
-
-        observed-employee
-        (observe-employee!
-          ctx
-          (:expense/employee-id expense))
-
-        admitted-employee
-        (admit-employee-for-approval!
-          ctx
-          observed-employee)]
-
-    {:expense expense
-     :employee admitted-employee
-     :principal principal}))
-#+end_src
-
-Now compare three values that contain the same nested Clojure map:
-
-#+begin_src clojure
-(def browser-proposal
-  (decode-employee-form
-    {:employee-id "98a47a10-0ab8-4a8a-8f61-d4bd598e7729"
-     :department "engineering"
-     :risk-band "ordinary"}))
-
-(def authoritative-observation
-  (observe-employee!
+(defn observe-approval-inputs!
+  [ctx expense-id]
+  ;; The contract is resolved from the admitted application. Authentication
+  ;; and read authorization come from ctx, never from observation arguments.
+  (observation/acquire!
     ctx
-    #uuid "98a47a10-0ab8-4a8a-8f61-d4bd598e7729"))
+    :expense/approval-inputs
+    {:expense/id expense-id}))
 
-(def admitted-observation
-  (admit-employee-for-approval!
-    ctx
-    authoritative-observation))
-
-(= (:value browser-proposal)
-   (:value authoritative-observation)
-   (:value admitted-observation))
-;; => true
+(defn approval-facts-eligible?
+  [ctx expense-id observed]
+  (let [{:keys [expense employee]}
+        (observation/require-for!
+          ctx observed
+          {:contract :expense/approval-inputs
+           :arguments {:expense/id expense-id}
+           :purpose :expense/approval-preparation})]
+    (and (= (:expense/id expense) expense-id)
+         (= (:employee/id employee) (:expense/employee-id expense))
+         (= :submitted (:expense/status expense))
+         (= (:expense/department expense) (:employee/department employee))
+         (= :ordinary (:employee/risk-band employee)))))
 #+end_src
 
-Ordinary value equality is doing its job. The records contain equal domain data.
-The semantic categories answer a different question: what may this value justify
-at this boundary?
+=Money= uses the declared money profile from Part I. Schema Vars and the
+observation map are declarations, not admission credentials. The public API
+names above illustrate the required contracts rather than freeze a particular
+namespace layout.
 
-A downstream approval rule might intentionally accept only the admitted
-observation:
+The admitted observation establishes the facts returned for this preparation
+purpose. The sample eligibility function does not establish that its caller is
+a manager or may approve an expense. That is a distinct authorization decision
+owned by the authoritative approval operation. If the function is opaque to the
+checker, its functional contract remains explicitly asserted even though its
+input admission and relationship checks can be enforced.
+
+The acquisition/admission boundary must establish all of the following:
+
+| Obligation | Establishing boundary |
+|------------+-----------------------|
+| Caller identity | Trusted authentication bound to the actual context |
+| Permission to disclose | Model-owned read authorization before releasing protected data |
+| Requested Expense | The acquired Expense id matches the admitted argument |
+| Related Employee | The acquired Employee id matches that Expense's employee relationship |
+| Representation | Non-optional validation of the declared result schemas |
+| Observation meaning | Correct authority, projection contract, parameters, temporal context, and compatible read basis |
+| Permitted use | Current applicability of the admitted observation for this caller and purpose |
+| Realization fidelity | Proof, runtime enforcement, or retained assumptions connecting the acquisition implementation to its contract |
+
+A single compatible read context may be supplied by a model operation or by
+several reads under an admitted consistent-acquisition contract. Separate
+successful reads alone do not establish a coherent combined snapshot. If that
+premise cannot be established, the boundary rejects the stronger combined claim
+or exposes separately scoped observations for a contract that permits them.
+
+An implementation may use an opaque object, trusted issuance registry, or other
+checked representation for the observation. Its admission binding includes the
+result material, contract identity, subjects, basis, temporal/query context,
+principal context, purpose, and applicability required by the contract. A record
+class or =:admitted?= tag alone is insufficient. A process-local handle may be
+valid for a local invocation; continuation across hosts requires a declared
+shared, revalidated, or server-verifiable mechanism. None of this requires a
+universal persistent observation store.
+
+Now compare an observation with client-carried data containing equal values:
 
 #+begin_src clojure
-(defn manager-may-approve?
-  [{:keys [employee-admission-registry] :as ctx}
-   {:keys [expense employee principal]}]
+(def observed
+  (observe-approval-inputs! ctx expense-id))
 
-  (when-not
-    (and
-      (instance? AdmittedEmployee employee)
-      (admission/issued-for?
-        employee-admission-registry
-        (:admission-id employee)
-        {:purpose :expense/approval
-         :principal (:user/id principal)
-         :value (:value employee)
-         :authority (:authority employee)
-         :basis (:basis employee)
-         :projection (:projection employee)}))
-    (throw
-      (ex-info
-        "Approval rule requires an admitted Employee observation."
-        {:error/type :semantic/unadmitted-input
-         :expected :employee/admitted-for-approval})))
+;; Illustration: the browser returns the same domain values it received.
+;; Parsing and shape checking are allowed; they do not restore admission.
+(def returned-values
+  {:expense expense-value
+   :employee employee-value})
 
-  (and
-    (= :submitted
-       (:expense/status expense))
+(= (observation/value observed) returned-values)
+;; => true in this fixture
 
-    (= (:expense/department expense)
-       (get-in employee [:value :employee/department]))
+(approval-facts-eligible? ctx expense-id returned-values)
+;; => rejected: no admitted observation for the required contract and context
 
-    (= :ordinary
-       (get-in employee [:value :employee/risk-band]))
-
-    (= (:user/id principal)
-       (:user/id (:principal employee)))))
+(approval-facts-eligible? ctx expense-id observed)
+;; => evaluates the sample eligibility rule under its retained premises
 #+end_src
 
-The tempting substitution is exactly the one Gesso should make difficult:
+Reconstructing a record with a familiar class or copied fields must fail the
+same boundary unless the actual admission binding is re-established. Conversely,
+there is no need to reject an ordinary scalar solely because it was serialized
+when its use requires only shape-checked value equality. Admission requirements
+follow the claimed meaning, not a rule that all decoded values are unusable.
 
-#+begin_src clojure
-;; Same inner map. Wrong semantic category.
+A browser may also return an observation receipt when the protocol explicitly
+supports one. Verification can establish the receipt's exact historical issuance
+claim and applicability; it does not silently supply a new current observation
+or approval authority. Otherwise the supported path reacquires authorized facts.
 
-(manager-may-approve?
-  ctx
-  {:expense expense
-   :employee browser-proposal
-   :principal principal})
+Finally, preparation is not incorporation. The eventual approval command must
+recognize compatible replay and, for a new incorporation, protect the Expense,
+Employee relationship, eligibility facts, and current approval authority under
+the atomic contract. An earlier admitted observation is not a substitute for
+that protection. A successful old approval result likewise does not prove that
+the Expense's present state remains unchanged.
 
-;; => rejected before the rule is allowed to consume it
-;; {:error/type :semantic/unadmitted-input
-;;  :expected :employee/admitted-for-approval}
-#+end_src
-
-Serialization makes the distinction sharper. Suppose an admitted observation is
-encoded into HTML or EDN and later returned by the browser:
-
-#+begin_src clojure
-(def wire-value
-  (pr-str
-    {:employee (:value admitted-observation)
-     :basis (:basis admitted-observation)
-     :authority (:authority admitted-observation)
-     :category :employee/admitted-for-approval}))
-
-(def returned
-  (edn/read-string wire-value))
-
-;; This is still client-carried data. The browser was able to alter every field.
-;; Recreating a similarly named record must not restore the old admission.
-(->AdmittedEmployee
-  (:employee returned)
-  (:authority returned)
-  (:basis returned)
-  :employee/approval-facts
-  principal
-  (:admission-id returned))
-#+end_src
-
-A supported server API should instead either reacquire the authoritative
-Employee or validate a separately defined server-verifiable receipt whose
-contract actually establishes the premise required by the operation.
-
-Even the reconstructed =AdmittedEmployee= above fails =admission/issued-for?=
-unless trusted server state contains a matching, still applicable admission
-bound to the actual principal, value, authority, basis, projection, and
-purpose. The same check on =ObservedEmployee= prevents a forged observation
-record from being laundered into admission. The wire example does not carry a
-server admission. A browser cannot create one by choosing record tags or an
-=:admission-id=; the registry is trusted server context and is never populated
-from decoded browser data.
-Realizing that registry across web nodes requires a declared shared or
-server-verifiable mechanism; a process-local cache alone cannot support a
-cross-node claim. The authorized read must enforce access *before* disclosing
-Employee data. Finally, an approval mutation still rechecks the expense and
-Employee policy against mutually compatible, transaction-current facts. This
-example's admitted observation supports the rule's input discipline, but does
-not by itself make an earlier pre-read safe for a later commit.
-
-The lesson is not that records are magical security objects. They are not. The
-lesson is that shape, semantic category, admission, and proof can coincide in
-simple cases but must remain separable when later correctness depends on the
-difference. A good public API should preserve that distinction while hiding most
-of the ceremony from ordinary downstream code.
-
+The practical authoring surface remains an acquisition contract and ordinary
+functions. The richer admission representation is framework-owned, inspectable,
+and proportionate to the claims made about its use.
 
 ** Business rules and the auditable semantic surface
 :PROPERTIES:
@@ -707,7 +580,7 @@ A rule representation may conceptually carry information such as:
   :request :current-authoritative-request
   :membership :current-authoritative-membership}
 
- :required-at :request/claim-authoritative-commit
+ :required-at :request/claim-new-incorporation
 
  :applies-to
  #{:request/claim}}
@@ -723,11 +596,14 @@ requirements are that the rule has stable identity, that its checked meaning is
 available to the parts of Gesso that rely on it, and that enough correspondence
 is retained for later assembly, diagnostics, certification, and formal artifacts
 to refer back to the same rule. An opaque Clojure predicate with the same name
-does not make that proposition mechanically established.
+does not make that proposition mechanically established. Its contract is an
+ordinary supported dependency whose accepted assertions must remain visible.
+The new-incorporation rule is not imposed on a compatible replay merely because
+the same public operation processes both cases.
 
 Business rules should also be generously explained in ordinary source.  Where
 practical, the declaration or function that defines a rule should be surrounded
-by comments explaining at least:
+by retained explanatory metadata and source comments explaining at least:
 
 - what the rule means in domain terms;
 - why the rule exists;
@@ -739,13 +615,13 @@ of a mechanical assurance claim because ordinary Clojure reading/compilation
 need not preserve them.  Prose that must survive elaboration into generated
 semantic inventories, diagnostics, or assurance artifacts must therefore be
 retained as checked metadata, documentation strings, source metadata, or
-another explicit representation.  The machine-checked semantic core remains
+another explicit representation.  The machine-checkable rule declaration remains
 distinct from its explanatory prose.
 
 This produces two complementary views of the same rule:
 
 #+begin_example
-machine-checkable semantic core
+machine-checkable rule declaration
     : request/claim requires a current active Membership held by the
       authenticated helper in this Request's Organization at commit
 
@@ -782,6 +658,32 @@ assured rule merely because opaque host code returned a truthy value.
 
 #+LATEX: \newpage
 
+*** Rule identity, interpretation, and opaque implementation
+
+A stable semantic name identifies a rule's place in the application. It is not
+by itself an identity of unchanged meaning. A change to relied-upon types,
+bindings, temporal requirements, effects, or guarantees changes the exported
+semantic interface even when its =:rule/id= remains the same.
+
+The interface identity uses a declared versioned canonical representation.
+Map/set ordering and irrelevant formatting may normalize; vector order,
+meaningful string content, nominal types, presence, and other semantic material
+must not be silently erased. Normalization must reject unsupported material or
+collisions rather than treat different subjects as the same declaration.
+
+Opaque Clojure has a separate implementation binding. Its contract identity
+does not prove that binding implements the contract, and Gesso does not require
+deciding equivalence of arbitrary functions. A concrete implementation change
+may preserve a theorem about the interface while requiring new correspondence
+evidence or assumption applicability for the realization.
+
+The semantic surface must expose the inputs and effects on which a meaningful
+decision depends. A deterministic predicate over supplied authoritative values
+has different premises from a function that reads a clock, consults an external
+service, or writes state. All remain expressible; concealed dependencies do not
+inherit the guarantees of an effect-free contract. A result observation, a
+contract assertion, and a universal proof have different scopes.
+
 ** Facts, time, and authoritative progression
 
 The design distinguishes at least the following dimensions.
@@ -799,6 +701,19 @@ Examples:
 - a correction applies retroactively to an earlier period.
 
 Valid time belongs to domain meaning.
+
+*** Recording time and correction history
+
+Recording or system time identifies the authoritative history under which a
+fact was recorded, corrected, or withdrawn. It differs from the valid/effective
+time at which that fact applies in the domain. A correction recorded today may
+change the authoritative interpretation of an earlier valid-time interval.
+
+An observation that depends on both dimensions must retain both, directly or
+through its admitted read contract. A read basis that bounds transaction
+visibility does not alone select the valid time or historical correction view.
+The database provider defines the supported relation between these coordinates
+under its qualified backend profile.
 
 *** Domain or causal relation
 
@@ -822,8 +737,15 @@ These relations are not necessarily database transaction order.
 Authoritative database progression describes the consistency/basis frontier at
 which authoritative facts are visible.
 
-For HumanHelp's primary persistent authority, this is supplied through XTDB
-semantics.
+For HumanHelp's primary persistent authority, this is supplied by the admitted
+XTDB provider under its [[#req-backend-assumption-qualification][qualified backend contract]].
+The provider owns token interpretation and the evidence for a comparison or
+read guarantee. Generic choreography code does not decode an XTDB token and
+invent those semantics independently.
+
+A basis is scoped to its authority/provider context and relevant database
+incarnation or equivalent identity. Equal raw tokens from different databases,
+tenants where applicable, or reset histories are not automatically comparable.
 
 An authoritative progression value may advance because unrelated data changed.
 
@@ -854,6 +776,10 @@ The same principal may therefore have two browser tabs with different
 knowledge.
 
 The database's current state and an actor's current knowledge are distinct.
+Acquired evidence, content selected for adoption, and content successfully
+installed in a presentation may also be distinct. A protocol must identify
+which transition advances each claimed frontier; merely scheduling a read or
+allowing a DOM swap does not establish its completion.
 
 *** Physical delivery time
 
@@ -876,6 +802,7 @@ The framework must not collapse:
 
 #+begin_example
 valid time
+recording/correction time
 domain fact identity/version
 causal relation
 XTDB progression
@@ -922,8 +849,40 @@ The authoritative-operations and progression part defines the exact command,
 scope, and XTDB semantics, including
 [[#req-progression-scope][scoped progression requirements]].
 
-At the ontology level, the important point is that authoritative progression is
-one provenance coordinate among several and is not a universal domain revision.
+At the ontology level, authoritative progression is one provenance coordinate
+among several and is not a universal domain revision.
+
+*** Scoped progression decisions and requirement composition
+
+A comparison result binds its exact operands, comparison context, and admitted
+provider contract. Generic code can validate the representation and binding of
+a witness such as "B2 advances B1"; that check does not prove the assertion is
+true. The provider or another declared reasoning mechanism must establish its
+meaning, with any backend assumptions retained.
+
+An explicit comparison distinguishes equivalence, advancement, precedence,
+known incomparability, and unavailable or invalid comparison evidence where the
+contract supports them. Failure to establish an ordering is not proof of
+incomparability, and incomparable observations need not be individually invalid.
+
+Pending acquisition requirements compose as a conjunction of scoped
+obligations. A conservative representation retains an orderless set of distinct
+requirements and removes exact duplicates. Replacing it with one basis, taking
+a numeric maximum, or discarding a requirement as subsumed needs an admitted
+coverage/implication argument. No join or total order is assumed merely because
+the provider can compare some pairs of bases.
+
+An observation discharges a requirement only when its authority, subject,
+projection/query scope, temporal meaning, principal context where relevant,
+and progression satisfy that requirement. A later card read cannot by itself
+discharge a board-membership acquisition requirement. Part IV owns the concrete
+algebra and provider contract.
+
+Bounds on retained requirements must preserve this meaning. Coalescing may
+produce a conservative stronger reacquisition obligation when the contract
+justifies it. Silently dropping debt to meet a memory bound is not permissible.
+When no sound bounded representation is available, the runtime follows its
+declared backpressure, retirement, or reacquisition policy.
 
 ** Roles, principals, actors, hosts, and authorities
 :PROPERTIES:
@@ -1091,7 +1050,12 @@ Node =A= and node =C= may each exercise the same semantic authority while
 executing different attempts of the operation. Process-local identity or
 process-local memory does not determine the authority.
 
-The authority survives host replacement.
+The authority's logical identity can survive host replacement. The realization
+must still establish continuity of authoritative state, command records, issuer
+bindings, and applicable backend semantics. Merely reusing the authority name
+after a database reset or migration does not establish that continuity. Old and
+new progression values need an admitted comparison or migration relation before
+they can be used together.
 
 Consequently, any fact that must survive retries, failover, or migration
 cannot derive its semantic force merely from having been remembered by the
@@ -1165,158 +1129,114 @@ correlation or realization information; neither substitutes for those decisions.
 Changing a browser tab, transport connection, or physical host must not silently
 carry permissions into a different principal or authority scope.
 
+An authentication or principal-context instance may also need identity distinct
+from the principal itself. Logout, account switching, credential replacement,
+or a declared revocation transition can invalidate pending work even when a
+later session represents the same principal. The applicable contract states
+which bindings survive and which must be re-established. No universal session
+epoch or global counter is required.
 
-A collaborative editor makes the categories easier to follow when several of
-them change independently.
 
-Suppose Alice is currently allowed to edit document D. One browser tab opens a
-projected editor actor and later reconnects through another web node:
+A collaborative editor makes the categories easier to follow when several
+change independently. Suppose Alice is permitted to edit document D. The
+following is inspection data, not a credential accepted from the browser. The
+fixture names U, D, C1, E19, and C77 denote bound identities of the stated kinds.
 
 #+begin_src clojure
 (def editor-session
-  {:semantic/role
-   :editor
+  {:semantic/role :editor
+   :principal [:user U]
+   :principal-context :session/alice-1
+   :actor [:client C1]
+   :actor-host [:browser-context :alice-tab-1]
+   :authority [:authority :document D]
+   :operation :document/save
+   :command C77
+   :execution E19
+   :transport-request-id :http/204
+   :authority-host [:web-node :A]})
 
-   :principal
-   [:user #uuid "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]
-
-   :actor
-   [:client #uuid "c1000000-0000-0000-0000-000000000001"]
-
-   :authority
-   [:authority
-    :document
-    #uuid "dddddddd-dddd-dddd-dddd-dddddddddddd"]
-
-   :operation
-   :document/save
-
-   :command
-   #uuid "ca110000-0000-0000-0000-000000000077"
-
-   :execution
-   #uuid "e0000000-0000-0000-0000-000000000019"
-
-   :transport-request-id
-   #uuid "70000000-0000-0000-0000-000000000204"
-
-   :host
-   [:web-node :A]})
-#+end_src
-
-The first transport attempt disappears before Alice receives a response. The
-operation's retry contract permits another transport attempt through node C:
-
-#+begin_src clojure
 (def retry-session
-  (-> editor-session
-      (assoc
-        :transport-request-id
-        #uuid "70000000-0000-0000-0000-000000000205"
+  (assoc editor-session
+    :transport-request-id :http/205
+    :authority-host [:web-node :C]))
 
-        :host
-        [:web-node :C])))
-
-(select-keys editor-session
-  [:principal :actor :authority :operation :command :execution])
-;; =>
-;; same values
-
-(select-keys retry-session
-  [:principal :actor :authority :operation :command :execution])
-;; =>
-;; same values
-
-(select-keys editor-session
-  [:transport-request-id :host])
-;; =>
-;; http attempt 204 on node A
-
-(select-keys retry-session
-  [:transport-request-id :host])
-;; =>
-;; http attempt 205 on node C
+(= (select-keys editor-session
+     [:principal :principal-context :actor :authority
+      :operation :command :execution])
+   (select-keys retry-session
+     [:principal :principal-context :actor :authority
+      :operation :command :execution]))
+;; => true
 #+end_src
 
-The host and transport attempt changed. That does not create a new principal,
-document authority, semantic command, or necessarily a new protocol execution.
+The operation's retry contract preserves command C77, including its admitted
+semantic arguments. The authority host and transport request change. The
+browser actor's own host does not thereby become node C, and neither physical
+location authenticates the principal.
 
-Now Alice opens a second browser tab:
+Alice opens a second tab and forms a separate save intent:
 
 #+begin_src clojure
 (def second-tab
-  (-> retry-session
-      (assoc
-        :actor
-        [:client #uuid "c2000000-0000-0000-0000-000000000002"]
+  (assoc retry-session
+    :actor [:client C2]
+    :actor-host [:browser-context :alice-tab-2]
+    :command C88
+    :execution E20
+    :transport-request-id :http/206))
 
-        :execution
-        #uuid "e0000000-0000-0000-0000-000000000020"
-
-        :transport-request-id
-        #uuid "70000000-0000-0000-0000-000000000206")))
-
-(= (:principal retry-session)
-   (:principal second-tab))
+(= (:principal retry-session) (:principal second-tab))
 ;; => true
-
-(= (:actor retry-session)
-   (:actor second-tab))
+(= (:authority retry-session) (:authority second-tab))
+;; => true
+(= (:actor retry-session) (:actor second-tab))
 ;; => false
-
-(= (:authority retry-session)
-   (:authority second-tab))
-;; => true
+(= (:command retry-session) (:command second-tab))
+;; => false
 #+end_src
 
-The two actors may now hold different local knowledge even though they act for
-the same principal and document authority.
+These maps isolate identity relationships; they do not implement the save
+operation's argument binding or admission checks. The new intent has its own
+command identity. If the second tab instead
+reconciles C77, it may retain C77 only through that command's binding and
+reconciliation contract. Copying a session map is not a command-transfer or
+authorization protocol.
 
-Finally, the Organization revokes Alice's editing permission:
+The authoritative server path authenticates each invocation independently of
+the inspection fields:
 
 #+begin_src clojure
-(defn admit-editor-operation!
-  [{:keys [authorization]} session]
-  (let [principal (:principal session)
-        authority (:authority session)]
-
-    (when-not
-      (authorization/currently-allows?
-        authorization
-        {:principal principal
-         :role :editor
-         :authority authority
-         :operation (:operation session)})
-      (throw
-        (ex-info
-          "Principal may no longer instantiate the editor role."
-          {:error/type :authorization/role-admission-denied
-           :principal principal
-           :role :editor
-           :authority authority
-           :operation (:operation session)})))
-
-    session))
-
-(admit-editor-operation!
-  revoked-ctx
-  retry-session)
-;; => rejected
-
-(admit-editor-operation!
-  revoked-ctx
-  second-tab)
-;; => rejected
+(defn invoke-save!
+  [{:keys [session] :as ctx}
+   {:document/keys [id content] :gesso/keys [command-id]}]
+  (let [principal (auth/current-principal! session)]
+    (document-model/save!
+      (assoc ctx :principal principal)
+      {:document-id id
+       :content content
+       :command-id command-id})))
 #+end_src
 
-Neither browser actor had to disappear, and neither host had to change. The
-dynamic authorization relation changed while the principal, actors, authority,
-and physical hosts remained perfectly intelligible.
+The admitted route binds this entry to the save operation. The public model
+operation validates command binding and current disclosure permission for
+replay, and current editing authority for new incorporation. It protects the
+relevant state dependencies atomically with a new save and its command record.
+An authorization check made earlier in a handler is insufficient if the relevant
+permission can change before incorporation.
 
-This is why Gesso benefits from category-specific identity in diagnostics. A
-generic message such as "id mismatch" or "server changed" would obscure the
-actual question: which identity changed, which one stayed stable, and which
-semantic correspondence does the current boundary require?
+If the Organization revokes Alice's editing permission, a new save intent is
+rejected under the current policy. An already incorporated C77 is handled by
+its replay protocol: the recorded result is returned only if current disclosure
+policy permits it. Revocation must not cause a successful old save to be
+misreported as never having happened, nor must historical success bypass the
+new disclosure decision. If outcome evidence is unavailable, the caller's
+knowledge may remain unknown.
+
+The principal, actors, and semantic authority can remain the same while the
+authorization relation changes. Their continued existence does not imply
+continued editing rights. Category-specific diagnostics identify which binding
+or permission changed rather than reporting an unexplained generic id mismatch.
 
 ** Logical identity and physical realization
 :PROPERTIES:
@@ -1347,6 +1267,9 @@ concrete effect/resource-instance identity
 concrete continuity-capture identity
 
 transport-request identity (one transport attempt)
+backend submission-attempt identity
+scoped capability-instance identity
+authentication/principal-context identity where required
 physical DOM-node identity
 web-node/host identity
 
@@ -1471,8 +1394,9 @@ new execution that still tries to reconcile the same command:
     (:execution/id reconciliation-execution)))
 #+end_src
 
-If an authoritative read later finds the created Order, a domain identity enters
-the picture without replacing any of the earlier operation identities:
+If authorized command-outcome evidence links this command to its created Order,
+a domain identity enters the picture without replacing the earlier identities.
+Finding a plausible Order by an unrelated query would not establish that link:
 
 #+begin_src clojure
 (def reconciled
@@ -1492,15 +1416,30 @@ without saying anything about whether command 177 committed:
 
 #+begin_src clojure
 (def after-deploy
-  (-> reconciled
-      (assoc
-        :assembly/generation :assembly-A13
-        :artifact/id "sha256:browser-artifact-A13"
-        :deployment/id :deploy-2026-09-21-2)))
+  (recovery/start-admitted-execution!
+    current-context
+    {:assembly admitted-assembly-A13
+     :operation :checkout/place-order
+     :command-reference
+     (commands/require-bound-reference!
+       current-context (:command/id reconciled))
+     :purpose :command/reconciliation}))
 
-;; This may force a new compatible executable realization.
-;; It does not retroactively create, cancel, or settle the command.
+;; A new admitted execution uses A13's actual artifact and bindings.
+;; The command's identity and recorded incorporation do not change.
 #+end_src
+
+The recovery boundary checks compatibility, current principal/authority scope,
+and the command's recorded binding. It does not blindly associate a new artifact
+name into an old execution. This example chooses a new execution; a contract
+that permits continuation of an existing one must explicitly define that
+transition and the resource ownership it preserves or retires.
+
+The checkout maps are also inspection fixtures. The =assoc= expressions show
+the intended identity relationships; they do not grant the ability to create a
+reconciliation execution or establish command-outcome evidence. The admitted
+runtime owns those transitions. The =assert= forms demonstrate fixture
+expectations, not optional production guards.
 
 The point is not that every runtime map must literally contain every field. The
 point is that a design using one generic =generation= or one generic =request-id=
@@ -1519,7 +1458,9 @@ The identities exist because those questions have different answers.
 
 *** Semantic command identity
 
-A semantic command identifies an attempted semantic operation.
+A semantic command identifies one logical intent to invoke an operation under
+its bound semantic arguments and authority context. It is distinct from each
+attempt to deliver or incorporate that intent.
 
 It may survive:
 
@@ -1535,6 +1476,20 @@ in the authoritative-operations part defines the relevant retry and attribution
 conditions. Possessing the same command identifier alone does not establish
 that a retry is permitted or that the command already committed.
 
+The authoritative binding covers the operation/interface compatibility context,
+canonical semantic arguments, authenticated principal, and authority or tenant
+scope required by the operation. A new business intent receives a new command
+identity; retrying or reconciling an existing intent preserves its binding.
+Changing bytes in an identity-bearing argument is not a harmless transport
+retry unless the declared canonicalization treats the arguments as equivalent.
+
+Command-record retention and identity reuse have a declared horizon. Forgetting
+a record must not silently make an old command eligible for a second
+incorporation under an unlimited deduplication claim. Expiry, tombstones,
+namespace retirement, or another explicit protocol may bound that guarantee.
+Absence of an outcome record is not, by itself, proof that no pending attempt
+can commit.
+
 *** Protocol execution identity
 
 A protocol execution identifies one realization of a distributed trajectory.
@@ -1543,7 +1498,10 @@ Two executions may relate to the same semantic command without being the same
 execution.
 
 Their resources and callbacks must not be interchangeable merely because the
-semantic command matches.
+semantic command matches. A protocol execution can span several local steps,
+transport requests, and backend attempts. Replacing or resuming it has a
+declared ownership and compatibility contract; a new HTTP request alone does
+not determine whether the execution is new.
 
 *** Plan compatibility identity
 
@@ -1610,6 +1568,24 @@ Event correlation identifies a candidate owner/attempt. Possessing a matching
 transport-request identifier alone does not establish semantic admission,
 current ownership, authorization, or command outcome.
 
+*** Submission attempts and scoped capabilities
+
+A submission attempt is one attempt by an authoritative realization to
+incorporate a command. Several attempts may correspond to one command, and an
+HTTP request may cause zero, one, or several attempts according to its declared
+retry contract. An attempt's rejection does not necessarily reject the command
+if another compatible attempt incorporated it.
+
+A capability instance grants a scoped operation under an issuer, subject,
+principal or delegation binding, applicability period, and use policy. A
+one-shot writer capability can prevent repeated use of that grant without
+preventing a fresh grant for the same command. Durable command deduplication,
+capability consumption, and transport correlation are separate contracts.
+
+Capabilities used by asynchronous work have explicit owners and lifetimes.
+Transfer to a background execution must be admitted; merely retaining a
+request-local value after its request ends does not extend its authority.
+
 *** Logical target identity
 
 A logical UI target may survive replacement of its physical DOM node.
@@ -1618,7 +1594,11 @@ For example, a Request card may remain the same logical fragment after HTMX
 replaces the element representing it.
 
 The runtime must not use physical-node identity as the sole semantic target
-identity when representation replacement is expected.
+identity when representation replacement is expected. A target also has an
+applicable actor, principal, projection, and ownership context. The same CSS id
+after navigation or account switching does not imply the same semantic target.
+Changing a query or projection meaning creates a new scope or requires an
+explicit compatibility transition.
 
 ** Resource instance identity
 :PROPERTIES:
@@ -1631,19 +1611,11 @@ could still arrive.
 
 For example:
 
-#+begin_example
-logical slot S
-    |
-resource instance R1
-
-replace R1
-    |
-resource instance R2
-
-late callback from R1
-    |
-    X  must not mutate state belonging to R2
-#+end_example
+| Event | Current instance for logical slot S | Permitted consequence |
+|-------+-------------------------------------+-----------------------|
+| Resource created | R1 | R1 may act within its admitted ownership |
+| Resource replaced | R2 | R1's rights over the replacement are retired |
+| Callback from R1 arrives | R2 | Reject mutation of R2-owned state through R1's retired ownership |
 
 Resource instance identity answers a narrow question:
 
@@ -1658,7 +1630,8 @@ identity. The representation must provide the properties required by the boundar
 additional ordering or structure is unnecessary unless the contract uses it.
 
 A resource-instance generation counter is appropriate when the contract uses
-monotonic ordering between successive instances within that resource scope. A distinct opaque identity is sufficient when the only
+monotonic ordering between successive instances within that resource scope.
+A distinct opaque identity is sufficient when the only
 required question is whether an event belongs to the current instance.
 
 The distinction must remain valid for as long as callbacks from an earlier
@@ -1680,29 +1653,15 @@ at the same time.
 
 For example:
 
-#+begin_example
-continuity slot S
-    |
-resource instance R7
-    |
-execution X12
-    |
-authoritative basis B40
+| Coordinate | Before replacement | After replacement |
+|------------+--------------------+-------------------|
+| Continuity slot | S | S |
+| Resource instance | R7 | R8 |
+| Execution | X12 | X12 |
+| Authoritative basis | B40 | B40 |
 
-physical resource replaced
-
-continuity slot S
-    |
-resource instance R8
-    |
-execution X12
-    |
-authoritative basis B40
-
-late callback carrying R7
-    |
-    X  rejected because the resource instance is stale
-#+end_example
+A late callback carrying R7 is rejected because that resource instance is
+retired, even though the execution and basis still match.
 
 In this case the execution and authoritative basis may still correspond. The
 callback is rejected specifically because it belongs to the replaced physical
@@ -1710,25 +1669,15 @@ resource instance.
 
 Conversely:
 
-#+begin_example
-continuity slot S
-    |
-resource instance R8
-    |
-execution X12
-    |
-authoritative basis B40
+| Coordinate | Before authoritative advance | After authoritative advance |
+|------------+------------------------------+-----------------------------|
+| Continuity slot | S | S |
+| Resource instance | R8 | R8 |
+| Execution | X12 | X12 |
+| Authoritative basis | B40 | B41 |
 
-authoritative state advances
-
-continuity slot S
-    |
-resource instance R8
-    |
-execution X12
-    |
-authoritative basis B41
-#+end_example
+The provider justifies the basis relation. An advance of authoritative state
+does not by itself replace the physical resource.
 
 The resource instance has not changed, but an operation that requires basis B41
 must not treat possession of R8 as evidence that B40 remains admissible.
@@ -1810,6 +1759,12 @@ Before Refresh A completes, the component is reconstructed and starts Refresh B:
    :html "<div>current acquisition</div>"})
 #+end_src
 
+These abbreviated completion maps expose only the fields needed for the owner
+race. A complete normalized response also carries, or is bound by registration
+to, the expected source and observation contract, query/temporal context,
+principal context, and projection material. Bare =:basis= and =:html= fields
+cannot establish those premises.
+
 A narrow owner check can reject A for exactly the reason that matters, but it
 must not call that narrow result semantic admission:
 
@@ -1862,10 +1817,11 @@ must not call that narrow result semantic admission:
 ;;  :event ...}
 #+end_src
 
-That result proves only the narrow ownership/correlation fact needed at this
-stage.  Full semantic admission remains a distinct boundary.  Conceptually it
-can consume the correlated completion only after the rest of the acquisition
-contract has also been established:
+That result establishes only the displayed equality and lifecycle checks for
+this supplied runtime state and event. Their truthful source and correspondence
+to the executing callback remain separate premises. Full semantic admission is
+a distinct boundary. Conceptually it can consume the correlated completion
+only after the rest of the acquisition contract has also been established:
 
 #+begin_src clojure
 (defn admit-acquisition-completion
@@ -1879,22 +1835,28 @@ contract has also been established:
          :runtime runtime
          :event event
 
-         ;; These names stand for independently checked premises, not
-         ;; declarations supplied by the event itself.
-         :require
-         #{:authorized-principal
-           :expected-acquisition-plan
-           :trusted-provenance
-           :declared-observation-scope
-           :compatible-progression
-           :current-resource-owner
-         :permitted-installation-right}}))))
+         ;; Resolved from the registered acquisition owner, never from
+         ;; an event-supplied selector or a caller-selected check list.
+         :contract
+         (acquisition/require-registered-contract!
+           trusted-context runtime event)}))))
 #+end_src
 
-The =:require= set is selected by the admitted acquisition contract, not by
-event fields or arbitrary callers. Source authenticity, observation scope,
-progression, and installation rights remain checks in that boundary. Owner
-correlation alone cannot make received HTML safe to install.
+The resolved contract determines the mandatory checks. These include the
+expected acquisition plan, authorized principal context, source provenance,
+observation scope, compatible progression, current resource owner, and permitted
+installation right. Event fields and arbitrary callers cannot remove a check.
+Owner correlation alone cannot make received HTML semantically admissible for
+installation. Content escaping, active-content policy, and DOM effect safety
+remain additional realization obligations; provenance is not sanitization.
+
+The final state transition checks the latest owner and applicability, rather
+than relying on a correlation result cached before an asynchronous gap. If
+physical installation happens later, its effect carries the admitted owner
+binding and the shell rechecks the required installation right at actuation.
+An allowed installation is not automatically a completed installation. A
+synchronous implementation may combine them under its correspondence contract;
+otherwise completion or failure is admitted as a separate event.
 
 Notice what the owner guard does *not* infer. It does not claim that B42 is
 universally newer than every basis in the application. It does not prove that
@@ -1925,7 +1887,10 @@ shared advisory is not execution-private:
 
    :requirement
    {:kind :authority-may-have-advanced
-    :scope :request/board}})
+    :scope
+    {:organization-id
+     #uuid "72000000-0000-0000-0000-000000000001"
+     :projection :request/board}}})
 
 (def advisory-runtime
   {:board-subscription
@@ -1961,17 +1926,22 @@ shared advisory is not execution-private:
         {:trusted-context trusted-context
          :runtime runtime
          :event event
-         ;; Fixed by the admitted shared-event contract, not by the event.
-         :require
-         #{:declared-board-advisory-class
-           :admitted-source-provenance
-           :valid-scoped-requirement
-           :permitted-shared-transition}}))))
+         ;; The registered subscription fixes the shared-event contract.
+         :contract
+         (subscription/require-registered-contract!
+           trusted-context subscription)}))))
 #+end_src
 
 The subscription check is only owner correlation. Shared semantic admission
-also checks source provenance and the permitted advisory transition. A
-client-supplied =:owner= or =:event/class= does not by itself prove either.
+also checks the declared event class, source provenance, full scoped requirement,
+and permitted advisory transition under the registered contract. A client-supplied
+=:owner= or =:event/class= does not by itself prove any of those premises.
+
+This short example fixes one board projection with no additional query parameters.
+A query-specific board must retain those parameters and its visibility context.
+The tokenless requirement shown here does not invent an acquisition lower bound;
+its registered contract must define a sufficient read/source-fence protocol.
+The later board example uses an advisory carrying an authoritative lower bound.
 
 Assigning that advisory to whichever command execution happens to be current
 would be a category error. Conversely, marking a private callback as
@@ -2022,13 +1992,11 @@ by that class.
 
 Conceptually:
 
-#+begin_example
-normalized event
-    -> resolve declared event class and owner
-    -> validate owner-specific correlation and applicability
-    -> validate the permitted transition
-    -> admit transition or classify rejection/recovery
-#+end_example
+1. Resolve the declared event class and owner from the registered producer and
+   admitted contract.
+2. Check owner-specific correlation and current applicability.
+3. Check that the proposed semantic transition is permitted.
+4. Admit that transition, or classify the rejection and any recovery path.
 
 The owner is not universally a command execution.
 
@@ -2056,10 +2024,27 @@ restore a retired execution's private ownership or authorize installation of
 domain content carried by an advisory.
 
 The browser-realization part defines the concrete normalization, transition,
-and effect contracts implementing this boundary. All such paths obey this
+and effect contracts implementing this boundary. All supported paths obey this
 owner-relative rule; there is no alternate callback path that may mutate
-semantic state without admission.
+semantic state while claiming that admission was enforced.
 
+The event's class is resolved from its registered producer and admitted
+contract, not selected by an untrusted =:event/class= field alone. Event payloads
+may carry correlation values; the callback/resource registration supplies the
+corresponding expected owner. Final applicability is checked against current
+state. Checking identity early and mutating a replacement owner later would
+leave a race.
+
+Retirement removes the retired owner's semantic rights immediately, even if
+physical cancellation or cleanup is incomplete. Late command-outcome evidence
+may still be useful through a separately declared reconciliation path. Such a
+path does not revive the old execution or authorize its stale presentation
+effect.
+
+These browser-runtime claims concern the admitted, cooperating implementation.
+They are not a server-verifiable proof that an adversarial browser ran those
+checks. The authoritative server boundary independently enforces the security
+properties stated below.
 
 
 ** Trust boundaries and adversarial browser actors
@@ -2133,26 +2118,27 @@ boundaries.
 *** Trusted authoritative execution
 
 For each protected authoritative operation, the supported trusted path must
-establish the following obligations. Their exact physical ordering may depend
-on the operation, but no protected action may occur before its required premises
-have been established:
+establish the obligations relevant to the branch it actually executes:
 
-1. establish authenticated principal identity from trusted server context;
-2. resolve the requested semantic operation through the trusted current
-   application/operation registry;
-3. establish the permitted server-side trajectory rather than accepting a
-   client-supplied privileged machine state;
-4. re-evaluate current authorization and relevant model policy;
-5. read the authoritative facts required by the public model operation;
-6. invoke the public model operation that owns the authoritative transition;
-7. produce only the settlement/progression outcomes admitted by the declared
-   operation contract.
+1. Authenticate the concrete caller from trusted context and resolve the
+   operation through the admitted application binding.
+2. Validate the command envelope, identity binding, arguments, and compatible
+   operation interface. Client fields do not supply privileged continuation
+   state or current authority.
+3. Handle a compatible recorded command under its current disclosure policy,
+   without imposing a new-incorporation guard on historical success.
+4. For new incorporation, acquire the required facts and atomically protect
+   current authorization, relationships, guard dependencies, and domain effects
+   together with the command-result record.
+5. Account for concurrent compatible incorporation when interpreting a failed
+   attempt, and preserve uncertainty when authoritative evidence is insufficient.
+6. Produce only the permitted typed outcomes and scoped progression evidence,
+   with disclosure and recovery rules appropriate to the current caller.
 
-An authorization decision or relevant precondition established during
-preparation must be protected or re-established at the authoritative transition
-boundary wherever an intervening change could invalidate the operation. The
-atomic-operation contract defines those guards; browser freshness does not
-supply them.
+Preparation checks are protected or re-established at incorporation wherever
+intervening changes could invalidate the decision. Browser freshness does not
+supply that protection. Read-only operations and subscriptions follow their
+own acquisition/disclosure contracts rather than manufacturing a write protocol.
 
 The server must never treat a client-supplied machine continuation such as:
 
@@ -2165,9 +2151,9 @@ as evidence that the client is entitled to reach that state.
 Instead the browser requests a semantic operation, conceptually:
 
 #+begin_src clojure
-{:command-id C42
+{:gesso/command-id C42
  :operation :request/claim
- :arguments {:request-id R}
+ :arguments {:request/id R}
  :observed-basis X17}
 #+end_src
 
@@ -2219,6 +2205,9 @@ disclosure. Initial subscription admission must not silently become an
 indefinite permission grant. The protocol may use revalidation, bounded grants,
 revocation, or another explicit policy consistent with the claimed protection.
 No such policy can make an adversarial browser forget data already disclosed.
+Invalidation metadata, counts, existence hints, and command-outcome responses
+can themselves disclose protected information and need an appropriate scope.
+A hidden card does not make an otherwise revealing subscription harmless.
 
 *** Proof artifacts are untrusted in the browser
 
@@ -2257,26 +2246,26 @@ normal path should make incorrect substitutions, missing derivations, stale
 artifacts, undeclared authority paths, and accidental bypasses difficult to
 express and easy to diagnose.
 
-The intended progression is:
+The supported paths have these obligations:
 
-#+begin_example
-ordinary supported application code
-    -> narrow semantic/model interfaces
-    -> checked construction and runtime premises
-    -> authoritative model operation
+| Path | Required treatment |
+|------+--------------------|
+| Ordinary supported code, including opaque Clojure | Narrow semantic/model interfaces, checked construction, explicit premises, and admitted authoritative operations |
+| Accidental mismatch | Early, specific rejection at the boundary that can establish the mismatch |
+| Deliberate lower-level write | Explicit writer coverage or an environment assumption; reassess every dependent invariant and later guarantee affected by the write |
 
-accidental mismatch
-    -> early specific rejection
+Checked managed construction is the ordinary path, including opaque Clojure
+behind declared contracts. The assembly supplies scoped effect capabilities and
+binds their realization to admitted operations. View and handler construction
+does not ordinarily receive raw transaction authority simply to compute a value.
+The whole-application contract specifies the actual enforcement and remaining
+host-process assumptions.
 
-deliberate lower-level bypass by trusted host code
-    -> explicit exit from the corresponding Gesso assurance claim
-#+end_example
-
-Architectural restrictions may reduce that trusted surface further.  For
-example, application assembly, dependency checks, narrow capabilities, or
-namespace discipline may make ordinary view/handler code unable to reach a
-transaction primitive through the supported construction path.  Later
-whole-application assurance specifies what such enforcement establishes.
+A deliberate lower-level writer may affect every dependent invariant over the
+state it changes, including guarantees used by later operations. Its impact is
+not confined to the assurance of the single bypassing invocation. Initializers,
+migrations, jobs, and external writers therefore participate in the declared
+writer coverage or remain explicit environment assumptions.
 
 These mechanisms are valuable even though a sufficiently determined trusted
 application author can rewrite the program or deliberately acquire a lower-level
@@ -2290,7 +2279,16 @@ hard, and deliberate escape from the claimed boundary conspicuous.
 :CUSTOM_ID: req-knowledge-provenance
 :END:
 
-Knowledge is tracked with respect to actors or projected roles.
+Knowledge is tracked with respect to actors or projected roles. In this
+specification, a knowledge judgment records what an admitted execution is
+justified in using under its premises. It is not an assertion that every
+browser-held proposition is true, that an adversarial participant ran the
+machine, or that a human understood the representation.
+
+Knowing an input value and knowing a domain proposition about that value are
+different judgments. A server may know that a browser submitted Request id R
+without knowing that R exists, that its status is open, or that the caller may
+act on it. Similarly, knowing that a client asserts F does not establish F.
 
 A fact or value may become known through several distinct provenance paths.
 
@@ -2320,18 +2318,70 @@ Before this actor performs behavior that depends on fact F, what justifies that
 the actor knows F?
 #+end_quote
 
+*** A knowledge judgment has a subject, scope, and support
+
+A semantic fact is more than a map key. Its judgment binds the actor or role,
+the proposition and values, the subjects, applicable temporal/query context,
+and the justification on which its permitted use depends. The surrounding
+admitted contract may supply these bindings without repeating them in every
+runtime value.
+
+For example, an inspection view might show:
+
+#+begin_src clojure
+{:actor [:client C]
+ :proposition [:request/status R :open]
+ :context
+ {:authority [:authority :request R]
+  :projection :request/card-v1
+  :arguments {:request/id R}
+  :principal-context :session/helper-1
+  :basis B
+  :valid-at V}
+ :support
+ {:kind :authoritative
+  :acquisition :acquisition/A17
+  :premises #{:request/projection-contract
+              :storage/qualified-read-semantics}}}
+#+end_src
+
+This describes the status at V under the authoritative read context B. It does
+not assert perpetual openness or grant permission to claim. The map is
+inspection data; admission must resolve its acquisition and premises rather
+than trust caller-supplied labels.
+
+A local key such as =:request/status= may index the fact only when the owning
+context fixes which Request and observation it denotes. Reusing the key for
+another subject must not merge their evidence. Equal values may have several
+independent justifications, but a justification for R1 cannot strengthen R2's
+claim merely because both values are =:open=.
+
+Support is dependency-sensitive. A derived judgment retains the contracts,
+assertions, and scoped facts used to justify it. Replacement or correction of a
+current observation changes which dependent current claims are applicable;
+it does not retroactively erase the event that an older value was observed.
+A failed or withdrawn assumption makes dependent unconditional use unavailable,
+while a conditional theorem may remain valid under its stated premise.
+
+The implementation need not retain an unbounded runtime proof history. It may
+keep sufficient bindings, compact evidence, or a reference to recheckable
+sources. Eviction and retirement follow explicit scope/lifetime rules; loss of
+evidence must not be interpreted as successful discharge.
+
 *** Input knowledge
 
-Input knowledge is justified knowledge supplied at operation entry.
+Input knowledge consists of the values and propositions supplied under the
+operation's entry contract. The contract determines whether the actor knows
+only the supplied value, knows that another participant asserted a proposition,
+or may rely on the proposition itself under a named trusted premise.
 
 Conceptually:
 
-#+begin_example
-F in declared inputs(A)
------------------------
-A knows F
-provenance: input
-#+end_example
+| Premise | Meaning |
+|---------+---------|
+| A receives an input under the admitted entry contract | The input's subject, type, and context are bound |
+| The entry contract justifies the proposition being used | It distinguishes a supplied value, a reported assertion, and a trusted premise |
+| Conclusion | A may use that scoped input knowledge with =:input= provenance and the contract's retained premises |
 
 Input knowledge is not equivalent to arbitrary function arguments.
 
@@ -2350,21 +2400,22 @@ Communication may establish knowledge constructively.
 
 Conceptually:
 
-#+begin_example
-A knows X
-A sends declared X to B
-B receives declared X
------------------------
-B knows X
-provenance: communicated
-#+end_example
+| Premise | Meaning |
+|---------+---------|
+| A's send is justified under the message contract | The sent value and permitted semantic claims are established or explicitly assumed |
+| B admits the matching receive | Sender, execution, payload binding, and required validation satisfy that contract |
+| Conclusion | B gains the declared knowledge of X with =:communicated= provenance and the retained message premises |
 
 An admitted choreography must justify the sender's knowledge of the value it
 transmits. At an adversarial transport boundary, a message's receipt does not
 prove that the sender satisfied that semantic premise; trusted validation or
 the explicitly stated assumption must supply the justification being claimed.
 
-The receiver gains only the values declared by the message contract.
+The receiver gains only the values and semantic consequences declared by the
+message contract. An authenticated sender can still communicate a mistaken
+claim; sender authenticity and the truth of that claim are separate premises.
+A delegated authoritative statement requires the declared issuer and validation
+contract, not merely a familiar sender name.
 
 Arbitrary extra map keys must not silently become choreography context.
 
@@ -2379,14 +2430,11 @@ authority.
 
 Conceptually:
 
-#+begin_example
-authority establishes authoritative F
-B observes an authoritative projection containing F
-at a basis sufficient to justify that projection
---------------------------------------------------
-B knows authoritative F at that observation frontier
-provenance: authoritative
-#+end_example
+| Premise | Meaning |
+|---------+---------|
+| Authority justifies F | The proposition has a declared subject, time, and authority scope |
+| B acquires an admitted projection establishing F | The read, disclosure, projection, and basis contracts hold |
+| Conclusion | B may use F with =:authoritative= provenance at that observation context |
 
 The physical representation may be:
 
@@ -2400,51 +2448,73 @@ from authority to observation is valid.
 
 *** Derived knowledge
 
-A role may derive a fact from other facts it already knows through a declared
-deterministic derivation.
+A role may derive a proposition from facts it already knows through a declared
+semantic rule. For a deterministic functional derivation, the justification
+includes the exact input bindings and the function contract on which the
+result depends.
 
-Conceptually:
+| Required premise | Meaning |
+|------------------+---------|
+| Inputs available | The role has the required scoped values or propositions |
+| Rule applicable | Its types, subjects, refinements, and other preconditions hold |
+| Result justified | The supported evaluator/derivation establishes the result, or the admitted opaque contract remains an explicit premise |
+| Dependencies retained | The conclusion preserves the assumptions and evidence scope used by the rule |
 
-#+begin_example
-B knows X
-B knows Y
-D requires X and Y
-D deterministically produces F under its declared semantic contract
---------------------------------
-B knows F
-provenance: derived
-#+end_example
+A dependency inventory is not itself a derivation. Recording that F depends on
+X and Y, or accepting a caller-supplied result with the right shape, does not
+establish that F follows from X and Y. A provenance constructor may record this
+description, but a stronger checked judgment needs its own mechanism.
 
-A derivation must declare enough information for the verifier/checker to know
-which inputs justify the result.
+Ordinary Clojure remains available. If its functional behavior is opaque, the
+semantic surface names the contract, implementation binding, and accepted
+assertions. Input/output checks can establish instance-specific properties
+without claiming universal correctness, purity, determinism, or termination.
 
-The system must not assume arbitrary separately executed Clojure functions
-produce equal results across actors unless that relationship is justified by
-the declared semantics. Any clock, randomness, external read, locale, or other
-environmental input affecting the result must be supplied as a declared input
-or remain an explicit assumption; a function name does not establish determinism.
+An effectful or nondeterministic computation can establish knowledge of its
+particular observed result through its declared effect/result boundary. It does
+not become a deterministic derivation from inputs that omit the clock, random
+choice, external read, or mutable state it used. Later reasoning may use that
+observed result as an explicitly bound input.
 
-Derivation preserves the premises on which the result depends. Deriving a value
-from a client assertion does not silently make the result authoritative. A
-derived result can support a stronger claim only when the declared derivation
-rule and its premises justify that claim.
+The system must not infer equal results across actors from identical function
+names or source text. Cross-actor derived agreement needs compatible semantic
+inputs, the required deterministic contract, and correspondence of the
+realizations to that contract. JVM/browser arithmetic, locale, time, and other
+environmental semantics must be included where relevant.
+
+Canonicalization and structural evidence checking must not acquire hidden
+runtime effects by evaluating arbitrary application callbacks. Where execution
+is part of an evidence mechanism, that execution has an explicit trusted
+boundary, resource contract, and result scope.
+
+Deriving a value from a client assertion does not make it authoritative. An
+inference can strengthen a conclusion only when its rule and actual premises
+justify that strengthening. Provenance labels are descriptions of support,
+not a total ranking in which adding =:derived= upgrades every earlier premise.
 
 *** Asserted knowledge
 
-An explicit assertion supplies knowledge the verifier does not derive.
+An explicitly accepted assertion supplies a premise that the verifier does
+not derive. It is an ordinary supported mechanism for full-language and
+external-system contracts, subject to the
+[[#req-admission-assurance-policy][admission policy from Part I]].
 
-This is a legitimate escape hatch for facts whose truth Gesso cannot establish.
+Its identity binds the exact proposition, subject, parameters, scope, owner,
+implementation or external boundary, and applicability conditions required by
+the claim. Two assertions with the same friendly name but different subjects
+or meanings must not merge. Accepting a premise is not discharging it.
 
-The assertion must remain visible as a trusted premise.
+An untrusted actor's assertion remains a claim by that actor unless a trusted
+entry contract explicitly permits relying on its proposition. A browser cannot
+register itself as the trusted owner of an authorization premise by sending an
+=:asserted= tag or a familiar assertion id.
 
-It must not be silently promoted to:
-
-- =:derived=;
-- =:communicated=;
-- =:authoritative=.
-
-The application should be able to explain which behavior depends on the
-assertion.
+The assertion remains visible in every dependent explanation. It must not be
+relabeled as a proved derivation, a successful authoritative observation, or a
+runtime-enforced current premise merely because its result matches another
+value. Contradiction, expiry, or loss of applicability propagates to dependent
+uses according to their scope. Independent guarantees remain available when
+they do not depend on the affected premise.
 
 *** Knowledge use
 
@@ -2503,9 +2573,15 @@ applications.
 The useful property is:
 
 #+begin_quote
-Every actor knows enough, with sufficient justification, for the behavior it is
-permitted to perform.
+Every admitted actor behavior has the scoped knowledge and premises its
+contract requires, with the claimed degree of justification made explicit.
 #+end_quote
+
+Permission to disclose, retain, use, or forward a fact is separate from the
+historical fact that it was acquired. Revocation cannot make an adversarial
+recipient forget prior disclosure, but it can remove permission for a later
+read, subscription, operation, or transmission. Knowledge alone is not a
+capability.
 
 
 #+LATEX: \newpage
@@ -2531,9 +2607,16 @@ The derivation should be able to expose leaves such as:
 - deterministic derivation;
 - explicit assertion.
 
-These derivations belong to verifier/checker artifacts.
+These derivations belong to verifier/checker artifacts. Runtime state retains
+the identities and premises actually needed for execution, not necessarily the
+entire explanatory graph.
 
-They do not need to be shipped as production browser state.
+An observed adapter transition may supply a diagnostic account of a role-local
+step, requested transport, provisional display, or authoritative installation.
+It must be derived from the actual semantic transition rather than a fabricated
+successor supplied by a caller. It is still not, by itself, evidence of a
+physical network delivery, a database commit, or universal host correspondence.
+The observation category determines which stronger claim could be supported.
 
 ** Authoritative observation as a knowledge path
 :PROPERTIES:
@@ -2548,7 +2631,7 @@ This distinction is important for ordinary web applications.
 A HumanHelp browser may learn facts such as:
 
 #+begin_example
-Request R is approved
+Request R is done
 Request R is claimed
 Membership U is inactive
 Organization O is closed
@@ -2562,31 +2645,23 @@ than as a dedicated choreography participant message.
 
 The authority remains in the model/database.
 
-The HTML is one representation from which the actor learns the fact.
+The HTML is one representation from which the admitted actor may acquire the
+fact under the declared projection and normalization contract. Arbitrary DOM
+text, an undeclared data attribute, or a locally fabricated status does not
+become semantic knowledge by looking like the server's rendering.
 
 *** Advisory invalidation versus authoritative observation
 
 The normal causal relationship, when the application policy permits the
 acquisition, is:
 
-#+begin_example
-authoritative mutation
-        |
-        v
-model / XTDB
-        |
-        v
-Live invalidation
-        |
-        v
-application-permitted acquisition trigger
-        |
-        v
-authorized authoritative reread
-        |
-        v
-actor acquires newer authoritative knowledge
-#+end_example
+1. A model operation incorporates an authoritative mutation under its storage
+   contract.
+2. Live supplies an admitted, scoped advisory about potentially relevant change.
+3. Application policy or user action supplies a permitted acquisition trigger.
+4. An authorized read satisfies the applicable scope and progression requirements.
+5. The actor acquires the justified observation. Adoption and installation follow
+   their declared policy rather than being implied by notification receipt.
 
 A Live invalidation means approximately:
 
@@ -2614,7 +2689,9 @@ on such a trigger must name it among its liveness premises.
 An authoritative observation establishes only the facts and coverage justified
 by its acquisition contract. Its semantic context includes the authority,
 subject or projection scope, relevant basis/progression, and applicable temporal
-or query meaning. These need not all be repeated as fields when they are
+or query meaning. Filters, search terms, ordering and pagination where they
+affect coverage, projection version, and principal-specific visibility may all
+be part of that meaning. These need not all be repeated as fields when they are
 unambiguously supplied by the admitted contract.
 
 A later observation of one Request does not establish acquisition of all board
@@ -2632,6 +2709,58 @@ The authoritative-operations and progression part owns the detailed
 [[#req-advisory-discharge][advisory discharge rules]]. Browser installation follows
 [[#req-runtime-scoped-authoritative-installation][the scoped installation contract]].
 HumanHelp's selective-adoption policy is a use of those generic contracts.
+
+An observation contract distinguishes returned rows from coverage of the query.
+A complete authorized board result may establish membership or absence within
+that projection. A page, search subset, or single-card response does not
+establish membership of the entire board. Ordering and cursor context matter
+when they determine which portion was returned.
+
+| Result | Permitted semantic conclusion |
+|--------+------------------------------|
+| Complete authorized scoped result | Returned facts and the stated coverage/absence conclusions at its read context |
+| Partial or paged result | Facts in the returned scope; completeness only for explicitly established coverage |
+| Authoritative not-found | Absence within the declared subject, visibility, temporal, and query contract |
+| Denied or privacy-masked response | Only the permitted denial/opaque result; no stronger existence conclusion |
+| Timeout, disconnect, or unavailable read | No successful observation of the missing result |
+
+Two different values at the same raw basis are not automatically an authority
+contradiction. First establish that the authority, subject, projection version,
+query parameters, temporal context, visibility context, and deterministic
+interpretation are the same. Different valid times or projections can produce
+different correct answers at one database basis. If the complete meaning is
+the same and incompatible facts remain, treat that as contradictory evidence;
+do not resolve it by last-arrival-wins.
+
+An incomparable observation can remain valid evidence in its own scope without
+being eligible to replace the currently adopted projection. Replacement needs
+the declared supersession, progression, or reconciliation relation. Equal
+displayed values do not by themselves advance a knowledge or coverage frontier.
+
+*** Acquisition, installation, and semantic adoption
+
+Acquisition produces an observation under its declared source and read
+contract. Installation applies a representation to a concrete target.
+Adoption selects the observation or projection on which subsequent behavior
+relies. The contract states when these transitions coincide and when they are
+separate.
+
+An authorized response may arrive without being installed because its owner
+was retired, the target changed, or a newer compatible result was already
+adopted. Its evidence may be usable through another declared admission path,
+but it must not mutate a replacement owner merely because it is authoritative.
+
+Scheduling an installation or emitting an allow-swap decision is not proof that
+the representation was installed. A synchronous realization may establish both
+within one supported boundary; an asynchronous realization needs a completion
+or failure contract. The adopted frontier and advisory discharge must reflect
+the transition they claim, including the actual permitted installation when
+adoption requires it. Part VI owns the concrete shell/refinement relation.
+
+An advisory received while an acquisition or installation is pending must be
+evaluated against the resulting observation's actual coverage. It cannot be
+discarded merely because it arrived before a callback or because the acquisition
+was called Refresh.
 
 
 *** Observed basis is protocol context, not proof of prior observation
@@ -2659,20 +2788,21 @@ Here =R= is the domain Request identity, not a transport-request identity.
 The server may safely use =B= to understand the command's claimed starting
 context without treating =B= as permission:
 
-#+begin_example
-client says it acted from B
-        |
-        v
-server compares B with current authority
-        |
-        +-- compatible/current enough -> continue under normal model guards
-        |
-        +-- stale/incompatible -> reconcile, reject, or reacquire
-#+end_example
+| Validated comparison or context | Permitted treatment |
+|---------------------------------+---------------------|
+| B is compatible or sufficiently current for the declared use | Continue under the ordinary current model guards |
+| B is stale or incompatible for that use | Follow the declared reconciliation, rejection, or reacquisition path |
+| B is invalid, unsupported, or lacks required comparison evidence | Report or handle that condition explicitly; do not invent an ordering or treat B as authority |
 
 Current authenticated principal binding, model authorization, authoritative
-state, and transaction guards remain decisive.  A client may lie about =B=
+state, and transaction guards remain decisive. A client may lie about =B=
 without thereby gaining authority.
+
+The provider still validates the token's representation and applicable
+authority/database context. A client cannot select a different backend, expand
+query scope, or demand an unbounded wait by supplying a fabricated future basis.
+Supported bounds and failure responses are part of the acquisition contract;
+failure to satisfy a required basis is reported rather than silently dropped.
 
 The trust requirement changes if an application gives *prior observation
 itself* security significance.  Examples include:
@@ -2681,7 +2811,7 @@ itself* security significance.  Examples include:
   particular authoritative representation;
 - a continuation is valid only when it follows a specific server-issued
   observation;
-- an acknowledgement must refer to an exact previously delivered semantic
+- an acknowledgement must refer to an exact previously issued semantic
   version;
 - an application distinguishes "client claims to have seen X" from
   "the server can verify that it issued X to this principal/session."
@@ -2715,17 +2845,26 @@ A Message Authentication Code (MAC), for example HMAC-SHA-256, is one possible
 way to let an adversarial browser carry integrity-protected server evidence,
 under the named cryptographic, key-management, encoding, and verification
 assumptions. This example specifies the trust relationship rather than a
-complete cryptographic implementation.  The server authenticates a canonical payload
-using a secret key known only to trusted infrastructure:
+complete cryptographic implementation. The server authenticates a canonical
+payload using a secret key known only to trusted infrastructure:
 
 #+begin_example
 receipt-payload
     =
-{:principal-id P
- :authority [:request R]
- :projection :request/public-row
+{:receipt/type :gesso/observation-issuance
+ :receipt/version 1
+ :issuer :humanhelp/observation-service
+ :audience :humanhelp/request-flow
+ :key-id K
+ :principal [:user P]
+ :authority [:authority :request R]
+ :projection :request/public-row-v1
+ :scope S
  :basis B
- :purpose :prior-observation
+ :temporal-context T
+ :semantic-digest D
+ :purpose :prior-observation-issuance
+ :issued-event :authorized-response-constructed
  :issued-at I
  :expires-at E}
 
@@ -2738,21 +2877,28 @@ The browser may read, store, copy, and return the payload and MAC. Under the
 declared integrity assumptions it cannot feasibly change =P=, =R=, =B=,
 =purpose=, or another authenticated field and produce accepted replacement
 evidence. The MAC does not encrypt the payload; receipt contents must therefore
-be suitable for disclosure to the recipient.
+be suitable for disclosure to the recipient. Scope S and temporal context T
+include the query, visibility, and provider/basis context required by the
+projection contract; they are not inferred from the token's familiar shape.
+The digest D identifies the canonical semantic observation material, not
+arbitrary HTML bytes or the truth of the statement by itself.
 
 On receipt, the server recomputes and verifies the MAC and then checks the
 context in which the receipt is being used:
 
-#+begin_example
-untrusted client-carried bytes
-        |
-verify MAC
-        |
-verify principal / authority / purpose / expiry
-        |
-        v
-server-authenticated prior-observation evidence
-#+end_example
+1. Parse the untrusted envelope under bounded, supported encoding rules.
+2. Resolve the admitted receipt contract and its trusted verification key.
+3. Verify the MAC over the exact canonical payload.
+4. Check the required identity, scope, context, purpose, and lifecycle bindings.
+5. Admit only the historical issuance proposition justified by those checks.
+
+The verifier chooses the admitted receipt contract, trusted issuer/key mapping,
+canonical encoding, and verification mechanism. Client-supplied fields do not
+select an arbitrary algorithm or trusted issuer. Version, type, audience,
+principal or session binding, authority, subject/scope, projection, purpose,
+expiry, and semantic-material binding are checked as required by that contract.
+Key rotation, clock interpretation, and revocation/expiry behavior belong to the
+declared receipt lifecycle. Validation failure grants no stronger premise.
 
 The MAC authenticates the statement represented by the payload; it does not
 make an unjustified statement true.  If the server authenticates a bad or
@@ -2799,27 +2945,13 @@ claim.
 
 Gesso should therefore distinguish at least these concepts:
 
-#+begin_example
-ObservedBasisClaim
-    client supplied
-    forgeable
-    useful for consistency/reconciliation
-
-AuthenticatedObservationReceipt
-    server authenticated
-    evidence about a prior server-issued observation
-
-CurrentAuthoritativeObservation
-    trusted acquisition satisfying its declared scope and consistency contract
-    current relative to that acquisition, not a promise of perpetual freshness
-
-OperationCapability
-    explicitly scoped permission under declared conditions
-
-CurrentAuthorization
-    current trusted decision that a concrete principal may perform the
-    operation against current authoritative state
-#+end_example
+| Concept | Semantic meaning |
+|---------+------------------|
+| ObservedBasisClaim | Client-supplied, forgeable consistency or reconciliation context |
+| AuthenticatedObservationReceipt | Server-authenticated evidence of the stated prior issuance event |
+| CurrentAuthoritativeObservation | Trusted acquisition satisfying its scope and read contract; current relative to that acquisition |
+| OperationCapability | Scoped permission under an explicit grant and its validity conditions |
+| CurrentAuthorization | A current trusted decision permitting the concrete principal's operation under the authoritative policy |
 
 None should implicitly coerce into another.  In particular, historical
 observation evidence and possession of an operation capability do not silently
@@ -2831,24 +2963,14 @@ Gesso may emit compact authenticated observation receipts alongside
 authoritative acquisitions when a supported protocol benefits from evidence of
 prior issuance. Routine issuance is an implementation option, not a baseline
 requirement justified solely by the cost of computing a MAC. Its key lifecycle,
-payload disclosure, expiry, and replay contract must be explicit.  The authenticated object
-should be the *semantic observation* or a compact digest/identity of it, not
+payload disclosure, expiry, and replay contract must be explicit. The
+authenticated object should be the *semantic observation* or a compact digest/identity of it, not
 arbitrary HTTP response bytes.
 
-For example:
-
-#+begin_src clojure
-{:receipt/version 1
- :principal-id P
- :authority [:request R]
- :projection :request/card
- :basis B
- :semantic-digest D
- :issued-at I
- :expires-at E}
-#+end_src
-
-could be MACed as one canonical receipt.
+The receipt contract must identify exactly what its semantic digest binds.
+A digest of an untyped map without authority, projection, temporal, or query
+meaning is not enough when those distinctions matter. Verifying a receipt
+does not re-read the model or establish that the old facts remain current.
 
 Even if such receipts become common, ordinary =:observed-basis= should remain a
 distinct weaker protocol concept.  Requiring cryptographic evidence whenever a
@@ -2882,21 +3004,12 @@ choreography.
 
 For example:
 
-#+begin_example
-browser renders authoritative Request at X17
-    |
-execution ends
-
-...later...
-
-Live advisory arrives
-    |
-application policy or explicit user action permits acquisition
-    |
-browser performs authorized authoritative reread at X24
-    |
-new short choreography begins with knowledge from X24
-#+end_example
+| Stage | Semantic consequence |
+|-------+----------------------|
+| Browser renders an admitted Request observation at X17 | That execution may finish with its declared adopted knowledge |
+| A later Live advisory arrives | It records advisory information; it need not resume the finished execution |
+| Policy or user action permits a new acquisition | An authorized read obtains an observation satisfying the new requirement, here at X24 |
+| A new short choreography begins | Its entry contract binds the observation at X24 as justified input knowledge |
 
 The portable choreography language therefore need not acquire a universal
 =:observe= or durable wait operation merely to model ordinary web rereads.
@@ -2950,14 +3063,12 @@ obligation.
 
 If A communicates X to B:
 
-#+begin_example
-A knows X
-A communicates declared X to B
-B receives declared X
---------------------------------
-A's sent observation and B's received observation agree on declared X
-provenance: communicated, subject to the message contract's premises
-#+end_example
+The message contract justifies A's send, B admits the matching receive, and
+the sent and received values are related by the contract's declared encoding
+and semantic interpretation. Under those premises, the protocol may establish
+=:communicated= agreement on X at those two events. It does not establish
+acknowledgement, current-state equality after later changes, or domain truth
+beyond what that message contract justifies.
 
 Agreement can arise through multiple provenance paths.
 
@@ -2985,28 +3096,30 @@ justified agreement without receiving one identical network packet.
 
 For example:
 
-#+begin_example
-authority establishes F
+| Actor | Physical read path | Required semantic support |
+|-------+--------------------+---------------------------|
+| A | Web node 1 | An admitted observation supporting scoped proposition F |
+| B | Web node 3 | An admitted observation supporting the same proposition F under the required compatibility relation |
 
-actor A
-  reads F through web node 1
-  at compatible authoritative frontier
-
-actor B
-  reads F through web node 3
-  at compatible authoritative frontier
-
-=> A and B may have authoritative agreement on F
-#+end_example
+The agreement judgment uses that compatibility evidence; matching host or
+packet identities are unnecessary.
 
 The hosts differ.
 
 The packets differ.
 
-The semantic authority and relevant fact agree. The required agreement is on
-the scoped proposition being used, not necessarily on the exact read timestamp
-or complete database snapshot. Equal progression tokens alone do not establish
-agreement when the subjects or projection meanings differ.
+The required agreement is on the scoped proposition being used, not necessarily
+on an identical packet, exact read timestamp, or complete database snapshot.
+The relation must establish that the observations support that same proposition
+under compatible subject, temporal, projection, and authority contexts. Equal
+progression tokens alone do not establish this; neither do equal status values
+at unrelated times.
+
+For example, two observations that a Request is open can support agreement on a
+specified state/version or valid-time proposition when the authority contract
+justifies the relation. They do not prove that the Request never became claimed
+and reopened between those observations. Such a history claim needs its own
+evidence. A generic basis advance is not evidence that every fact was unchanged.
 
 *** Derived agreement
 
@@ -3016,17 +3129,24 @@ inputs and derivation justify doing so.
 The system must not infer derived agreement merely because two actors happen to
 run source code with the same function name.
 
-The derivation relation must be part of the checked semantic contract.
+The derivation relation must be part of the admitted semantic contract. Where
+its realization is opaque, the conclusion retains the exact deterministic and
+implementation assumptions used. A nondeterministic computation may support
+agreement on an explicitly shared result, but independent invocations need not
+produce that same result.
 
 *** Asserted agreement
 
 Application code may explicitly assert agreement that Gesso cannot derive.
 
-Such assertions are trusted leaves.
+Such assertions are named, scoped premises under the admission policy. They
+remain visible in diagnostics and proof reports, including the particular
+actors, proposition, relation, and frontier to which they apply.
 
-They must remain visible in diagnostics and proof reports.
-
-They should not be used casually to suppress useful obligations.
+They cannot silently suppress a mandatory failed correspondence check or be
+introduced by an untrusted participant choosing an assertion id. An asserted
+agreement does not become mechanically derived agreement because the two
+displayed values happen to match.
 
 *** Shape equality is not agreement
 
@@ -3080,14 +3200,16 @@ position for all actor knowledge.
 For a single modeled chain whose prefix observations are retained and justify
 the claimed agreement, for example:
 
-#+begin_example
-F1 -> F2 -> F3 -> F4
+| Participant | Justified retained prefix of the modeled chain |
+|-------------+------------------------------------------------|
+| Actor A | F1, F2, F3, F4 |
+| Actor B | F1, F2, F3 |
+| Common prefix for this relation | F1, F2, F3 |
 
-Actor A knows through F4.
-Actor B knows through F3.
-
-A and B agree through F3.
-#+end_example
+The example requires the stated prefix knowledge. Observing only the latest
+snapshot at F4 does not automatically establish that the actor knows every
+intermediate transition through F4. Snapshot agreement and agreement on an
+event-history prefix are different relations.
 
 The application universe may change continually.
 
@@ -3097,7 +3219,8 @@ That is not itself a correctness failure.
 
 Correctness instead requires:
 
-- established historical facts remain immutable under the model's semantics;
+- recorded observations retain their historical meaning, while domain
+  corrections and the applicability of their interpretations remain explicit;
 - relevant divergence is explicit rather than silently erased;
 - actors possess enough justified knowledge for the behavior they perform;
 - where convergence is required, the protocol provides a valid path toward a
@@ -3131,19 +3254,12 @@ coverage unless the supported contract actually establishes those properties.
 
 For example:
 
-#+begin_example
-Authority:
-    F1 -> F2 -> F3 -> F4 -> F5
-
-Actor A:
-    knows through F5
-
-Actor B:
-    knows through F3
-
-Actor C:
-    knows only a privacy-scoped subset through F4
-#+end_example
+| Participant | Justified scope in this example |
+|-------------+----------------------------------|
+| Authority | Modeled chain through F5 |
+| Actor A | Required prefix observations through F5 |
+| Actor B | Required prefix observations through F3 |
+| Actor C | Only its privacy-permitted subset through F4 |
 
 There may be no meaningful statement that all three actors share one universal
 application frontier.
@@ -3158,16 +3274,10 @@ authoritative projection.
 This distinction is important for application behaviors such as a multi-user
 board:
 
-#+begin_example
-other client learns:
-    "new relevant Request authority is available"
-
-but does not yet replace:
-    currently adopted board projection
-
-explicit refresh:
-    acquires and adopts newer authoritative projection
-#+end_example
+| Transition | Advisory state | Adopted projection |
+|------------+----------------+--------------------|
+| Relevant advisory received | Records the justified scoped reacquisition requirement | Existing projection remains selected |
+| Explicit Refresh succeeds under the installation policy | Discharges only requirements covered by the adopted observation | Selects the newly admitted projection |
 
 The advisory requirements and adopted authoritative observations are therefore
 distinct pieces of actor state. The word frontier is shorthand for the scoped
@@ -3178,219 +3288,233 @@ A correct application may intentionally preserve that distinction.
 
 
 HumanHelp's board can represent that distinction explicitly instead of
-overloading one "current revision" slot.
+overloading one current-revision slot. Suppose Alice creates Request R3 while
+Bob's adopted board contains R1 and R2. The examples below are abbreviated
+inspection and pure-transition fixtures; they are not browser assertions that
+the server must trust.
 
-Suppose Alice creates Request R3 while Bob is viewing an adopted board
-containing only R1 and R2. A browser-side semantic state might look like:
+The selected board projection is complete for its declared search/filter query,
+not necessarily for every Request in the Organization. Each acquisition records
+its concrete temporal context under the current-state read contract. X17, X18,
+X19, and X20 are opaque basis labels; the admitted provider establishes the
+relations used in this example.
 
 #+begin_src clojure
+(def board-scope
+  {:organization-id O
+   :projection :request/board-v1
+   :query {:search "" :show-terminal? false :order :newest}
+   :coverage-contract :complete-selected-query
+   :time-policy :current-state})
+
 (def bob-board
-  {:actor
-   [:client
-    #uuid "81000000-0000-0000-0000-000000000002"]
-
-   :principal
-   [:user
-    #uuid "82000000-0000-0000-0000-000000000002"]
-
-   :projection
-   {:projection :request/board
-    :organization-id
-    #uuid "83000000-0000-0000-0000-000000000001"}
-
+  {:actor [:client :bob-tab]
+   :principal-context :session/bob-1
+   :owner [:fragment :bob-request-board]
+   :projection board-scope
    :adopted
-   {:requests
-    [#:request{:id
-               #uuid "84000000-0000-0000-0000-000000000001"
-               :status :open
-               :title "R1"}
-
-     #:request{:id
-               #uuid "84000000-0000-0000-0000-000000000002"
-               :status :open
-               :title "R2"}]
-
+   {:requests [{:request/id R1 :request/status :open :request/title "R1"}
+               {:request/id R2 :request/status :open :request/title "R2"}]
     :observation
-    {:authority [:authority :request-board]
-     :scope
-     {:organization-id
-      #uuid "83000000-0000-0000-0000-000000000001"
-      :projection :request/board}
-     :basis :X17}}
-
-   :advisory
-   {:requirements []}})
+    {:authority [:authority :request-board O]
+     :scope board-scope
+     :principal-context :session/bob-1
+     :basis :X17
+     :temporal-context T17}}
+   :advisory {:requirements #{}}
+   :acquisition nil})
 #+end_src
 
-Alice's create operation commits R3 authoritatively. Bob receives an advisory
-whose semantic content is deliberately weaker than the Request itself:
+For this example, the producing authority can attach a justified lower bound
+X18 to the advisory generated by its committed change. The advisory does not
+say that R3 is visible to Bob, and its issuance/disclosure follows the admitted
+subscription contract.
 
 #+begin_src clojure
 (def create-advisory
   {:event/class :board-advisory
-
    :owner
-   {:subscription/id
-    #uuid "85000000-0000-0000-0000-000000000001"
-    :source-instance/id
-    #uuid "86000000-0000-0000-0000-000000000001"
-    :scope
-    {:organization-id
-     #uuid "83000000-0000-0000-0000-000000000001"
-     :projection :request/board}}
-
-   :scope
-   {:organization-id
-    #uuid "83000000-0000-0000-0000-000000000001"
-    :projection :request/board}
-
+   {:subscription/id :subscription/bob-board
+    :source-instance/id :source/bob-board-1
+    :scope board-scope}
    :requirement
-   {:kind :newer-authority-available
-    :after :X17}})
+   {:scope board-scope
+    :authority [:authority :request-board O]
+    :minimum-basis :X18}})
 
 (def current-board-subscription
   {:board-subscription
-   {:subscription/id
-    #uuid "85000000-0000-0000-0000-000000000001"
-    :source-instance/id
-    #uuid "86000000-0000-0000-0000-000000000001"
-    :scope (:projection bob-board)
+   {:subscription/id :subscription/bob-board
+    :source-instance/id :source/bob-board-1
+    :scope board-scope
+    :principal-context :session/bob-1
     :status :open}})
 
 (defn record-advisory
   [board admitted-advisory]
-  ;; This is an internal semantic transition. The common shared-event
-  ;; boundary has already validated source, owner, scope, and requirement.
-  (advisory-admission/require-admitted-for!
-    admitted-advisory
-    (:projection board))
-  (update-in board
-    [:advisory :requirements]
-    conj
-    (:requirement admitted-advisory)))
+  (let [requirement
+        (advisory-admission/require-requirement-for!
+          admitted-advisory
+          {:scope (:projection board)
+           :principal-context (:principal-context board)})]
+    (update-in board [:advisory :requirements]
+      requirements/conjoin requirement)))
 
 (def admitted-create-advisory
-  (advisory-admission/admit!
-    {:trusted-context trusted-board-context
-     :runtime current-board-subscription
-     :event create-advisory
-     :require #{:declared-board-advisory-class
-                :admitted-source-provenance
-                :valid-scoped-requirement
-                :permitted-shared-transition}}))
+  (admit-board-advisory
+    admitted-board-source-context
+    current-board-subscription
+    create-advisory))
 
 (def bob-after-advisory
-  (record-advisory
-    bob-board
-    admitted-create-advisory))
+  (record-advisory bob-board admitted-create-advisory))
 
 (get-in bob-after-advisory [:adopted :requests])
-;; =>
-;; still R1 and R2
+;; => still R1 and R2
 
 (get-in bob-after-advisory [:advisory :requirements])
-;; =>
-;; [{:kind :newer-authority-available
-;;   :after :X17}]
+;; => the scoped requirement for at least X18
 #+end_src
 
-Bob has learned something real: relevant authority may have advanced beyond what
-his adopted board covers. He has *not* thereby learned R3's title, status,
-requester, visibility, or even that one particular Request must appear in his
-authorized projection.
+=requirements/conjoin= retains the conjunction of obligations, conservatively
+as an orderless set unless admitted implication evidence permits simplification.
+It does not choose whichever token arrived last. The admission functions above
+resolve registered source/owner contracts; calling a map admitted does not
+supply that evidence. The local source context belongs to the cooperating
+browser realization and is not a server credential.
 
-The Refresh action performs a new authoritative acquisition:
+A requirement saying only "later than the browser's X17" would not necessarily
+cover the change at X18. The browser must not manufacture X18 from an advisory
+with no such bound. A tokenless notification needs its separately declared
+fresh-acquisition or source-fence protocol. Part IV defines how that protocol
+establishes sufficient coverage.
+
+Bob has learned that reacquisition may be needed or available for the scoped
+board. He has not thereby learned R3's title, status, requester, or visibility.
+The application may show a toast and Refresh affordance without replacing the
+adopted rows.
+
+The Refresh interaction separates a pure browser transition from the server
+acquisition and the subsequent installation:
 
 #+begin_src clojure
-(defn refresh-board!
-  [{:keys [principal] :as ctx} board-state]
-  (let [started @board-state
-        scope (:projection started)
-        acquisition
-        (request-model/read-authorized-board
-          ctx
-          {:principal principal
-           :organization-id (:organization-id scope)
-           :projection (:projection scope)})]
+;; A2 is a fresh resource instance issued by the managed runtime.
+(def refresh-start
+  (board-runtime/step
+    bob-after-advisory
+    {:event/class :board/refresh-requested
+     :trigger :user
+     :resource-instance/id A2}))
 
-    ;; Installation happens against the latest state, including advisories
-    ;; received during the read. The admitted installer checks current owner,
-    ;; trusted provenance, scope, and progression before replacing the board.
-    (swap! board-state
-      (fn [current]
-        (board-admission/install-acquisition
-          current
-          {:acquisition acquisition
-           :expected-scope scope
-           :principal principal})))
-    @board-state))
+;; Illustrative effect emitted by that pure step:
+[:acquisition/request
+ {:owner [:fragment :bob-request-board]
+  :resource-instance/id A2
+  :principal-context :session/bob-1
+  :scope board-scope
+  :requirements
+  (get-in bob-after-advisory [:advisory :requirements])}]
 
-(def bob-board-state
-  (atom bob-after-advisory))
+;; The host performs the authorized read outside the pure step. The trusted
+;; server derives the real principal from authentication, not from this effect.
+;; The returned observation is admitted under the request/response contract.
+(def refresh-completion
+  (board-runtime/step
+    (:state refresh-start)
+    {:event/class :acquisition-complete
+     :owner [:fragment :bob-request-board]
+     :resource-instance/id A2
+     :acquisition authorized-board-observation-X19}))
 
-(def bob-after-refresh
-  (refresh-board!
-    current-context
-    bob-board-state))
+;; For an asynchronous realization this requests installation; it does not
+;; yet assert that the new projection was physically installed and adopted.
+(:effects refresh-completion)
+;; => a scoped installation effect for the admitted observation
+
+;; Another relevant advisory arrives before installation completes.
+(def bob-before-install
+  (record-advisory
+    (:state refresh-completion)
+    admitted-board-advisory-X20))
+
+(def installed
+  (board-runtime/step
+    bob-before-install
+    {:event/class :presentation/installed
+     :owner [:fragment :bob-request-board]
+     :resource-instance/id A2
+     :installation-result admitted-installation-result-X19}))
+
+(def bob-after-refresh (:state installed))
+;; => adopts the permitted projection at X19
+;; => discharges the X18 requirement when its full scope is covered
+;; => retains the X20 requirement and every unrelated uncovered requirement
 #+end_src
 
-The installer is a pure state transition, since =swap!= may call it again after
-a concurrent state change; it cannot send network requests or emit irreversible
-effects inside that function. It discharges only advisory requirements that the
-new acquisition actually covers under Part IV's scope and progression rules.
-It preserves newer or unrelated requirements and rejects a stale result if
-another acquisition
-already installed a stronger board or the owner changed. Evaluating that rule
-against the captured =started= value would erase an advisory received while
-the read was in flight. The principal comes from trusted context; a client
-field cannot choose whose board is read or installed.
+This example's adoption policy permits installing the result that covers the
+captured X18 requirement while retaining a newer X20 requirement. A policy that
+requires all pending requirements to be satisfied before adoption must instead
+defer that installation and reacquire; the runtime must not silently choose
+between these policies.
 
-If Bob is authorized to see R3, the new projection may contain it. If policy or
-privacy excludes R3, Refresh can still be a valid authoritative acquisition
-without leaking it.
+The displayed =board-runtime/step= contract returns state and requested effects.
+It is realized by the executable semantic core for this browser transition
+contract. The effect shell binds callbacks to registered instances, checks
+installation rights against the current owner, and reports actual completion
+or failure. The final ownership
+check and target mutation must share a declared serialization boundary; a
+check followed by an unprotected asynchronous mutation leaves the same race.
+An installation acknowledgement supplied as arbitrary client data is not
+accepted as evidence
+of this local execution. An adversarial browser can still falsify its own
+display; the server's security does not depend on this local report.
 
-Now compare Alice and Bob:
+The transition uses the latest state, including intervening advisories and
+owner changes. Reusing the state captured when Refresh began could erase X20.
+If another acquisition already adopted a stronger result, the query changed,
+the account context changed, or A2 was retired, this completion cannot install
+through the old ownership. A separate admitted path may retain independently
+useful outcome or observation evidence.
+
+A synchronous shell may combine installation and its successful semantic
+completion when its correspondence contract justifies doing so. In either
+realization, effects are not performed inside a retriable pure state update,
+such as a =swap!= function. Only effects from the accepted state transition are
+performed, under their declared identity and retry contract.
+
+If Bob is authorized to see R3 and it belongs to the selected query, the new
+board may contain it. If privacy or filtering excludes it, a complete authorized
+acquisition can still discharge the covered board requirement without revealing
+the hidden Request. It establishes the authorized projection, not all
+Organization state.
+
+Now consider agreement between Alice and Bob. They have separate admitted
+observations. An agreement check states the proposition and relation it needs:
 
 #+begin_src clojure
-(def alice-knowledge
-  {:actor [:client :alice-tab]
-   :request R3
-   :fact [:request/status :open]
-   :provenance :authoritative
-   :basis :X18})
-
-(def bob-before-refresh
-  {:actor [:client :bob-tab]
-   :advisory
-   [:authority-may-have-advanced
-    {:after :X17}]
-   :adopted-basis :X17})
-
-(def bob-after-refresh-knowledge
-  {:actor [:client :bob-tab]
-   :request R3
-   :fact [:request/status :open]
-   :provenance :authoritative
-   :basis :X19})
+(agreement/check
+  {:actors [[:client :alice-tab] [:client :bob-tab]]
+   :proposition [:request/status R3 :open]
+   :relation :compatible-authoritative-fact
+   :observations [alice-observation bob-observation]})
 #+end_src
 
-Before Refresh, Alice and Bob do not have authoritative agreement on R3's
-current board fact merely because Bob received an SSE event. After Refresh they
-may have scoped authoritative agreement on the fact that R3 is open and belongs
-in Bob's authorized projection, even though they acquired it through different
-requests and potentially different web nodes.
+The result can establish agreement only if those observations justify the same
+scoped proposition under that relation. Equal =:open= values and larger-looking
+basis labels are insufficient. The observations may have different physical
+delivery paths and compatible rather than identical read contexts; the required
+compatibility is evidence, not an inference from their labels.
 
-Agreement remains narrower than total-state equality. Alice may also know private
-requester details that Bob is not authorized to receive:
+Even established agreement that R3 is open does not establish agreement that it
+belongs in Bob's authorized board. Alice may never have learned Bob's visibility
+policy, query, or membership. That is a separate proposition with separate
+premises. Nor does a shared observation of openness authorize either principal
+to claim the Request now.
+
+Privacy can make the shared proposition strictly smaller than either actor's
+total knowledge:
 
 #+begin_src clojure
-(def authority-state
-  {:request/id R3
-   :request/status :open
-   :request/title "Need help moving a cabinet"
-   :request/requester-id Alice
-   :request/requester-phone "+1-555-0100"})
-
 (def alice-projection
   {:request/id R3
    :request/status :open
@@ -3401,21 +3525,17 @@ requester details that Bob is not authorized to receive:
   {:request/id R3
    :request/status :open
    :request/title "Need help moving a cabinet"})
-
-;; Alice and Bob may agree on:
-[:request/id R3]
-[:request/status :open]
-
-;; They need not, and must not, be forced to agree on:
-[:request/requester-phone "+1-555-0100"]
 #+end_src
 
-The example makes the semantic model's use of "frontier" deliberately
-non-global. Bob can owe adoption work for the board projection while already
-holding newer authoritative knowledge about some unrelated Request or account
-setting. Likewise, privacy may make full convergence impossible and undesirable.
-The meaningful question is always: agreement about which proposition, for which
-authority and scope, under which justified observations?
+Given the appropriate admitted observations, they may agree on the shared
+Request fact while Bob has no permitted knowledge of the private phone number.
+The illustrative domain maps alone do not establish either provenance or
+agreement. No convergence rule requires disclosure of the omitted field.
+
+Bob can therefore retain board-adoption debt while holding newer justified
+knowledge about an unrelated Request or account setting. The meaningful
+question is agreement about which proposition, under which authority, scope,
+relation, and observations.
 
 *** Convergence does not require replay of every intermediate change
 
@@ -3433,6 +3553,21 @@ It is:
 Provide a valid path by which the actor can acquire sufficiently current
 authoritative knowledge for the behavior it needs to perform.
 #+end_quote
+
+That path must address the interval between establishing an interest and the
+read/notification stream that covers it, as well as reconnect and source
+replacement. Missing an invalidation before registration cannot be repaired by
+assuming that all future invalidations will arrive. A supported contract may
+use an acquisition/subscription fence, durable cursor or replay, gap detection,
+or a declared periodic reacquisition trigger. The chosen mechanism and its
+coverage must be explicit; this part does not require a particular broker or
+multi-node routing topology.
+
+Eventual convergence also needs an eventual trigger. Dependency availability
+alone does not make a browser refresh if it never learns that its observation
+may be incomplete. Where the product deliberately permits indefinite manual
+deferral, the convergence claim remains conditional on the required user action
+or another declared trigger.
 
 *** Agreement debt
 
@@ -3489,11 +3624,13 @@ A and B need not agree on private requester metadata.
 The foundational agreement invariant is:
 
 #+begin_quote
-A Gesso execution never treats mere co-presence, shape equality, physical
+An admitted Gesso execution never treats mere co-presence, shape equality, physical
 delivery, or coincidental local computation as semantic agreement.  Agreement
 must be justified by a declared communication, compatible authoritative
 observation, checked derivation, or explicit trusted assertion, and any claim
-over evolving facts is relative to a meaningful common frontier.
+over evolving facts is relative to an explicitly justified temporal and
+observation relation. Assertions remain premises, and a claimed common frontier
+does not imply a universal order, complete history, or current authorization.
 #+end_quote
 
 

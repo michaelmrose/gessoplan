@@ -1,6 +1,7 @@
 * Part III — Choreography and projection
 :PROPERTIES:
 :CUSTOM_ID: part-03-choreography-and-projection
+:PART_REVISION: 03-20261107
 :END:
 
 This part defines choreography as a global semantic specification, the operation
@@ -10,6 +11,19 @@ knowledge, and authority model of Part II. Concrete model/FX integration follows
 in Part IV; browser realization and whole-application construction follow in
 Parts VI and VII.
 
+The intended architecture supports ordinary full-language Clojure under the
+[[#req-full-language-construction][checked construction contract]]. A small
+portable choreography vocabulary is an interface for distributed coordination,
+not a replacement for the application's implementation language. Opaque code
+retains its named contracts and accepted premises through verification,
+projection, assembly, and execution.
+
+Examples use illustrative declaration and API names. They specify required
+semantics, not a promise that the displayed syntax is an existing executable
+API. Generated plan excerpts and state tables are inspection views, not a second
+handwritten workflow. Fixture symbols such as R, C, and E denote identities or
+values bound by the surrounding example.
+
 ** What a choreography is
 
 A choreography is a global description of a distributed state machine involving
@@ -17,7 +31,17 @@ N roles.
 
 The global choreography is projected into N role-local machines. At runtime,
 concrete actors instantiate those roles and execute the local machines
-independently.
+independently. The entry/participation contract binds each role instance to its
+actual actor and principal or authority. A role name is not a credential, and
+two tabs for one principal do not share knowledge merely because that principal
+is the same.
+
+The application may have many concurrent executions of the same choreography.
+Admission states which instances may participate, how their messages and
+resources are separated, and whether a logical role can have multiple members.
+An aggregate role is not silently treated as one omniscient actor. Projection
+of one execution also does not prove isolation from other operations; model
+invariants and atomic guards govern their shared authoritative effects.
 
 There does not need to be a second centralized global machine executing beside
 them. The global choreography is the specification from which local machines
@@ -68,281 +92,258 @@ The global description may be realized by short-lived projections that interact
 through durable authoritative facts.
 
 
-A substantial expense-approval slice shows what "global description" means here.
-The following syntax is illustrative, but the separation among declared roles,
-authoritative observation, branching, communication, and authoritative effects
-is the intended semantic pressure.
+*** A concrete coordination vocabulary
 
-First, assume the application already owns ordinary domain schemas and public
-model operations:
+The canonical global representation is a versioned graph of typed semantic
+states. States have stable source identities for explanation, successors, and
+the contracts their transitions use. Semantic keys and options are closed for
+the selected representation version: an unknown opcode, misspelled required
+field, unsupported option, or unresolved contract reference produces a specific
+construction failure. An explicit nonsemantic metadata/extension area may be
+retained, but its contents cannot affect execution or strengthen a claim without
+a declared interpretation. A supported baseline has six node kinds:
+
+| Global node | Meaning | Required contract |
+|-------------+---------+-------------------|
+| =:local= | Work at one role | Named implementation, placement, inputs, outputs, effects, failure and completion behavior |
+| =:authoritative= | Result of a public authoritative operation at its trusted owner | Operation interface, caller/authority binding, result alternatives, and realization premises |
+| =:branch= | Selection using an already established local value | Owning role, typed selector, exhaustive supported alternatives or an explicit unmatched-value failure |
+| =:communicate= | One semantic transfer between roles | Sender, receiver, payload, correlation, disclosure, and channel contract |
+| =:await= | A role admits an event from its environment | Registered source, event alternatives, owner, payload, and provenance obligations |
+| =:return= | Declared global terminal disposition | Meaning of completion, remaining obligations, and any permitted handoff |
+
+The corresponding role-local vocabulary includes =:send= and =:receive= for
+the two sides of communication, alongside local work, authoritative work,
+branching, environment waits, and local return. A participant message cannot
+satisfy an environment wait merely because its event keyword matches. An
+environment event likewise cannot impersonate a participant receive.
+
+Selectors distinguish missing bindings, present nil, and false according to the
+declared type. If nil is a supported member of that selector type, it needs an
+explicit alternative; it must not be conflated with an absent value. A target
+that cannot represent such a selector rejects the unsupported contract during
+construction rather than interpreting the value through generic truthiness.
+
+A local node is not permission to conceal a database write, outbound message,
+protected disclosure, or required resource transition. Its interface exposes
+effects that matter to the claimed behavior. A computation may be hidden in a
+particular distributed trace only when the trace abstraction permits it; it
+remains subject to local safety, resource, and implementation obligations.
+
+An authoritative result is not synonymous with a committed write. It may report
+rejection, a disclosed recorded outcome, or uncertainty under the operation's
+contract. The result's category and payload determine what the next state may
+conclude. Merely naming the state =:authoritative= establishes no runtime trust.
+
+An acquisition can be realized as a declared effect followed by an environment
+completion carrying an admitted authoritative observation. It need not be a new
+portable observation opcode, and it must not be mistaken for a new model
+mutation. The observation contract binds the authority, subject, query,
+projection, principal context, basis, and temporal meaning required by Part II.
+
+Higher-level constructs such as an operation invocation, authoritative
+acquisition, retry, resource scope, or a source-language conditional elaborate
+to these transitions or to an explicitly versioned extension with defined
+semantics. An invocation at a browser role does not relocate the authoritative
+operation into the browser: elaboration includes the declared request,
+trusted-side operation, and outcome-delivery boundary. A macro or helper must
+expose this expansion for inspection and checking.
+
+For example, this small graph classifies an already acquired review input. It
+does not itself perform an approval:
 
 #+begin_src clojure
-(defschema Expense
+(def classify-review-graph
+  {:name :expense/classify-review
+   :initial :classify
+   :states
+   {:classify
+    {:op :local
+     :role :manager
+     :action :expense/classify-route
+     :requires #{:review/inputs}
+     :outputs #{:review/path}
+     :next :choose}
+    :choose
+    {:op :branch
+     :role :manager
+     :on :review/path
+     :cases {:finance :finance-required
+             :manager :manager-route}}
+    :finance-required
+    {:op :return :outcome :review/finance-required}
+    :manager-route
+    {:op :return :outcome :review/manager-route}}})
+#+end_src
+
+The operation entry binds =:review/inputs= to the manager's admitted observation.
+The action interface promises an output of type =[:enum :finance :manager]=
+under its typed policy or retained opaque contract. The branch consumes that
+output; it does not compute the policy or invent the selector. If the action
+can fail or yield a third alternative, its actual interface and graph must
+expose that path or the admitted outer failure contract must handle it. The
+constructor cannot accept a partial success-only graph as a totality proof.
+
+The sample spells out input/output sets to show the semantic representation.
+Authoring helpers derive them from inspectable expressions and operation
+interfaces where possible. An opaque action's declared boundary remains an
+explicit commitment. Source states such as =:classify= may become compact
+runtime locators; that encoding does not change these semantics.
+
+*** A worked expense review
+
+Consider a manager reviewing a previously submitted Expense. This short
+choreography starts with a submitted Expense selected from an authorized queue.
+The employee's earlier submission and Finance's possible later approval are
+separate short executions connected by durable state. This keeps an unused
+Finance role from waiting forever in a protocol that never needed its action.
+
+The application owns the domain schemas and public operations:
+
+#+begin_src clojure
+(def Expense
   [:map {:closed true}
    [:expense/id uuid?]
    [:expense/employee-id uuid?]
    [:expense/department keyword?]
-   [:expense/amount decimal?]
+   [:expense/amount Money]
    [:expense/status
-    [:enum :draft
-           :submitted
-           :awaiting-finance
-           :approved
-           :rejected]]])
+    [:enum :draft :submitted :awaiting-finance :approved :rejected]]])
 
-(defschema ApprovalPolicy
+(def ApprovalPolicy
   [:map {:closed true}
    [:policy/department keyword?]
-   [:policy/manager-limit decimal?]
-   [:policy/finance-required-at decimal?]])
+   [:policy/finance-required-at Money]])
 
-(defrule needs-finance?
-  {:inputs {:expense Expense
-            :policy ApprovalPolicy}
-   :returns :boolean}
-  [:>=
-   [:expense/amount :expense]
-   [:policy/finance-required-at :policy]])
-
-(defoperation submit-expense
-  {:operation/id :expense/submit
-   :actor :employee
-   :effect [:model/invoke :expense/submit]})
-
-(defoperation manager-approve
-  {:operation/id :expense/manager-approve
-   :actor :manager
-   :effect
-   [:model/invoke :expense/approve-as-manager]})
-
-(defoperation escalate-to-finance
-  {:operation/id :expense/escalate-to-finance
-   :actor :manager
-   :effect
-   [:model/invoke :expense/mark-awaiting-finance]})
-
-(defoperation finance-approve
-  {:operation/id :expense/finance-approve
-   :actor :finance
-   :effect
-   [:model/invoke :expense/approve-as-finance]})
+(def finance-route-rule
+  {:rule/id :expense/requires-finance
+   :inputs {:expense Expense :policy ApprovalPolicy}
+   :preconditions
+   [[:= [:expense/department :expense] [:policy/department :policy]]
+    [:same-currency [:expense/amount :expense]
+                    [:policy/finance-required-at :policy]]]
+   :returns :boolean
+   :expression
+   [:money/>= [:expense/amount :expense]
+               [:policy/finance-required-at :policy]]})
 #+end_src
 
-One global choreography can then describe how those operations relate:
+=Money= and its operations use the explicit money profile from Part I. The rule
+does not compare unspecified host decimals or mix currencies. Its policy is
+deliberately simple: amounts at or above the threshold require Finance; smaller
+amounts may take the manager path, subject to all other model guards. A real
+application may supply a richer opaque Clojure policy under an explicit contract.
+
+The review acquisition returns Expense and Policy under one compatible read
+context. It binds the Expense to the selected id and the Policy to that Expense's
+department. Knowing an id does not establish any of these facts. The manager
+principal and permission to read come from trusted acquisition context.
+
+The operation invocation contracts are:
+
+| Operation | New-incorporation requirement | Successful recorded effect |
+|-----------+--------------------------------+----------------------------|
+| =:expense/approve-as-manager= | Current manager permission, submitted Expense, applicable Policy, and manager-route eligibility | Expense becomes approved |
+| =:expense/mark-awaiting-finance= | Current manager permission, submitted Expense, applicable Policy, and Finance-route eligibility | Expense becomes awaiting Finance |
+
+Each operation atomically protects its current dependencies, domain changes,
+and command-result record under Part IV. The preparation read determines which
+operation to try; it does not reserve eligibility or authorize incorporation.
+A compatible replay follows the recorded-outcome and current disclosure rules
+without reapplying a new-incorporation status guard.
+
+Here is the choreography's control structure. The invocation and acquisition
+rows are authoring constructs whose elaboration exposes the boundaries described
+above; the table does not introduce additional hidden primitive semantics.
+
+| State | Owner and action | Successors |
+|-------+------------------+------------|
+| Acquire review inputs | Manager requests the admitted Expense/Policy observation | Success: classify; denied/not-found: close the session without notice; temporary failure: declared retry or close without notice |
+| Classify | Manager applies the typed Finance-route rule to the bound observation | Finance required: invoke escalation; otherwise: invoke manager approval |
+| Invoke escalation | Trusted authority processes the bound escalation command | Settle the command-specific model result |
+| Invoke manager approval | Trusted authority processes the bound approval command | Settle the command-specific model result |
+| Settle | Manager admits the disclosed result for the actual command | Accepted: publish review notice; rejected: handle rejection and close without notice; unknown: reconcile or hand off recovery, then close this session without notice if needed |
+| Publish review notice | Manager communicates the permitted historical review result to the notifier | On admitted handoff, manager's local work may finish |
+| Close without notice | Manager sends the declared no-notification disposition | Notifier returns without a notification effect; any command recovery remains with its declared owner |
+| Notify or close | Notifier receives the correlated disposition | Review notice: perform the declared effect; no-notification: return without that effect; delivery failure follows the session recovery contract |
+
+The model outcome and the presentation settlement are distinct:
+
+| Model evidence | Permitted continuation |
+|----------------+------------------------|
+| =:committed= with recorded successful approval/escalation | Accepted continuation for that exact command |
+| =:already-incorporated= with a permitted recorded success | The same accepted continuation, without another incorporation |
+| =:rejected= with an authoritative command rejection | Rejection handling; no accepted-success notice |
+| =:commit-unknown= or indeterminate result delivery | Unknown handling until command-specific authoritative evidence resolves it |
+
+If a model retains other terminal outcomes, the disclosed recorded disposition
+has its explicit mapping. A transport failure after a successful commit does
+not turn that commit into a rejection. An unrelated Expense now being approved
+does not establish that this command approved it.
+
+The notification contains only the declared, disclosure-permitted review
+information. It does not contain a manager's entire observation or private
+threshold. A small inspection view of its contract is:
 
 #+begin_src clojure
-(defchoreo expense-approval
-  {:roles
-   {:employee
-    {:principal :user
-     :actor :client}
-
-    :manager
-    {:principal :user
-     :actor :client}
-
-    :finance
-    {:principal :user
-     :actor :client}
-
-    :expense-authority
-    {:authority :expense}}
-
-   :inputs
-   {:expense-id
-    {:schema :uuid
-     :known-by #{:employee}
-     :provenance :input}}}
-
-  (employee
-    ;; Only a confirmed authoritative submission permits this message.
-    ;; Rejected or unknown submissions follow their declared settlement and
-    ;; reconciliation paths, not the manager continuation.
-    (invoke expense-authority
-      submit-expense
-      {:expense-id expense-id})
-
-    (send manager
-      [:expense/submitted
-       {:expense-id expense-id}]))
-
-  (manager
-    ;; The manager is not allowed to branch merely because the employee sent
-    ;; an Expense id. The branch depends on current authoritative facts.
-    (observe expense-authority
-      [:expense/current expense-id]
-      -> expense)
-
-    (observe expense-authority
-      [:expense/current-policy
-       (:expense/department expense)]
-      -> policy)
-
-    (branch
-      (needs-finance?
-        {:expense expense
-         :policy policy})
-
-      (then
-        (invoke expense-authority
-          escalate-to-finance
-          {:expense-id expense-id})
-
-        (send finance
-          [:expense/finance-review-required
-           {:expense-id expense-id}]))
-
-      (else
-        (invoke expense-authority
-          manager-approve
-          {:expense-id expense-id}))))
-
-  (finance
-    ;; This local behavior exists only on the selected Finance branch.
-    (on [:expense/finance-review-required
-         {:keys [expense-id]}]
-
-      (observe expense-authority
-        [:expense/current expense-id]
-        -> expense)
-
-      (invoke expense-authority
-        finance-approve
-        {:expense-id expense-id}))))
+{:message/id :expense/review-disposition
+ :from :manager
+ :to :notifier
+ :required #{:review/session-id :review/disposition}
+ :correlation #{:review/session-id}
+ :variants
+ {:recorded
+  {:required #{:expense/id :gesso/command-id :review/result}
+   :result-type [:enum :approved :awaiting-finance]
+   :source-evidence :admitted-command-outcome}
+  :no-notification
+  {:required #{}}}
+ :delivery-contract :expense/review-notification}
 #+end_src
 
-The global form is not intended to run forever as one omniscient process. It is
-a specification from which local behavior can be derived.
+The admitted review session supplies its correlation identity at entry. Only
+the recorded variant carries a command outcome. The no-notification variant
+terminates participation without claiming the Expense is absent, the command
+failed, or no review was ever recorded. It does not carry a failed read's
+private subject. Both variants have closed payload contracts and declared
+recipient permission; timing and participation metadata also follow the
+declared disclosure policy. A required participant is not left waiting merely because
+an earlier acquisition or operation failed; unavailable delivery follows the
+session's explicit timeout/retirement or recovery contract.
 
-This first choreography assumes a short supported execution in which the
-employee's confirmed submission and the manager/Finance responses have a
-declared delivery and progress contract. The multi-day realization later in
-this part uses durable model state and separate executions instead. In either
-realization, model operations recheck current status, principal eligibility,
-and applicable policy at their own guarded commit. A policy or status change
-after the manager's observations yields a declared rejection/reacquisition or
-retry path; it does not justify sending a Finance message for an uncommitted
-escalation. Finance's own operation also guards =:awaiting-finance= and current
-Finance authority. The observation and projection examples do not replace
-those model obligations.
+This is contract inspection data, not a credential. The trusted notification
+boundary must validate the origin and permitted command outcome if an
+adversarial manager browser transports the notice. A manager-role label or
+plausible result string cannot establish that a review occurred. If the service
+instead derives the notice from an authoritative outbox, that is the declared
+realization and causal path; projection must not invent it silently.
 
-A manager projection might contain only what the manager needs:
+The delivery contract also decides what failure means. For a required durable
+notification, the model transaction or another justified handoff must retain
+recoverable notification work. A direct browser send that can disappear after
+commit cannot establish eventual notification. For a best-effort notice, loss
+may be allowed but the assurance claim must say so. Replaying an accepted
+command result must not resend an externally significant notification unless
+its own deduplication or repeat policy permits it.
 
-#+begin_src clojure
-(defprojected expense-approval-manager
-  {:role :manager
-   :from expense-approval}
+Projection produces complementary plans, not separately authored workflows:
 
-  (state :waiting-for-submission
-    (on-message
-      [:expense/submitted
-       {:keys [expense-id]}]
+| Projection | Required behavior and knowledge |
+|------------+---------------------------------|
+| Manager | Knows selected Expense id; acquires scoped inputs; derives the route; invokes the selected operation; interprets its command result; transfers a permitted notice or closes participation without notice |
+| Expense authority | Admits each actual invocation, authenticates the caller, applies replay or atomic new-incorporation semantics, and discloses the permitted result |
+| Notifier | Receives the declared disposition; performs the notification effect with its own outcome handling or returns without that effect |
 
-      (goto :load-authority
-        {:expense-id expense-id})))
+The notifier needs the public review result if its message differs by result.
+It does not need the private threshold used to choose the route. Finance's
+later queue observation establishes entry knowledge for a new execution; no
+unused role in this short choreography has to infer that a missing message
+means it may terminate.
 
-  (state :load-authority
-    (observe
-      [:expense/current :expense-id]
-      -> :expense)
-
-    (observe
-      [:expense/current-policy
-       [:expense/department :expense]]
-      -> :policy)
-
-    (goto :choose-path))
-
-  (state :choose-path
-    (if
-      (needs-finance?
-        {:expense :expense
-         :policy :policy})
-
-      (then
-        (invoke
-          :expense/escalate-to-finance
-          {:expense-id :expense-id})
-
-        (send
-          :finance
-          [:expense/finance-review-required
-           {:expense-id :expense-id}])
-
-        (terminate :escalated))
-
-      (else
-        (invoke
-          :expense/manager-approve
-          {:expense-id :expense-id})
-
-        (terminate :approved-by-manager)))))
-#+end_src
-
-The Finance projection is smaller because Finance has no behavior until the
-selected branch communicates the review requirement:
-
-#+begin_src clojure
-(defprojected expense-approval-finance
-  {:role :finance
-   :from expense-approval}
-
-  (state :waiting-for-review
-    (on-message
-      [:expense/finance-review-required
-       {:keys [expense-id]}]
-
-      (goto :load-expense
-        {:expense-id expense-id})))
-
-  (state :load-expense
-    (observe
-      [:expense/current :expense-id]
-      -> :expense)
-
-    (goto :approve))
-
-  (state :approve
-    (invoke
-      :expense/finance-approve
-      {:expense-id :expense-id})
-
-    (terminate :approved-by-finance)))
-#+end_src
-
-The employee projection can be smaller still:
-
-#+begin_src clojure
-(defprojected expense-approval-employee
-  {:role :employee
-   :from expense-approval}
-
-  (state :ready
-    (invoke
-      :expense/submit
-      {:expense-id :expense-id})
-
-    (emit
-      [:expense/submitted
-       {:expense-id :expense-id}])
-
-    (terminate :submitted)))
-#+end_src
-
-Several design points are visible at once.
-
-The manager projection contains the branch because the manager's behavior
-actually differs. Finance does not receive the branch discriminator in advance;
-it receives only the message that justifies its local participation. The
-employee does not learn the internal manager-versus-Finance choice because this
-particular choreography gives the employee no divergent local behavior after
-submission.
-
-The projections are therefore smaller than the global specification without
-being independent handwritten workflows. Their legal traces remain related to
-the global choreography, and any knowledge used locally has to come from the
-entry contract, communication, authoritative observation, deterministic
-derivation, or another declared provenance path.
+A role's local return means that role has no remaining work under its contract.
+It is not proof that every other role completed, every message was delivered,
+or the whole business workflow finished. The global completion judgment and
+any durable recovery handoff retain those distinctions.
 
 *** Choreography is specification, not a hidden coordinator
 
@@ -360,9 +361,9 @@ A runtime architecture that requires every local step to consult a central
 choreography interpreter solely to rediscover projected control flow would
 defeat an important purpose of projection. This does not prohibit a declared
 authoritative operation from consulting its centralized model authority or
-checking a trusted runtime premise.  It
-would turn the global specification into a distributed lockstep coordinator
-rather than a source from which local programs are derived and checked.
+checking a trusted runtime premise. The prohibition concerns an unnecessary
+global control interpreter, not model-owned coordination whose semantics the
+application actually requires.
 
 Conversely, independently executing local machines do not become semantically
 independent programs.  Their combined traces remain constrained by the global
@@ -373,21 +374,12 @@ description.
 
 The intended relationship is:
 
-#+begin_example
-global choreography
-        |
-        | verify / analyze / project
-        v
-role-local executable plans
-        |
-        | execute independently
-        v
-distributed concrete behavior
-        |
-        | must refine
-        v
-behaviors admitted by the global choreography
-#+end_example
+| Stage | Product and obligation |
+|-------+------------------------|
+| Global specification | Declares the allowed distributed behavior |
+| Verification and projection | Derives admitted role-local plans with explicit premises |
+| Independent local execution | Produces concrete interactions under the realization contracts |
+| Refinement judgment | Relates those interactions to the admitted global behavior and stated observation alphabet |
 
 The absence of a central runtime machine is therefore not a weakening of the
 global specification.  It is the point of a successful projection.
@@ -422,8 +414,8 @@ This end-state design therefore requires every layer that crosses a
 replaceable physical boundary to preserve the logical identities needed by the
 semantic layer rather than reconstruct them from physical coincidence.
 
-Detailed multi-node routing belongs to the later multi-node realization part of
-this design.  The semantic requirement established here is only the stronger
+Detailed multi-node routing belongs to its separately scoped realization
+contract.  The semantic requirement established here is only the stronger
 and more durable one:
 
 #+begin_quote
@@ -443,29 +435,16 @@ hours, days, deployments, or browser lifetimes.
 
 This means that the following are both legitimate:
 
-#+begin_example
-one choreography
-    claim Request R
-    -> authoritative outcome
-    -> settlement
-    -> terminate
-#+end_example
+A short Claim choreography invokes the operation, interprets the authoritative
+outcome or preserves uncertainty, settles its local obligations, and terminates
+or hands off recovery under the declared contract.
 
 and:
 
-#+begin_example
-choreography E1
-    create approval request
-    -> commit :approval/pending
-    -> terminate
-
-... later ...
-
-choreography E2
-    approve request
-    -> commit :approval/approved
-    -> terminate
-#+end_example
+| Execution | Authoritative role in the workflow |
+|-----------+------------------------------------|
+| E1 | Create the approval request, establish pending state, and settle or hand off its command |
+| E2, later | Acquire current approval premises, act on the request, and settle its own command |
 
 The durable relationship between E1 and E2 lives in authoritative model state
 unless the application explicitly adopts a durable workflow facility.
@@ -540,7 +519,15 @@ runtime implementation could eventually notice them.
 This does not mean Gesso should pretend to know dynamic domain facts in
 advance.  A Request becoming claimed by another user after rendering remains a
 runtime/domain event.  Static strictness applies only where the contradiction is
-already present in the declared semantic structure.
+already present in the declared semantic structure. Static admission must
+also require declared handling or recovery for dynamic conditions that can
+strand a required operation. It can check that an unknown-result path exists
+without predicting whether the next network delivery will be indeterminate.
+
+A structural contradiction, unsupported proof obligation, and accepted opaque
+contract are different results. Full-language code is admitted through its
+declared boundary and assurance policy; a missing role, unresolved operation
+binding, or impossible continuation is not waived by calling it an assertion.
 
 *** Canonical authoring principle
 
@@ -562,14 +549,9 @@ Where an independent physical choice genuinely exists, it may be declared
 separately and checked for correspondence.  Otherwise the preferred direction
 is:
 
-#+begin_example
-one semantic declaration
-    |
-    +--> derived local plan
-    +--> derived binding metadata
-    +--> derived/validated transport requirements
-    +--> derived diagnostics
-#+end_example
+One semantic declaration supplies the derived local plan, binding metadata,
+transport requirements, and diagnostics. Independently chosen realization
+parameters are checked against that declaration.
 
 This principle does not collapse all layers into one macro.  It reduces
 duplicated sources of semantic truth while preserving explicit architectural
@@ -581,77 +563,68 @@ because the same semantic intent must eventually appear in a view, browser plan,
 transport, trusted handler, model operation, settlement, and authoritative
 reacquisition path.
 
-A declaration-first surface might begin with one semantic operation:
+A declaration-first surface separates the helper's inputs from authoritative
+obligations and explicitly maps model outcomes into presentation behavior:
 
 #+begin_src clojure
-(defoperation request-claim
+(def request-claim
   {:operation/id :request/claim
-
    :roles
-   {:helper
-    {:principal :user
-     :actor :client}
-
-    :request-authority
-    {:authority :request}}
-
-   :input
-   [:map {:closed true}
-    [:request/id uuid?]]
-
+   {:helper {:principal :user :actor :client}
+    :request-authority {:authority :request}}
+   :input [:map {:closed true} [:request/id uuid?]]
    :entry
-   [[:known-by :helper [:request/id]]
-    [:provenance [:request/id] :input]]
-
-   :runtime-premises
-   [[:authenticated-principal :helper]
-    [:current-membership :helper]
-    [:current-request :request/id]
-    [:current-organization
-     [:request/organization-id :current-request]]
-    [:current-claim-authority
-     {:principal :authenticated-principal
-      :request :current-request}]]
-
+   {:helper {:values #{:request/id}
+             :observation-for-optimism :request/card}}
+   :invocation
+   {:authority-role :request-authority
+    :model-operation :request/claim
+    :arguments {:request-id [:input :request/id]}
+    :principal-source :trusted-authentication
+    :command-protocol :stable-bound-command}
    :provisional
    {:role :helper
-    :projection :request/claiming}
-
-   :effect
-   [:invoke :request-authority
-    :request/claim
-    {:request-id :request/id
-     :principal :authenticated-principal
-     :command-id :gesso/command-id}]
-
-   :settlement
-   {:accepted
-    {:reacquire
-     [:request/card :request/id]}
-
-    :rejected
-    {:reacquire
-     [:request/card :request/id]}
-
-    :unknown
-    {:recover
-     [:request/reconcile-claim
-      {:request-id :request/id
-       :command-id :gesso/command-id}]}}})
+    :projection :request/claiming
+    :owner-contract :current-execution-target-and-resource}
+   :settlement-contract :request/claim-settlement})
 #+end_src
 
-The view should be able to refer to that semantic operation without duplicating
-its lower-level names:
+The model-operation reference imports its authoritative interface. Its current
+Request, Membership, Organization policy, and Request/Organization association
+are protected by the new-incorporation contract; those are not facts the browser
+is expected to establish. An authorized observed card supports only the declared
+optimistic presentation. A non-optimistic invocation can have a different entry
+contract without claiming that same provisional behavior.
+
+The admitted command boundary allocates a stable =:gesso/command-id= before the
+first possible send and binds it to the semantic operation, arguments, principal,
+and authority scope. It preserves that identity through retries. A browser may
+carry the bytes, but command authority comes from the trusted binding and model
+protocol, not from choosing a UUID.
+
+The settlement contract is inspectable as follows:
+
+| Admitted result | Presentation settlement | Required next path |
+|-----------------+-------------------------+--------------------|
+| Successful =:committed= | =:accepted= | Acquire the permitted authoritative successor |
+| Permitted =:already-incorporated= with recorded success | =:accepted= | Same successor path, with no new incorporation |
+| Authoritative =:rejected= | =:rejected= | Settle provisional ownership and permit authoritative card reacquisition |
+| =:commit-unknown= or indeterminate delivery | =:unknown= | Preserve command identity and reconcile against command-specific outcome evidence |
+
+Denied disclosure, unavailable acquisition, and an expired or incompatible
+recovery context also have declared paths. They do not become fabricated
+success or rejection. A reconciliation response may resolve a command while a
+later read is still needed to determine the current card state.
+
+The view refers to the operation and supplies only its domain arguments:
 
 #+begin_src clojure
-(defview request-card
-  [{:request/keys [id title status] :as request}]
+(defn request-card
+  [{:request/keys [id title status]}]
   [:article.request-card
    {:data-request-id id}
-
    [:h3 title]
    [:p.status (name status)]
-
    (when (= status :open)
      (gesso/action
        {:operation :request/claim
@@ -659,122 +632,71 @@ its lower-level names:
        "Claim"))])
 #+end_src
 
-Projection may elaborate the operation into a helper-local executable plan:
+The rendering boundary supplies the admitted target and observation context;
+the raw domain map and the conditional button are not authorization. The action
+constructor resolves the operation's admitted binding and derives the necessary
+plan, transport, and runtime descriptors. User-visible absence of the button
+does not enforce the model guard.
+
+A generated helper plan has these obligations:
+
+| Concern | Derived or imported requirement |
+|---------+---------------------------------|
+| Entry | Selected Request id and the observation required for this optimistic mode |
+| Command | Stable command reference with the admitted operation/argument binding |
+| Provisional display | Current execution, target, principal context, and concrete resource ownership |
+| Result intake | Expected operation and command, admitted source, permitted result, current owner, and settlement mapping |
+| Recovery | Unknown remains unknown until reconciliation; reacquisition observes the declared scope and progression |
+
+Command identity alone is not enough to own a provisional DOM effect. A later
+execution may reconcile the same command while the earlier execution's callback
+has lost all rights to mutate the current target.
+
+Only independent physical choices need separate authoring:
 
 #+begin_src clojure
-(project-operation request-claim
-  {:role :helper})
-;; =>
-{:plan/id :plan/request-claim
-
- :operation/id :request/claim
-
- :entry
- {:known
-  #{[:request/id]}
-
-  :runtime-required
-  #{:authenticated-principal
-    :current-membership
-    :current-request
-    :current-organization
-    :current-claim-authority}}
-
- :command
- {:schema
-  [:map
-   [:request/id uuid?]
-   [:gesso/command-id uuid?]]
-
-  :transport
-  :trusted-semantic-post}
-
- :provisional
- {:projection :request/claiming
-  :owned-by :gesso/command-id}
-
- :settlement
- {:accepted
-  {:action :authoritative-reacquire
-   :projection :request/card}
-
-  :rejected
-  {:action :authoritative-reacquire
-   :projection :request/card}
-
-  :unknown
-  {:action :reconcile-command
-   :operation :request/reconcile-claim}}}
-#+end_src
-
-The assembly can then choose a physical route and trusted capability while
-checking that they realize the semantic operation:
-
-#+begin_src clojure
-(bind-operation
+(assembly/realize-operation
   humanhelp-assembly
   {:operation :request/claim
-
-   :view
-   {:projection :request/card
-    :affordance :claim}
-
-   :browser
-   {:plan :plan/request-claim}
-
-   :transport
-   {:kind :http/post
-    :route :route/request-claim}
-
-   :server
-   {:capability :server/request-claim}
-
-   :model
-   {:operation :request/claim}})
+   :transport {:kind :http/post
+               :route :route/request-claim}
+   :model-binding request-model/claim-operation})
 #+end_src
 
-The trusted handler still establishes dynamic premises rather than trusting the
-browser's view of the world:
+The assembly derives and checks the view/action, browser-plan, server-entry,
+decoder, model, and settlement joins from the declaration and these bindings.
+It must not require the author to copy the generated plan name back into a
+separate bootstrap registry. Repeated metadata may be an inspection view or
+an explicit correspondence constraint, but is not an independent source of truth.
+
+A schematic trusted handler illustrates the authority handoff:
 
 #+begin_src clojure
-(defn request-claim-handler
-  [{:keys [session] :as ctx} request]
-
-  (let [binding
-        (assembly/require-current-binding!
-          (:admitted-assembly ctx)
-          :route/request-claim)
-
-        command
-        (server/decode-bound-command!
-          binding
-          request)
-
-        principal
-        (auth/current-principal!
-          session)]
-
+(defn request-claim-handler [ctx request]
+  (let [binding (assembly/require-dispatched-binding!
+                  ctx :route/request-claim)
+        principal (auth/current-principal! (:session ctx))
+        trusted-ctx (assoc ctx :principal principal)
+        command (server/decode-bound-command!
+                  binding trusted-ctx request)]
     (server/invoke-bound-model-operation!
-      binding
-      (assoc ctx
-        :principal principal)
-      {:request-id (:request/id command)
-       :helper-id (:user/id principal)
-       :command-id (:gesso/command-id command)})))
+      binding trusted-ctx command)))
 #+end_src
 
-The admitted decoder binds the command identity, operation, arguments, and
-authenticated principal. The public Request model operation establishes
-transaction-current Request, Membership, and Organization premises and checks
-the claim rule in the same guarded transition that records the result. It first
-recognizes a compatible already-incorporated command under the declared
-idempotency and disclosure contract. A separate handler pre-read could race
-with the commit and could reject a retry after a successful claim because the
-Request is no longer open. Part IV owns the concrete model transaction; the
-handler above illustrates the required authority handoff, not the transaction
-implementation.
+The dispatched binding comes from the admitted route, not a route name supplied
+by the browser. Authentication precedes any binding that claims an authenticated
+principal. The decoder checks the envelope and command reference under the
+operation contract; the public model boundary independently validates the
+authoritative command binding and current permission to disclose a replay.
+For new incorporation it protects all current guard dependencies and effects
+atomically with the command record. Separate handler pre-reads cannot supply
+that atomicity or reject a compatible replay merely because Claim succeeded
+earlier and the Request is now claimed.
 
-The syntax in all four blocks is provisional. The design pressure is not.
+The handler also uses the admitted response and recovery mapping. A response
+rendering failure after incorporation leaves the recorded command result intact
+and may leave the browser uncertain. Part IV owns the concrete transaction;
+Parts VI and VII own presentation and application construction.
 
 The application author should not have to synchronize:
 
@@ -797,11 +719,14 @@ authored, assembly construction should check its correspondence rather than
 hoping the strings stay synchronized.
 
 This example also makes choreography validity and whole-application realization
-visibly different. The =request-claim= choreography can be valid while the
+visibly different. The choreography elaborated from =request-claim= can be valid while the
 =:request/card= view omits the affordance, while the current browser artifact
 omits =:plan/request-claim=, or while the route is not bound into the current
-assembly. Those are application-realization failures, not reasons to weaken the
-operation contract.
+assembly. Where those edges are required by the declared realization scope,
+those are application-realization failures. If the operation is intentionally not exposed,
+its absence is not automatically a closure defect. Whether the intended product
+capability is present remains an independent acceptance question, not a reason
+to weaken the operation contract.
 
 #+LATEX: \newpage
 ** Choreographic operation types
@@ -1037,35 +962,28 @@ Depending on the operation, that interface may include:
 It should not include arbitrary implementation details merely because those
 details are easy to serialize.
 
-For example, the operation contract may establish:
+For Claim, the normalized interface identifies the helper's actual entry
+knowledge, the trusted principal/authority handoff, the public model operation,
+and its result contract. It separates four model outcome categories:
 
-#+begin_example
-operation:
-    :request/claim
+| Category | Interface meaning |
+|----------+-------------------|
+| =:committed= | Authoritative evidence of the command's incorporation and its recorded outcome |
+| =:rejected= | A justified command rejection under the operation's contract; not merely failure of one competing attempt |
+| =:already-incorporated= | Compatible repetition with a permitted recorded outcome; no additional incorporation |
+| =:commit-unknown= | The boundary cannot establish the command's disposition from the available evidence |
 
-requires:
-    helper knows Request identity
-    for the declared optimistic realization:
-        helper has acquired the required scoped authoritative Request projection
-    trusted server binds authenticated principal
-    request authority may invoke public request.core/claim
+The payload states the command binding, disclosed disposition, and any scoped
+observation or progression evidence. A successful callback or HTTP response is
+not sufficient to construct one of these outcomes. =:commit-unknown= denotes
+uncertainty of the observing boundary, not a third database truth between
+committed and uncommitted. It may arise from indeterminate delivery even when
+the authoritative transaction has a definite result.
 
-outcomes:
-    :confirmed
-    :reconciled
-    :rejected
-    :already-incorporated
-#+end_example
-
-The outcome names above describe authoritative/model semantic dispositions.
-They do not imply that every participant can immediately establish which
-disposition occurred.  Participant-relative uncertainty and command-specific
-reconciliation are specified in the command/failure layer that follows this
-section. The supported operation must define which dispositions actually exist,
-their payloads, and the predicates or model outcomes that justify them. This
-illustrative list does not require every model to implement all four outcomes.
-An unknown participant-relative outcome is not silently converted into any of
-these authoritative dispositions.
+=:confirmed= and =:reconciled= may describe protocol events if explicitly defined;
+they are not substitute names for the canonical model outcome taxonomy. The
+presentation mapping to =:accepted=, =:rejected=, and =:unknown= remains an explicit
+checked contract. A recorded result does not imply permission to disclose it.
 
 The semantic interface does not encode incidental realization details such as:
 
@@ -1116,19 +1034,11 @@ becoming durable authorization.
 
 These distinctions must remain explicit:
 
-#+begin_example
-operation exists
-    !=
-operation is valid in this choreography state
-
-operation is valid in this choreography state
-    !=
-current authenticated principal is authorized now
-
-view renders operation capability
-    !=
-browser possesses authority
-#+end_example
+| Established fact | What it does not establish by itself |
+|------------------+-------------------------------------|
+| Operation exists | Its use is valid at this choreography state |
+| Use is structurally valid at this state | The current principal is authorized now |
+| View renders an affordance | The browser has authority over protected state |
 
 The trusted side re-establishes dynamic authorization at execution and protects
 the relevant model premises at the authoritative transition boundary where
@@ -1147,7 +1057,7 @@ correctness.
 If a declaration says that =:request/status= is an enum and a rule attempts:
 
 #+begin_src clojure
-(< request.status 10)
+(< (:request/status request) 10)
 #+end_src
 
 the expression is malformed relative to its semantic types and should be
@@ -1156,7 +1066,7 @@ rejected.
 If the application states:
 
 #+begin_src clojure
-(= request.status :open)
+(= (:request/status request) :open)
 #+end_src
 
 when product policy actually intended another valid status test, the expression
@@ -1178,13 +1088,13 @@ For example:
 
 #+begin_example
 rule:
-    (= request.private-review :approved)
+    (= (:request/private-review request) :approved)
 
 intrinsic type:
     Boolean
     VALID
 
-browser use before browser knows request.private-review:
+browser use before browser knows :request/private-review:
     INVALID AT THIS PROGRAM POINT
 #+end_example
 
@@ -1224,17 +1134,120 @@ knowledge, authority, or continuation obligation pass.
 
 The desired direction is:
 
-#+begin_example
-pleasant author syntax
-        |
-        v
-explicit normalized semantic data
-        |
-        +--> verification
-        +--> projection
-        +--> diagnostics
-        +--> later certification
-#+end_example
+Author-facing syntax elaborates into explicit normalized semantic data. That
+same subject supports verification, projection, diagnostics, and certification;
+none may silently interpret a different policy hidden in the syntax layer.
+
+*** Full-language computations retain their contracts
+
+An action reference binds a semantic interface and its concrete realization.
+The interface distinguishes the role that executes it, required scoped inputs,
+declared outputs, effects, failure/uncertainty alternatives, resource use, and
+applicable termination or progress assumptions. The implementation may be an
+ordinary Clojure function, a supported CLJC/CLJS realization, or a declared
+external effect. JVM code is not automatically executable in a browser; target
+placement and communication remain checked obligations.
+
+For inspectable typed expressions, elaboration derives required inputs and
+produced bindings. For opaque code, the declared footprint and functional
+contract remain explicit premises unless another mechanism establishes them.
+The framework should derive ordinary plumbing while avoiding duplicate manual
+inventories; it must not claim to discover all effects of unrestricted Clojure.
+
+The executable machine yields a declared effect request and later admits its
+completion or failure. It does not run arbitrary application functions while
+canonicalizing a declaration, checking its shape, or computing an artifact
+fingerprint. Callback execution belongs to an explicit realization boundary.
+
+Validating an output and recording its dependency list does not prove that the
+implementation calculated the promised result. Runtime validation, instance
+observations, checked derivations, and asserted contracts retain the evidence
+classes established in Parts I and II. A named local result cannot become
+authoritative solely because the caller supplied an =:authoritative= label.
+
+Nontermination, blocking, nondeterminism, and external effects are expressible
+but affect the available claims. If a required continuation depends on such an
+action finishing, the plan needs an applicable completion premise, enforceable
+bound, isolation/cancellation contract, or recovery path. A timeout callback in
+the same blocked event loop does not by itself enforce a bound on synchronous
+code. No universal totality proof is required for the host language.
+
+*** Definite values, knowledge, and provenance are separate analyses
+
+The abstract global value store describes values in the specification; it is
+not a shared runtime context and does not make those values known to every role.
+Entry contracts establish role-local facts with their actual provenance. A
+low-level test fixture that gives all roles the same input set is not the
+ordinary application entry policy.
+
+The verifier computes at least these distinct judgments:
+
+| Analysis | Question |
+|----------+----------|
+| Value availability | Is the required binding defined on every applicable path? |
+| Role-local knowledge | Does the consuming role have a permitted knowledge path for that binding? |
+| Provenance and support | Do its subject, scope, observation, and retained premises justify this use? |
+| Optional/presence refinement | Has this path established presence and the required variant before use? |
+| Causal eligibility | Has the predecessor observation or result required by this continuation been established? |
+
+A forward must-analysis is a useful baseline. At a join, unconditional facts
+must be justified on every reachable incoming path. Each environment-event or
+receive alternative contributes only its own established fields. Optional fields
+are not definitely present merely because one alternative can supply them.
+Path-sensitive refinements may establish stronger facts on selected edges.
+
+Agreement on a value at a join does not erase differing assumptions. The result
+retains the appropriate support for each path, or a conservative combined
+premise, without upgrading an asserted path to a proved one. Unreachable edges
+may be excluded only under the checker mechanism that establishes their
+unreachability; a branch being unlikely is insufficient.
+
+Bindings have explicit version and scope semantics. An implementation may use
+fresh immutable binding identities or a checked replacement discipline. Reusing
+one context key for a new value invalidates support that depended on the old
+binding; it does not silently inherit the old value's authoritative status.
+Omitting an optional field on a later receive must not accidentally reuse an
+earlier message's value unless the contract deliberately preserves that binding.
+Equal status values for different Requests are still different scoped facts.
+
+Required transmitted fields, and every optional field actually sent, must be
+known to the sender with the declared meaning. Static analysis establishes what
+it can; runtime construction checks the actual payload and remaining premises.
+An optional field is not an exception to knowledge or disclosure requirements.
+
+Loops require analysis to a sound fixed point over the chosen abstract domain.
+A bounded analysis reports its bound and unresolved obligations; resource
+exhaustion is not successful verification. Graph reachability of a terminal
+establishes neither that all executions terminate nor that an environment event
+will occur. Recursion, parallel composition, or another extension must carry
+explicit semantics and a checking contract; unsupported syntax cannot become
+an unchecked alternate path. Full-language work remains available behind the
+declared action boundary without pretending the checker understands it all.
+
+*** Executable plans and explanation artifacts
+
+Projection emits one canonical executable plan per role and an optional
+explanation artifact tied to that exact plan. A plan may use compact,
+non-negative integer state locators. Those locators are local to that artifact,
+not semantic operation identities and not stable across rebuilds.
+
+The executable plan retains every runtime-semantic guard, contract reference,
+binding, correlation requirement, event distinction, and outcome needed to run
+the admitted transition. Diagnostic source coordinates and proof derivations
+may live in a sidecar. Stripping a field merely because it was introduced by
+verification is invalid if runtime execution still needs its meaning.
+
+The exact plan identity binds the versioned canonical representation and all
+relevant contract identities. The explanation artifact maps exact emitted
+coordinates to source states and judgments under that identity. A compatible
+but different plan cannot inherit an old coordinate map as though it were exact.
+Compatibility for continuation remains a separate judgment.
+
+A plan-shaped map, a current version tag, and a dense locator range establish
+only their checked representation properties. They do not establish projection
+correctness, provenance, authorization, or host realization. Admission binds the
+generated artifact to the verified subject, selected assurance policy, admitted
+assembly, and concrete runtime contracts needed for the claimed use.
 
 ** Malli as the value-schema substrate
 :PROPERTIES:
@@ -1320,7 +1333,11 @@ Successful runtime validation establishes conformance to the particular schema
 under the validator and predicate contracts being relied upon. It is classified
 as runtime enforcement, not automatically as a formal theorem. A custom
 predicate's name does not establish an authority or provenance claim that its
-implementation never checks.
+implementation never checks. Custom predicates are executable code: their
+determinism, side effects, exception behavior, and target portability are part of
+their contract when relied upon. A schema used for formal reasoning must have a
+supported semantic interpretation or explicit premises; serializing a function
+reference does not give the prover that interpretation.
 
 It does not prove:
 
@@ -1337,21 +1354,13 @@ correctness scopes.
 The unified design therefore treats ordinary value schemas as one layer in a
 larger semantic interface:
 
-#+begin_example
-value shape
-    |
-    v
-semantic type / refinement
-    |
-    v
-knowledge + provenance
-    |
-    v
-authority + operation contract
-    |
-    v
-choreographic admissibility
-#+end_example
+| Layer | Separate obligation |
+|-------+---------------------|
+| Value shape | The actual value satisfies its admitted schema |
+| Semantic type/refinement | Its category and applicable refinements are established |
+| Knowledge/provenance | This role has the required scoped justification |
+| Authority/operation contract | The trusted boundary permits this operation under current premises |
+| Choreographic admissibility | This local action and continuation obey the distributed specification |
 
 A success at one layer cannot be silently promoted into a stronger proposition
 owned by a later layer.
@@ -1409,25 +1418,12 @@ enforcement of proof premises where untrusted or dynamic values enter.
 
 Representative boundaries include:
 
-#+begin_example
-browser bytes
-    -> command schema validation
-    -> trusted operation lookup
-
-external read result
-    -> projection-envelope validation
-    -> trusted acquisition / scope / provenance checks
-    -> justified knowledge establishment
-
-FX implementation result
-    -> declared output validation
-    -> next semantic step
-
-settlement payload
-    -> settlement schema validation
-    -> declared source / command / owner correlation checks
-    -> admitted browser transition
-#+end_example
+| Runtime input | Required admission before use |
+|---------------+-------------------------------|
+| Browser command bytes | Bound operation lookup, decoding/schema checks, command/caller binding, and trusted invocation contract |
+| External read result | Projection-envelope validation plus acquisition, scope, and provenance checks |
+| FX implementation result | Declared output validation, effect/owner correlation, and the continuation's semantic premises |
+| Settlement payload | Schema, source, command, current owner, and outcome-to-settlement checks |
 
 If a runtime premise fails, execution must reject or recover according to the
 declared protocol.  It must not continue on the theory that static verification
@@ -1447,7 +1443,10 @@ The failure path should preserve enough information to explain:
 
 A raw Malli explanation may be part of this evidence, but downstream error
 reporting should not force users to reconstruct the semantic context from a
-low-level schema mismatch alone.
+low-level schema mismatch alone. The diagnostic must respect disclosure
+policy: credentials, private payload fields, and protected model values must
+not leak through an error explanation. Stable semantic identifiers, redacted
+value summaries, and the failed obligation are usually sufficient.
 
 *** Schema changes participate in semantic compatibility
 
@@ -1506,13 +1505,9 @@ branch must know the condition" rule.
 
 For example:
 
-#+begin_example
-authority chooses approved/rejected
-
-helper behavior differs afterward
-        |
-helper must know enough to distinguish the continuations
-#+end_example
+If authority chooses an approved or rejected continuation and the helper's
+behavior differs, the helper needs evidence distinguishing those continuations
+before it performs that differing behavior.
 
 That requirement does not imply a dedicated authority-to-helper choreography
 message if the helper can instead obtain the required approval fact through a
@@ -1586,43 +1581,33 @@ would be easier to implement if the fact were present.
 
 Bad:
 
-#+begin_example
-global:
-    only authority knows :approved?
-
-project browser:
-    include :approved? in browser context anyway
-#+end_example
+Only authority knows =:approved?=, but the browser projection contains it
+without any admitted input, communication, or observation. This projection
+manufactures knowledge and must be rejected.
 
 Good:
 
-#+begin_example
-global:
-    authority communicates approved outcome
-or
-    browser performs authorized authoritative observation
-
-project browser:
-    local branch becomes possible after that knowledge path
-#+end_example
+Authority communicates the permitted command outcome, or the browser obtains
+an authorized observation establishing the required proposition. The local
+branch becomes admissible after that declared knowledge path succeeds.
 
 The same principle applies to provenance.  Projected data cannot silently
 upgrade:
 
-#+begin_example
-asserted -> derived
-communicated -> authoritative
-client supplied -> trusted principal identity
-#+end_example
+| Supplied support | Unjustified upgrade |
+|------------------+---------------------|
+| Asserted premise | Mechanically derived proposition |
+| Communicated value | Authoritative truth without a supporting authority contract |
+| Client-supplied principal id | Trusted authenticated principal binding |
 
 Projection preserves or weakens claims according to explicit semantics; it does
 not strengthen them by serialization.
 
 *** Behavior-sensitive choice is the central branch rule
 
-A role needs to know a choice only when its observable local behavior depends on
-that choice. The required knowledge must exist before the first differing
-behavior, not merely become available eventually.
+A role needs evidence sufficient to select its continuation when its observable
+local behavior depends on a choice. The required knowledge must exist before
+the first differing behavior, not merely become available eventually.
 
 This avoids both extremes:
 
@@ -1639,192 +1624,77 @@ If they diverge, the projector/verifier must establish a valid knowledge path
 before the divergence.
 
 
-A richer expense example shows why "behavior-sensitive" is the important word.
+A focused expense example separates private choice from public behavior.
+Suppose an accepted manager review has one of two recorded results:
 
-Suppose the global choreography has three relevant continuations after the
-manager observes the Expense and current policy:
+| Manager result | Notifier behavior | Finance behavior in an explicitly participating short session |
+|----------------+-------------------+-------------------------------------------------------------|
+| Awaiting Finance | Notify that a manager review was recorded | Receive review-required, acquire current permitted facts, and offer the Finance action |
+| Approved by manager | The same notification with the same declared payload | Receive not-required and terminate local participation |
 
-#+begin_src clojure
-(defchoreo expense-decision
-  {:roles
-   {:manager {:principal :user}
-    :finance {:principal :user}
-    :notifier {:principal [:service :notifications]}
-    :expense-authority {:authority :expense}}
-   :inputs
-   {:expense-id
-    {:schema :uuid
-     :known-by #{:manager}
-     :provenance :input}}}
+In this variant the notifier's message is deliberately neutral: it says that a
+manager review was recorded for this Expense and admitted review session,
+not which operation or result it produced or what the Expense's current status
+is. The neutral payload uses the common session identity; it does not require
+the two branches to create identical command identities. Its effect and result-handling
+contract are the same on both successful branches. The notifier does not need
+the private threshold or the route selector. If the application changes the
+notification text or destination by branch, that difference requires a justified
+input, typically an explicitly communicated permitted outcome.
 
-  (manager
-    (observe expense-authority
-      [:expense/current expense-id]
-      -> expense)
+The two notification paths must also have compatible causal prerequisites.
+Here each notice follows an authoritative result establishing a recorded review
+of the same Expense under the declared message contract. Merely finding equal
+payload shapes in two branches would not establish that meaning.
 
-    (observe expense-authority
-      [:expense/current-policy
-       (:expense/department expense)]
-      -> policy)
-
-    (branch
-      (needs-finance?
-        {:expense expense
-         :policy policy})
-
-      (then
-        (invoke expense-authority
-          :expense/mark-awaiting-finance
-          {:expense-id expense-id})
-
-        (send finance
-          [:expense/finance-review-required
-           {:expense-id expense-id}])
-
-        (send notifier
-          [:expense/review-recorded
-           {:expense-id expense-id}]))
-
-      (else
-        (invoke expense-authority
-          :expense/approve-as-manager
-          {:expense-id expense-id})
-
-        (send notifier
-          [:expense/review-recorded
-           {:expense-id expense-id}])))))
-#+end_src
-
-The notifier performs the same semantic action in both branches with the same
-payload. It does not need the manager's private threshold or the boolean
-=needs-finance?= merely because the global source contains a branch around the
-notification. The common message means that a manager review was recorded;
-it does not assert the Expense is still =:submitted= after one branch changed
-it to =:awaiting-finance= and the other to =:approved=. If a notification
-must report current status, it needs an authorized authoritative read or a
-branch-dependent communicated outcome, with the corresponding knowledge path.
-
-A projected notifier machine can therefore be independent of that
-discriminator:
+Finance is different when it is already a participant in the short session.
+The global contract must distinguish both continuations, for example through a
+declared disposition message:
 
 #+begin_src clojure
-(defprojected expense-decision-notifier
-  {:role :notifier}
-
-  (state :waiting
-    (on-message
-      [:expense/review-recorded
-       {:keys [expense-id]}]
-
-      (notify-user!
-        {:expense-id expense-id
-         :event :review-recorded})
-
-      (terminate :sent))))
+{:message/id :expense/finance-disposition
+ :from :manager
+ :to :finance
+ :required #{:expense/id :review/command-id :review/disposition}
+ :correlation #{:expense/id :review/command-id}
+ :disposition-type [:enum :review-required :not-required :review-unavailable]}
 #+end_src
 
-Finance is different. Its behavior exists only in one continuation, so it needs
-a knowledge-producing path before it can act. The selected branch communicates
-exactly such a path:
+The projected receive can branch on an admitted =:review/disposition=. A
+=:review-required= message justifies entering a current observation/action
+path; it does not itself authorize Finance approval. A =:not-required= message
+permits local return without claiming that Finance acted. =:review-unavailable=
+closes this session's participation when the manager's command could not produce
+a usable result. That last label does not assert the command never committed;
+unknown command resolution remains with its declared recovery owner.
 
-#+begin_src clojure
-(defprojected expense-decision-finance
-  {:role :finance}
+These are additional messages deliberately chosen by this session protocol.
+They must not be inserted by the projector merely to rescue an otherwise
+unrealizable declaration. Their delivery, timeout, and session-retirement paths
+must also be defined. A role that simply waits for =:review-required= forever
+cannot claim completion of both branches; absence of a message is not knowledge
+that Finance was unnecessary.
 
-  (state :waiting
-    (on-message
-      [:expense/finance-review-required
-       {:keys [expense-id]}]
+The invalid alternative is to give Finance a branch on =:needs-finance?= simply
+because the projector knows the manager's selector. Finance has neither that
+selector nor its private policy inputs. The projector must report the missing
+knowledge rather than copy either into Finance's context.
 
-      (goto :load-authority
-        {:expense-id expense-id})))
+The normal durable alternative avoids this participating short session. The
+manager commits =:awaiting-finance=, and a later Finance actor starts a new
+execution from an authorized queue observation. Selection from that queue is
+an explicit user/application input, not automatic approval of every visible
+Expense. The chosen operation rechecks current eligibility at incorporation.
 
-  (state :load-authority
-    (observe
-      [:expense/current :expense-id]
-      -> :expense)
+That alternative establishes a new workflow entry condition; it is not proof
+that a particular old command or branch occurred unless the observation also
+establishes that command-specific link. Projection may use it only where the
+global contract declares that continuation semantics.
 
-    (goto :review))
-
-  (state :review
-    (invoke
-      :expense/finance-approve
-      {:expense-id :expense-id})
-
-    (terminate :approved)))
-#+end_src
-
-Now consider a tempting but invalid projection:
-
-#+begin_src clojure
-(defprojected invalid-finance-projection
-  {:role :finance}
-
-  (state :waiting
-    ;; No message was received.
-    ;; No authoritative observation established this discriminator.
-    ;; It simply appeared because the projector knew the global branch.
-    (if :needs-finance?
-      (goto :review)
-      (terminate :not-needed)))
-
-  (state :review
-    (invoke
-      :expense/finance-approve
-      {:expense-id :expense-id})))
-#+end_src
-
-The global verifier knows =:needs-finance?=. Finance does not. The projector
-cannot smuggle the fact into Finance merely because it would make the generated
-machine easier.
-
-An alternative global design could legitimately omit the direct manager-to-
-Finance message if Finance can learn the required condition through authority.
-For example, the manager could commit durable =:awaiting-finance= state and
-Finance could later enter a new short choreography through an authorized queue
-observation:
-
-#+begin_src clojure
-(defchoreo finance-review-from-authority
-  {:roles
-   {:finance {:principal :user}
-    :expense-authority {:authority :expense}}}
-
-  (finance
-    (observe expense-authority
-      [:expense/pending-finance-queue
-       {:principal :authenticated-principal}]
-      -> pending)
-
-    (for-each [expense pending]
-      (invoke expense-authority
-        :expense/finance-approve
-        {:expense-id (:expense/id expense)}))))
-#+end_src
-
-That version has a different knowledge path, not weaker semantics. Finance knows
-the relevant fact because the authoritative queue observation establishes it.
-
-The two legal designs expose a general principle:
-
-#+begin_example
-global branch fact
-    |
-    +--> communicated to the role that needs it
-    |
-    `--> established by an equivalent authorized authoritative observation
-
-but never:
-
-global branch fact
-    |
-    `--> silently copied into a local projection
-#+end_example
-
-Behavior-sensitive projection therefore controls both *how much* knowledge is
-distributed and *when* it must exist. A role whose local behavior is equivalent
-across branches does not need the discriminator. A role whose behavior diverges
-needs an admissible knowledge path before the first divergent action.
+Behavior-sensitive projection therefore controls both how much knowledge is
+distributed and when it must exist. Equivalent local continuations can share a
+plan; different continuations require evidence before the first difference,
+including a difference between waiting, performing an effect, and terminating.
 
 **** Supported equivalence and conservative rejection
 
@@ -1838,12 +1708,34 @@ Permitted internal steps may be abstracted only under an explicit semantic
 relation. The checker is not required to decide equivalence of arbitrary
 Clojure functions or unrestricted programs.
 
+A concrete conservative baseline compares normalized continuation graphs up to
+renaming of diagnostic state identities and local binding names. It preserves
+operation/action contract identities, bound inputs and results, message
+destinations and payload meanings, observable effects, owner scopes, and
+terminal/failure alternatives. Ignoring source coordinates does not ignore
+causal dependencies or substitute one implementation contract for another.
+Cycles require a checked graph relation rather than recursive unfolding without
+a termination bound. Stronger equivalence rules must identify their mechanism
+and premises; equality of final values or of function names is not such a rule.
+
+A receiver may merge remote alternatives when admitted incoming messages
+distinguish the alternatives before their different behavior. If alternatives
+share a sender, event, channel, and correlation scope, their admitted payload
+contracts must be disjoint or an explicit discriminator must select them.
+Optional fields alone commonly overlap. A supported checker rejects a known
+ambiguity and reports an unresolved obligation when opaque schema predicates
+prevent establishing disjointness. It must not choose the first matching branch
+by map or registration order.
+
 When the supported analysis cannot establish equivalence or a sufficient
 knowledge path, it must reject or report an unresolved obligation at the
 appropriate admission boundary. It must not silently assume equivalence,
 disclose a private discriminator, or introduce an undeclared message to make
 projection succeed. An explicit supported communication path or visible trusted
-assumption may be authored where permitted by the relevant contract.
+assumption may be authored where permitted by the relevant contract. An asserted
+equivalence remains a premise of the resulting projection claim; it cannot
+silently create missing input data, discharge a mandatory failed owner check,
+or authorize private disclosure.
 
 **** Trace preservation and progress are separate obligations
 
@@ -1860,6 +1752,66 @@ delivery, availability, fairness, or application-action assumptions.
 
 These obligations supplement, rather than replace, the independent application
 capability acceptance defined in Part I.
+
+*** Communication, causality, and completion
+
+Global communication and physical transport have different granularity. A
+global =:communicate= describes the semantic transfer under its message contract;
+the local plans expose sending and admitted receipt separately. The realization
+relation identifies which concrete event establishes receipt and receiver
+knowledge. A send callback may mean enqueued or accepted by a transport, not
+delivered to the peer. It must not establish the stronger event by implication.
+
+The channel contract states relevant ordering, loss, duplication, replay,
+correlation, and disclosure semantics. Where loss is possible, a required
+receive needs an appropriate retry, timeout, durable handoff, or other recovery
+path, with any eventual-delivery claim stated as a premise. A timeout establishes
+that a deadline elapsed locally; it does not prove that a remote effect failed.
+
+Correlation binds the message occurrence to its admitted conversation, operation,
+participants, and semantic subject as required. Command, execution, transport,
+and message-occurrence identities are distinct unless the contract deliberately
+identifies particular instances. Correlation fields learned from the first
+message still need an admitted routing/source scope; accepting an unknown id
+does not let an arbitrary message choose which authority or session it belongs to.
+
+Duplicate handling is explicit. Reaccepting a transport delivery must not repeat
+an already consumed local transition or authoritative effect unless the declared
+repeat semantics permit it. Rejecting a stale private callback does not erase
+independently usable command-outcome evidence; reconciliation can admit it under
+its own owner and disclosure contract.
+
+Projection also preserves causal dependencies across foreign authoritative
+steps. If role B may act only after command C has a recorded successful result,
+B needs a message or authoritative observation establishing that exact premise
+before acting. Merely traversing a foreign authoritative node in the compiler
+does not establish runtime evidence at B.
+
+A completion descriptor naming an authority and basis is insufficient by itself.
+An admitted read of an unrelated card, a read before C became visible, or a
+current state compatible with several commands cannot discharge C's dependency.
+The witness must bind the predecessor, subject, required result, scope, and
+relevant progression. Where the continuation requires only current eligibility
+rather than C's historical success, the global contract must state that weaker,
+different premise.
+
+For a wait with several alternatives, dependency discharge is edge-specific.
+An ordinary timeout or cancellation alternative does not inherit the evidence
+provided by a successful authoritative-observation alternative. A compact plan
+must retain that distinction or reject the unsupported projection, not discard
+the dependency because one edge could establish it.
+
+This rule does not impose a global lockstep order on independent work. If an
+abstraction permits reordering independent local actions, its dependency and
+effect contracts must justify that commutation. If the global meaning really
+requires receipt before a sender's later effect, the protocol needs evidence
+such as a declared acknowledgement; local send completion is insufficient.
+
+The refinement claim names its observation alphabet. A coarse distributed trace
+may hide local calculations or reads, but that does not prove local branch
+correctness, confidentiality, resource safety, or presentation behavior. Those
+properties require their own retained observations and judgments. Choosing an
+alphabet that hides all useful behavior cannot establish application acceptance.
 
 *** Message payload closure protects knowledge boundaries
 
@@ -1907,292 +1859,199 @@ often rendezvous naturally through model authority and reread rather than
 long-lived direct participant messaging.
 
 
-HumanHelp Request publication and a collaborative typing indicator provide a
-useful contrast because they look superficially similar in a browser while
-having different semantic recovery requirements.
+HumanHelp Request publication and a collaborative typing indicator illustrate
+two different recovery contracts.
 
-For a newly created HumanHelp Request, the durable fact already belongs to
-Request authority:
+**** Durable Request publication and selective adoption
+
+For a newly created Request, the authoritative result belongs to the public
+Request model. The creator learns the permitted command outcome and reacquires
+the declared card or board projection. Other clients need not receive the whole
+Request from the creator's execution.
 
 #+begin_src clojure
-(defoperation create-request
-  {:operation/id :request/create
-   :actor :customer
-
-   :effect
-   [:model/invoke :request/create
-    {:customer :authenticated-principal
-     :request :request/draft}]
-
-   :settlement
-   {:accepted
-    {:creator-reacquire
-     [:request/card :created-request-id]
-
-     :remote-advisory
-     {:scope
-      [:request/board :organization-id]
-
-      :requirement
-      :newer-relevant-authority-available}}}})
+{:operation/id :request/create
+ :authority :request
+ :caller-role :customer
+ :command-protocol :stable-bound-command
+ :accepted-continuation
+ {:creator-acquisition :request/created-card
+  :remote-coordination :request/board-advisory}
+ :rejected-continuation :request/create-rejected
+ :unknown-continuation :request/reconcile-create}
 #+end_src
 
-After the authoritative commit, other clients need not receive the entire
-Request directly from the creator's execution. A shared advisory can merely
-record that newer relevant authority may be available:
+This is an inspection view of imported contracts. The admitted create
+operation supplies the authorized caller and command-specific created Request
+identity. An arbitrary new row found by a query does not establish which Request
+this command created.
+
+Remote coordination is triggered from the authoritative incorporation or a
+recoverable publication handoff under its declared contract. Required
+invalidation cannot depend solely on the creator's browser receiving a response
+and deciding to notify peers. Publication failure after commit leaves a
+committed command plus delivery debt; it is not a rejected create command.
+Part IV owns the atomicity or recoverability of that handoff.
+
+An advisory identifies a permitted scope and justified acquisition requirement.
+Its disclosure does not reveal a hidden Request by implication. A lower bound
+must be supplied by the admitted producer or a declared fence protocol, not
+invented from the receiver's old basis. Subscriptions and reacquisition cover
+initial registration, reconnect, and missed-notification gaps.
+
+The browser uses the pure transition and effect-shell separation from Part II:
 
 #+begin_src clojure
-(defn handle-board-advisory
-  [trusted-context board-runtime event]
-  (let [admitted
-        (advisory-admission/admit!
-          {:trusted-context trusted-context
-           :runtime board-runtime
-           :event event
-           ;; Fixed by the admitted shared-event contract; event data
-           ;; cannot weaken these checks.
-           :require #{:current-subscription-owner
-                      :current-source-instance
-                      :admitted-source-provenance
-                      :valid-scoped-requirement
-                      :permitted-shared-transition}})]
-    (advisory-admission/require-admitted! admitted)
-    (update
-      board-runtime
-      :advisory-requirements
-      conj
-      (:requirement admitted))))
+(def after-advisory
+  (board-runtime/step current-board admitted-board-advisory))
+
+(def refresh-start
+  (board-runtime/step
+    (:state after-advisory)
+    admitted-user-refresh-event))
+
+;; The shell executes the emitted acquisition effect. It retains its
+;; registered owner, concrete instance, scope, and principal-context binding.
+(:effects refresh-start)
+
+;; The completion is admitted against the latest board state, not the state
+;; captured before the request. A later installation completion may be needed.
+(board-runtime/step latest-board admitted-acquisition-completion)
 #+end_src
 
-The transition above runs only after admission succeeds; a failed admission
-rejects the event without changing state. Matching a subscription id alone
-does not establish source provenance, valid scope, or permission to record the
-requirement.
+The server derives the caller from its actual authentication context. The
+browser effect cannot grant a principal identity by carrying a field. The
+returned observation is bound to the full query, projection, visibility,
+temporal context, authority, and basis required by the acquisition contract.
 
-Bob may continue displaying his adopted board until the product's explicit
-Refresh/adoption policy permits reacquisition:
+Acquisition, permitted installation, actual installation, and semantic adoption
+are separate where the realization makes them separate. A pure state update
+does not itself swap a DOM node. Adoption discharges only requirements that the
+installed/adopted observation actually covers, preserving later or unrelated
+requirements and respecting the current owner. Physical effects run outside
+retriable state-update functions. The worked X18/X19/X20 race in Part II fixes
+the intended interpretation.
 
-#+begin_src clojure
-(defn refresh-request-board!
-  [{:keys [principal] :as ctx}
-   board-state]
+Bob may therefore retain the old board while showing a Refresh affordance.
+The notification does not establish the new Request's title or visibility;
+authoritative reacquisition does. Eventual adoption remains conditional on the
+declared automatic or user trigger, not merely on the database being available.
 
-  (let [started @board-state
-        scope (:projection started)
-        acquisition
-        (request-model/read-board
-          ctx
-          {:principal principal
-           :organization-id
-           (:organization-id scope)})]
+**** Ephemeral typing reports
 
-    ;; Install against current state. A shared advisory can arrive while
-    ;; read-board is in flight; the installer must preserve it unless this
-    ;; acquisition proves that it covers the advisory's scope and minimum.
-    (swap! board-state
-      (fn [current]
-        (board-admission/install-acquisition
-          current
-          {:acquisition acquisition
-           :expected-scope scope
-           :principal principal})))
-    @board-state))
-#+end_src
+A typing indicator has a different meaning. It reports that an admitted editor
+channel recently sent a typing intention; it does not prove that a human is
+physically typing and need not have a durable database fact to reread.
 
-=board-admission/install-acquisition= is a pure transition because =swap!= may
-retry it. It checks current acquisition owner, scope, trusted provenance,
-authorization, and progression against the latest runtime state. A stale
-completion cannot overwrite a newer board, and a concurrent advisory cannot
-be silently erased by refreshing from an earlier snapshot.
-
-The advisory does not need to carry the new Request title, requester, lifecycle
-state, or every intermediate board mutation. The durable authoritative model is
-the rendezvous point.
-
-Now compare a collaborative editor's typing indicator:
+The wire payload carries intent, not sender identity:
 
 #+begin_src clojure
-(defmessage typing-indicator
+(def TypingPayload
+  [:map {:closed true}
+   [:document/id uuid?]
+   [:typing? boolean?]])
+
+(def valid-typing-payload? (m/validator TypingPayload))
+
+(def typing-contract
   {:message/id :document/typing
-
    :from :editor
    :to :peer-editor
-
-   ;; The adversarial wire payload describes ephemeral intent only.  It does
-   ;; not get to assert who the sender is.
-   :payload
-   [:map {:closed true}
-    [:document/id uuid?]
-    [:typing? boolean?]]
-
-   ;; Delivery of this message establishes sender knowledge only after the
-   ;; trusted communication boundary authenticates the connection and checks
-   ;; that this principal may participate in this document.
-   :sender-binding
-   {:principal-source :authenticated-channel
-    :actor-source     :admitted-channel-actor
-    :authorize        :document/current-editor
-    :bind-principal-as :principal/id
-    :bind-actor-as     :actor/id}
-
-   :delivery
-   {:durability :ephemeral
-    :ordering :best-effort
-    :replay :none}
-
-   :semantics
-   {:expires-after-ms 3000}})
-
-(defn admit-typing-message
-  [{:keys [authenticated-principal
-           authenticated-actor
-           current-document-membership
-           decoded-message]}]
-  (let [{:keys [document/id typing?]} decoded-message]
-    (m/assert TypingPayload decoded-message)
-    (when-not (= id (:document/id current-document-membership))
-      (throw (ex-info "typing message is for an unauthorized document"
-                      {:document/id id})))
-    (when-not (= authenticated-principal
-                 (:principal/id current-document-membership))
-      (throw (ex-info "typing sender is not the authenticated editor"
-                      {:document/id id})))
-    (when-not
-      (and (= :active (:membership/status current-document-membership))
-           (some? authenticated-actor))
-      (throw (ex-info "typing sender has no active admitted actor"
-                      {:document/id id})))
-
-    ;; This admitted value is produced by the trusted boundary.  The actor
-    ;; identity comes from the channel's admitted actor binding, distinct from
-    ;; its principal. The receiver's document subscription must also admit
-    ;; this scope before delivery to a peer machine.
-    {:message/id :document/typing
-     :document/id id
-     :typing? typing?
-     :actor/id authenticated-actor
-     :principal/id authenticated-principal
-     :provenance
-     {:actor/id :admitted-channel-actor
-      :principal/id :authenticated-channel
-      :document/id :validated-payload
-      :membership :current-authority}}))
+   :payload TypingPayload
+   :sender-binding :authenticated-registered-document-channel
+   :receiver-binding :authorized-document-subscription
+   :delivery {:durability :ephemeral
+              :delivery-guarantee :best-effort
+              :replay :none}
+   :ordering {:source :registered-actor-stream
+              :duplicates :ignore
+              :older-sequence :ignore}
+   :display {:meaning :recent-admitted-typing-report
+             :expires-after-receipt-ms 3000}})
 #+end_src
 
-=TypingPayload= denotes the declared closed message schema above; a concrete
-elaborator may generate its validator. The membership check must be backed by
-current trusted authority, not a field decoded from the client. The admitted
-message is routed only to peer subscriptions currently permitted to receive
-typing indicators for this document.
-
-A projected peer machine may legitimately react to the received message itself:
+The trusted boundary uses the registered channel and current document policy:
 
 #+begin_src clojure
-(defprojected peer-typing-projection
-  {:role :peer-editor}
-
-  (state :idle
-    ;; on-admitted-message means the trusted communication boundary above has
-    ;; already established sender identity, authorization, payload shape, and
-    ;; the provenance that justifies local knowledge of :actor/id.
-    (on-admitted-message
-      [:document/typing
-       {:keys [document/id actor/id typing?]}]
-
-      (if typing?
-        (then
-          (effect
-            [:ui/show-typing-indicator
-             {:document/id id
-              :actor/id actor/id}])
-
-          (acquire-resource
-            {:kind :timer
-             :purpose :typing-expiry
-             :after-ms 3000}
-            -> expiry-timer)
-
-          (goto :showing
-            {:document/id id
-             :actor/id actor/id
-             :timer expiry-timer}))
-
-        (terminate :not-typing))))
-
-  (state :showing
-    ;; The admitted router selects this indicator by document and actor.
-    (on-admitted-message
-      [:document/typing
-       {:keys [document/id actor/id typing?]}]
-
-      (if typing?
-        (then
-          (release-resource :timer)
-          (acquire-resource
-            {:kind :timer
-             :purpose :typing-expiry
-             :after-ms 3000}
-            -> replacement-timer)
-          (goto :showing
-            {:document/id id
-             :actor/id actor/id
-             :timer replacement-timer}))
-
-        (then
-          (release-resource :timer)
-          (effect
-            [:ui/hide-typing-indicator
-             {:document/id id
-              :actor/id actor/id}])
-          (terminate :stopped))))
-
-    (on-resource
-      :timer-expired
-      {:resource :timer
-       :instance :current-timer-instance}
-
-      (effect
-        [:ui/hide-typing-indicator
-         {:document/id :document/id
-          :actor/id :actor/id}])
-
-      (terminate :expired))))
+(defn admit-typing-message!
+  [registered-channel decoded-message]
+  (when-not (valid-typing-payload? decoded-message)
+    (throw (ex-info "Invalid typing payload"
+                    {:error/type :typing/invalid-payload})))
+  (let [document-id (:document/id decoded-message)
+        sender (channels/require-current-sender! registered-channel)
+        permission
+        (document-model/require-typing-permission!
+          (:trusted-context sender) document-id)]
+    (typing-boundary/issue!
+      {:contract :document/typing
+       :registered-source registered-channel
+       :sender sender
+       :permission permission
+       :payload decoded-message})))
 #+end_src
 
-The peer machine is keyed by document and admitted actor. A =typing? false=
-event closes only that actor's current indicator. A later =typing? true= event
-replaces the expiry timer; a timeout from the retired timer cannot hide the
-replacement because resource-instance ownership is checked before the timeout
-transition. Ephemeral messages need no durable replay, but their local timers
-still need that owner check.
+These API names specify boundary responsibilities. The channel supplies the
+authenticated principal, admitted actor, current source instance, and their
+binding; the payload supplies none of those. The model permission result binds
+that principal and document under the declared authorization timing policy.
+Issuance checks their correspondence and constructs the receiver envelope.
+Recipient routing separately checks each subscription's permission to receive
+this document's indicators. Later revocation follows the explicit subscription
+policy; initial registration is not an indefinite disclosure grant.
 
-If Alice never receives Bob's typing message, an authoritative reread two
-minutes later cannot reconstruct the semantic event in any useful sense. There
-may be no durable =:typing=true= fact to query, and replaying it after expiry
-would be wrong.
+The issuer assigns a sequence within the admitted actor-stream instance, or
+uses another admitted ordering mechanism with the same contract. The receiver
+compares sequences only within that instance. Reconnection requires an admitted
+new source binding; a random larger number or unfamiliar epoch cannot replace
+the source merely by arriving. This provides receiver ordering of reports, not
+a proof of when the sender actually typed.
 
-The two cases therefore require different projection behavior:
+The peer maintains one indicator owner for the document, admitted actor, local
+principal context, and source instance. The following table is its semantic
+transition contract:
 
-#+begin_src clojure
-{:request/create
- {:durable-truth :request-authority
-  :remote-coordination :advisory
-  :recovery :authoritative-reread}}
+| Event | Required admission | Result and effect |
+|-------+--------------------+-------------------|
+| New =typing? true= report | Correct source and owner; sequence exceeds last accepted within that stream | Retain sequence, show indicator, retire old timer, allocate a fresh expiry resource |
+| New =typing? false= report | Same checks | Retain sequence, retire timer, hide indicator, remain ready for later reports |
+| Duplicate or older report | Same source but non-advancing sequence | No display change and no expiry extension |
+| Expiry callback | Current timer instance still owns this indicator and its deadline has elapsed | Hide indicator and retire that timer; retain the accepted source sequence |
+| Retired timer/source callback | No current ownership | Reject/no-op; do not hide or revive a replacement indicator |
+| Navigation, account change, or subscription retirement | Owner lifecycle transition | Retire indicator resources and reject later events under the old owner |
 
-{:document/typing
- {:durable-truth nil
-  :remote-coordination :direct-ephemeral-message
-  :recovery :none
-  :expiry :local-resource}}
-#+end_src
+The sequence high-water mark remains while that registered stream can deliver
+messages, including after a stop or expiry. Otherwise a delayed duplicate could
+resurrect an indicator. Bounds and cleanup follow stream retirement; identities
+from unrelated streams are not numerically ordered.
 
-A projector that inserts direct participant messages for every durable model
-change over-specifies delivery and recovery. A projector that replaces every
-message with "just reread later" destroys genuinely ephemeral semantics.
+The timer uses a local elapsed-time contract. The display claim is three
+seconds after the last accepted report, not three seconds after an unverifiable
+human action. A delayed first delivery can still show a recent-receipt report;
+if the product instead requires bounded age from issuance, it needs additional
+age and clock/delivery premises. A suspended browser rechecks expiry when it
+resumes rather than treating a late timer callback as evidence of continued
+typing. Timer scheduling alone is not a hard wall-clock guarantee.
 
-Communication is therefore neither sacred nor suspicious. It is one declared
-knowledge path among several, and the correct projection preserves whichever
-path the application's semantics actually require.
+Envelope consumers bind =:document/id= and =:actor/id= to distinct local names,
+such as =document-id= and =actor-id=. Their UUID-shaped representations must not
+erase the distinction between the document being discussed and the sender. This
+is the ordinary authoring consequence of Part II's identity categories.
+
+If a report is lost, a database reread two minutes later cannot reconstruct it
+usefully. The indicator may simply remain absent or expire; there is no required
+durable replay. That differs from required acquisition of durable Request state:
+
+| Property | Request publication | Typing report |
+|----------+---------------------+---------------|
+| Durable semantic truth | Public Request model | None required for typing intent |
+| Remote coordination | Scoped advisory and authoritative acquisition | Admitted ephemeral message |
+| Loss handling | Declared repair/discovery path for required convergence | Absence or expiry is permitted |
+| Local resource protection | Acquisition and installation owner checks | Source ordering and timer-instance checks |
+
+Projection preserves the selected knowledge and recovery path. It must neither
+replace genuinely ephemeral semantics with a later database query nor require
+direct peer delivery where a declared authoritative rendezvous is sufficient.
 
 *** Local executable guards belong in the executable projection
 
@@ -2205,14 +2064,10 @@ projection.
 
 The distinction is:
 
-#+begin_example
-"this callback may resume execution E only while its declared resource
- instance I retains the required ownership for E"
-    -> executable admission guard if needed at runtime
-
-"here is the proof tree explaining why that guard is sufficient"
-    -> diagnostic/proof artifact
-#+end_example
+| Material | Required location |
+|----------+-------------------|
+| Guard checking that resource instance I still owns the right to resume execution E | Executable semantics where that transition needs it |
+| Derivation explaining why that guard contributes to a property | Proof or diagnostic artifact, bound to the exact executable subject |
 
 The guard identifies the execution and resource instance required by this
 callback's admission contract; it is not a universal generation comparison.
@@ -2254,22 +2109,16 @@ effects, but arbitrary callbacks must not become an alternate transition path.
 
 In particular:
 
-#+begin_example
-projected machine
-    -> declared local effect
-    -> host implementation
-    -> normalized completion/failure
-    -> projected machine
-#+end_example
+The projected machine requests a declared effect. The registered host
+implementation performs it and submits a normalized completion or failure.
+The machine admits that event under the current owner and transition contract.
 
 is compatible with the design.
 
 But:
 
-#+begin_example
-host callback
-    -> mutate choreography state directly
-#+end_example
+An arbitrary host callback mutates choreography state without passing the
+declared admission and transition boundary.
 
 reopens the proof and knowledge boundary.
 
@@ -2291,39 +2140,17 @@ machine in process memory for hours or days.
 
 For example, a business flow may conceptually involve:
 
-#+begin_example
-request approval
-        |
-wait
-        |
-approval granted
-        |
-continue
-#+end_example
+An approval workflow requests approval, waits under its domain policy, and
+continues when an admitted decision establishes the next condition.
 
 A robust HumanHelp realization may instead be:
 
-#+begin_example
-short choreography E1
-    |
-commit authoritative :approval/pending
-    |
-E1 terminates
-
-...minutes or hours...
-
-approver observes pending authority
-    |
-short choreography E2
-    |
-commit authoritative :approval/approved
-    |
-E2 terminates
-
-requestor later observes approved authority
-    |
-short choreography E3 if further action is needed
-#+end_example
+| Period | Short execution and durable connection |
+|--------+----------------------------------------|
+| Request submission | E1 records pending approval and settles or hands off its own command |
+| Human-scale delay | Pending authority remains discoverable under the model's contract |
+| Approver action | E2 observes current premises and records a permitted decision |
+| Later requester action | A fresh observation supplies entry knowledge for E3 if further work is needed |
 
 The durable wait lives in model state.
 
@@ -2337,8 +2164,8 @@ assumptions, the durable workflow fact can survive:
 - browser suspension;
 - long offline periods.
 
-The initial Gesso choreography runtime therefore does not promise durable
-persistence of arbitrary suspended server-local executions.
+The ordinary Gesso choreography contract does not promise durable persistence
+of arbitrary suspended server-local executions.
 
 If a future application genuinely needs durable workflow-machine continuations,
 that should be an explicit opt-in capability with its own persistence, ownership,
@@ -2376,19 +2203,10 @@ a new execution with a new execution identity.
 
 For example:
 
-#+begin_example
-E1:
-    submit approval request
-    -> command C1
-    -> commit :pending
-    -> terminate
-
-E2:
-    approver later acts
-    -> command C2
-    -> commit :approved
-    -> terminate
-#+end_example
+| Execution | Command | Durable effect when accepted |
+|-----------+---------+------------------------------|
+| E1 | C1 | Submission becomes pending |
+| E2, later | C2 | Approval decision is recorded |
 
 The business process is continuous in domain meaning, but E1 and E2 need not be
 one persistent protocol execution. E2 must establish its own authenticated
@@ -2418,214 +2236,102 @@ must define its own:
 It is not silently inherited from ordinary Choreo.
 
 
-The expense example can be extended across several days without adding a
-suspended process.
+The expense example extends across several days without keeping a suspended
+server process. Its three periods of activity have these contracts:
 
-On Monday, the employee submits Expense E. A short choreography validates the
-submission and commits durable pending state:
+| Period | Entry knowledge and action | Authoritative obligation | Completion meaning |
+|--------+----------------------------+--------------------------+--------------------|
+| Monday, employee submission | Selected owned Expense and admitted submit intent | Guard current ownership, draft status, and submission policy; record submission and command result atomically | Recorded submission of C1, or explicit rejection/unknown handling |
+| Thursday, manager review | Authorized queue observation, explicit selection, coherent Expense/Policy observation | Guard current manager permission, submitted status, policy relation and selected route; record C2 result with the transition | Recorded manager approval or escalation, not merely an attempted call |
+| Friday, Finance review | Authorized pending-Finance observation and explicit selection | Guard current Finance permission, awaiting-Finance status, and applicable policy; record C3 result with approval | Recorded Finance approval, or explicit rejection/unknown handling |
 
-#+begin_src clojure
-(defchoreo submit-expense
-  {:roles
-   {:employee {:principal :user}
-    :expense-authority {:authority :expense}}
-   :inputs
-   {:expense-id
-    {:schema :uuid
-     :known-by #{:employee}
-     :provenance :input}}}
+Each row expands to a short choreography with the same explicit model-result
+mapping used earlier. Queue selection is an input event that may cancel or become
+stale. Queue visibility does not authorize bulk approval, and a normal return
+from an invocation is not by itself proof of successful incorporation.
 
-  (employee
-    (invoke expense-authority
-      :expense/submit
-      {:expense-id expense-id
-       :employee :authenticated-principal
-       :command-id :gesso/command-id}
-      -> submit-outcome)
-
-    ;; A later current-state read might already show a further transition.
-    ;; This branch is justified by the scoped outcome of this command.
-    (require-outcome
-      submit-outcome
-      :committed-or-compatible-already-incorporated
-      :otherwise [:rejected :unknown])
-
-    (terminate :submitted)))
-#+end_src
-
-The public model operation owns the durable transition:
+Public model calls expose domain arguments and the bound command identity:
 
 #+begin_src clojure
-(defn submit-expense!
-  [{:keys [db principal now]}
-   {:keys [expense-id command-id]}]
+(expense-model/submit!
+  trusted-employee-context
+  {:expense-id E :command-id C1})
 
-  (expense-model/transact-submission!
-    db
-    {:expense-id expense-id
-     :employee-id (:user/id principal)
-     :command-id command-id
-     :submitted-at now
+(expense-model/mark-awaiting-finance!
+  trusted-manager-context
+  {:expense-id E :command-id C2})
 
-     ;; The model enforces these against transaction-current facts, in the
-     ;; same atomic decision that writes :submitted and the command outcome.
-     :commit-guards
-     [[:expense/owned-by expense-id (:user/id principal)]
-      [:expense/status-is expense-id :draft]]
-
-     :retry-binding
-     {:operation :expense/submit
-      :principal (:user/id principal)
-      :expense-id expense-id}}))
+(expense-model/approve-as-finance!
+  trusted-finance-context
+  {:expense-id E :command-id C3})
 #+end_src
 
-The transaction form is schematic. The selected store mechanism must make the
-ownership and status guards effective at commit, reject concurrent conflicting
-changes, and bind a recorded result to the command identity atomically with
-the transition. On a compatible retry the model checks disclosure rights and
-returns the already-incorporated result without requiring the Expense to remain
-=:draft=. A rejected guard and an unknown commit follow different settlement
-paths; neither authorizes the employee's confirmed-submission continuation.
-The Thursday and Friday operations likewise guard current status, actor
-authorization, and any policy premise they rely on at their own commits.
+The registered model realization owns its guards, principal interpretation,
+time source, and atomic command protocol. Callers do not pass a mutable list of
+commit guards that can omit ownership or status checks. The trusted context
+comes from the admitted invocation boundary; constructing a map with a familiar
+=:principal= field is not authentication.
 
-Execution E1 can now terminate. There is no correctness benefit in keeping the
-employee's server process resident until a manager responds.
+If submission time is generated by the server, it follows the operation's time
+contract. A transport retry does not acquire a new semantic command merely
+because the wall clock advanced. The recorded outcome retains the time actually
+incorporated; compatibility of replay is checked against the intended semantic
+arguments, not a fresh incidental timestamp.
 
-On Thursday, a manager opens an approval queue and authoritatively observes the
-pending Expense:
+A compatible retry checks command binding and current disclosure permission
+before returning the recorded outcome. It does not require Monday's Expense
+to remain a draft on Thursday. A new command requires the current guards.
+Competing attempts of one command are interpreted against authoritative outcome
+evidence; one failed attempt does not by itself reject the whole command.
 
-#+begin_src clojure
-(defchoreo review-submitted-expense
-  {:roles
-   {:manager {:principal :user}
-    :expense-authority {:authority :expense}}}
+When a result is unknown, recovery retains enough authorized command identity
+and binding to reconcile later. Retiring E1's UI or process is allowed only under
+the declared resolution or handoff contract; it must not erase the unresolved
+obligation or create a new command to retry the same intent accidentally.
+Current Expense state may have advanced beyond submission and is not by itself
+an answer to whether C1 was incorporated.
 
-  (manager
-    (observe expense-authority
-      [:expense/pending-for-manager
-       {:principal :authenticated-principal}]
-      -> pending-expenses)
-
-    (choose expense-id
-      :from pending-expenses)
-
-    (observe expense-authority
-      [:expense/current expense-id]
-      -> expense)
-
-    (observe expense-authority
-      [:expense/current-policy
-       (:expense/department expense)]
-      -> policy)
-
-    (branch
-      (needs-finance?
-        {:expense expense
-         :policy policy})
-
-      (then
-        (invoke expense-authority
-          :expense/mark-awaiting-finance
-          {:expense-id expense-id})
-
-        (terminate :awaiting-finance))
-
-      (else
-        (invoke expense-authority
-          :expense/approve-as-manager
-          {:expense-id expense-id})
-
-        (terminate :approved)))))
-#+end_src
-
-This is a new execution E2 with its own current principal, observations,
-execution identity, resource ownership, and compatible plan.
-
-Friday's Finance review can be yet another execution:
-
-#+begin_src clojure
-(defchoreo review-finance-expense
-  {:roles
-   {:finance {:principal :user}
-    :expense-authority {:authority :expense}}}
-
-  (finance
-    (observe expense-authority
-      [:expense/pending-for-finance
-       {:principal :authenticated-principal}]
-      -> queue)
-
-    (choose expense-id
-      :from queue)
-
-    (observe expense-authority
-      [:expense/current expense-id]
-      -> expense)
-
-    (invoke expense-authority
-      :expense/approve-as-finance
-      {:expense-id expense-id})
-
-    (terminate :approved)))
-#+end_src
-
-The domain history links the executions:
+An illustrative history and identity view is:
 
 #+begin_src clojure
 {:expense/id E
- :expense/status-history
- [{:status :draft
-   :effective-at monday-08-00}
-
-  {:status :submitted
-   :effective-at monday-09-12
-   :caused-by {:command C1
-               :operation :expense/submit}}
-
+ :events
+ [{:status :submitted
+   :effective-at monday-time
+   :recorded-at monday-recording-context
+   :caused-by {:command C1 :operation :expense/submit}}
   {:status :awaiting-finance
-   :effective-at thursday-14-20
-   :caused-by {:command C2
-               :operation :expense/mark-awaiting-finance}}
-
+   :effective-at thursday-time
+   :recorded-at thursday-recording-context
+   :caused-by {:command C2 :operation :expense/mark-awaiting-finance}}
   {:status :approved
-   :effective-at friday-10-03
-   :caused-by {:command C3
-               :operation :expense/approve-as-finance}}]}
+   :effective-at friday-time
+   :recorded-at friday-recording-context
+   :caused-by {:command C3 :operation :expense/approve-as-finance}}]}
+
+{:monday {:execution E1 :command C1 :principal employee-P
+          :plan :plan/submit-expense-A12}
+ :thursday {:execution E2 :command C2 :principal manager-M
+            :plan :plan/review-expense-A13}
+ :friday {:execution E3 :command C3 :principal finance-F
+          :plan :plan/finance-review-A13}}
 #+end_src
 
-The runtime identities need not form one persistent chain:
+This is a permitted inspection history, not a requirement to store one growing
+vector or a universal event DAG. The model's actual persistence, retention,
+correction, and command-evidence contracts determine what can be reconstructed.
+Effective and recording time remain distinct as in Part II.
 
-#+begin_src clojure
-{:monday
- {:execution E1
-  :command C1
-  :principal employee-P
-  :plan :plan/submit-expense-A12}}
+The business process is continuous because the authoritative Expense model
+retains its meaning. E1, E2, and E3 separately establish their current principal,
+knowledge, permissions, resources, and admitted plan. Historical workflow
+continuity does not transfer a retired execution's capability or resource rights.
 
-{:thursday
- {:execution E2
-  :command C2
-  :principal manager-M
-  :plan :plan/review-expense-A13}}
-
-{:friday
- {:execution E3
-  :command C3
-  :principal finance-F
-  :plan :plan/finance-review-A13}}
-#+end_src
-
-The business process is continuous because authoritative Expense state is
-continuous under the model's semantics. The protocol executions are separate
-because each period of activity has its own current participants, authorization,
-knowledge, resources, and executable compatibility.
-
-A future durable-workflow facility could choose to preserve suspended execution
-state across days, but that would be an additional semantic facility with
-explicit persistence and migration rules. Ordinary Choreo does not need to
-pretend that Monday's process remained asleep somewhere in order for Friday's
-approval to be part of the same business story.
+A durable workflow facility is an additional opt-in contract if an application
+needs persisted continuations. It must state checkpoint atomicity relative to
+effects, ownership or fencing, replay and deduplication, effect uncertainty,
+schema/plan migration, recovery discovery, and resource reconstruction. Serializing
+an in-memory machine map is not enough to establish those properties.
 
 *** Durable model state is the normal rendezvous point
 
@@ -2638,7 +2344,7 @@ A later actor may know what happened because authority establishes:
 :approval/pending
 :approval/approved
 :request/claimed
-:request/completed
+:request/done
 #+end_example
 
 not because it receives a packet from the actor who caused that state.
@@ -2671,3 +2377,42 @@ authoritative business state entirely valid. If a deployment also changes the
 meaning or representation of persisted domain state, the model needs its own
 compatible interpretation or migration. Restarting a current browser plan does
 not perform that domain migration by implication.
+
+** Semantic acceptance obligations
+
+The definitions above require executable judgments and focused conformance
+cases. Part IX owns the certification rules; Part X owns soundness and
+implementation correspondence. The semantic definitions used by construction,
+projection, the portable machine, and evidence tools must agree on these cases:
+
+| Case | Required result |
+|------+-----------------|
+| Valid opaque Clojure action with a complete admitted interface | Admit under the selected assurance policy; retain asserted functional/effect premises |
+| Missing operation binding or malformed continuation | Reject; an assertion cannot supply the absent structural edge |
+| Role uses a value known only to another role | Reject or report the exact missing knowledge obligation |
+| Optional message field absent on one path | Do not treat it as definitely present at the join |
+| Optional field actually sent without sender knowledge | Reject that semantic send |
+| New asserted output overwrites an authoritative binding | Do not inherit the old provenance or dependent applicability |
+| Ordinary environment event matches a participant message name | Do not cross the event-class boundary |
+| Two receive alternatives accept the same correlated message with different behavior | Reject ambiguity or require an explicit discriminator/equivalence justification |
+| Role has equivalent local continuations under the supported relation | Omit an unnecessary discriminator without disclosing private data |
+| Role must wait in one branch and return in another | Require a distinguishing path or an explicit conditional-participation contract |
+| Unrelated authoritative read follows a foreign commit | Do not discharge a command-specific causal dependency |
+| Timeout after submission | Preserve command uncertainty; do not infer a rejected commit |
+| Compatible replay returns permitted recorded success | Use the accepted continuation without incorporating again |
+| Old resource completion matches the command but not current owner | Reject its stale local effect; separately admit useful reconciliation evidence when permitted |
+| Required notification is lost after commit | Preserve the command result and its declared delivery/recovery obligation |
+| Old typing timer or duplicate report arrives after replacement | Do not hide the new indicator or extend its expiry |
+| New valid artifact has different runtime locators | Require exact sidecar correspondence and a separate continuation-compatibility decision |
+| Finite graph has a path to return but can loop forever | Report the structural result without a universal termination claim |
+
+Tests exercising these cases are conformance evidence for the tested subjects
+and profiles. They do not replace a proof of the general projection relation,
+prove arbitrary host callbacks, or establish every external-system premise.
+Negative and mutation cases must reject for the intended semantic reason, not
+merely because the fixture became malformed in an unrelated way.
+
+Acceptance also includes positive cases: ordinary opaque functions, declared
+open extensions, valid retries, supported partial orders, and privacy-preserving
+observations must remain usable under their contracts. A system that rejects
+every interesting application would not meet Gesso's construction goal.

@@ -1,3104 +1,1391 @@
 * Part V — Provisional state and executable presentation
 :PROPERTIES:
 :CUSTOM_ID: part-05-provisional-state-and-executable-presentation
+:PART_REVISION: 05-20261107
 :END:
 
-This part defines provisional rendering, local continuity, semantic view
-bindings, portable execution, and the boundary between executable plans and
-diagnostic evidence. It builds on Part IV's scoped observations and command
-uncertainty. Part VI defines browser coordination and physical realization;
-Part VII closes the complete application path.
+This part defines provisional presentation, local continuity, prepared view
+bindings, portable execution, and the separation of executable plans from
+diagnostic evidence. It uses Part IV's command outcomes, scoped observations,
+and acquisition/installation distinctions. Part VI specifies browser
+coordination and physical realization; Part VII closes the assembled application
+path before a managed affordance is served.
+
+The intended architecture supports the full application language through the
+[[#req-full-language-construction][checked construction contract]]. Declarative
+interfaces and a portable coordination vocabulary make behavior inspectable;
+they do not require every computation or renderer to be expressed in a small
+proof language. Opaque functions retain explicit contracts and premises wherever
+their behavior has not been mechanically established.
+
+Examples use illustrative declaration and API names. They specify intended
+semantics, not a promise that the displayed syntax already exists. Inspection
+maps and tables describe admitted values; copying their fields does not create
+authority, provenance, resource ownership, or execution rights. Generated
+fragments explain one canonical construction, rather than additional plans
+application authors must maintain independently.
 
 ** Optimism
 :PROPERTIES:
 :CUSTOM_ID: req-optimistic-projection
 :END:
 
-Optimism is part of the semantic distributed operation.
+Optimism is an explicit provisional trajectory associated with a semantic
+command. It permits responsive local presentation while authority determines
+the command's result. It does not predict a future database state with certainty
+and does not grant permission to make that prediction authoritative.
 
-It is not merely a DOM trick.
-
-An optimistic projection is explicit provisional knowledge derived from an
-authoritative basis and associated with a semantic command.
-
-Conceptually:
-
-#+begin_src clojure
-{:authority :provisional
- :command-id C42
- :observed-basis X100
- :projection P}
-#+end_src
-
-This example is conceptual. The =:authority :provisional= field classifies local
-projection status; it is not an authority grant. Under the semantic admission
-rules, neither that tag nor a copied basis token proves that the required
-observation was acquired.
-
-A provisional projection never claims to be a future authoritative XTDB state.
-
-It means approximately:
+A provisional projection means:
 
 #+begin_quote
-Given the scoped authoritative observations this actor acquired at the stated
-basis, this is the permitted local projection if command C42 is incorporated in
-the modeled way. The provisional rendering is not a prediction guaranteed to
-become authoritative.
+Given these admitted observations and declared local inputs, this is the
+presentation permitted for this command while its authoritative disposition is
+unresolved. Its derivation, owner, affected scope, and resolution policy are
+known. The authoritative model remains free to produce any result allowed by
+the operation contract.
 #+end_quote
 
-A later authoritative fact may relate to the provisional projection as:
+The runtime distinguishes at least:
 
-#+begin_example
-P --confirmed-by----> F
-P --reconciled-by---> F
-P --rejected-by-----> F
-P --superseded-by---> F
-#+end_example
+| Category | Meaning |
+|----------+---------|
+| Authoritative observation | An admitted acquisition or operation output establishes specified facts within its scope and evidence contract. |
+| Provisional projection | A declared local derivation associated with a command; it is not evidence of incorporation. |
+| Authoritative absence | A successful admitted observation establishes absence within its complete authorized scope. |
+| Unknown or unavailable | Required evidence has not been established or cannot currently be acquired/disclosed. |
+| Local draft | User input or interaction state which has not become an authoritative assertion. |
 
-The verifier should enforce at least:
+A visually identical card can belong to different categories. The runtime
+retains the distinction even when rendering produces similar Hiccup or DOM.
+Representations may be ordinary immutable values or opaque wrappers; the
+requirement is correct admission and use, not one mandatory host-language type.
 
-- every provisional projection has a known authoritative basis;
-- every provisional projection has a semantic command identity;
-- provisional state is explicitly marked provisional;
-- provisional state cannot silently become authoritative;
-- only an appropriate authority establishes authoritative resolution;
-- an actor may derive optimism only from facts it knows;
-- every provisional trajectory has a resolution or recovery path;
-- authoritative supersession is a valid resolution;
-- semantic ownership of resources used to realize optimism ends or transfers
-  through an explicit admitted rule on every terminal path; physical cleanup
-  follows its separate best-effort contract.
+*** Provisional derivation contract
 
-Multiple clients may hold mutually incompatible provisional projections without
-creating multiple authoritative histories.
+Each optimistic operation declares:
 
+1. its semantic command binding and entry conditions;
+2. the authoritative observations, local inputs, and explicit assumptions used
+   to derive the provisional value;
+3. affected entity, query-membership, field, and presentation scopes;
+4. the derivation implementation and its input/output types;
+5. owners and resource instances permitted to install, update, or remove it;
+6. its concurrency and dependency policy relative to other local work;
+7. settlement, supersession, timeout, cancellation, retirement, and recovery
+   continuations;
+8. the evidence and physical completion required before claiming adoption.
 
-HumanHelp Claim is a useful worked example because its provisional presentation
-is visible to the user while its authority remains entirely elsewhere.
+An optimistic update normally depends on an admitted authoritative observation.
+The contract expresses the actual dependency, rather than demanding an existing
+entity snapshot in every operation. Optimistic creation may depend on an
+admitted collection scope, policy observation, declared draft inputs, and a
+temporary local entity identity. It must not manufacture authoritative
+nonexistence or assume a client-chosen ID is available. The server enforces
+creation conditions.
 
-Assume the browser has already acquired an authoritative Request card:
+Purely local drafts need not be mislabeled optimistic domain operations. If the
+application renders under weaker entry knowledge, its declared assumptions
+remain visible and the projection cannot imply guarantees requiring absent
+observations. Missing required knowledge is an admission failure; an assertion
+cannot silently supply that missing binding.
 
-#+begin_src clojure
-(def authoritative-card
-  ;; Fixture notation for a trusted acquisition result, not a browser
-  ;; constructor. A copied tag or map cannot establish admission.
-  (projection/admitted
-    {:projection/type :request/card
-     :authority :authoritative
-     :request/id R
-     :request/status :open
-     :request/helper-id nil
-     :basis :X17
-     :scope
-     {:projection :request/card
-      :request/id R}}
+Several observations may justify one projection. Its basis is then a scoped set
+of premises, not necessarily one universal database token. The derivation cannot
+strengthen acquired coverage or turn mixed observations into a common snapshot.
+Part IV's progression and scope contracts apply.
 
-    {:admission/id :admission/request-card-X17
-     :acquisition/id :acquisition/request-card
-     :provenance :trusted-server
-     :authorized-principal [:user Alice]
-     :covered-through :X17}))
-#+end_src
+*** Presentation state is not a new domain status
 
-The view binds a semantic Claim operation:
+An optimistic Claim can display a pending helper and a Claiming label while the
+last admitted Request still has domain status =:open= and no helper. A pending
+presentation tag must not be inserted into a closed domain enum unless the
+model defines that state.
 
-#+begin_src clojure
-(def bound-claim
-  {:operation :request/claim
-   :role :helper
-   :args {:request/id R}
-   :observation
-   {:scope
-    {:projection :request/card
-     :request/id R}
-    :basis :X17}})
-#+end_src
-
-When Alice clicks Claim, the runtime allocates a semantic command and may derive
-a provisional projection:
+An inspection view might be:
 
 #+begin_src clojure
-(def C42
-  #uuid "c4200000-0000-0000-0000-000000000042")
-
-(def E42
-  #uuid "e4200000-0000-0000-0000-000000000042")
-
-(def T42
-  #uuid "91000000-0000-0000-0000-000000000001")
-
-(def provisional-claim
-  {:projection/type :request/card
-   :authority :provisional
-
-   :command/id C42
-
-   :basis
-   {:scope
-    {:projection :request/card
-     :request/id R}
-    :observed-through :X17}
-
-   :request/id R
-   :request/status :claiming
-   :request/helper-id Alice
-
-   :presentation
-   {:label "Claiming..."
-    :claim-button :disabled
-    :pending? true}})
+{:projection/type :request/card
+ :projection/status :provisional
+ :gesso/command-id C42
+ :execution/id E42
+ :resource-instance/id card-owner-instance
+ :premises {:observation-ref card-observation-ref}
+ :subject {:request-id R}
+ :presentation
+ {:phase :claim/pending
+  :display-helper-id Alice
+  :label "Claiming..."
+  :busy? true}}
 #+end_src
 
-That provisional projection is not a forecast that the model must eventually
-confirm. It is a typed local state associated with one command.
-
-The runtime can make the transition explicit:
-
-#+begin_src clojure
-(defn begin-claim
-  [{:keys [authoritative-card current-owner binding] :as runtime}
-   command-id]
-  (projection/require-admitted-for!
-    runtime authoritative-card current-owner binding)
-  (let [card
-        (projection/value authoritative-card)
-        principal
-        (binding/authorized-principal binding)]
-
-    {:machine/state :claim/pending
-
-     :command/id command-id
-     :execution/id (:execution/id current-owner)
-
-     :authoritative-basis
-     {:scope (:scope card)
-      :basis (:basis card)
-      :admission/id
-      (projection/admission-id authoritative-card)}
-
-     :provisional
-     {:projection/type :request/card
-      :authority :provisional
-      :command/id command-id
-      :request/id (:request/id card)
-      :request/status :claiming
-      :request/helper-id principal}
-
-     :resources
-     {:settlement-timeout
-      {:resource-instance/id
-       (:settlement-timeout/id runtime)
-       :owner current-owner
-       :status :active}}}))
-#+end_src
-
-Here the admitted start context carries ={:execution/id E42}= as its current
-owner and =T42= as its allocated settlement-timeout instance. The binding's
-principal is authenticated by trusted preparation; it is also subject to the
-server's independent authorization when the command arrives. A browser label
-or request body cannot create that authentication.
-
-Now consider four legitimate endings.
-
-First, direct confirmation:
-
-#+begin_src clojure
-(def accepted-settlement
-  ;; Fixture notation for a trusted settlement result, not a browser
-  ;; constructor. Boundary admission authenticates source and correlates
-  ;; execution, command, resource, outcome, and scoped progression.
-  (settlement/admitted
-    {:event/type :request/claim-settled
-     :execution/id E42
-     :command/id C42
-     :resource-instance/id T42
-     :outcome :accepted}
-
-    (projection/admitted
-      {:request/id R
-       :request/status :claimed
-       :request/helper-id Alice
-       :basis :X18}
-
-      {:provenance :trusted-command-settlement
-       :scope {:projection :request/card
-               :request/id R}
-       :covered-through :X18})))
-
-(defn settle-accepted
-  [runtime admitted-settlement]
-  (settlement/require-admitted-for!
-    runtime admitted-settlement
-    {:outcome :accepted :target :request/card})
-
-  (-> runtime
-      (assoc
-        :machine/state :claim/settled
-        :authoritative
-        (settlement/authoritative-projection
-          admitted-settlement)
-        :provisional nil)
-      (update :resources retire-owned-resources)))
-#+end_src
-
-Second, authoritative rejection because Bob claimed first:
-
-#+begin_src clojure
-(def rejected-settlement
-  (settlement/admitted
-    {:event/type :request/claim-settled
-     :execution/id E42
-     :command/id C42
-     :resource-instance/id T42
-     :outcome :rejected
-     :reason :request-not-open}
-
-    (projection/admitted
-      {:request/id R
-       :request/status :claimed
-       :request/helper-id Bob
-       :basis :X18}
-
-      {:provenance :trusted-command-settlement
-       :scope {:projection :request/card
-               :request/id R}
-       :covered-through :X18})))
-
-(defn settle-rejected
-  [runtime admitted-settlement]
-  (settlement/require-admitted-for!
-    runtime admitted-settlement
-    {:outcome :rejected :target :request/card})
-
-  (-> runtime
-      (assoc
-        :machine/state :claim/rejected
-        :authoritative
-        (settlement/authoritative-projection
-          admitted-settlement)
-        :provisional nil
-        :message
-        "Another helper claimed this Request.")
-      (update :resources retire-owned-resources)))
-#+end_src
-
-Third, local timeout with outcome still unknown:
-
-#+begin_src clojure
-(def timeout-event
-  {:event/type :resource/timeout
-   :execution/id E42
-   :command/id C42
-   :resource-instance/id T42})
-
-(defn settle-timeout
-  [runtime timeout]
-  (if-not
-    (and (= :claim/pending (:machine/state runtime))
-         (event/current-resource-owner?
-           runtime timeout :settlement-timeout))
-    runtime
-    (-> runtime
-      (assoc
-        :machine/state :claim/outcome-unknown
-
-        ;; The optimistic execution ends.
-        :provisional nil
-
-        ;; This is participant knowledge, not a domain conclusion.
-        :command-knowledge
-        {:command/id (:command/id runtime)
-         :disposition :unknown})
-
-      (update :resources retire-owned-resources)
-
-      (assoc
-        :recovery
-        {:kind :authoritative-reacquisition
-         :scope
-         (get-in runtime
-           [:authoritative-basis :scope])}))))
-#+end_src
-
-The timeout does not synthesize =:rejected=. If the server committed before the
-connection disappeared, the authoritative Request may already be claimed.
-
-Fourth, an authoritative reread may supersede the provisional trajectory even
-without command-specific settlement:
-
-#+begin_src clojure
-(def reread-result
-  ;; This is not a decoded response map.  It is the result of the trusted
-  ;; acquisition boundary after authorization, provenance, plan, scope,
-  ;; progression, and resource-instance checks have succeeded.
-  (acquisition/admitted
-    {:projection/type :request/card
-     :authority :authoritative
-     :request/id R
-     :request/status :claimed
-     :request/helper-id Alice
-     :basis :X19
-     :scope
-     {:projection :request/card
-      :request/id R}}
-
-    {:acquisition/id :acquisition/request-card
-     :resource-instance/id
-     #uuid "a1900000-0000-0000-0000-000000000019"
-     :provenance :trusted-server
-     :authorized-principal [:user Alice]
-     :covered-through :X19}))
-
-(defn install-authoritative-reread
-  [runtime admitted-observation]
-  ;; Admission is relative to the current target owner, authorized scope,
-  ;; installed observation, and declared progression rule.
-  (if
-    (acquisition/admitted-for-current-target?
-      runtime admitted-observation
-      (get-in runtime [:authoritative-basis :scope]))
-    (-> runtime
-          (assoc
-            :machine/state :claim/recovered
-            :authoritative
-            (acquisition/authoritative-projection
-              admitted-observation)
-            :provisional nil)
-
-          ;; The current view is now authoritative even if command attribution
-          ;; remains unresolved.
-          (assoc
-            :command-knowledge
-            {:command/id (:command/id runtime)
-             :disposition
-             (or
-               (get-in runtime
-                 [:command-knowledge :disposition])
-               :unknown)})
-
-          (update
-            :resources
-            retire-owned-resources))
-
-    runtime))
-#+end_src
-
-The browser can now render the correct authoritative Request card while still
-saying, internally, "I do not know whether C42 caused this state."
-
-That difference matters when another cause could have produced the same current
-Request state.
-
-The same example also shows why rollback is not unconditional. Suppose the
-browser preserved the old open card as a local snapshot:
-
-#+begin_src clojure
-(def optimistic-snapshot
-  {:request/id R
-   :request/status :open
-   :request/helper-id nil
-   :basis :X17})
-
-(def optimistic-capture
-  {:admitted-basis
-   (projection/admission-id authoritative-card)
-   :presentation optimistic-snapshot
-   :owner {:execution/id E42}})
-#+end_src
-
-After =reread-result= at X19 has been admitted and installed, a late failure
-callback from the old execution must not do this:
-
-#+begin_src clojure
-;; Forbidden stale rollback.
-
-(defn late-failure-handler [runtime _event]
-  (assoc runtime
-    :authoritative optimistic-snapshot
-    :machine/state :claim/rolled-back))
-#+end_src
-
-The snapshot may have been justified when captured. It no longer owns the target
-after authoritative supersession.
-
-A correct failure callback first checks current ownership and installation state:
-
-#+begin_src clojure
-(defn maybe-restore-snapshot
-  [runtime event captured]
-  (if
-    (and (event/current-provisional-owner? runtime event)
-         (snapshot/same-admitted-basis?
-           captured (:authoritative-basis runtime))
-         (not (authoritative/installed-after-capture?
-                runtime captured)))
-    (assoc runtime
-      :presentation
-      {:source :prior-justified-presentation
-       :snapshot (:presentation captured)
-       :status :recovery-pending})
-    runtime))
-#+end_src
-
-Even in the last branch, restoring a familiar visual shape does not assert that
-authority reverted or that the command failed. Presentation may resemble the old
-card while its semantic classification remains recovery-pending or
-outcome-unknown.
-
-The code is intentionally larger than the minimal runtime representation likely
-to ship. Its purpose is to make the semantics visible: command identity,
-authoritative basis, provisional projection, local resource ownership, settlement
-evidence, authoritative supersession, and command attribution are related but
-not interchangeable.
-
-For example:
-
-#+begin_example
-             authoritative F17
-              /             \
-     provisional Alice   provisional Bob
-#+end_example
-
-The Request model may subsequently confirm one, reconcile both, reject one, or
-apply another domain policy.
-
-That policy remains in the model.
-
-A later authoritative reread may supersede the provisional projection even if
-the browser never receives the original command settlement.
-
-That is an important recovery path for unreliable connections.
-
-*** Optimism is typed provisional knowledge
-
-An optimistic result is not "pretend the database already changed."
-
-It is a local semantic statement:
-
-#+begin_quote
-Relative to the authoritative facts I know, and for semantic command C, this is
-the provisional projection I am permitted to render while authority resolves
-the command.
-#+end_quote
-
-That statement therefore carries provenance.
-
-At minimum the runtime must be able to distinguish:
-
-#+begin_example
-authoritative observation for declared scope
-provisional(command C, scoped basis P)
-authoritative absence within declared complete acquisition scope
-unknown / not yet acquired / acquisition unsuccessful
-#+end_example
-
-A DOM node that merely looks like an authoritative card is insufficient.
-Likewise, a same-shaped Clojure map does not become an authoritative projection
-merely because its keys resemble one.
-
-The supported runtime path must preserve the semantic distinction between
-provisional and authoritative values even where both are represented as ordinary
-immutable data.  Nominal or opaque representations are permitted when they make
-accidental substitution harder, but the correctness requirement is admission
-through the appropriate semantic boundary rather than use of a particular host-
-language type.
-
-*** Provisional state cannot confer authority
-
-An adversarial browser may fabricate arbitrary provisional state.
-
-The trusted server must treat such state only as untrusted protocol input or
-local presentation.
-
-It may not accept:
-
-- provisional role labels;
-- provisional "authorized" flags;
-- claimed server-machine state;
-- claimed authoritative provenance;
-- claimed principal identity;
-
-as authorization to execute a model transition.
-
-Optimism improves latency and experience.  It does not enlarge the principal's
-authority.
+This does not assert =:request/status :claiming= as authoritative domain data.
+The private representation may be smaller, but the categories remain
+recoverable. A renderer consumes admitted presentation state; it does not
+establish provenance by writing =:projection/status=.
+
+The admitted command boundary supplies or admits C42 before the first possible
+send. Allocation happens once for the intent and is retained through retry.
+E42 names one local execution; =card-owner-instance= names one presentation
+resource. Neither substitutes for the command ID.
+
+*** Optimism cannot confer authority
+
+An adversarial browser can fabricate provisional values, labels, bindings, and
+purported machine state. The trusted model boundary independently establishes
+principal identity, command binding, and current authorization. It never
+accepts an optimistic assignment or browser authorized flag as permission.
+
+This remains true for a legitimate binding rendered by the server earlier.
+Membership or policy may have changed. Historical issuance or observation
+evidence is not current authorization; an observed-basis claim is not proof the
+caller acquired or adopted the observation.
+
+The model chooses legal authoritative outcomes. Choreography and its admitted
+presentation contract choose provisional and resolution behavior. Views choose
+the visual treatment. These responsibilities must not collapse into a helper
+that changes the DOM and independently decides business policy.
+
+*** Separate command knowledge from presentation progress
+
+A participant tracks several questions:
+
+| Dimension | Examples of established state |
+|-----------+-------------------------------|
+| Command knowledge | Pending resolution, permitted incorporation/replay, authoritative rejection, or unknown. |
+| Acquired evidence | A particular admitted Request observation is available. |
+| Installation progress | Not requested, pending, completed, failed, or indeterminate under its physical-effect contract. |
+| Adopted presentation | A scoped observation or provisional projection owns the current visible representation. |
+| Recovery ownership | This execution or another admitted owner is responsible for remaining work. |
+
+This does not require a separate mutable store for every row. It requires enough
+information to avoid false implications between them. A command can be known
+committed while a fresh card is unavailable. An authoritative card can be
+installed while attribution to the original command remains unknown.
+
+Recording acquired evidence is not recording completed visual adoption. A
+semantic transition may request installation and enter a pending-installation
+state. It cannot discharge acquire-and-adopt obligations until the required
+physical completion has been admitted, as specified in
+[[#req-advisory-discharge][Part IV's adoption contract]].
+
+*** Worked example: HumanHelp Claim
+
+Alice has an admitted Request-card observation for R at basis X17. Its scope
+includes the Request, projection/schema version, authority/database incarnation,
+temporal interpretation, and permitted visibility context. Its domain values
+say the Request is open and has no helper. Preparation offers a Claim affordance
+using public model semantics.
+
+This observation supports the example's provisional presentation. It does not
+prove Membership, policy, or Request state will still permit Claim when the
+server receives it. Part IV's model operation protects those conditions at
+incorporation.
+
+Activation binds C42 to the Claim intent and creates E42 with its own resource
+instances. The admitted entry path records those identities before issuing any
+transport effect. A retry reuses the existing C42 binding rather than allocating
+a replacement intent.
+
+The provisional overlay can show Alice as tentative helper and disable the
+conflicting Claim affordance. It does not replace the retained authoritative
+observation or authorize further domain actions solely from that tentative
+assignment.
+
+| Admitted event or evidence | Command knowledge | Presentation continuation |
+|----------------------------+-------------------+---------------------------|
+| Successful =:committed= result for C42. | Incorporation established. | End or transform the pending overlay; install an admissible result projection if supplied, or acquire the required card. |
+| Successful permitted =:already-incorporated= result. | Prior incorporation established. | Use the accepted successor without incorporating again; the historical result snapshot is not automatically current. |
+| Authoritative =:rejected= result. | Rejection established under the command policy. | End the pending overlay and obtain or retain a justified presentation through the rejection path. |
+| =:commit-unknown= or indeterminate delivery. | Outcome unknown. | Use a truthful unknown/recovery presentation and retain or transfer command-resolution responsibility. |
+| Current Request observation without command attribution. | C42 may remain unknown. | Supersede the provisional card after permitted installation, without inventing attribution. |
+
+Model outcomes map explicitly to presentation settlements =:accepted=,
+=:rejected=, and =:unknown=. Labels such as confirmed, reconciled, and superseded
+may describe how provisional ownership ended. They are not extra model outcomes
+or substitutes for incorporation evidence.
+
+**** Accepted command, card still pending
+
+Suppose the server establishes C42's incorporation but fresh card acquisition
+fails. The browser can know Claim succeeded while lacking an installable current
+card. It must not turn the acquisition failure into rejection or overwrite
+established incorporation with unknown.
+
+Presentation can say the action succeeded and current details await refresh.
+An old observation remains historical or awaiting refresh. Tentative values do
+not become a complete authoritative card merely because the command succeeded.
+
+A result projector may supply an admitted observation with adequate scope and
+progression. It then follows the installation contract: record installation
+pending, issue a scoped effect, and adopt only after actual completion is
+admitted. Focus-restoration failure afterward does not undo that adoption.
+
+**** Rejection with a conflicting current state
+
+Suppose Bob's different command claims R first. Alice's command is authoritatively
+rejected. A subsequent admitted card may show Bob as helper. These are separate
+facts with separate evidence: rejection of C42 and the observed state of R.
+
+The rejection reason comes from permitted model evidence, such as already
+claimed under this simplified policy. Presentation cannot infer that reason
+from the card. A rejected result need not always contain a disclosable card:
+authority may permit the outcome but not fresh details, or only a less detailed
+message.
+
+One aborted physical attempt is insufficient to establish command rejection;
+a competing compatible attempt may have incorporated C42. Part IV's
+[[#req-command-participant-uncertainty][command-disposition contract]] determines
+which evidence is definitive.
+
+**** Timeout and two recovery tasks
+
+A settlement timer establishes a local deadline event, not command rejection.
+Admission checks its resource owner and relevance to the current phase. If
+definitive evidence was already recorded, a late timer cannot replace it with
+unknown.
+
+For an unresolved command, the runtime may retire E42's provisional ownership
+and enter or transfer recovery. Two tasks can remain:
+
+- acquire an authorized current card to recover presentation;
+- resolve C42 through permitted command-result evidence to recover attribution.
+
+The first does not automatically complete the second. A read-only resolver also
+does not supply an executable recovery driver. The contract names the owner,
+triggers, retry policy, evidence source, retention, and behavior when automatic
+progress ends.
+
+Retry exhaustion may stop automatic work while leaving the command unknown.
+The product can provide manual reconciliation or another declared handoff. It
+cannot silently replace C42 with a new command merely to resume a pending UI.
+
+**** Authoritative supersession without attribution
+
+Suppose an authorized observation at X19 shows Alice as helper and is permitted
+to replace the provisional card. After installation completes, that observation
+justifies the display. C42 remains unknown if no command-specific evidence
+establishes its disposition; another cause could have produced the same state.
+
+If C42's success arrives later, it may resolve retained command knowledge
+through the current resolution owner. It cannot revive E42, regress the card
+to an older result snapshot, or repeat Claim. Installation and command-resolution
+rights are distinct.
+
+**** Conditional restoration instead of unconditional rollback
+
+An optimistic snapshot captures a previously justified presentation. It does
+not prove authority still has that state. Restoration is allowed only under the
+current owner, target instance, observation context, and intervening adoption or
+local-edit policy.
+
+The safe default removes the owned provisional overlay and renders from the
+current admitted base where available. If the implementation restores captured
+content, its guard is checked at the physical mutation boundary. An earlier
+Boolean check is insufficient if another installation or owner change can
+intervene.
+
+After X19 is adopted, a late E42 failure cannot reinstall X17. Even before
+supersession, restoring X17's visual shape retains recovery-pending or unknown
+classification. It does not assert that the model rolled back or C42 failed.
 
 *** Every provisional trajectory requires resolution semantics
 :PROPERTIES:
 :CUSTOM_ID: req-provisional-resolution
 :END:
 
-A permitted optimistic branch must specify how provisional ownership can end.
+The operation accounts for accepted incorporation, rejection, unknown outcomes,
+authoritative supersession, local cancellation, incompatible-plan retirement,
+and physical-effect failure wherever those cases can occur. Every terminal path
+ends or explicitly transfers provisional and resource ownership. Physical
+cleanup has its own completion/failure contract.
 
-Resolution classes may include:
+Not every operation needs every branch, but omitted branches need a supported
+reason they cannot occur. Static preflight need not predict dynamic facts; it
+requires declared handling for conditions capable of stranding the operation.
 
-- confirmed by authority;
-- reconciled with a different authoritative result;
-- rejected by authority;
-- superseded by a newer authoritative projection;
-- timed out into a defined recovery path;
-- retired because the plan/execution became incompatible.
+A recovery path is not proof it eventually succeeds. Liveness claims identify
+continued authority, backend/network availability, retention, scheduling, and
+user-action premises. Unknown and retired states must remain safe even when
+those progress premises fail.
 
-The exact set is operation-specific, but "remain provisional forever with no
-recovery path" is not a valid terminal design. Providing a recovery path is not
-itself proof that the path eventually executes. The relevant environment and
-application-action assumptions remain part of any progress claim.
+Cancelling a local wait or dismissing an overlay does not cancel an authoritative
+command. A genuine cancellation operation has model-defined effects and can
+itself be too late, rejected, or uncertain. Wording preserves this distinction
+where it affects the user's decisions.
 
-Retiring local provisional ownership is not the same as determining the
-authoritative command disposition.  A timeout, incompatible-plan retirement, or
-other local recovery boundary may end an execution while the participant still
-has an unresolved command outcome.
+*** Concurrent provisional work and application-defined resolution
 
-Conceptually:
+Different clients can hold incompatible provisional projections without creating
+multiple authoritative histories. The model resolves commands under its policy.
+Within one browser, overlapping provisional effects also require a policy;
+untracked DOM replacement must not choose it accidentally.
 
-#+begin_example
-local execution E42 retires
-    -> provisional ownership ends
-    -> recovery/reacquisition may begin
-    != command C42 proved rejected
-#+end_example
+An operation family declares one of these or another equally precise strategy:
 
-A declared recovery state may therefore be terminal for one local execution
-without being a semantic statement that authority rejected the command.
+- serialize conflicting commands or disable conflicting activation;
+- permit independent overlays on disjoint declared scopes;
+- supersede local presentation ownership while retaining older command
+  resolution responsibility;
+- compose or rebase overlays under an admitted dependency/conflict rule.
 
-Conditional liveness claims may depend on environment assumptions such as
-eventual connectivity or authoritative service availability.  Those assumptions
-must remain visible.
+Gesso does not assume all optimistic effects commute. If C2 depends on C1's
+provisional output, that dependency and its resolution are explicit. Rejection
+or changed authoritative results for C1 can invalidate C2's projection. C1's
+provisional output cannot silently become an authoritative premise for C2.
 
-*** Settlement and authoritative observation are complementary
+Rebasing an overlay does not authorize changing an already-issued command's
+immutable arguments. Changed intent follows a declared new-command or
+cancellation/replacement protocol, retaining uncertainty about any old command.
 
-A direct command settlement may tell the initiating browser how authority
-resolved its command.
+Application-defined strategies remain ordinary Clojure/ClojureScript behind
+typed registered contracts. Inputs identify admitted observations, scopes,
+owned overlays, command knowledge, and declared local inputs. Outputs specify
+retention, removal, recomputation, or acquisition. They do not write domain state
+or create evidence by returning a success tag.
 
-A later authoritative reread may independently supersede the provisional state.
+Analyzable strategies can support derived properties. Opaque strategies retain
+asserted behavioral premises while structure and runtime bindings are checked.
+No strategy may suppress required recovery debt or relabel an unknown command
+as rejected merely to simplify the display.
 
-Such a reread establishes only what its authorized acquisition contract actually
-justifies.  It may establish current authoritative state strongly enough to
-replace the provisional presentation while leaving the disposition or causal
-attribution of the original command unresolved.
+*** Multi-target presentation and membership
 
-Recovery of authoritative presentation must therefore not depend exclusively on
-receiving the original settlement. If the application also requires
-command-specific attribution, it needs a declared path to that evidence under
-its separate availability and retention assumptions.
+One operation can affect a card, count, board membership, and notification
+surface. Its presentation contract declares scopes and required local atomicity.
+A collection of DOM swaps is not automatically one atomic installation.
 
-For example:
+Where partial installation is possible, the runtime records completed effects
+and follows the repair path. It cannot advance a global adopted frontier for
+all targets because one card installed. Retiring one card's provisional owner
+need not remove unrelated overlays or advisory debt.
 
-#+begin_example
-client sends C42
-    |
-server commits authoritative result
-    |
-settlement response is lost
-    |
-permitted acquisition trigger or later reload causes authorized reread
-    |
-authoritative projection supersedes provisional C42
-#+end_example
+HumanHelp can permit immediate correlated self-action updates while other
+participants receive advisories. A card alone does not prove a complete new
+board selection. Search, sorting, terminal-item visibility, and local filters
+preserve that scope distinction.
 
-This is essential for unreliable networks and sleeping browsers.
+*** No silent downgrade
 
-If the application requires evidence that C42 itself committed, that conclusion
-must come from a command-specific settlement, durable command/result relation,
-idempotency contract, or another model-declared source of attribution.  Merely
-observing the expected current state is insufficient where another cause could
-produce the same state.
+Missing required optimism, command identity, scoped entry knowledge, or
+resolution support prevents an enabled incomplete realization. The framework
+cannot silently emit an ordinary =hx-post= and hope for equivalent behavior.
 
-*** Authoritative supersession prevents obsolete restoration
+An explicitly declared non-optimistic alternative may be selected when its own
+realization is complete. That is a semantic choice, not a fallback for missing
+plans or adapters. An unavailable affordance preserves operation identity and
+reason without an active weaker transport path; it does not count as a working
+capability in an eligible acceptance scenario.
 
-Once a logical target has installed an admitted authoritative observation that
-supersedes provisional ownership for the relevant scope, cleanup from that
-obsolete provisional execution must never restore a representation that violates
-the new observation or its ownership merely because a failure callback arrives
-late.
-
-"Newer" is defined by the applicable scoped observation and installation
-contract, not wall-clock arrival or a maximum opaque database token. A narrow
-observation cannot erase unrelated provisional or advisory state without the
-required coverage and ownership justification. This is a prohibition on obsolete
-restoration, not a claim that all observations form one total order or that
-domain state can only grow. Any stronger monotonicity claim must identify the
-ordering and scope over which it holds.
-
-The browser realization and proof obligations belong to Part VI and the
-[[#req-runtime-scoped-authoritative-installation][scoped installation contract]].
-The semantic rule is:
-
-#+begin_quote
-Authoritative installation outranks obsolete provisional ownership.
-#+end_quote
-
-Rollback is therefore conditional.
-
-An old optimistic snapshot may be restored only while doing so remains valid
-relative to current ownership and authority. It is not a universal "request
-failed, restore old DOM" rule. Restoring an earlier justified presentation does
-not assert that the command failed or that authority remains unchanged. Pending
-recovery, staleness, and unknown command outcome must retain their semantic
-classification even if the local presentation resembles its earlier appearance.
-
-*** Multiple provisional views do not fork authority
-
-Two browsers may optimistically predict incompatible outcomes from the same
-authoritative basis.
-
-For example:
-
-#+begin_example
-authoritative:
-    Request R unclaimed
-
-Alice:
-    provisional claimed-by-Alice
-
-Bob:
-    provisional claimed-by-Bob
-#+end_example
-
-This creates two provisional knowledge states, not two authoritative histories.
-
-The model's authoritative operation determines the semantic outcomes.
-
-This distinction is one reason optimism belongs in Choreo/runtime semantics
-rather than being implemented as untracked DOM mutation.
-
-*** Optimistic resource ownership is explicit
-
-An optimistic execution may own resources such as:
-
-- target ownership/lock;
-- settlement timer;
-- request correlation;
-- provisional DOM projection;
-- pending label/state;
-- cleanup action;
-- continuity transaction associated with replacement.
-
-Those resources belong to the execution and must terminate or be semantically
-retired on every terminal path.
-
-The detailed ownership transition system is specified in Part VI and follows
-[[#req-owner-relative-event-admission][owner-relative admission]]. A later outcome
-may update an admitted command-resolution owner without reviving a retired
-optimistic execution.
-
-*** No silent downgrade of a semantically optimistic operation
-
-If an affordance declares an operation whose semantics require:
-
-- a projected optimistic trajectory;
-- command identity;
-- authoritative basis;
-- settlement/progression behavior;
-
-then the runtime or rendering layer must not silently emit a weaker ordinary
-HTMX request when any of those required semantic pieces are absent.
-
-Forbidden:
-
-#+begin_example
-missing authoritative basis
-    -> emit naked hx-post anyway
-
-missing optimistic command realization
-    -> perform ordinary request anyway
-
-missing projected plan
-    -> guess transport and hope
-#+end_example
-
-An enabled realization must be rejected at the earliest boundary that knows it
-is incomplete. A view may instead represent explicitly unavailable operation
-identity under the declared rendering contract. That unavailable state is not a
-successful executable realization and does not satisfy a milestone requiring
-the capability to work in an eligible scenario.
-
-A separately declared non-optimistic realization may be selected only when the
-authored operation contract permits it and its own realization is complete.
-Missing optimism metadata is not itself permission to make that selection.
-
-This fail-closed rule does not make raw HTMX illegal.  Ordinary non-Choreo
-interactions may use ordinary HTMX.  What is forbidden is losing semantic
-identity or required semantics without an explicit change in the authored
-operation.
-
-*** Optimistic rendering is not domain policy
-
-The model remains responsible for:
-
-- whether the command is legal;
-- how conflicts resolve;
-- what authoritative state results;
-- whether already-incorporated commands succeed;
-- what reconciliation means.
-
-Choreo/runtime decides:
-
-- whether provisional rendering is permitted;
-- what provisional projection is associated with the command;
-- how provisional ownership is tracked;
-- how settlement/supersession terminates it.
-
-Views decide how the provisional state looks.
-
-These responsibilities must not collapse into one browser helper.
+Views remain free to use labels, badges, spinners, CSS, layout, and accessible
+treatment. They render state rather than choose business outcomes or redefine
+progression.
 
 ** Continuity
 :PROPERTIES:
 :CUSTOM_ID: req-continuity-boundary
 :END:
 
-Continuity is deliberately *not* part of choreographic truth.
+Continuity preserves browser-local interaction state across representation
+replacement: focus, selection, scroll, open details, and explicitly selected
+local drafts. It does not establish domain facts, authoritative provenance,
+command validity, or agreement.
 
-Continuity preserves local browser interaction state across representation
-replacement.
+Ordinary continuity belongs behind the browser-effect boundary. Portable
+choreography observes the effect outcome defined by that boundary, not separate
+focus-restored or layout-finished events. An application can deliberately give a
+browser interaction semantic meaning through an explicit contract; such meaning
+is not inferred merely because continuity captured the interaction.
 
-Examples include:
+*** Ownership and physical captures
 
-- focus;
-- input selection;
-- scroll position;
-- open/closed UI details;
-- other local DOM interaction state.
+A continuity capture belongs to an admitted replacement/effect scope and a
+concrete target instance. It need not invent a command execution for an ordinary
+fragment refresh. Its identity distinguishes the logical slot, capture instance,
+owner, and relevant target incarnation. Part II's
+[[#req-resource-instance-identity][resource-instance contract]] applies.
 
-Continuity belongs primarily in ClojureScript/browser code.
+The imperative shell can retain opaque DOM references and capture resources.
+Portable semantic state retains the owner/resource references and lifecycle
+needed to control their use. A DOM node still existing does not prove its owner
+is current. A delayed restore must not consume or overwrite a newer capture.
 
-Conceptually:
+The default capture registry binds a capture to the restore implementation and
+capture format which produced it. Re-registering a box implementation must not
+reinterpret an older capture under incompatible code. An explicit versioned
+migration may be supported; otherwise incompatible captures are retired. This
+binding does not permit an old implementation to execute after its rights have
+been revoked by the current runtime policy.
 
-#+begin_example
-choreographic semantic effect
-        |
-        | install authoritative projection
-        v
-browser effect adapter
-        |
-        +-- capture continuity
-        +-- install/replace DOM
-        +-- restore continuity
-        +-- release continuity resources
-        |
-        v
-effect complete
-#+end_example
+Capture/restore hooks are ordinary host code. The framework can validate their
+interfaces, registered identity, declared footprint, and resource use; claims
+about arbitrary hook behavior remain explicit assertions unless established by
+another mechanism. A custom hook must not acquire semantic installation rights
+by calling an internal DOM helper.
 
-Portable choreography should not need semantic events such as
-=:continuity/restored=.
+*** Continuity does not preserve arbitrary DOM state
 
-From Choreo's perspective, the browser effect either completes or fails.
+A continuity policy selects what may be captured and restored. It must not copy
+an old fragment wholesale or restore authoritative security/context fields such
+as credentials, anti-forgery tokens, operation bindings, principal identifiers,
+or hidden command arguments as if they were harmless input drafts.
 
-Continuity may still be a managed browser resource owned by an execution,
-fragment replacement, or another declared browser effect scope. The runtime must
-manage that ownership correctly. Ordinary continuity does not establish domain
-facts, knowledge, authority, or agreement, and need not invent a command
-execution for an otherwise legitimate fragment replacement.
+Restoration respects the newly admitted rendering. It may reopen a Request
+already present and permitted in the new board, but cannot recreate a removed
+or undisclosable Request. Duplicate or ambiguous element keys require a declared
+failure policy; selecting the first matching node can restore into the wrong
+control.
 
-A continuity bug may harm local browser experience. It must not be able to
-change the semantic meaning of a Request operation.
+Local draft preservation also needs a product policy. A draft can be retained as
+local user input without claiming it matches authoritative data. If replacing a
+form would lose important unsaved work, the application can declare a prompt or
+block-before-install policy. That is an explicit interaction requirement,
+separate from ordinary best-effort focus or scroll restoration. It cannot turn
+an already committed model operation into a rejection.
 
-Continuity identity must distinguish the current slot/resource instance rather
-than relying only on logical target id. It follows the
-[[#req-resource-instance-identity][resource instance identity contract]]; a scoped
-resource-instance counter is one possible representation. A delayed restore from an older
-replacement must not consume or mutate continuity state of a newer replacement.
+*** Search text and query meaning must remain aligned
 
+A search control's draft text is local input. The applied query and the membership
+of its result set have semantic meaning. Restoring one does not establish the
+other.
 
-Consider a HumanHelp board where Bob has:
+If a board observation was acquired for search =cabinet=, restoring the control
+to =cabinet hinge= must not silently label those results as satisfying the latter
+query. The application must retain the distinction between draft and applied
+query, acquire the newly requested scope, or follow another declared transition.
+The same rule applies to server-side sorting, filters, and pagination.
 
-- typed =cabinet= into the live search field;
-- expanded Request R17;
-- placed keyboard focus on the Refresh button;
-- scrolled the board midway down.
+Filtering a locally adopted set may be a legitimate view operation. It does not
+prove complete membership for a new authoritative query. The query contract
+states whether a control is local presentation, an unapplied draft, or the
+selector of authoritative acquisition.
 
-An authoritative board reacquisition replaces the board fragment. The semantic
-result and local interaction continuity can be represented separately:
+*** Worked example: replacing a HumanHelp board
+
+Bob has applied search =cabinet=, opened Request R17, focused Refresh, and
+scrolled partway down the board. A refresh acquires a complete authorized board
+observation for that same applied query at X31.
+
+An inspection view of a continuity capture is:
 
 #+begin_src clojure
-(def authoritative-board
-  ;; Illustration of the value inside an admitted board observation.
-  {:projection/type :request/board
-   :authority :authoritative
-   :basis :X31
-   :requests [{:request/id R12}
-              {:request/id R17}
-              {:request/id R22}
-              {:request/id R30}]})
-
-(def admitted-board
-  ;; Fixture notation: issued only by authorized, trusted acquisition.
-  (acquisition/admitted
-    authoritative-board
-    {:scope {:projection :request/board}
-     :authorized-principal [:user Bob]
-     :covered-through :X31}))
-
-(def continuity-capture
-  {:slot :request-board
-
-   :capture-instance/id
-   #uuid "a1000000-0000-0000-0000-000000000001"
-
-   :owner
-   {:replacement/id
-    #uuid "a2000000-0000-0000-0000-000000000001"}
-
-   :local
-   {:focus
-    {:kind :element-key
-     :key :board/refresh}
-
-    :scroll
-    {:top 842}
-
-    :inputs
-    {:board/search "cabinet"
-     :board/options
-     {:sort :newest
-      :visibility :available}}
-
-    :details
-    {:open-request-ids #{R17}}}})
+{:slot :request-board
+ :capture-instance/id I1
+ :owner {:replacement/id O1}
+ :target-instance/id B1
+ :capture-format :board-continuity/v1
+ :local
+ {:focus-key :board/refresh
+  :scroll-anchor {:request-id R17 :offset 12}
+  :open-request-ids #{R17}
+  :search-draft "cabinet"}
+ :context
+ {:applied-query-ref board-query-ref
+  :captured-edit-instance edit-instance-1}}
 #+end_src
 
-None of =:board/search=, scroll offset 842, or "R17 details open" becomes a domain
-fact merely because the DOM from which it was captured was authoritative.
+The actual resource can be opaque and include implementation-specific physical
+handles. The context prevents a draft restore from misrepresenting the applied
+query or overwriting newer edits. Neither =board-query-ref= nor X31 is admitted
+merely by appearing in this inspection map.
 
-The replacement adapter can treat continuity as a local effect transaction:
+A replacement follows these phases:
 
-#+begin_src clojure
-(defn replace-board!
-  [browser
-   {:keys [observation replacement-id]}]
+| Phase | Required behavior |
+|-------+-------------------|
+| Prepare | Check the observation and proposed target; establish the replacement owner and its effect identity. |
+| Capture | Capture permitted local state under that owner; optional box failures remain local diagnostics. |
+| Install | Recheck current owner, target instance, scope, and progression at the mutation boundary; perform the permitted update. |
+| Admit completion | Record actual installation success, failure, or partial/indeterminate realization under the effect contract. |
+| Restore | Restore only still-applicable local state, checking ownership at every deferred mutation boundary. |
+| Release | Retire the capture and release physical resources without disturbing newer ownership. |
 
-  (acquisition/require-admitted-for-current-target!
-    browser :request-board observation)
-  (let [capture
-        (continuity/capture
-          browser
-          {:slot :request-board
-           :owner
-           {:replacement/id replacement-id}})
-
-        install
-        (dom/install-authoritative-if-current!
-          browser
-          {:target :request-board
-           :observation observation})]
-
-    (if (= :installed (:status install))
-      {:semantic
-       {:status :authoritative-installed
-        :observation observation}
-
-       :continuity
-       (continuity/restore-if-current!
-         browser
-         {:capture capture
-          :slot :request-board
-          :installed-observation observation})}
-
-      (do
-        (continuity/retire-capture-if-current! browser capture)
-        {:semantic
-         {:status :installation-failed
-          :observation observation}
-         :continuity
-         {:status :not-attempted}}))))
-#+end_src
-
-Suppose restore succeeds:
+If installation succeeds but Refresh is absent, focus restoration may fail
+while the new board remains adopted. The result distinguishes installation from
+optional continuity:
 
 #+begin_src clojure
-{:semantic
- {:status :authoritative-installed
-  :observation admitted-board}
-
- :continuity
- {:status :restored
-  :restored
-  #{:focus :scroll :inputs :details}}}
-#+end_src
-
-The new DOM can show authoritative Request membership from X31 while preserving
-Bob's search text and open details locally.
-The install operation itself compares current ownership and scoped progression
-at its mutation boundary. The earlier admission check cannot substitute for
-that check if another replacement can intervene.
-
-Now suppose focus restoration fails because the Refresh button is absent from
-the newly authorized rendering:
-
-#+begin_src clojure
-{:semantic
- {:status :authoritative-installed
-  :observation admitted-board}
-
+{:installation
+ {:status :completed
+  :effect-id install-effect-1
+  :observation-ref board-observation-X31}
  :continuity
  {:status :partial
-  :restored #{:scroll :inputs :details}
-  :failed
-  {:focus
-   {:reason :element-no-longer-present
-    :key :board/refresh}}}}
+  :restored #{:scroll :details}
+  :skipped {:focus :target-no-longer-present}}}
 #+end_src
 
-That is not an authoritative transition failure. The application must not
-respond by reinstalling the old board merely to get the old Refresh button back.
+This inspection result is not a browser-issued credential. The admitted shell
+completion supplies the evidence the semantic owner needs. It must not be
+converted into a generic failed swap which triggers stale rollback.
 
-The race case is more interesting. Replacement O1 captures continuity instance
-I1. Before I1 restores, a second authoritative replacement O2 captures I2:
+Now replacement O2 captures I2 while I1 still awaits layout. O2 owns the current
+board instance, and Bob has typed =cabinet hinge=. I1's delayed callback must
+not restore =cabinet=, consume I2, move focus back, or reset O2's scroll state.
+Checking ownership only when scheduling the callback is insufficient; it is
+checked again immediately before the delayed mutation.
 
-#+begin_src clojure
-(def I1
-  {:slot :request-board
-   :capture-instance/id
-   #uuid "a1000000-0000-0000-0000-000000000011"
-   :owner
-   {:replacement/id
-    #uuid "a2000000-0000-0000-0000-000000000011"}
-   :local {:board/search "cabinet"}})
+Even without O2, a user edit after I1's capture may make restoration stale.
+The policy compares the relevant local edit instance or equivalent ownership
+information before overwriting input or focus. The rule is not that a numerically
+larger capture always wins; it is that only the current permitted owner can
+perform the particular mutation.
 
-(def I2
-  {:slot :request-board
-   :capture-instance/id
-   #uuid "a1000000-0000-0000-0000-000000000012"
-   :owner
-   {:replacement/id
-    #uuid "a2000000-0000-0000-0000-000000000012"}
-   :local {:board/search "cabinet hinge"}})
+Open details are intersected with the newly authorized rendering. A local
+capture can request R17 be open if R17 remains present; it cannot recreate R17
+if the new scope excludes it. A scroll anchor that disappeared uses the declared
+fallback, such as the nearest surviving anchor or a bounded raw offset.
 
-(def continuity-runtime
-  {:current
-   {:slot :request-board
-    :capture-instance/id
-    (:capture-instance/id I2)
-    :owner (:owner I2)}})
-#+end_src
+*** Failure and cleanup
 
-A delayed callback for I1 must be rejected:
+Optional capture failure must not prevent an otherwise permitted installation.
+Optional restoration failure must not erase an installation already completed.
+Promises and deferred callbacks need the same failure isolation as synchronous
+hooks; catching only synchronous exceptions does not contain asynchronous
+failure.
 
-#+begin_src clojure
-(defn current-continuity-capture?
-  [runtime capture]
-  (and
-    (some? (get-in runtime [:current :capture-instance/id]))
-    (some? (:capture-instance/id capture))
-    (some? (get-in runtime [:current :owner]))
-    (some? (:owner capture))
-    (= (get-in runtime [:current :slot])
-       (:slot capture))
-    (=
-      (get-in runtime
-        [:current :capture-instance/id])
-      (:capture-instance/id capture))
+If installation itself partially applies, the result must preserve that
+uncertainty and follow the repair contract. Neither the semantic state nor the
+UI may pretend the entire fragment is installed. Continuity success cannot
+compensate for missing installation evidence.
 
-    (=
-      (get-in runtime
-        [:current :owner])
-      (:owner capture))))
+Semantic retirement revokes restoration rights before best-effort physical
+cleanup. Failed cleanup is diagnostic/resource debt, not authority for an old
+callback to act again. Resource release should be idempotent and scoped to the
+resource instance it owns.
 
-(current-continuity-capture?
-  continuity-runtime
-  I1)
-;; => false
+A style lock illustrates the requirement. Seeing the same min-height value that
+an old effect once wrote does not necessarily prove it still owns that value;
+a newer effect might have written the same value. Cleanup must use the resource
+ownership contract or a justified equivalent, rather than rely solely on
+same-shaped physical state. It must not undo a newer lock.
 
-(current-continuity-capture?
-  continuity-runtime
-  I2)
-;; => true
-#+end_src
-
-The important state is not "which capture number is numerically larger?" It is
-which concrete capture is currently owned by the replacement scope that may
-restore this continuity slot. The adapter checks its own current slot registry
-immediately before restoration rather than trusting a callback's owner claim.
-It retires the capture after restoration or failed installation.
-
-A continuity implementation may also filter captured values against the new
-authoritative rendering:
-
-#+begin_src clojure
-(defn admissible-details
-  [observation captured-details]
-  (let [authorized-ids
-        (set
-          (map :request/id
-               (:requests (acquisition/value observation))))]
-
-    {:open-request-ids
-     (set/intersection
-       authorized-ids
-       (:open-request-ids captured-details))}))
-#+end_src
-
-If Request R17 is no longer part of Bob's authorized board projection, continuity
-must not recreate its DOM or disclosure merely because R17 was previously open.
-Local UI preservation is subordinate to the semantics of the new projection.
-
-This example shows why continuity deserves careful ownership despite not being
-choreographic truth. It can race, leak stale local state, or damage user
-experience, but it never becomes an authority channel.
-
-*** Continuity is local preservation, not provenance
-
-Focus, selection, scroll position, accordion openness, and similar values may be
-important to user experience.
-
-They are not authoritative facts about the application domain.
-
-A continuity value therefore cannot justify:
-
-- model authorization;
-- choreography branch knowledge;
-- authoritative provenance;
-- command validity;
-- agreement.
-
-This remains true even when continuity data was captured from DOM produced by an
-authoritative projection.
-
-*** Continuity resources have declared owner and instance identity
-
-Although continuity is not choreographic truth, its implementation can still
-race with semantic replacement.
-
-A continuity capture/restore transaction must therefore carry sufficient
-identity to ensure that an old restore cannot mutate the local state of a newer
-replacement.
-
-Conceptually:
-
-#+begin_example
-logical target T, logical continuity slot S
-    capture instance I1 owned by replacement scope O1
-    capture instance I2 owned by replacement scope O2
-
-late restore callback for I1
-    must not consume/overwrite I2's captured state
-#+end_example
-
-The browser adapter's owner-relative isolation rules in Part VI govern this
-safety. A continuity owner may refer to an execution when one exists, but the
-admission test must use the declared owner rather than require an unrelated
-execution. Slot S names the logical capture location; I1 and I2 distinguish its
-concrete captures. O1 and O2 identify the declared replacement/effect owners.
-Their representation need not use ordered counters or separate redundant tokens
-when the ownership contract can preserve these distinctions with fewer values.
-
-*** Failure of continuity must not corrupt semantic settlement
-
-If authoritative DOM installation succeeds but continuity restoration fails,
-the application has a local interaction-quality failure.
-
-It must not reinterpret that event as:
-
-#+begin_example
-authoritative transition failed
-#+end_example
-
-nor may it restore a stale provisional/authoritative representation merely to
-recover focus.
-
-Semantic truth outranks continuity convenience.
-
-The effect result must distinguish authoritative installation status from
-optional continuity follow-up status. A generic failed effect must not conceal
-that authoritative installation already succeeded and thereby trigger stale
-rollback. If physical installation itself fails after semantic admission, the
-adapter records the admitted observation and incomplete realization according
-to its explicit recovery contract; it does not pretend the DOM necessarily
-matches the semantic state.
-
-*** Continuity cleanup is best effort after semantic retirement
-
-Once a continuity resource instance or its declared execution, fragment-
-replacement, or effect-scope owner has been retired, late physical cleanup may
-still occur. Retirement revokes the corresponding instance's restoration rights;
-it need not imply that every resource of the same execution was replaced.
-
-Cleanup failure becomes diagnostic/runtime debt.
-
-It must not preserve semantic authority for the retired resource.
-
-This mirrors the general resource rule developed in Part VI:
-
-#+begin_quote
-Physical resource lifetime may outlast semantic ownership; stale physical
-callbacks remain powerless after semantic retirement.
-#+end_quote
-
-*** Portable Choreo observes only effect completion/failure
-
-The portable choreography should not branch on browser-internal details such as:
-
-#+begin_example
-focus restored
-selection restored
-scroll restored
-MutationObserver completed
-#+end_example
-
-unless an application deliberately promotes some browser event into semantic
-meaning through a separately designed contract.
-
-Ordinary continuity remains behind the browser-effect boundary.
-
-From Choreo's point of view, the declared browser realization reports the
-outcome defined by its effect contract. Continuity failure must not be mapped
-to authoritative rejection or erase a completed installation. Browser-local
-diagnostics may describe the failed focus or selection restoration without
-making those details choreography branch discriminators.
+Physical resource lifetime may outlast semantic ownership. In that case the
+remaining handle is powerless cleanup debt. Portable Choreo needs only the
+contracted installation/effect outcome; browser diagnostics may report the
+failed optional focus, scroll, or capture operation separately.
 
 ** Views and UI annotation
 :PROPERTIES:
 :CUSTOM_ID: req-view-operation-binding
 :END:
 
-Views should be able to use choreographic operations/types exported by models to
-annotate UI affordances.
+Views declare semantic intent and render prepared presentation. They do not
+redefine choreography, duplicate domain authorization policy, or independently
+assemble transport/protocol parameters for a managed operation.
 
-Views should not redefine the choreography.
+The ordinary path is:
 
-A model may export:
+1. a public semantic operation and choreography declare the behavior;
+2. application assembly resolves its plan, transport, acquisition, settlement,
+   server capabilities, and artifact requirements;
+3. preparation binds per-render arguments and admitted observation context;
+4. the view supplies element choice, labels, classes, layout, and accessibility;
+5. the renderer derives a complete managed realization from the admitted binding.
 
-#+begin_example
-request.choreo/claim
-#+end_example
+A view may use a prepared binding directly or a concise declaration normalized
+through the same preparation boundary. Multiple convenient authoring forms must
+not create multiple independent meanings of Claim.
 
-A preparation layer may bind that operation to a concrete principal, request,
-and authoritative basis, producing something capability-like:
+*** Binding values versus operation-owned policy
 
-#+begin_src clojure
-(choreo/bind request.choreo/claim
-  {:role :helper
+The registered operation owns its choreography, supported realization modes,
+settlement mapping, provisional derivation, recovery policy, required resources,
+and compatibility constraints. Per-render binding supplies only admitted
+variable inputs: subject/arguments, observation references, and target context
+where the operation permits them.
 
-   ;; This value comes from trusted preparation context.  A browser-supplied
-   ;; user id may be carried as data, but it cannot establish this principal.
-   :principal
-   (trusted-context/authenticated-principal request-context)
+Those binding fields have a closed schema. A view cannot override an operation's
+plan, timeout semantics, principal authority, rollback policy, or result mapping
+by inserting an extra key. Presentation options occupy a distinct checked area;
+unknown semantic keys fail with a precise error.
 
-   :args {:request-id request-id}
-   :observed-basis observed-basis})
-#+end_src
-
-A view may then attach that bound operation to Hiccup:
-
-#+begin_src clojure
-(live/button
-  {::choreo/op claim
-   :class "gesso-action gesso-action--primary"
-   :pending-label "Claiming..."}
-  "Claim")
-#+end_src
-
-or, for an unbound operation:
+For example:
 
 #+begin_src clojure
-[:button
- {::choreo/op request.choreo/claim
-  ::choreo/role :helper
-  :gesso/args {:request-id request-id}
-  :class "gesso-action gesso-action--primary"}
- "Claim"]
+(defn prepare-request-card [trusted-context admitted-card]
+  (let [card (observation/value admitted-card)
+        claim (actions/prepare
+               trusted-context
+               {:operation request-choreo/claim
+                :arguments {:request-id (:request/id card)}
+                :observations {:request-card admitted-card}})]
+    {:request {:id (:request/id card)
+               :title (:request/title card)
+               :status (:request/status card)}
+     :actions {:claim claim}}))
 #+end_src
 
-The exact UI API remains tentative. These are alternative illustrative
-authoring forms, not a requirement to maintain several independent binding APIs.
-The supported ordinary API should normalize them, if more than one is offered,
-to the same admitted binding contract.
+This illustrative preparation path verifies that the observation, argument,
+operation, principal context, and target scope agree. It obtains availability
+through public model/application interfaces. The renderer does not rerun a
+second Claim policy in Hiccup.
 
-In the bound example, =:principal= records trusted preparation context or a
-claimed client context according to the boundary where binding occurs. A value
-supplied by the browser cannot establish authenticated principal identity.
-The server derives that identity independently and checks the declared binding.
+The prepared affordance need not serialize principal credentials, server
+capabilities, or proof objects. When the browser returns binding data, the server
+re-establishes trusted principal identity and the required semantic bindings.
+Canonical command arguments use the same declared mapping as Part IV; a domain
+Request ID must not be confused with =:http-request-id= or another transport ID.
 
-The source-level meaning is:
+*** Availability, input collection, and construction defects
 
-#+begin_quote
-This affordance invokes Request.claim as the Helper role.
-#+end_quote
+Prepared actions distinguish legitimate product states from broken realization:
 
-HTTP routes, HTMX attributes, command IDs, basis propagation, correlation
-metadata, and other transport details are realization details Gesso may derive.
+| Preparation result | Meaning and permitted rendering |
+|--------------------+---------------------------------|
+| Available | A complete admitted entry affordance can be enabled. |
+| Policy unavailable | Current prepared semantics do not offer the operation; hide or disable under the declared disclosure/presentation policy. |
+| Needs input | A declared interaction must collect further user input before final invocation; the offered input-collection entry path itself is complete. |
+| Deferred or dynamically unavailable | A declared prerequisite cannot yet be established; show the contracted pending/unavailable state and recovery path. |
+| Construction failure | Required operation, plan, binding, capability, route, or semantic input is missing or inconsistent; reject the incomplete enabled realization. |
 
-The view owns presentation concerns such as:
+These classifications have closed payload contracts. Missing or =nil= entries
+cannot silently stand for every kind of unavailability. A product may use a
+compact representation internally, but the preparation boundary must establish
+which meaning it has.
 
-- element choice;
-- text;
-- semantic CSS classes;
-- pending labels;
-- ARIA;
-- layout;
-- visual rendering of provisional/canonical states.
+A missing Reassign helper ID is not inherently a defect if the action is meant
+to open an admitted helper-selection form. That entry action is fully specified,
+and final Reassign remains unavailable until its required arguments are bound.
+If the application tries to emit the final mutation without a required helper
+ID, that is a construction failure. The declaration determines which case
+applies; the renderer must not guess.
 
-The view should not own:
-
-- whether the domain operation is legal;
-- Request transition semantics;
-- membership/organization policy;
-- stale-basis interpretation;
-- authoritative persistence;
-- choreography branch semantics;
-- DOM continuity machinery.
-
-Ideally, view preparation supplies only available typed operation capabilities.
-
-Instead of:
-
-#+begin_src clojure
-(when (request/can-claim? request user)
-  ...)
-#+end_src
-
-a view may receive:
-
-#+begin_src clojure
-{:actions
- {:claim bound-claim-operation
-  :take-over nil}}
-#+end_src
-
-and render only the capabilities it was given.
-
-This avoids reimplementing domain authorization/business policy in views.
-An absent action in such a prepared map may represent legitimate policy-based
-unavailability. It must not conceal a missing operation declaration, plan, or
-required binding. The preparation and assembly boundaries must distinguish
-those cases; independent capability acceptance detects intended actions omitted
-from the product.
-
-A rendered capability is not durable authorization.
-
-The authoritative server/model operation must re-establish authenticated
-principal identity and current authorization when the command is executed.
-
-
-A prepared Request-card view can keep business-policy decisions out of Hiccup
-while still giving presentation code meaningful choices.
-
-Suppose a preparation layer receives current authoritative model values and asks
-the semantic application layer which actions are available:
-
-#+begin_src clojure
-(defn prepare-request-card
-  [{:keys [principal] :as ctx}
-   request]
-
-  (let [claim
-        (request.choreo/prepare
-          ctx
-          :request/claim
-          {:request request
-           :principal principal})
-
-        cancel
-        (request.choreo/prepare
-          ctx
-          :request/cancel
-          {:request request
-           :principal principal})
-
-        reassign
-        (request.choreo/prepare
-          ctx
-          :request/reassign
-          {:request request
-           :principal principal})]
-
-    {:request
-     {:id (:request/id request)
-      :title (:request/title request)
-      :status (:request/status request)}
-
-     :actions
-     {:claim claim
-      :cancel cancel
-      :reassign reassign}}))
-#+end_src
-
-The prepared values can distinguish policy-based absence from a construction
-defect:
+An inspection action set could look like:
 
 #+begin_src clojure
 {:claim
  {:availability :available
-  :binding
-  {:operation :request/claim
-   :role :helper
-   :args {:request/id R}
-   :observation
-   {:scope {:projection :request/card
-            :request/id R}
-    :basis :X41}}}
-
+  :binding-ref claim-binding-ref}
  :cancel
  {:availability :unavailable
-  :reason :request/not-owned-by-principal}
-
+  :reason :policy/not-offered}
  :reassign
- {:availability :unavailable
-  :reason :application/missing-required-target
-  :diagnostic
-  {:missing #{:helper/id}
-   :operation :request/reassign}}}
+ {:availability :needs-input
+  :entry-binding-ref helper-selection-binding-ref
+  :required-inputs #{:helper-id}}}
 #+end_src
 
-The first is an executable affordance. The second is legitimate product
-unavailability. The third indicates that application preparation tried to expose
-an operation but failed to supply required semantic input.
+The references resolve to admitted objects. A plain map with these fields is not
+sufficient. Reasons must obey disclosure policy; a disabled button must not leak
+a private Membership or Organization fact.
 
-A view can render those cases without knowing the underlying business rule:
+Preparation validates the complete required action set, including actions that
+will not be rendered. A hidden action cannot conceal a malformed required
+binding. Separately, application acceptance compares the intended capability
+catalog against representative eligible scenarios. Tests derived only from the
+buttons that happened to render cannot detect a missing product action.
+
+*** A small view API
+
+Once preparation succeeds, view code can remain ordinary Hiccup:
 
 #+begin_src clojure
-(defn request-card-view
-  [{:keys [request actions]}]
-
-  [:article.request-card
-   [:h3 (:title request)]
-   [:p.status
-    (name (:status request))]
-
-   (case (action/require-prepared-availability!
-           :request/claim (:claim actions))
-     :available
-     (gesso/action
-       {:binding
-        (get-in actions [:claim :binding])
-        :pending-label "Claiming..."
-        :class "gesso-action gesso-action--primary"}
-       "Claim")
-
-     :unavailable
-     nil)
-
-   (case (action/require-prepared-availability!
-           :request/cancel (:cancel actions))
-     :available
-     (gesso/action
-       {:binding
-        (get-in actions [:cancel :binding])}
-       "Cancel")
-
-     :unavailable
-     nil)
-
-   (case (action/require-prepared-availability!
-           :request/reassign (:reassign actions))
-     :available
-     (gesso/action
-       {:binding
-        (get-in actions [:reassign :binding])}
-       "Reassign")
-
-     :unavailable
-     nil)])
+(defn request-card-view [{:keys [request actions]}]
+  (let [claim (actions/require-prepared! :request/claim (:claim actions))]
+    [:article.request-card
+     [:h3 (:title request)]
+     [:p.status (name (:status request))]
+     (case (actions/availability claim)
+       :available
+       (gesso/action
+        {:binding (actions/binding claim)
+         :presentation {:pending-label "Claiming..."
+                        :class "gesso-action gesso-action--primary"}}
+        "Claim")
+       :unavailable
+       nil
+       :deferred
+       [:span.action-status "Claim is temporarily unavailable."])]))
 #+end_src
 
-Here =action/require-prepared-availability!= accepts only a validated
-=:available= binding or a declared policy-based =:unavailable= reason. It
-throws for missing/unknown availability, missing required input (including
-Reassign's =:helper/id= above), or a plan/binding construction defect for
-*every* action. A broken intended action cannot silently disappear.
-
-The view never asks:
-
-#+begin_src clojure
-(and
-  (= :open (:request/status request))
-  (= :helper (:membership/role current-user))
-  (:organization/claiming-enabled? organization)
-  (not (:request/helper-id request)))
-#+end_src
-
-because doing so would create a second claim-policy implementation in
-presentation code.
-
-The prepared binding can contain the information needed to derive realization
-metadata:
-
-#+begin_src clojure
-(def claim-binding
-  {:operation :request/claim
-   :role :helper
-   :args {:request/id R}
-   :observed-basis-claim :X41
-
-   :provisional
-   {:projection :request/claiming}
-
-   :realization
-   {:plan :plan/request-claim
-    :compatibility :humanhelp-live-v12}})
-#+end_src
-
-Rendering may turn that into HTMX or another browser mechanism, but the semantic
-identity must remain visible through the process:
-
-#+begin_src clojure
-(render-action claim-binding)
-;; =>
-[:button
- {:class "gesso-action gesso-action--primary"
-  :hx-post "/gesso/op/request-claim"
-  :hx-swap "none"
-  :data-gesso-operation "request/claim"
-  :data-gesso-plan "plan/request-claim"
-  :data-gesso-binding "...opaque encoded binding..."
-  :aria-busy "false"}
- "Claim"]
-#+end_src
-
-The exact attributes are illustrative. The important point is that they are
-derived from or checked against =claim-binding= rather than independently
-authored strings.
-
-If required realization data is missing, a managed action fails closed:
-
-#+begin_src clojure
-(render-action
-  (dissoc-in
-    claim-binding
-    [:realization :plan]))
-
-;; =>
-{:error/type :view/incomplete-semantic-realization
- :operation :request/claim
- :missing #{:projected-plan}
- :fallback-rendered? false}
-#+end_src
-
-It must not silently produce:
-
-#+begin_src clojure
-[:button
- {:hx-post "/requests/claim"}
- "Claim"]
-#+end_src
-
-because that would erase the semantic operation while leaving an apparently
-functional mutation path.
-
-The view remains free to decide whether provisional status appears as
-="Claiming..."=, a spinner, reduced opacity, or another accessible treatment.
-The semantic layer says *what state this is*; the view says *how that state
-looks*.
-
-*** Views declare semantic intent, not transport machinery
-
-The ordinary view-level declaration should be as small as practical.
-
-Conceptually:
-
-#+begin_src clojure
-{:choreo/op :request/claim
- :subject request-id}
-#+end_src
-
-or a prepared/bound equivalent is preferable to requiring the view author to
-repeat:
-
-- projected plan registry key;
-- bootstrap registry key;
-- protocol envelope encoding;
-- artifact stamp/digest;
-- trusted server authority identity;
-- command-wire parameter names;
-- basis-header encoding;
-- runtime participant override.
-
-Those details should be derived from or verified against the assembled
-application whenever possible.
-
-The exact public API remains a design choice.  The semantic target does not.
-
-*** Bound operation capability is not a durable authorization token
-
-The word =capability= in this section describes a prepared operation affordance,
-not an unforgeable permission-bearing security capability.  Implementations and
-diagnostics should qualify the term where ambiguity would otherwise arise.
-
-A bound operation may carry useful presentation/execution context such as:
-
-- semantic operation;
-- role;
-- subject/arguments;
-- the authoritative observation context from which the affordance was prepared;
-- provisional projection information;
-- plan/compatibility identity as required by runtime.
-
-Once observation information crosses an adversarial browser boundary and is
-returned by the client, an unauthenticated basis value is an
-=ObservedBasisClaim=, not an =AuthoritativeBasis=.  If the operation requires
-server-verifiable evidence of prior issuance/observation, that requirement must
-be represented explicitly, for example by an authenticated observation receipt
-or another declared trusted mechanism.
-
-Neither an observed-basis claim nor an authenticated historical receipt
-establishes current authorization to execute the operation.
-
-It does not allow the browser to establish:
-
-- authenticated principal identity;
-- current model permission;
-- server role authority;
-- authoritative state.
-
-The trusted server rebinds the authenticated principal from trusted context and
-re-evaluates current model policy.
-
-A bound capability is therefore better understood as a typed, prepared
-affordance than as an irrevocable security capability.
-
-This is another place where a nominal or opaque internal type may improve
-accidental-misuse resistance, but the public application API should not require
-downstream web developers to manually construct proof-like wrappers merely to
-render an ordinary action.  Gesso should construct or admit stronger semantic
-values at the boundary that has enough information to justify them.
-
-#+LATEX: \newpage
-*** Capability visibility should come from prepared application semantics
-
-Where practical, view preparation should compute which operation capabilities
-are available and pass them to rendering.
-
-Preferred:
-
-#+begin_src clojure
-{:actions
- {:claim claim-capability
-  :cancel cancel-capability
-  :reassign nil}}
-#+end_src
-
-rather than duplicating domain checks inside Hiccup:
-
-#+begin_src clojure
-(when (and (request/open? request)
-           (membership/helper? user)
-           ...)
-  ...)
-#+end_src
-
-This does not mean every dynamic authorization decision must be precomputed
-forever.
-
-It means the view should consume prepared semantic availability rather than
-becoming a second independent business-rule engine.
-
-The authoritative operation still rechecks current permission at execution.
-
-*** Semantic operation identity is preserved through rendering
-
-Once a view declares that an affordance is semantically managed as operation O,
-later rendering stages may add realization metadata but may not silently erase
-or substitute that identity. Preservation is not an ordering over operation
-identities.
-
-Conceptually:
-
-#+begin_example
-semantic affordance O
-    -> bind O
-    -> derive plan/transport metadata for O
-    -> render executable O
-#+end_example
-
-Forbidden:
-
-#+begin_example
-semantic affordance O
-    -> required metadata missing
-    -> silently render ordinary unrelated hx-post
-#+end_example
-
-If an enabled complete semantic realization cannot be produced, rendering or
-application preflight must fail precisely. An explicitly unavailable rendering
-may preserve the operation and its reason for unavailability under the declared
-contract. It must have no active weaker transport path and cannot count as
-usable capability completion.
-
-This is the fundamental no-silent-downgrade invariant.
-
-*** Raw HTMX remains a first-class ordinary mechanism
-
-Not every interaction belongs to Choreo.
-
-Applications may still use ordinary HTMX for interactions that deliberately do
-not claim Choreo/optimistic/progression semantics.
-
-The distinction must be explicit:
-
-#+begin_example
-ordinary HTMX affordance
-    -> ordinary HTMX semantics
-
-Choreo-managed affordance
-    -> complete Choreo realization
-       or explicit non-executable unavailability
-       or precise rejection
-#+end_example
-
-Strictness applies to semantic identity once claimed. It does not require
-turning every button or form into a distributed protocol. An ordinary HTMX
-binding must not occupy a route reserved by the assembly for a semantic
-operation as a means of bypassing that operation's required protocol.
-
-*** Presentation remains view-owned
-
-Views retain ordinary presentation authority over:
-
-- element type;
-- text;
-- CSS classes;
-- pending labels;
-- ARIA;
-- layout;
-- icons;
-- local visual treatment;
-- how provisional versus authoritative status is displayed.
-
-These choices may be semantically informed but do not become domain policy.
-
-For example, Choreo may establish:
-
-#+begin_example
-projection authority = provisional
-operation = :request/claim
-#+end_example
-
-while the view decides whether that appears as:
-
-- a badge;
-- pending text;
-- reduced opacity;
-- a spinner;
-- another accessible presentation.
-
-*** Views do not interpret stale basis or reconciliation policy
-
-A view may display the outcome of reconciliation.
-
-It must not decide what stale basis means.
-
-Forbidden architecture:
-
-#+begin_example
-if browser basis < newest basis
-    then view decides Claim is rejected
-#+end_example
-
-Correct architecture:
-
-#+begin_example
-model evaluates current authoritative facts
-    -> semantic outcome
-    -> Choreo/runtime propagates outcome
-    -> view renders outcome
-#+end_example
-
-This prevents database/progression semantics from leaking into presentation
-code.
-
-*** UI operation binding creates later whole-application obligations
-
-Once a view exposes a Choreo-managed operation, the application acquires
-structural obligations that later preflight must close.
-
-Before the enabled affordance is admitted for serving, the assembled
-application must establish the required path, analogous to:
-
-#+begin_example
-rendered affordance
-    -> semantic operation
-    -> valid choreography trajectory
-    -> projected executable plan
-    -> exact browser artifact
-    -> declared transport
-    -> trusted server capability
-    -> authoritative model operation
-    -> settlement/progression
-    -> authoritative acquisition path
-    -> renderable result
-#+end_example
-
-Part VII defines that whole-application check, including dynamic rendered
-surfaces. This part defines the binding contract that creates those obligations;
-their later position in the document does not permit delayed validation after
-an invalid enabled control has already been served.
-
-*** Server execution capabilities are separate from view authority
-
-Some operations require trusted execution inputs/resources such as:
-
-- authenticated principal;
-- transaction capability;
-- authoritative basis;
-- clock;
-- random seed;
-- other declared server capabilities.
-
-A view binding does not supply those capabilities.
-
-Later application assembly must verify that the trusted server boundary can
-supply the capabilities required by the operation.
-
-This is especially important because an operation can be semantically valid yet
-unrealizable in a particular assembled server environment.
-
-*** Capability declaration is not authority declaration
-
-A statement such as:
-
-#+begin_example
-server supplies :clock
-server supplies :transaction
-#+end_example
-
-means that the execution environment can provide those resources.
-
-It does not mean the server principal is automatically authorized to perform a
-particular domain operation.
-
-Execution capability and domain authority remain separate concepts.
-
-*** UI diagnostics should preserve semantic context
-
-When a managed affordance cannot be realized, diagnostics should be able to
-identify:
-
-- source view/component;
-- semantic operation;
-- role/subject where known;
-- missing semantic or realization edge;
-- expected plan/transport/capability;
-- available alternatives where mechanically known.
-
-A missing plan should not degrade into a generic malformed-attribute error.
-
-The rendering/preflight system knows the semantic intent and should preserve it
-for repair tooling.
-
-*** Provisional state and view boundary invariant
-
-At the end of the authority/progression/UI layer, the unified design requires:
-
-#+begin_quote
-Authoritative business truth changes only through model-owned atomic
-transitions.  Biff FX realizes those transitions using explicit value flow
-rather than hidden context accumulation.  XTDB progression records
-authoritative visibility rather than domain revision.  Commands, executions,
-plans, and physical requests retain distinct identities; command identity does
-not itself provide idempotency, and participant uncertainty about a command is
-not silently converted into rejection or incorporation.  Current authoritative
-state may resolve presentation without proving command attribution.  Optimistic
-state is explicit provisional knowledge with required resolution paths, and
-local provisional retirement does not invent an authoritative command outcome.
-Continuity is local browser state with no authority.  Views declare typed
-semantic affordances without becoming business-policy or authorization engines,
-and a Choreo-managed affordance may never silently downgrade to weaker ordinary
-transport semantics.
-#+end_quote
+This example's Claim preparation contract admits available, unavailable, and
+deferred variants. Its final mutation has no input-collection phase; an
+unexpected needs-input result is a contract mismatch, not an implicit nil.
+Construction failure is raised by preparation/validation before this view can
+serve an incomplete active control.
+
+The renderer derives routes, HTMX attributes, command-wire fields, plan and
+artifact references, correlation, and progression handling from the assembly.
+A view author does not repeat these details in strings. If required metadata is
+missing, the renderer reports the exact missing edge or emits an explicitly
+non-executable unavailable affordance where the declared policy permits it.
+
+Semantic identity is preserved through rendering. Binding, encoding, and
+transport selection may elaborate an operation but cannot silently substitute
+another operation or weaken its required protocol. An opaque encoded binding is
+not necessarily authenticated, and authentication of its bytes would still not
+establish current model authorization.
+
+*** Prepared affordance is not a security capability
+
+The term /prepared affordance/ is preferable for the object consumed by a view.
+If the implementation calls it an operation capability, diagnostics must
+qualify that meaning. It is not an irrevocable or unforgeable authorization
+credential merely because the server prepared it.
+
+A trusted execution capability has a different contract: it permits a scoped
+server action under current admission rules. A view binding cannot supply the
+transaction handle, authenticated principal, or other trusted resource required
+by the model.
+
+Browser-returned observation information is an observed-basis claim unless a
+trusted boundary establishes something stronger. An authenticated receipt can
+prove its issuer's stated historical fact under that receipt contract. It does
+not prove the human saw the card, the browser installed it, or permission still
+holds now.
+
+Gesso constructs or admits stronger semantic values at the boundary with enough
+information. Web developers should not have to hand-assemble proof wrappers to
+render an ordinary button. In-process admission discipline prevents accidental
+misuse; it is not a sandbox against a determined author with arbitrary trusted
+host access.
+
+*** Raw HTMX and presentation freedom
+
+Ordinary HTMX remains a first-class mechanism for interactions deliberately
+outside Choreo's promises. The distinction is explicit: an ordinary affordance
+has its ordinary contract; a managed affordance has a complete managed
+realization or a precise non-executable failure/unavailability state.
+
+An ordinary route still obeys server authentication and model safety. It must
+not occupy a route reserved for a managed operation as a way to bypass its
+protocol. Declaring fewer client guarantees does not authorize direct
+unprotected writes.
+
+Views own text, element choice, semantic CSS, icons, layout, ARIA, pending
+labels, and how provisional or authoritative states look. They must not
+interpret a newer database token as command rejection or choose reconciliation
+policy. They display the decisions made by the admitted model/runtime contract.
+
+Status must be understandable without relying only on color or motion.
+Keyboard activation, form submission, disabled/busy semantics, and duplicate
+activation handling must match the declared entry policy. Disabling a button
+alone is not the framework's command deduplication mechanism.
+
+*** Assembly obligations and diagnostics
+
+An enabled managed control creates obligations for its complete path: operation,
+choreography, projected plan, loaded browser artifact, transport, trusted server
+entry, model realization, outcome mapping, acquisition, and presentation.
+Part VII checks these before serving, including dynamically generated surfaces.
+Its later position in this document does not permit serving incomplete controls
+until a future check runs.
+
+Errors preserve source component, operation, role/subject when disclosable,
+expected binding/plan/capability, and the missing or incompatible edge. Missing
+plans should not collapse into generic malformed HTML errors. Diagnostics must
+also preserve the difference between policy unavailability and implementation
+failure.
 
 ** Clojure and ClojureScript execution
 :PROPERTIES:
 :CUSTOM_ID: req-portable-execution
 :END:
 
-The portable choreography representation and transition semantics form one
-shared executable semantic core.
+The permanent executable semantic core gives projected behavior one meaning
+across supported hosts. Shared =.cljc= definitions are the preferred realization
+where practical. JVM, Node, and Chromium must not carry independently handwritten
+versions of the same state machine merely because their callbacks differ.
 
-Where the implementation can express that core portably, it lives in shared
-Clojure/ClojureScript code rather than in separate JVM and browser
-interpretations.
+This commitment does not make the whole application portable. Database access,
+trusted authentication, arbitrary server code, DOM manipulation, and network
+integration belong to declared host boundaries. Full-language actions remain
+available there. The core interprets their contracts and admitted completions;
+it does not need to understand or emulate all application code.
 
-The responsibility boundary is semantic rather than namespace-name specific.
+The executable semantic core is distinct from the later proof kernel/checker.
+The former executes admitted transition meaning. The latter checks derivations
+or other stated judgments about that meaning. Compiler, verifier, and proof
+machinery need not ship to the production browser.
 
-Clojure owns or hosts the trusted/server-side work needed for:
+*** One vocabulary from construction through execution
 
-- global choreography construction and verification;
-- model integration;
-- authoritative model operations;
-- XTDB consistency and transaction work;
-- server-side projections where required;
-- JVM execution of the portable executable semantic core;
-- compiler/build-time verification and projection.
+Part III's role-local vocabulary is canonical:
 
-ClojureScript owns or hosts the browser-side realization needed for:
+| Node kind | Runtime responsibility |
+|-----------+------------------------|
+| =:local= | Request the declared local action and consume its admitted completion. |
+| =:authoritative= | At the appropriate trusted role, request a public model operation and consume its admitted typed result. |
+| =:branch= | Select a declared successor using an established typed value. |
+| =:send= | Issue a declared participant communication with the required known payload. |
+| =:receive= | Await an admitted participant message matching one unambiguous alternative. |
+| =:await= | Await a declared environment event from its registered source contract. |
+| =:return= | Complete this role's local trajectory with its declared outcome. |
 
-- execution of browser role projections;
-- the same portable machine transition semantics;
-- browser effect interpretation;
-- semantic provisional projections;
-- HTMX lifecycle integration;
-- normalized browser event adaptation;
-- managed browser effects;
-- DOM realization;
-- continuity.
+Optimism does not introduce a separately handwritten transition-table language
+with different guard or outcome semantics. Provisional derivation, command
+handling, acquisition, and installation are declared actions/events coordinated
+through the same vocabulary and the browser adapter's explicit ownership
+contract.
 
-This division does not authorize two semantic machines.
+A projected =:receive= is not satisfied by an environment event with the same
+keyword. A normalized map cannot select its own trust or ownership class.
+Participant communications, authoritative observations, local action completions,
+and environment events retain their distinct admission paths.
 
-The same portable transition semantics must run under:
+The plan format has closed semantic keys and versioned interpretation. Unknown
+opcodes, unresolved action references, malformed successor locations, overlapping
+receive alternatives, or unsupported event contracts are construction failures.
+An explicit extension area can carry nonsemantic metadata without changing
+execution. Semantic extensions require a registered interpretation and their own
+assurance contract.
 
-- JVM Clojure;
-- Node ClojureScript;
-- Chromium ClojureScript.
+*** State ownership and effects
 
-A common portable machine corpus must execute across all three environments to
-detect representation or compiler-target differences. Its results remain tested
-evidence for the exercised cases; sharing source and passing the corpus do not
-by themselves prove equivalence of every compiler/runtime behavior.
+The role-local machine owns its protocol state and established values. The
+shared browser coordinator owns cross-execution target arbitration, obligations,
+and resource lifetimes where required. These are composed responsibilities,
+not competing copies of one machine. Each semantic fact has one declared owner.
 
-The portable data contract must define relevant numeric, equality, collection,
-serialization, and error semantics for values used in transitions. A
-platform-specific representation must not silently change branch selection,
-identity comparison, or requirement satisfaction. Any relied-upon compiler or
-runtime behavior outside the checked core remains an explicit trusted boundary.
+The imperative shell owns physical handles: DOM references, timers, transport
+objects, listeners, and opaque continuity captures. It interprets admitted
+effects and reports correlated completions/failures. It does not independently
+choose successors or reinterpret a domain outcome from a status string.
 
-Verification and projection machinery are build/construction concerns.
+An abstract transition can update semantic intent immediately and request a
+physical effect. The facts it records must match that point in the lifecycle:
+request issued is not request completed; observation acquired is not observation
+installed; installation permitted is not adoption completed.
 
-Once a validated compact projected plan has been emitted, the production browser
-must not need the global verifier, proof DAG, or choreography compiler in order
-to execute that plan.
+The runtime allocates fresh effect/resource instances through a declared
+mechanism. Nondeterministic choices such as UUIDs and sampled time enter as
+explicit admitted inputs or action results. A pure transition does not secretly
+consult a global clock or allocate different command IDs when replayed in a
+test. Before a command's first possible send, its stable binding is already
+recorded by the appropriate owner.
 
-The browser executes the accepted projection.
+Physical effects carry the owner, target/resource instance, operation/command
+correlation where relevant, and typed payload/reference required for admission.
+A callback copies the correlation issued with that physical resource. It must
+not fetch a newly current execution ID and relabel an old callback as belonging
+to the replacement execution.
 
-The same semantic transition core used by production code is the object of
-formal reasoning and model checking.
+*** A concrete installation segment
 
-
-A small projected Claim machine makes the desired portability more concrete.
-
-The immutable plan can be ordinary portable data:
-
-#+begin_src clojure
-(def executable-plan
-  {:plan/version 3
-   :plan/id :plan/request-claim
-   :compatibility/id :humanhelp-live-v12
-   :operation :request/claim
-
-   :states
-   [{:state :idle
-     :transitions
-     [{:event :ui/invoke
-       :guard [:binding/complete]
-       :next 1
-       :effects
-       [[:command/allocate]
-        [:projection/install-provisional]
-        [:transport/start]]}]}
-
-    {:state :pending
-     :transitions
-     [{:event :claim/settled
-       :guard
-       [:and
-        [:event/current-owner]
-        [:event/matches-command]
-        [:settlement/admitted-current-outcome]
-        [:observation/admitted-progressive]]
-       :next 2
-       :effects
-       [[:command/record-accepted]
-        [:projection/install-authoritative]
-        [:resources/retire-owned]]}
-
-      {:event :claim/timeout
-       :guard [:event/current-resource-owner]
-       :next 3
-       :effects
-       [[:command/record-unknown]
-        [:resources/retire-owned]
-        [:recovery/request-authoritative-acquisition]]}
-
-      {:event :claim/rejected
-       :guard
-       [:and
-        [:event/current-owner]
-        [:event/matches-command]
-        [:settlement/admitted-current-outcome]
-        [:observation/admitted-progressive]]
-       :next 5
-       :effects
-       [[:command/record-rejected]
-        [:projection/install-authoritative]
-        [:resources/retire-owned]]}]}
-
-    {:state :settled
-     :transitions []}
-
-    {:state :unknown
-     :transitions
-    [{:event :authority/acquired
-       :guard
-       [:and
-        [:event/current-recovery-target-owner]
-        [:observation/admitted-authorized-current-progressive]]
-       :next 4
-       :effects
-       [[:projection/install-authoritative]]}]}
-
-    {:state :recovered
-     :transitions []}
-
-    {:state :rejected
-     :transitions []}]})
-#+end_src
-
-Runtime state is separate from the plan:
+The following is an inspection of a generated local segment using the canonical
+node kinds. Entry already supplies an admitted observation reference and an
+admitted installation request. Registered action and event contracts supply
+schema, provenance, current-owner, and failure obligations not repeated in this
+compact payload.
 
 #+begin_src clojure
-(def runtime-state
-  {:machine/state :pending
-
-   :execution/id
-   #uuid "b1000000-0000-0000-0000-000000000010"
-
-   :command/id
-   #uuid "b2000000-0000-0000-0000-000000000042"
-
-   :resources
-   {:transport
-    {:resource-instance/id
-     #uuid "b3000000-0000-0000-0000-000000000006"
-     :owner [:execution
-             #uuid "b1000000-0000-0000-0000-000000000010"]
-     :status :active}
-
-    :timeout
-    {:resource-instance/id
-     #uuid "b3000000-0000-0000-0000-000000000007"
-     :owner [:execution
-             #uuid "b1000000-0000-0000-0000-000000000010"]
-     :status :active}}
-
-   :authoritative-basis
-   {:scope {:projection :request/card :request/id R}
-    :basis :X49}
-
-   :projection
-   {:authority :provisional
-    :request/id R
-    :request/status :claiming}})
+{:gesso.choreo/type :gesso.choreo/executable-plan
+ :gesso.choreo/version 1
+ :role :browser
+ :initial 0
+ :states
+ {0 {:op :local
+     :action :presentation/request-installation
+     :requires #{:installation/request}
+     :outputs #{:installation/effect-ref}
+     :next 1}
+  1 {:op :await
+     :events {:presentation/installation-completed 2
+              :presentation/installation-failed 3}
+     :event-contracts
+     {:presentation/installation-completed
+      {:required #{:installation/effect-ref :installation/completion-ref}
+       :optional #{}
+       :open-data? false}
+      :presentation/installation-failed
+      {:required #{:installation/effect-ref :installation/failure-ref}
+       :optional #{}
+       :open-data? false}}}
+  2 {:op :local
+     :action :presentation/adopt-completed
+     :requires #{:installation/request :installation/completion-ref}
+     :outputs #{:presentation/adoption-ref}
+     :next 4}
+  3 {:op :local
+     :action :presentation/retain-and-recover
+     :requires #{:installation/request :installation/failure-ref}
+     :outputs #{:presentation/recovery-owner-ref}
+     :next 5}
+  4 {:op :return :outcome :presentation/ready}
+  5 {:op :return :outcome :presentation/recovery-handed-off}}}
 #+end_src
 
-A normalized event likewise contains runtime-specific values:
-
-#+begin_src clojure
-(def settled-event
-  {:event/type :claim/settled
-
-   :execution/id
-   #uuid "b1000000-0000-0000-0000-000000000010"
-
-   :command/id
-   #uuid "b2000000-0000-0000-0000-000000000042"
-
-   :resource-instance/id
-   #uuid "b3000000-0000-0000-0000-000000000006"
-
-   ;; Supplied by the trusted settlement admission boundary. The map by
-   ;; itself would not satisfy :settlement/admitted-current-outcome.
-   :settlement
-   (settlement/admitted-fixture
-     {:execution/id
-      #uuid "b1000000-0000-0000-0000-000000000010"
-      :command/id
-      #uuid "b2000000-0000-0000-0000-000000000042"
-      :resource-instance/id
-      #uuid "b3000000-0000-0000-0000-000000000006"
-      :outcome :accepted
-      :scope {:projection :request/card :request/id R}
-      :authoritative
-      {:request/id R
-       :request/status :claimed
-       :request/helper-id Alice
-       :basis :X50}})})
-#+end_src
-
-The portable transition function can remain pure:
-
-#+begin_src clojure
-(defn step
-  [plan state event]
-  (let [state-index
-        (plan/state-index plan (:machine/state state))
-        candidates
-        (get-in plan [:states state-index :transitions])
-        transition
-        (some #(when (= (:event %) (:event/type event)) %)
-              candidates)]
-
-    (cond
-      (nil? transition)
-      {:result :rejected
-       :reason :event-not-admitted-in-state
-       :state state
-       :effects []}
-
-      (not
-        (guards/holds?
-          (:guard transition)
-          {:state state
-           :event event}))
-      {:result :rejected
-       :reason :guard-failed
-       :state state
-       :effects []}
-
-      :else
-      (let [next-state
-            (get-in plan [:states (:next transition) :state])
-            elaborated
-            (effects/elaborate (:effects transition)
-              {:state state :event event})]
-        ;; The *same pure core* updates semantic state and returns physical
-        ;; requests. The browser adapter cannot invent a competing state.
-        {:result :accepted
-         :state (effects/apply-semantic
-                  (assoc state :machine/state next-state)
-                  elaborated)
-         :effects (effects/physical-requests elaborated)}))))
-#+end_src
-
-Running the same input under JVM Clojure and ClojureScript should produce the
-same semantic result:
-
-#+begin_src clojure
-(step
-  executable-plan
-  runtime-state
-  settled-event)
-;; =>
-{:result :accepted
-
- :state
- {:machine/state :settled
-  :execution/id ...
-  :command/id ...
-  :resources {:transport {:status :retired} :timeout {:status :retired}}
-  :projection {:authority :authoritative
-               :request/id R
-               :request/status :claimed
-               :request/helper-id Alice
-               :basis :X50}}
-
- :effects
- [[:projection/install-authoritative
-   {:request/id R
-    :request/status :claimed
-    :request/helper-id Alice
-    :basis :X50}]
-
-  [:resources/retire-owned
-   {:execution/id
-    #uuid "b1000000-0000-0000-0000-000000000010"}]]}
-#+end_src
-
-The notation =settlement/admitted-fixture= represents a value supplied only
-by a trusted admission boundary, not a constructor exposed to the browser.
-=guards/holds?= checks the current execution/resource and admitted outcome;
-=effects/elaborate= extracts only the authorized projection from that admitted
-settlement. =effects/apply-semantic= is pure: it records the authoritative
-projection, accepted command disposition, and retired resource ownership.
-=:claim/timeout= records unknown disposition, and an admitted reread can
-recover presentation while leaving command attribution unknown.
-=:event/current-recovery-target-owner= refers to the adapter's recovery
-target owner after the timed-out execution retires; it never resurrects that
-execution. Acquisition events still require their own resource-instance
-correlation and current scoped installation admission.
-=:claim/rejected= requires its own admitted settlement; observing the current
-Request state does not by itself establish why the command failed.
-=effects/physical-requests= returns adapter instructions separately. An
-installation failure must enter the declared physical-effect recovery contract;
-the shell cannot silently reverse the semantic admission or pretend the DOM
-was installed. The abbreviated displayed result omits unrelated state fields.
-
-The browser shell interprets abstract effects:
-
-#+begin_src clojure
-(defn interpret-effect!
-  [browser effect]
-  (case (first effect)
-
-    :projection/install-authoritative
-    (dom/install-if-current!
-      browser
-      (second effect))
-
-    :projection/install-provisional
-    (dom/install-provisional!
-      browser
-      (second effect))
-
-    :transport/start
-    (transport/start!
-      browser
-      (second effect))
-
-    :resources/retire-owned
-    (resources/retire!
-      browser
-      (second effect))
-
-    :recovery/request-authoritative-acquisition
-    (acquisition/request!
-      browser
-      (second effect))))
-#+end_src
-
-The shell may differ across Chromium, Node tests, or another host. The transition
-meaning should not.
-
-A dangerous architecture would instead duplicate the branch logic:
-
-#+begin_src clojure
-;; JVM "reference semantics"
-(defn jvm-step [state event]
-  ...)
-
-;; separately handwritten browser behavior
-(defn browser-step! [dom event]
-  (if (= "claim-settled" (.-type event))
-    ;; independently decide what this means here
-    ...))
-#+end_src
-
-Even if the two implementations currently pass the same tests, the proof/test
-object and production object are now different semantic machines.
-
-The portable core avoids that correspondence gap by making platform-specific
-code interpret effects rather than redefine the state transition itself.
-
-A separately proved paper/reference machine followed by an independently
-handwritten production semantic adapter is insufficient for the strongest
-correctness claim in this design.
-
-*** One portable semantic machine, several execution environments
-
-The JVM, Node, and Chromium implementations must not define separate semantic
-machines that merely resemble one another.
-
-The portable state-transition meaning belongs in shared Clojure/ClojureScript
-data and functions wherever practical.
-
-Conceptually:
-
-#+begin_example
-                    one portable semantic definition
-                              |
-              +---------------+---------------+
-              |               |               |
-              v               v               v
-          JVM Clojure    Node ClojureScript   Chromium
-#+end_example
-
-Differences among those environments belong in effect interpretation and trusted
-integration boundaries, not in the meaning of a projected transition.
-
-This is important for both testing and proof.  A JVM proof or model check over a
-different "reference" machine is weaker than reasoning about the transition
-function production actually uses.
-
-*** Portable execution owns semantic state, not the browser shell
-
-The portable executable semantic core and browser adapter must have an explicit ownership
-boundary for semantic state. An execution machine owns its projected trajectory;
-the adapter owns cross-execution browser coordination where required. Those are
-composed responsibilities, not competing copies of one state machine. Each
-semantic fact has one owner, with transitions and effects connecting the layers.
-
-Together their admitted state includes:
-
-- projected machine state;
-- execution identity;
-- concrete resource-instance identities required by admission;
-- semantic command identity where operationally required;
-- resource/effect ownership;
-- authoritative versus provisional status;
-- accepted progression requirements;
-- correlation identity;
-- terminal/retired status.
-
-The imperative browser shell may own physical handles such as:
-
-- DOM nodes;
-- timer handles;
-- HTMX request objects;
-- EventSource instances;
-- listeners;
-- MutationObservers;
-- continuity snapshots.
-
-The shell must not maintain an independent competing interpretation of semantic
-ownership.
-
-If a physical handle exists after the semantic execution is retired, the handle
-is cleanup debt.  It is not evidence that the execution remains semantically
-alive.
-
-*** Runtime inputs are normalized before semantic interpretation
-
-Raw browser events are not semantic events.
-
-A boundary layer translates raw external observations into a small normalized
-event vocabulary.
-
-For example:
-
-#+begin_example
-raw HTMX event
-raw timer callback
-raw EventSource message
-raw DOM replacement notification
-raw browser lifecycle event
-        |
-        v
-normalize + attach opaque correlation
-        |
-        v
-NormalizedEvent
-        |
-        v
-portable transition core
-#+end_example
-
-Normalization may copy primitive data and opaque identities that were attached
-when the resource was created.
-
-It may not infer:
-
-- authority;
-- principal identity;
-- semantic ownership;
-- provenance;
-- whether a referenced execution or resource instance remains admitted;
-- permission to resume a machine;
-
-from mutable physical state.
-
-Those questions belong to the appropriate declared semantic admission boundary.
-For browser events, the adapter resolves the owner and checks applicability
-before resuming an execution or applying a shared transition. Normalization may
-not choose a weaker ownership class from untrusted event fields.
-
-A normalized event is therefore a representation presented for semantic
-admission, not evidence that the represented semantic claim is true.  This
-remains so if the host-language value uses a nominal record, opaque wrapper,
-tagged map, or another category-preserving representation.  Such
-representations may prevent accidental substitution inside cooperating code;
-they do not allow browser-supplied bytes to manufacture authenticated identity,
-authoritative provenance, current authority, or an admitted semantic result.
-
-Crossing the browser/server or other untrusted serialization boundary removes
-any assurance that depended only on in-process construction discipline.  The
-receiving trusted boundary must re-establish the relevant semantic category by
-the declared validation, authentication, verification, acquisition, or admission
-path.
-
-*** Runtime state transition functions are total over the supported event vocabulary
-
-For every supported portable state and normalized event class, semantic behavior
-should be explicit.
-
-A normalized event may be:
-
-- accepted and advance the machine;
-- accepted and leave semantic state unchanged;
-- rejected as stale;
-- rejected as duplicate;
-- converted into a recovery transition;
-- classified as an external/runtime fault.
-
-It should not fall through to ad-hoc callback behavior merely because the
-combination was inconvenient to model.
-
-Where a combination is impossible by construction, that impossibility should be
-represented as an invariant and mechanically checked where feasible.
-
-Unknown event classes, malformed decoded data, and unsupported plan versions
-must be classified or rejected at their admission boundary rather than passed
-to an undefined transition. An unexpected implementation exception is a runtime
-fault, not proof that the input state/event combination was impossible. Its
-retirement and recovery behavior is defined by the browser failure contract.
-
-*** Test execution and production execution use the same plan
-
-Development or proof-enabled tests must not secretly execute a richer client
-machine than production.
-
-The design requires:
-
-#+begin_example
-production
-    ExecutablePlan
-    + production event/effect shell
-
-test/debug
-    same ExecutablePlan
-    + same semantic transition core
-    + optional observers/diagnostics
-#+end_example
-
-This prevents a particularly dangerous class of false confidence in which:
-
-#+begin_example
-proved/test machine
-    !=
-shipped machine
-#+end_example
-
-and correspondence is trusted informally.
-
-*** Verification does not ship as a browser prerequisite
-
-The browser executes a checked projection.
-
-It does not need to:
-
-- reconstruct the global choreography;
-- rerun projection;
-- rebuild knowledge derivations;
-- load the proof DAG;
-- solve proof obligations;
-- understand application source namespaces.
-
-This keeps the production client small and keeps proof machinery from becoming a
-new runtime authority surface.
-
-Runtime rules, executable guards, and references to required runtime inputs
-belong in the =ExecutablePlan=. Concrete command identities, acquired facts,
-ownership instances, and other execution-specific values belong in admitted
-runtime state or inputs governed by that plan. They must not be retrieved from
-an optional diagnostic sidecar.
-
-Explanations of why the executable rules are sufficient belong outside runtime
-semantics. This distinction does not require embedding future runtime values in
-an immutable build artifact.
-
-*** Portable representation version and semantic compatibility are explicit
-
-The portable plan format may evolve.
-
-The runtime must therefore distinguish at least:
-
-- plan representation/version;
-- wire/protocol compatibility;
-- semantic operation identity/version where needed;
-- application/server compatibility identity where needed;
-- admitted assembly generation identity where required for realization binding.
-
-Deployment identity records physical rollout or placement where needed. It must
-not substitute for plan compatibility or imply that every execution/resource
-shares one lifetime with the deployment.
-
-A parser accepting bytes does not imply the server and suspended browser are
-semantically compatible.
-
-Compatibility is a deliberate runtime predicate, developed further under stale
-continuation recovery below.
+The representation version is illustrative. A concrete emitted segment must
+satisfy the actual selected schema and its registered interfaces; this excerpt
+is not a second author-maintained implementation.
+
+The request action completes when installation work has been registered and
+issued under the host contract. It does not claim that the DOM changed. The host
+must buffer or otherwise serialize an immediate completion so it cannot be lost
+before the machine reaches its await boundary.
+
+The completed event is admitted only from that issued effect and for the current
+permitted target owner. The completion reference resolves to actual physical
+completion evidence. It does not become authoritative because an environment
+payload calls itself completed. The adopt action consumes that admitted evidence
+and updates the appropriate semantic owner; merely possessing a reference with
+a familiar shape is insufficient.
+
+The failed path preserves the failure's scope, including partial or indeterminate
+installation where applicable, and establishes the declared recovery owner before
+returning. It does not reject an already incorporated command. Owner retirement,
+source loss, or unbounded absence of a completion follows the segment's registered
+interruption/deadline and recovery contract. Assembly must reject a required
+physical effect with no such handling when it can strand this wait.
+
+The fragment does not claim that all browser state belongs to one execution.
+The adopt action communicates with the shared coordinator through its admitted
+interface. That coordinator updates current adoption and advisory debt from its
+latest state, preserving obligations which arrived after installation was
+requested.
+
+*** Claim execution uses independent outcome and installation paths
+
+A complete generated Claim trajectory composes segments like the one above with
+command handling. The following table describes semantic boundaries rather than
+an alternative executable format:
+
+| Boundary | Required successor behavior |
+|----------+-----------------------------|
+| Invocation admitted | Record stable intent and execution ownership; derive permitted provisional presentation; issue declared effects. |
+| Command submitted or delivery attempted | Retain pending/unknown knowledge until evidence establishes more; submission alone is not incorporation. |
+| Accepted command evidence | Record permitted incorporation knowledge independently of whether a current card is available. |
+| Rejected command evidence | Record the authoritative rejection and select its declared presentation/recovery path. |
+| Unknown delivery or local deadline | Preserve unknown unless stronger evidence already exists; retain or transfer recovery ownership. |
+| Observation acquired | Validate scope and progression; propose installation without claiming adoption. |
+| Installation completed | Admit completion under the current owner; update adoption and discharge only covered obligations. |
+| Installation failed | Preserve command knowledge and unresolved presentation debt; follow repair or reacquisition. |
+| Execution retired | Revoke its local rights; preserve or transfer unresolved command/work obligations according to the contract. |
+
+A deadline racing with a participant response requires explicit arbitration
+between the projected machine and its owner-relative adapter. The timeout is
+not smuggled into =:receive= as a forged participant message. The supported
+waiting/interruption mechanism must preserve the declared race semantics; a
+projection backend lacking that mechanism rejects the unsupported construction
+rather than dropping the timeout branch.
+
+Whichever event is admitted first may change local ownership, but it cannot
+change what evidence means. A later success can still resolve a retained command
+through an admitted recovery owner. It cannot restore retired installation
+rights. A late timer cannot erase a known success.
+
+*** Boundary shapes, knowledge, and provenance
+
+Actions declare required values, optional inputs where supported, closed outputs,
+possible failures, effects, and completion behavior. Validators are compiled
+for the admitted schema/registry version and invoked unconditionally at the
+relevant boundaries. Optional assertions disabled in production are not boundary
+validation.
+
+Missing, present nil, false, and absent optional output are distinct according
+to the schema. A later completion which omits an optional field must not inherit
+an old value accidentally. An unknown branch selector is a typed contract fault
+rather than permission to choose an arbitrary default.
+
+Passing a value schema establishes shape. An opaque local function returning a
+map is not automatically an authoritative source. Its output retains the
+provenance and asserted properties justified by its declared action contract.
+Authoritative outputs and observations cross their dedicated admission boundary;
+ordinary event normalization does not upgrade them.
+
+Full-language implementations may access facilities beyond the portable core
+under their declared host contracts. Properties such as purity, effect footprint,
+termination, and semantic accuracy remain explicit premises when not derived or
+enforced. A managed local action with an asserted functional contract is valid
+under an accepting assurance policy; an unresolved action reference is not.
+
+*** Normalization precedes admission
+
+The browser boundary converts raw HTMX, timer, EventSource, DOM, and lifecycle
+callbacks into bounded normalized data. It may decode and copy primitive values
+and issued correlation. It does not derive authority from mutable attributes,
+HTML shape, event names, or a physical handle's continued existence.
+
+Admission identifies the event class from its registered source path, resolves
+the declared owner, checks current applicability, validates payload and binding,
+and then delivers the event to the appropriate semantic transition. Untrusted
+fields cannot opt into a weaker ownership class.
+
+A nominal record or opaque wrapper may prevent accidental substitution within
+cooperating code. After untrusted serialization, the receiving boundary must
+re-establish the required category through validation, authentication,
+acquisition, or verification. The wrapper's name is not transferable proof.
+
+*** Explicit transition and failure results
+
+For every supported state/event class, the runtime has an explicit result:
+advance, accepted no-op, stale/duplicate rejection, recovery transition, or
+runtime/contract fault. Unknown event classes and invalid plan versions are
+classified at admission. Unexpected exceptions are faults, not evidence the
+input combination was mathematically impossible.
+
+Event-admission results use a separate vocabulary from presentation settlements
+and model outcomes. For example, =:step/applied= and =:step/ignored-stale= describe
+a runtime decision; they do not mean Claim was accepted or rejected.
+
+Selection must be deterministic under the declared contract. Construction
+rejects overlapping alternatives unless their equivalence or explicit arbitration
+is established. A runtime must not simply take the first matching event keyword
+from several candidates and silently ignore the rest.
+
+A total dispatcher over a supported event vocabulary does not prove arbitrary
+Clojure callbacks terminate. It also does not imply every event is valid. The
+scope of totality, supported value domain, and callback premises must be stated.
+Invalid states can produce typed invariant violations with a safe fault/recovery
+path rather than undefined mutation.
+
+*** Cross-host portability
+
+The shared core and corpus run under JVM Clojure, Node ClojureScript, and
+Chromium ClojureScript. Tests compare normalized semantic transitions, emitted
+abstract effects, correlation, and fault classifications for the same admitted
+inputs, including stale and adversarial schedules.
+
+The portable data contract specifies numeric range and precision, equality,
+collection semantics, missing/nil/false behavior, encoding, and errors. JavaScript
+numeric precision must not silently alter an identity or selector. Platform
+objects, mutable DOM references, and arbitrary functions do not appear in the
+portable plan payload. Registered action references bind host implementations
+through the assembly's separate implementation contract.
+
+Source sharing reduces divergence but does not prove every compiler/runtime
+behavior equivalent. Cross-host conformance tests remain evidence for exercised
+cases. A stronger claim identifies its formal correspondence and external
+compiler/runtime premises.
+
+Production tests execute the canonical emitted plan and the production semantic
+core. Pure tests can substitute declared effect interpreters; browser integration
+tests additionally exercise the actual shell and DOM/HTMX lifecycle. A mock that
+always returns installed does not establish physical installation correctness.
+Advanced compilation and actual packaged assets need their own relevant checks.
+
+*** Compatibility and deployment
+
+The runtime distinguishes plan representation version, operation/interface
+meaning, protocol compatibility, admitted assembly identity, and exact packaged
+artifact identity. Deployment identity records physical rollout where needed;
+it does not substitute for any of these contracts or give all resources one
+shared lifetime.
+
+Parsing old bytes does not establish continuation compatibility. A suspended
+browser can retain an unresolved command while its old local plan is retired.
+The admitted compatibility/recovery policy must preserve that command reference
+and current disclosure requirements without resuming incompatible state.
+
+The production browser executes admitted local plans; it does not reconstruct
+the global choreography, rerun projection, load proof DAGs, or solve obligations
+to decide an ordinary transition. Executable guards and necessary admission
+contracts remain executable. Their explanations remain separate.
 
 ** Executable projection and diagnostic sidecars
 :PROPERTIES:
 :CUSTOM_ID: req-executable-plan-sidecar-boundary
 :END:
 
-Verification evidence determines construction admission and supports later
-explanation. It does not supply an alternate transition input at runtime. The
-verification/projection pipeline should emit distinct executable and evidence
-products from the outset:
+Construction emits one canonical =ExecutablePlan= per projected role and
+separate compiler/diagnostic evidence products. The executable plan is the
+semantic runtime payload used by production and tests. A
+=DiagnosticProofSidecar= may explain it but cannot complete or alter its meaning.
 
-#+begin_example
-verified projection result
-  |
-  +--> ExecutablePlan
-  |
-  +--> DiagnosticProofSidecar
-#+end_example
+A build may use a rich internal representation while checking and projecting.
+The commitment is that production does not execute one machine while verification
+or proof-enabled tests quietly execute a different, richer client machine.
+Compiler transformations still need their stated correspondence; separating the
+sidecar does not eliminate the projection or packaging proof obligation.
 
-There is no production =AnnotatedPlan= that the browser executes and no
-semantics-preserving compiler optimization pass whose job is to erase proofs
-from such a plan. =ExecutablePlan= is the canonical runtime artifact. The
-sidecar is a separate compiler/checker artifact that may explain that runtime
-artifact but is never part of its semantic input.
+*** What belongs in each product
 
-The sidecar MUST also identify the exact =ExecutablePlan= artifact that it
-explains. The build should derive an =executable-digest=, artifact hash, or
-equivalent exact build identity from a canonical representation of the emitted
-executable payload and bind the sidecar to that identity. If the identity is
-embedded in the plan itself, the digest is computed over the canonical payload
-with that digest field excluded; alternatively the identity may remain entirely
-in build/asset metadata. Diagnostic tooling MUST refuse to correlate runtime
-locators with a sidecar whose executable identity does not match the deployed
-plan. There is no best-effort fallback to matching state or transition
-coordinates across different executable artifacts.
+| Product | Contents |
+|---------+----------|
+| ExecutablePlan | Supported local node structure, executable selectors/guards where defined by the format, action/message/event contracts, successors, and runtime interpretation fields. |
+| Admitted runtime state and inputs | Concrete command/execution/resource bindings, established values, observations, outstanding effects, and lifecycle state. |
+| Assembly/implementation binding | Registered action realizations, trusted boundaries, loaded versions, supported host capabilities, and applicable admission policy. |
+| Compiler correspondence data | Mapping from source semantics to actual runtime locators, including generated/synthetic states and continuation relationships. |
+| DiagnosticProofSidecar | Explanations, source locations, checked derivations or references, named premises, and exact executable correspondence. |
+| Packaged artifact manifest | Relationship between the admitted plan set, implementation/runtime closure, and emitted assets. |
 
-This exact artifact identity is distinct from semantic/protocol compatibility
-identity. A =plan-id= may intentionally identify a declared plan compatibility
-class or version, while =executable-digest= answers the much
-stricter diagnostic question: "does this sidecar describe these exact emitted
-state and transition coordinates?" The digest may live in a build manifest,
-asset metadata, or the executable plan when needed by diagnostic tooling; its
-existence must not make proof metadata part of semantic execution.
+These products need not be stored as six separate files. Their meanings and
+trust boundaries must remain distinct. In particular, application execution
+cannot depend on a source span or optional explanation object to discover which
+guard it was supposed to run.
 
-The portable/browser transition interface should make this separation explicit:
-
-#+begin_example
-AdapterStep(
-  ExecutablePlan,
-  AdapterState,
-  NormalizedEvent)
-    ->
-  AdapterState', AbstractEffects
-#+end_example
-
-=AdapterStep= MUST NOT accept a proof sidecar, knowledge derivation tree, proof
-obligation, source span, compiler diagnostic object, or other verification-only
-metadata. The same rule applies to the portable projected-machine transition
-function. Diagnostic tooling may observe which runtime state/transition/effect
-occurred and then consult a sidecar, but no result of that lookup may flow back
-into semantic execution.
-
-Every item needed to preserve runtime semantics belongs to the executable
-contract, admitted runtime state, or declared runtime inputs. It is not
-diagnostic metadata merely because the verifier reasoned about it.
-
-The immutable =ExecutablePlan= contains the supported projected transition
-structure, executable guards and derivations, required input/state contracts,
-and plan/protocol identity where needed. A particular invocation's admitted
-runtime state and inputs carry values such as:
-
-- current projected machine state;
-- execution identity and resource-instance identity;
-- semantic command identity where operationally required;
-- resource ownership and correlation;
-- authoritative or provisional status;
-- scoped authoritative observations and progression requirements.
-
-The plan specifies how those values may be consumed and changed. It is not
-mutated to absorb each execution's changing state. Shared fragment coordination
-may have a separate adapter-owned state under the same explicit boundary.
-
-The verifier's explanation of why such a guard, predicate, transition, or
-identity is sufficient belongs in the sidecar. The executable object itself does
-not.
-
-Three kinds of identity must not be conflated:
-
-- a *runtime locator* identifies the state/transition/effect selected by the
-  compact executable representation, for example =[state-index transition-index]=
-  or another small generated coordinate;
-- a *semantic identity* names a source-level state, transition, operation, or
-  choreography concept for compiler/debugger use;
-- a *proof-obligation identity* names a verifier obligation or derivation and is
-  verifier-only unless diagnostics explicitly request it.
-
-The term semantic identifier here denotes a source-level name or diagnostic
-identity. It must not be confused with the normalized semantic dependency
-identity defined in Part I: retaining a source-level name across a contract
-change does not preserve dependent certification.
-
-A runtime locator need not be stable across recompilations. Stable semantic and
-proof-obligation identities belong in compiler/sidecar metadata unless some
-independent runtime requirement actually needs them. A =plan-id= or compatibility
-identity may remain in the executable plan because stale-plan detection is a
-runtime concern, not because proof diagnostics require it.
-
-For example, a compact executable plan may conceptually contain:
+The executable semantic core and browser coordinator do not accept a diagnostic
+sidecar as a transition input. The conceptual interface is:
 
 #+begin_src clojure
-{:plan-id P8
- :executable-digest H8
- :states [...]
- :transitions
- [[{:event :claim/settled
-    :guard [:admission/execution-resource-current]
-    :next 5}]
-  ...]}
+(semantic/step executable-plan admitted-state admitted-event)
+;; Returns the next semantic state, declared abstract effects,
+;; an explicit step classification, and the actual transition locator.
 #+end_src
 
-The guard tag is schematic executable vocabulary, not a prescribed public API.
-It requires that this event's declared execution and relevant resource instance
-retain the ownership needed for the transition. Concrete identities come from
-admitted runtime state and event correlation, not the immutable plan or sidecar.
-Shared-event paths use their own owner-relative admission rules. Passing this
-guard does not replace required command correlation, outcome validation, or
-other transition premises.
+Guards operate on admitted runtime premises and executable contracts. The proof
+kernel/checker may explain why those guards contribute to a property; it does
+not supply current runtime permission by having accepted a derivation earlier.
 
-The executable semantic core evaluates the applicable transition and guards.
-The proof kernel checks derivations about the declared semantics, and dedicated
-semantic checkers establish their particular judgments. Neither checking role
-supplies runtime permission merely by having accepted the plan.
+*** Exact identities and their domains
 
-The optional sidecar maps compact runtime locators to richer semantic and proof
-information:
+The design distinguishes:
+
+| Identity | Question it answers |
+|----------+---------------------|
+| Runtime locator | Which state, transition, or effect in this exact emitted plan was selected? |
+| Source semantic name | Which authored or generated concept does that locator explain? |
+| Normalized semantic dependency identity | Which exact semantic definitions and dependencies a claim or construction uses. |
+| Proof-obligation identity | Which proposition/derivation is being checked or explained? |
+| Exact executable identity | Does this sidecar describe this exact canonical runtime payload and coordinate layout? |
+| Compatibility identity/judgment | May this runtime safely participate or continue under the selected server/assembly contract? |
+| Packaged asset identity | Which actual emitted browser/server asset bytes are loaded? |
+
+Runtime locators need not be stable across compilations. Source names can remain
+useful while behavior changes, so equal names do not preserve proof applicability.
+Two plans can be compatible while having different exact payload identities.
+The same plan payload can also be bound to different opaque implementations;
+applicable assurance therefore includes the relevant implementation/assembly
+closure, not merely the plan digest.
+
+*** Canonical payload identity
+
+The exact identity recipe specifies:
+
+- the object being identified: canonical plan terms, a plan set, or exact asset
+  bytes;
+- encoding and schema versions;
+- type-preserving representation of supported scalars and collections;
+- deterministic map/set ordering without discarding semantic distinctions;
+- unsupported values and their rejection behavior;
+- excluded self-identifying fields, or an external identity envelope;
+- the digest algorithm and its accepted collision premise;
+- interpretation dependencies bound separately when not included in the payload.
+
+A printed EDN map is not automatically a canonical encoding. Nil versus absence,
+keyword versus string, list versus vector where meaningful, numeric forms, and
+map/set order require explicit treatment. Host functions and DOM objects cannot
+be silently printed into a supposedly portable canonical digest.
+
+A convenient design keeps the payload free of its own digest:
 
 #+begin_src clojure
-{:plan-id P8
- :executable-digest H8
- :transitions
- {[4 0]
-  {:semantic-id :request-claim/helper/settled
-   :knowledge-derivation ...
-   :authority-derivation ...
-   :projection-correspondence ...
-   :proof-obligations ...
-   :source ...}}}
-#+end_src
-
-Normal production packaging ships only =ExecutablePlan=. Test, development, and
-diagnostic tooling execute that exact same plan and may additionally load
-=DiagnosticProofSidecar=. Proof-enabled testing MUST NOT compile or execute a
-second semantically richer client machine. Before using a sidecar, diagnostic
-tooling MUST verify its exact executable identity; a mismatch disables the
-sidecar and is itself a diagnostic error rather than permission to guess at a
-correspondence.
-
-
-A concrete build can make the separation mechanical.
-
-The plan above is the canonical emitted runtime artifact. The build uses this
-very object for production, portable tests, and exact diagnostic correspondence;
-there is no second handwritten machine for the sidecar to explain.
-
-The build computes an exact identity over the canonical executable payload:
-
-#+begin_src clojure
-(def executable-digest
+(def executable-identity
   (artifact/digest
-    {:algorithm :sha-256
-     :encoding :canonical-edn-v1
-     :value executable-plan}))
+   {:algorithm :sha-256
+    :encoding :gesso-plan-canonical-v1
+    :value executable-plan}))
+
+(def plan-manifest-entry
+  {:role :browser
+   :executable-identity executable-identity
+   :plan-format-version 1
+   :runtime-contract-ref runtime-contract-ref
+   :implementation-closure-ref implementation-closure-ref})
 #+end_src
 
-The sidecar can then explain the compact coordinates:
+The algorithm and format labels illustrate a declared recipe, not a new trust
+source. If identity is embedded in an envelope, the payload domain excludes that
+self-identifying field. It must not hash an object including the very digest
+being computed.
+
+Hashing canonical plan terms is not hashing the emitted JavaScript bundle.
+Packaging must establish which plan set and runtime/implementation closure the
+actual asset contains. A copied or stale generated stamp cannot substitute for
+that relationship. Exact equality of a stamp supplied by two untrusted locations
+is not construction evidence.
+
+*** Binding sidecars to the actual compilation
+
+Compiler correspondence is generated alongside the executable plan from the
+same admitted semantic subject. It records the actual mapping, including
+synthetic states or compacted continuations, rather than reconstructing it later
+from similar state names.
+
+A sidecar inspection view can be:
 
 #+begin_src clojure
-(def diagnostic-sidecar
-  {:sidecar/version 1
-
-   :plan/id :plan/request-claim
-
-   :executable-digest executable-digest
-
-   :states
-   {0
-    {:semantic-id :request-claim/helper/idle
-     :source
-     {:ns 'net.humanhelp.site.model.request.choreo
-      :form 'request-claim}}
-
-    1
-    {:semantic-id :request-claim/helper/pending}
-
-    2
-    {:semantic-id :request-claim/helper/settled}
-
-    3
-    {:semantic-id :request-claim/helper/outcome-unknown}
-
-    4
-    {:semantic-id :request-claim/helper/recovered}
-
-    5
-    {:semantic-id :request-claim/helper/rejected}}
-
-   :transitions
-   {[1 0]
-    {:semantic-id
-     :request-claim/helper/accepted-settlement
-
-     :knowledge-derivation
-     {:premises
-      [[:event/carries :authoritative-request]
-       [:event/matches-command]
-       [:event/current-owner]]
-
-      :conclusion
-      [:helper/may-install
-       :authoritative-request]}
-
-     :authority-derivation
-     {:premises
-      [[:settlement/from-trusted-boundary]
-       [:request/authoritative-result]]
-
-      :conclusion
-      [:projection/status :authoritative]}
-
-     :proof-obligations
-     [:obligation/settlement-command-correlation
-      :obligation/stale-owner-rejected
-      :obligation/scoped-progression-admitted]}
-
-    [1 1]
-    {:semantic-id
-     :request-claim/helper/timeout
-
-     :knowledge-derivation
-     {:premises
-      [[:timeout/current-resource-owner]]
-
-      :conclusion
-      [:command/disposition :unknown]}
-
-     :proof-obligations
-     [:obligation/timeout-does-not-imply-rejection]}
-
-    [1 2]
-    {:semantic-id
-     :request-claim/helper/rejected-settlement
-
-     :knowledge-derivation
-     {:premises
-      [[:event/current-owner]
-       [:event/matches-command]
-       [:settlement/admitted-current-outcome]]
-      :conclusion [:command/disposition :rejected]}
-
-     :proof-obligations
-     [:obligation/settlement-command-correlation
-      :obligation/rejection-requires-admitted-outcome]}}})
+{:sidecar/version 1
+ :role :browser
+ :executable-identity executable-identity
+ :semantic-subject-ref semantic-subject-ref
+ :checker-result-ref checker-result-ref
+ :implementation-closure-ref implementation-closure-ref
+ :locations
+ {installation-complete-locator
+  {:semantic-id :request-claim/presentation-installed
+   :source-ref source-ref
+   :claims
+   [{:proposition-ref adoption-proposition-ref
+     :mechanism :checked-derivation
+     :evidence-ref derivation-ref
+     :premises [shell-completion-premise
+                current-owner-premise]
+     :coverage-ref coverage-ref}]}}}
 #+end_src
 
-The sidecar locates the rejected settlement at [1 2]. A missing explanation
-cannot be silently interpreted as proof that the transition is safe.
+The locator comes from the actual emitted plan mapping. The symbols above denote
+bound values; replacing them with copied identifiers cannot authenticate the
+claims. The sidecar may contain checked and unverified claims with distinct
+status. Its existence does not prove every listed obligation was discharged.
 
-#+begin_src clojure
-(get-in diagnostic-sidecar [:states 5 :semantic-id])
-;; => :request-claim/helper/rejected
-#+end_src
+Attaching behavioral correspondence evidence requires the exact semantic and
+executable subject to agree with the artifact being explained. Evidence for
+choreography A cannot be composed with an artifact generated from choreography
+B merely because their operation names or state counts match.
 
-Production execution never calls:
+Diagnostic admission first validates the sidecar format and exact executable
+identity. Where tooling labels claims checker-verified, it additionally validates
+provenance, the checker result, applicable premise set, and implementation
+binding. A fabricated sidecar can copy the digest. Exact correspondence and
+trusted claim acceptance are separate checks.
 
-#+begin_src clojure
-(get-in diagnostic-sidecar
-  [:transitions [1 0] :knowledge-derivation])
-#+end_src
+If exact identity mismatches, diagnostics must refuse correspondence for that
+plan. They cannot guess by timestamps, similar names, or near-matching runtime
+coordinates. Ordinary execution may continue if its own admission and
+compatibility remain valid. An unavailable explanation is not an executable
+failure and is not evidence of a safe transition either.
 
-to decide whether settlement is admissible.
+*** Observe the selected transition, not a recomputation
 
-The transition function receives only executable semantics and current runtime
-inputs:
+A trace contains the locator selected by the actual semantic step, its admitted
+subject identity, and a bounded description of its result/effects. The observer
+uses that locator to retrieve correspondence. It must not rerun guards or
+transition selection independently to guess what happened.
 
-#+begin_src clojure
-(step
-  executable-plan
-  runtime-state
-  settled-event)
-#+end_src
+Recomputation can diverge if callbacks are effectful, registries change, state is
+not identical, or the observer has different inputs. Even when the pure core
+would reproduce the same result, reporting the actual selected locator gives a
+clearer correspondence contract.
 
-A development observer may watch that exact step result:
+Optional diagnostic access is read-only. It does not receive mutable live
+objects or authority-bearing handles it can modify. Redacted immutable trace
+values are preferable to whole contexts, DOM captures, credentials, or unrestricted
+command payloads. Missing or redacted data is reported as such; an explanation
+must not invent an unavailable premise.
 
-#+begin_src clojure
-(defn observe-transition
-  [{:keys [plan state-before event result]}
-   sidecar]
+*** Diagnostic noninterference
 
-  (when-not
-    (and
-      (= (:plan/id sidecar) (:plan/id plan))
-      (= (:executable-digest sidecar)
-         (artifact/digest
-           {:algorithm :sha-256
-            :encoding :canonical-edn-v1
-            :value plan})))
-    (throw
-      (ex-info
-        "Diagnostic sidecar does not describe this executable."
-        {:error/type :diagnostic/executable-mismatch
-         :sidecar-digest
-         (:executable-digest sidecar)})))
-
-  (let [locator
-        (runtime/transition-locator
-          plan
-          state-before
-          event)]
-
-    {:runtime
-     {:locator locator
-      :event (:event/type event)
-      :result (:result result)}
-
-     ;; This is an untrusted diagnostic claim unless build provenance and
-     ;; checker result are independently verified.
-     :explanation/status :unverified-sidecar-claim
-     :explanation
-     (get-in sidecar [:transitions locator])}))
-#+end_src
-
-Its output can be rich:
-
-#+begin_src clojure
-{:runtime
- {:locator [1 0]
-  :event :claim/settled
-  :result :accepted}
-
- :explanation/status :unverified-sidecar-claim
- :explanation
- {:semantic-id
-  :request-claim/helper/accepted-settlement
-
-  :knowledge-derivation
-  {...}
-
-  :authority-derivation
-  {...}
-
-  :proof-obligations
-  [...]}}
-#+end_src
-
-But observer failure must remain diagnostic:
-
-#+begin_src clojure
-(defn run-with-optional-observer
-  [plan state event observer sidecar]
-  (let [result
-        (step plan state event)]
-
-    (when observer
-      (try
-        (observer
-          {:plan plan
-           :state-before state
-           :event event
-           :result result}
-          sidecar)
-
-        (catch Throwable t
-          (try
-            (diagnostics/report!
-              {:error/type :diagnostic/observer-failed
-               :cause t})
-            (catch Throwable _
-              nil)))))
-
-    ;; Semantic result is returned regardless of observer success.
-    result))
-#+end_src
-
-Now corrupt the sidecar:
-
-#+begin_src clojure
-(def wrong-sidecar
-  (assoc diagnostic-sidecar
-    :executable-digest
-    "sha256:not-this-plan"))
-
-(run-with-optional-observer
-  executable-plan
-  runtime-state
-  settled-event
-  observe-transition
-  wrong-sidecar)
-;; =>
-;; semantic step result is unchanged
-;; diagnostic observer reports executable mismatch
-#+end_src
-
-Or remove it entirely:
-
-#+begin_src clojure
-(step
-  executable-plan
-  runtime-state
-  settled-event)
-;; =>
-;; same semantic transition
-#+end_src
-
-The exact artifact identity is stricter than runtime compatibility. A rebuilt
-plan could have different state indices or emitted bytes while remaining
-compatible enough for ordinary execution under the server/runtime contract. A
-sidecar for the old bytes still cannot explain the new runtime coordinates.
-Matching the executable digest alone does not authenticate the explanation:
-a fabricated sidecar can copy that digest. Tooling that labels derivations as
-checker-verified must also validate sidecar provenance, its binding to the
-build/checker result, and the checked obligations. Otherwise it displays
-sidecar content only as an unverified diagnostic claim.
-
-That is why the build needs both:
-
-#+begin_src clojure
-{:runtime-compatibility
- :humanhelp-live-v12
-
- :exact-executable-identity
- "sha256:6e4b..."}
-#+end_src
-
-One answers "may this runtime continue?" The other answers "does this diagnostic
-artifact describe these exact emitted coordinates?"
-
-The sidecar architecture earns its complexity by preserving that separation:
-production runs one compact semantic machine; verification and debugging can
-explain that machine richly without becoming an alternate authority or control
-path.
-
-Conceptually there are three modes:
+For the same admitted initial state, canonical plan, runtime interpretation,
+and normalized event sequence, adding, removing, corrupting, or replacing a
+sidecar must not change semantic transitions or abstract effects, apart from
+permitted diagnostic output.
 
 #+begin_example
-verification/build
-  global choreography
-  -> ExecutablePlan
-  +  DiagnosticProofSidecar / derivations / proof obligations
-
-test/debug
-  ExecutablePlan
-  + optional read-only diagnostic observer using DiagnosticProofSidecar
-
-production
-  the same ExecutablePlan
-  sidecar omitted
+semantic-trace(run(plan, initial-state, events))
+  = semantic-trace(run-with-diagnostics(plan, initial-state, events))
 #+end_example
 
-This separation is also a security boundary. A browser-side proof object is not
-a capability, authorization token, or evidence that the trusted server must
-accept. An adversarial browser can modify or fabricate any diagnostic sidecar,
-so authoritative security remains entirely on the trusted side.
-
-The relevant correctness property is *diagnostic noninterference*, not a general
-verified compiler-erasure optimization. Attaching, removing, corrupting, or
-replacing a sidecar must not change semantic execution because the transition
-function has no sidecar input.
-
-If =run= denotes execution without diagnostics and =run-with-observer= denotes
-the same execution with a read-only diagnostic observer, then for the same
-=ExecutablePlan= and event sequence:
-
-#+begin_example
-semantic-trace(run(plan, events))
-  =
-semantic-trace(run-with-observer(plan, sidecar, events))
-#+end_example
-
-The equality is for the same admitted initial state and normalized event
-sequence, under the same declared runtime premises. It includes semantic state
-transitions and abstract effects, modulo diagnostic output. It does not claim
-that enabling instrumentation cannot affect wall-clock scheduling or resource
-consumption in a real browser.
-
-The observer may emit additional diagnostic output only. It must not mutate
-runtime state, feed decisions back into event admission, suppress required
-effects, or turn an observer exception into a different domain outcome. Observer
-failure follows a contained diagnostic-failure path. This property should be
-reinforced structurally by module/API boundaries, checked mechanically where the
-implementation can inspect dependencies or effect categories, and exercised by
-property/model-based and Chromium tests. It is not intended to require proving
-bisimulation between a rich annotated AST and an erased production AST because
-no such runtime AST should exist.
-
-A debug-only explanation facility may answer questions such as:
-
-#+begin_example
-why did runtime transition [4 0] correspond to :request-claim/helper/settled?
-what knowledge derivation justified this branch?
-which authority obligation discharged this operation?
-#+end_example
-
-Such explanations are valuable precisely because they are detached from the
-production execution semantics.
-
-*** ExecutablePlan is the canonical semantic runtime artifact
-
-There must be exactly one canonical runtime semantic payload for a projected
-client role.
-
-The design explicitly rejects:
-
-#+begin_example
-rich proved plan
-    |
-    | optimize / erase
-    v
-different production plan
-#+end_example
-
-as the ordinary architecture.
-
-Instead:
-
-#+begin_example
-verified projection
-    |
-    +--> ExecutablePlan
-    |
-    +--> optional DiagnosticProofSidecar
-#+end_example
-
-The runtime plan contains the executable rules and declares the runtime inputs
-and state contracts it needs. The admitted runtime supplies concrete values
-through those contracts.
-
-The sidecar may explain the plan but may never complete or modify its semantics.
-
-*** Exact executable identity and compatibility identity are different
-
-The system needs both concepts.
-
-An exact executable identity answers:
-
-#+begin_quote
-Does this diagnostic artifact describe these exact emitted runtime coordinates
-and bytes/terms?
-#+end_quote
-
-A compatibility identity answers:
-
-#+begin_quote
-May this projected runtime safely continue against this server/runtime contract?
-#+end_quote
-
-Those questions are not interchangeable.
-
-Two executable artifacts may be semantically compatible while having different
-exact digests.
-
-Conversely, a matching operation name does not establish either exact artifact
-identity or compatibility.
-
-*** Exact artifact matching fails closed for diagnostics
-
-Diagnostic tooling must never "best effort" correlate a sidecar with a different
-runtime artifact merely because:
-
-- state counts look similar;
-- semantic names overlap;
-- a plan ID is close;
-- timestamps suggest the files were built together;
-- source locations happen to match.
-
-If exact executable identity does not match, the sidecar is unavailable for that
-runtime artifact.
-
-The application may continue to execute the plan if ordinary runtime
-compatibility permits it, but diagnostics must report the mismatch rather than
-inventing correspondence.
-
-*** Diagnostic noninterference is architectural
-
-The runtime transition function does not accept:
-
-- proof certificates;
-- derivation trees;
-- source spans;
-- checker objects;
-- explanation metadata;
-- suggested fixes.
-
-Therefore changing any of those objects must not change runtime semantics
-through the defined interface. Excluding a sidecar parameter is necessary but
-not alone sufficient: ambient mutable state, shared callbacks, exception
-propagation, or hidden lookups must not reintroduce a diagnostic control path.
-
-This should be reinforced by module and namespace dependency direction, not only
-by convention.
-
-A proof sidecar that can accidentally influence runtime execution is not a
-sidecar.
-
-*** The sidecar is not a capability
-
-An adversarial browser may fabricate a perfect-looking diagnostic artifact.
-
-The server must gain no authority from it.
-
-In particular, a sidecar may not establish:
-
-- principal identity;
-- operation authorization;
-- authoritative provenance;
-- current server machine state;
-- permission to read protected data;
-- permission to subscribe to protected Live data.
-
-Its only role is explanation/debug correspondence.
-
-*** Runtime locator, semantic identity, and proof identity remain distinct
-
-A compact runtime coordinate such as:
-
-#+begin_example
-[4 0]
-#+end_example
-
-may identify one transition in an emitted plan.
-
-A semantic identifier such as:
-
-#+begin_example
-:request-claim/helper/settled
-#+end_example
-
-names source-level meaning.
-
-A proof-obligation identifier names a checker obligation or derivation.
-
-There is no requirement that runtime coordinates remain stable across builds.
-
-Trying to make them stable for debugging convenience can accidentally couple
-runtime representation to source/compiler history.
-
-The sidecar exists precisely so rich stable semantic/debug information does not
-have to pollute compact runtime structure.
-
-*** Optional diagnostics observe; they do not drive
-
-A debug observer may receive:
-
-- current plan identity;
-- runtime locator;
-- normalized event;
-- emitted abstract effects;
-- transition outcome.
-
-It may use those values to retrieve explanation.
-
-It may not feed the result back into transition selection.
-
-Conceptually:
-
-#+begin_example
-transition core
-    |
-    +--> next semantic state
-    +--> abstract effects
-    +--> optional diagnostic observation
-             |
-             v
-         explanation/logging only
-#+end_example
-
-The arrow never returns from explanation into semantic execution.
-
-*** Build outputs retain enough correspondence for later application closure
-
-The whole-application checker in Part VII must establish before serving that the
-browser artifact contains the admitted required projected plan set.
-
-This part therefore requires build output to expose machine-checkable identity
-sufficient to compare:
-
-- current projected executable plans;
-- generated browser artifact contents/stamp;
-- exact diagnostic sidecars when used.
-
-It does not define the whole application assembly object yet.
-
-It establishes the runtime/artifact identity facts that Part VII will consume.
-
-The identity recipe must specify the object identified, canonical encoding or
-exact byte domain, excluded self-identifying fields if any, and the versions
-relevant to interpretation. A digest of canonical plan terms is not automatically
-a digest of the emitted JavaScript bundle. The build must establish the declared
-relationship among normalized plan, packaged artifact, and diagnostic locators
-without a circular hash dependency.
-
-A matching hash establishes the claimed object correspondence under that
-recipe; it does not establish that the checker accepted the object's semantics.
-The [[#req-assembly-construction-phases][assembly construction and admission phases]]
-own the complete production artifact gate.
-
-#+LATEX: \newpage
+This is a conditional noninterference claim over fixed semantic inputs. It does
+not claim instrumentation has no wall-clock, memory, scheduling, or resource
+cost, or that every real browser receives the same event sequence with debugging
+enabled.
+
+Excluding a sidecar parameter is necessary but insufficient. Ambient mutable
+registries, shared callbacks, exception propagation, hidden source lookups, or
+observer decisions fed back into admission can reintroduce a control path.
+Module/API boundaries and implementation contracts must prevent those paths.
+
+Optional diagnostics must not gate required effects or completion delivery. The
+normal path records the actual transition and issues its required work according
+to the semantic contract. A bounded best-effort trace queue can feed observers
+independently; overflow drops diagnostic work under a visible diagnostic policy,
+not semantic work.
+
+Catching an observer exception does not contain a nonterminating or blocking
+observer. In-process custom observers require an explicit bounded/nonblocking
+premise, or execution isolation adequate for the promised containment. The
+framework cannot prove arbitrary observer code harmless just because its return
+value is ignored. Redaction and diagnostic failure reporting must also be
+bounded and contained.
+
+If an audit action is required for the operation's correctness or compliance
+contract, it is a declared semantic effect with its own failure policy. It must
+not hide inside an optional observer whose loss is advertised as irrelevant.
+
+*** Sidecars carry no authority
+
+A browser-side sidecar cannot establish principal identity, current model
+permission, authoritative state, subscription authorization, or permission to
+read protected data. The server accepts commands under its trusted boundary,
+regardless of the browser's proof-looking material.
+
+Sidecars can themselves reveal source details, policy names, or private values.
+Production packaging omits them by default; authorized diagnostic distribution
+follows the application's disclosure contract. Normal execution must remain
+complete when they are absent.
+
+The implementation can enforce part of this separation by dependency direction
+and closed runtime formats, and test it with missing, malformed, mismatched,
+throwing, and resource-heavy observers. Such checks support their stated scope;
+they do not establish a sandbox for arbitrary same-process trusted code.
+
+*** Build output and assembly closure
+
+Build output supplies machine-checkable correspondence among the current
+semantic subject, projected plan set, registered implementation closure, runtime
+contract, packaged assets, and optional exact sidecars. Test, diagnostic, and
+production modes execute the same admitted semantic payload for a given build.
+
+Part VII's [[#req-assembly-construction-phases][assembly admission phases]] verify
+that the served application loads the required artifacts and bindings. A source
+file containing a correct plan is insufficient when the browser actually loads
+an older bundle. A browser's claimed artifact identity is likewise not server
+authorization.
+
+The build may legitimately transform or optimize code. Any transformation that
+changes the object covered by a claim needs the declared correspondence or
+requalification. Sidecar separation avoids a second proof-annotated runtime;
+it does not excuse testing only an unoptimized development realization while
+claiming the production shell has been exercised.
+
+** Conformance and acceptance obligations
+
+The same canonical semantics must support construction checks, runtime
+interpretation, and focused conformance cases. Part IX supplies certification
+judgments; Part X supplies the stronger soundness and implementation
+correspondence arguments. This part requires the following cases at their
+appropriate boundaries.
+
+| Area | Case | Required behavior |
+|------+-------+-------------------|
+| Provisional typing | Claiming label is rendered over an open Request. | Presentation phase does not become an undeclared authoritative domain status. |
+| Entry knowledge | Required observation is absent or belongs to another Request. | The required optimistic construction is rejected; no silent ordinary-request fallback. |
+| Creation | A local preview is created before authoritative entity existence. | Its declared collection/local-input premises remain explicit; the preview does not prove uniqueness or absence. |
+| Command identity | Transport retries or a new execution continue an unresolved intent. | Stable command binding is preserved; physical retry does not allocate a new intent. |
+| Accepted outcome | Command success arrives without a fresh card. | Record incorporation knowledge and retain presentation recovery; do not invent rejection or require an unavailable card to believe valid success evidence. |
+| Rejection | Current card resembles a conflicting outcome but no rejection evidence exists. | Do not infer command rejection from current state. |
+| Timeout | Timer arrives after accepted evidence. | Do not erase established command knowledge or revive retired timer rights. |
+| Supersession | A fresh card installs while original command attribution is unknown. | Recover presentation while retaining the independent attribution obligation. |
+| Installation | Permission is granted but the DOM effect fails. | Do not mark adoption complete or discharge acquire-and-adopt debt. |
+| Late rollback | Old failure follows newer adopted authority. | Do not restore the obsolete snapshot. |
+| Local concurrency | One provisional command depends on another. | Apply the declared dependency/resolution policy; no silent promotion of provisional inputs. |
+| Rebase | New authority changes the local projection after a command was sent. | Recompute permitted presentation without silently changing immutable command arguments. |
+| Multi-target effects | One of several required swaps completes. | Record only established installation coverage and retain repair work for the rest. |
+| Continuity failure | Focus restore throws after successful installation. | Preserve adoption; report local continuity failure separately. |
+| Deferred continuity | An old layout callback follows a new capture or user edit. | Recheck current rights and preserve the newer local state. |
+| Query controls | Draft search differs from the query that produced the board. | Keep draft/applied-query distinction or reacquire; do not relabel stale results. |
+| Capture implementation | Restore implementation changes after capture. | Use the compatible bound implementation or explicit migration/retirement. |
+| Cleanup ownership | A newer style lock has the same physical value as an older lock. | Old cleanup cannot infer current ownership solely from equal values. |
+| Protected content | A Request disappears from the authorized board. | Continuity cannot recreate its content or disclosure. |
+| Availability | Reassign intentionally requires helper selection. | Admit the complete input-collection entry path; prevent incomplete final invocation. |
+| Construction defect | A required action is missing, even if hidden. | Fail the appropriate preparation/assembly check rather than treating nil as policy absence. |
+| View binding | A renderer tries to override registered operation policy. | Reject the incompatible binding field. |
+| Event classes | An environment event copies a participant message name. | Do not cross the declared admission class. |
+| Event selection | Several alternatives overlap. | Reject or use explicitly established arbitration/equivalence; no incidental first-match semantics. |
+| Callback correlation | An old physical callback reads the new current execution ID. | Reject that rebinding; correlation comes from the issued resource. |
+| Immediate completion | Effect completes before its await state is reached. | The host registration/buffering contract prevents losing or misrouting completion. |
+| Portability | Missing/nil/false or numeric representation varies across hosts. | Preserve the declared value semantics or reject unsupported representations. |
+| Opaque action | Full-language implementation has an asserted contract. | Admit under an accepting policy while retaining the assertion and structural checks. |
+| Exact sidecar | Sidecar belongs to another emitted plan with similar names. | Refuse diagnostic correspondence without changing otherwise valid execution. |
+| Forged proof metadata | A sidecar copies the correct executable digest. | Do not treat its claims as checked without provenance and applicable evidence. |
+| Observer failure | Observer throws, blocks, or floods output. | Contain under the declared mechanism/premises; never silently suppress required semantic work. |
+| Trace locator | Diagnostic code tries to recompute the selected transition. | Use the actual recorded locator and exact compilation mapping. |
+| Packaging | Current source plan differs from the loaded asset. | Fail the required assembly/artifact admission relationship. |
+| Missing product action | Rendered buttons are internally valid but an intended eligible action is absent. | Independent capability acceptance detects the omission. |
+
+Negative tests must fail for the intended reason, not because an unrelated
+malformation prevents reaching the behavior under examination. Positive cases
+must retain ordinary raw HTMX, explicit non-optimistic modes, valid retries,
+full-language implementations, permitted partial observations, and useful
+application-defined resolution strategies under their contracts.
+
+Pure tests compare admitted transitions and effects; shell tests exercise actual
+completion, ownership races, and failure handling; cross-host tests exercise the
+portable representation; asset checks bind the shipped realization. Passing
+these tests does not promote asserted callbacks, backend premises, or browser
+behavior into general proofs.
+
+Completion means the declared presentation path can execute and recover with
+truthful state classifications. A page that starts, emits valid-looking markup,
+or returns HTTP 200 has not thereby satisfied this part.
