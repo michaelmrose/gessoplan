@@ -11,6 +11,26 @@ are implementation components of the operation, not automatically separate
 commands. Their contracts must agree on inputs, authority, permitted effects,
 and outcomes.
 
+The public model operation and the choreography invoking it are not required
+to have identical callable signatures or host representations. A REPL,
+scheduled job, installed HTTP handler, or another admitted Choreo realization
+may invoke the same =:request/claim= meaning under its own authorized entry
+contract. A shared keyword, copied interface map, route name, or successful
+transport return is not evidence that the installed callable implements that
+meaning. Application assembly binds the source-owned operation, selected
+trusted executor, actual guard/write coverage, outcome interpretation, and
+permitted disclosure to the same qualified semantic contract. Every path
+claiming to implement the operation must satisfy its declared boundary;
+passing through choreography is not a prerequisite for ordinary model use.
+
+Conversely, a single command may involve several internal FX callbacks,
+backend statements, and asynchronous publication attempts. Those do not
+acquire independent authority to rewrite the business result or allocate a
+second domain command identity merely because they execute separately.
+A later notification worker has its own work/attempt identity and effect
+contract, but its work remains correlated to the authoritative command
+and retained publication intent under the selected protocol.
+
 Choreography adds coordination obligations: which role calls the operation,
 which participants learn its outcome, what they may provisionally display, and
 how they recover when delivery is uncertain. Those obligations do not authorize
@@ -18,10 +38,23 @@ Choreo to manufacture model outcomes or bypass current model guards.
 
 *** A concrete public Claim contract
 
-For this example, Claim assigns an unclaimed open Request to the authenticated
-helper. The helper must have active Membership in the Request's Organization,
-and current Organization policy must permit the claim. Successful incorporation
-also records the command result and any required durable publication intent.
+For this example, Claim moves an eligible open Request to its production
+=:claimed= state and creates the corresponding active *primary
+RequestAssignment* for the authenticated helper. RequestAssignment owns
+the helper relationship and its uniqueness/history semantics; a convenient
+=:request/helper= field must not become a competing source of truth.
+Collaborator assignments are not mistaken for a second primary helper.
+The helper must have current active Membership in the Request's Organization,
+and current Organization policy must permit the claim.
+
+This worked operation explicitly selects a *durable work-recorded publication
+profile*: successful new incorporation records the command result, the
+required durable notification intent, and the protected Request plus primary
+assignment transition together. Another operation may lawfully choose an
+admitted best-effort profile, but it must publish a correspondingly weaker
+contract rather than silently claiming work-recording or guaranteed delivery.
+The durable intent is not evidence that a notifier received a message or
+that an external effect completed.
 
 The public value schema is small:
 
@@ -63,14 +96,17 @@ An inspection view of the contract might be:
  :arguments ClaimCommand
  :principal-source :trusted-runtime-context
  :command-policy :claim-command-policy-v1
+ :publication-profile :durable-work-recorded
  :new-incorporation
  {:requires [:request/argument-target-matches
              :request/open
-             :request/unclaimed
+             :request-assignment/no-active-primary
              :membership/principal-and-organization-match
              :membership/active
              :organization/claim-permitted]
-  :establishes [:request/helper-assigned
+  :establishes [:request/claimed
+                :request-assignment/active-primary-recorded
+                :request-assignment/primary-uniqueness-preserved
                 :command/result-recorded
                 :publication/intent-recorded]}
  :replay
@@ -79,9 +115,29 @@ An inspection view of the contract might be:
   :effect :return-permitted-recorded-outcome}}
 #+end_src
 
-These keywords name obligations whose definitions and realizations must be
-resolved. A collection of reassuring labels is not a proof. In particular,
+These keywords are schematic *inspection labels*, not a second registry of
+facts or an executable guard-language API. The public RequestAssignment model
+owns what =no-active-primary=, =active-primary-recorded= and
+=primary-uniqueness-preserved= mean, including which other writers may
+alter assignment state. The application derives or supplies their qualified
+transaction-current realization through its admitted model/authority
+interface; copying this map cannot establish that the operation, installed
+handler, backend guard or durable worker exists.
+
+A collection of reassuring labels is not a proof. In particular,
 new-incorporation conditions do not apply unchanged to replay: after a
-successful Claim the Request is claimed, but a compatible authorized repetition
-must still be able to recover the recorded success.
+successful Claim the Request is claimed and has an active primary assignment,
+but a compatible authorized repetition must still be able to recover the
+historical recorded success. A later Unclaim or Reassign may change the current
+Request and assignment without changing that historical command outcome.
+Result disclosure still depends on current authorized policy.
+
+| Public Claim construction | Required model/coordination judgment |
+|---------------------------+--------------------------------------|
+| An eligible authenticated helper claims an open, unassigned Request using a newly admitted command | The protected transaction establishes the =:claimed= state, exactly the permitted active primary RequestAssignment, recorded command outcome, and durable intent for the chosen profile |
+| A different collaborator assignment already exists, but the primary slot is eligible and empty | Do not mistake collaborator presence for a conflicting primary; admit or reject according to the actual public RequestAssignment policy |
+| A client supplies a matching =:request-id= and a forged helper identity in a transport wrapper | The trusted principal binding selects the actor; input shape or a matching route name cannot grant the claimed identity |
+| A previous Claim committed and is replayed compatibly after the Request became claimed or was later reassigned | Resolve the prior command with permitted historical disclosure and without adding a second primary assignment or publication intent |
+| An installed handler invokes a similarly named helper or FX callback that omits assignment uniqueness or actual durable work recording | Reject the stronger declared operation/assembly correspondence; accepting a map of obligations is not proof of enforcing them |
+| A best-effort notice is selected by a separately admitted contract | Permit the weaker published guarantee; do not advertise =:publication/intent-recorded= or delivered receipt as a consequence of this weaker operation |
 

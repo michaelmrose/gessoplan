@@ -1,10 +1,12 @@
 # R5.1 sectional source — Part IV, Authoritative Operations and Progression
 
 **Disposition:** lossless structural preparation of the original R5 Part IV,
-with section 04.01 now substantively reviewed against R4 and
-Gesso's source. Its scoped preservation audit is
-`04.01-r4-preservation-audit.md`; the other 16 numbered units remain
-unreviewed candidates. Part IV is not yet accepted. Parts I–III
+with sections 04.01–04.02 now substantively reviewed against R4,
+Part VIII's production RequestAssignment meaning, and Gesso's source.
+Their scoped preservation audits are
+`04.01-r4-preservation-audit.md` and
+`04.02-r4-preservation-audit.md`. The other 15 numbered
+units remain unreviewed candidates. Part IV is not yet accepted. Parts I–III
 are reviewed R5.1 candidates. The twelve-part plan remains a draft.
 
 The original R5 source is preferred to R4 as the architectural starting
@@ -80,16 +82,16 @@ assembles Part I–IV and composes the remaining unreviewed R5
 published parts V–XII into `output/gesso-plan-v5.org`.
 
 The 17 source files reconstruct the published Part IV exactly.
-Section 04.01 has since been revised, preserving the original root
-heading and anchors; the published Part IV has been rebuilt from
-that edited unit and the sixteen unchanged R5 units. These are
+Sections 04.01–04.02 have since been revised, preserving the
+original root heading and anchors; the published Part IV is
+rebuilt from the two edited units and the fifteen unchanged R5 units. These are
 editorial/documentary checks, not runtime or formal proof evidence.
 The local Python assembly command was not run as part of the
 GitHub connector operation; run it in a checkout when available.
 
-**Next:** revise **04.02 — Core, FX, and the public Claim
-contract**, comparing R4 `main`, current Gesso model and
-assurance source, and Parts I–III. Add its scoped R4 preservation
-audit and rebuild the published Part IV.
+**Next:** revise **04.03 — Model outcomes and invocation**,
+comparing R4 `main`, the current Gesso command-resolution and
+authoritative-observation code, and Parts I–III/VIII. Add its
+scoped R4 preservation audit and rebuild the published Part IV.
 Subsequent `next` requests continue one bounded revision
 at a time.
