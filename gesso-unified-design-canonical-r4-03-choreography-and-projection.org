@@ -3037,7 +3037,19 @@ browser.
 
 However, a local predicate or guard whose result is required to execute the
 projected semantics is runtime-semantic data and must remain in the executable
-projection.
+projection or in a trusted, admitted realization bound to that projection.
+The generated local program retains the guard's operational contract,
+required inputs, evaluation point, and failure continuation. A trusted
+server-only authorization or authoritative progression check must not be
+weakened into a browser-computed Boolean merely to make every guard portable.
+For each physical role, the assembled application binds the guard to the
+place with the authority and information needed to enforce it.
+
+A compilation or proof artifact can establish that a guard is necessary or
+sufficient under stated assumptions. It cannot replace the actual check
+when the premises depend on the current runtime owner, resource, principal,
+observation, or target. A guard used to establish a proof premise is also
+part of the exact semantic contract on which that proof depends.
 
 The distinction is:
 
@@ -3049,8 +3061,20 @@ The distinction is:
 The guard identifies the execution and resource instance required by this
 callback's admission contract; it is not a universal generation comparison.
 Shared fragment or subscription events use their own declared ownership checks.
+An effect completion may also require the effect invocation, target, current
+plan, scope, operation or command identity according to its contract.
+Conversely, a boundary that does not depend on a given identity category
+need not manufacture a corresponding universal counter.
+
 Passing an ownership guard does not by itself establish the knowledge,
-provenance, or authority required for the resumed branch.
+provenance, or authority required for the resumed branch. The owning runtime
+also validates the normalized completion or failure, current transition,
+declared input/output schema, and applicable admission evidence. Guard
+evaluation and the state transition it protects must be serialized or
+otherwise protected against relevant owner replacement; a check followed
+by an unprotected asynchronous mutation reopens the race. The physical
+effect interpreter executes only effects of accepted transitions, with
+declared retry, idempotency, and resource-retirement behavior.
 
 The executable semantic core evaluates runtime guards as part of the admitted
 transition semantics. A proof kernel or dedicated semantic checker establishes
@@ -3058,7 +3082,13 @@ its stated judgment about those semantics; it does not replace the runtime
 admission check or supply missing runtime facts.
 
 The production machine must never depend on an optional proof sidecar to decide
-a transition.
+a transition. A sidecar can carry semantic origins, property judgments,
+assumptions, and diagnostic paths when bound to the exact executable subject,
+but it cannot become a hidden production guard, authority token, or alternate
+state store. Removing optional proof/diagnostic material cannot alter the
+runtime transition relation. Conversely, removing an executable guard from
+a supposedly optimized plan changes the semantics and invalidates claims
+that depended on that guard.
 
 *** Projection failure should identify the missing justification
 
@@ -3074,36 +3104,85 @@ Useful failure information includes:
 - facts currently known;
 - available provenance;
 - missing knowledge path;
-- candidate communication or authoritative-observation paths when derivable.
+- candidate communication or authoritative-observation paths when derivable;
+- the violated obligation and the admission stage that failed;
+- whether the conclusion is proven invalid, unresolved under an opaque
+  predicate or assumption, or blocked by an unsupported language construct;
+- relevant source-to-projected locations and contract identities, where
+  available.
 
 A generic "projection failed" error throws away precisely the information that
-the verifier already computed.
+the verifier already computed. Diagnostics must also distinguish a missing
+knowledge path from an actual failure of source authentication, guard
+ownership, resource correspondence, or authoritative realization. A private
+discriminator's absence may be named as an obligation without disclosing its
+value or the private policy itself.
+
+These explanations are compiler/assurance evidence, not a permission to expose
+every source fact to a runtime user. Diagnostic rendering, structured errors,
+logs, and proof reports enforce their respective disclosure contracts. A
+redacted error retains useful obligation and location identifiers where
+permitted. If a checker cannot establish the property, it must reject or
+expose an unresolved obligation; it must not label it proved or quietly
+supply a fabricated guard or knowledge path.
 
 *** Host-language callbacks may not bypass projected semantics
 
 A local runtime may invoke host-language functions to realize declared local
 effects, but arbitrary callbacks must not become an alternate transition path.
 
-In particular:
+The admitted interaction is:
 
-The projected machine requests a declared effect. The registered host
-implementation performs it and submits a normalized completion or failure.
-The machine admits that event under the current owner and transition contract.
+#+begin_example
+projected semantic transition
+    -> declared effect with owner, resource and contract identity
+    -> registered host implementation
+    -> normalized completion or failure
+    -> owner-relative event admission
+    -> projected semantic transition and accepted effects
+#+end_example
 
-is compatible with the design.
+The forbidden alternative is:
 
-But:
+#+begin_example
+host callback
+    -> mutate choreography state or protected DOM target directly
+       using captured or unchecked authority
+#+end_example
 
-An arbitrary host callback mutates choreography state without passing the
-declared admission and transition boundary.
-
-reopens the proof and knowledge boundary.
+The latter reopens the proof and knowledge boundary. A host callback can
+produce a message or normalized event, but cannot unilaterally confer its
+acceptance. An ignored stale completion must not be reinterpreted as proof
+that the corresponding authoritative command rejected, never committed,
+or lost an independently recoverable result. Execution-private effects,
+shared advisories, and physical installation callbacks each retain their
+own actual owner and acceptance conditions.
 
 The common boundary is
 [[#req-owner-relative-event-admission][owner-relative event admission]] in Part II.
 Part VI develops its browser implementation. An execution-private effect
 completion must not bypass that boundary, and a declared shared event must use
 its actual fragment or subscription owner rather than an invented execution.
+
+*** Guard-and-diagnostic acceptance counterexamples
+
+| Apparent shortcut | Required completed-system outcome |
+|-------------------+-----------------------------------|
+| A projected browser callback resumes after its resource instance was retired | Reject the stale completion; equality of a command id or plan name cannot restore the resource's owner rights |
+| A fragment advisory is associated with the last active command execution because the event lacks an execution id | Apply the registered fragment/subscription owner and source contract; do not invent an execution |
+| A browser claims its local =:authorized?= guard passed and submits an authoritative mutation | Bind current authentication, authorization, and authoritative execution at the trusted server boundary; client Boolean is not that evidence |
+| An effect callback checks a current target, yields, then installs into a replacement DOM target | Enforce owner check and mutation under an admitted serialized or equivalent protected boundary |
+| The projected machine consumes a normalized failure that lacks the required effect invocation correlation | Reject or recover under its declared contract; a value with the right shape is not a matching completion |
+| A production optimization omits a runtime guard because the proof sidecar once stated it was sufficient | Preserve the executable admission contract and requalify affected evidence; the sidecar is not a runtime replacement |
+| A proof/diagnostic sidecar is absent, but the runtime attempts to load it to decide the next branch | Keep executable transitions independent of optional sidecar data or reject the defective runtime assembly |
+| Projection cannot justify a branch, and the compiler inserts a synthetic authority observation to make it type-check | Reject or expose the actual unmet obligation; only an authored path or justified refinement may change the semantics |
+| A projection error includes a private threshold and an authorized user's role lacks permission to view it | Redact protected facts while retaining permitted location and obligation context |
+| A stale browser callback is ignored and the command status is recorded as rejected | Preserve independent command outcome reconciliation; event retirement does not establish authoritative disposition |
+
+These are normative acceptance cases for finished Gesso. Runtime guard
+placement and implementation languages may vary, but every claimed
+projection and deployed realization must preserve the corresponding
+admission, resource, evidence, and disclosure obligations.
 
 ** Long logical workflows and short runtime executions
 :PROPERTIES:
