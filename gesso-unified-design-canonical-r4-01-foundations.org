@@ -2695,15 +2695,32 @@ Depending on the component, this may include:
 - named guarantees;
 - compatibility constraints.
 
+An exported interface distinguishes guarantees from the assumptions under
+which those guarantees hold. Listing a proposition as a required premise does
+not export that proposition as already established. A dependent component must
+either inherit the exact applicable premise, discharge it using a checked
+justification, or decline the stronger claim. The interface's named obligations
+and dependencies must be resolved to their source-owned subjects; a convenient
+summary is not an independent source of semantic truth.
+
 Implementation details irrelevant to downstream reasoning should not become
 semantic commitments merely because they are convenient to serialize.
 
 *** Assumption
 
-An *assumption* is a named proposition accepted from outside the proof currently
-being established.
+An *assumption* is a proposition accepted from outside the proof currently
+being established. It is identified by its proposition *and applicability*:
+subject, parameters and bindings, semantic or authority context, scope, origin,
+and the implementation/runtime boundary where relevant. Its human-readable
+name alone is not sufficient identity. Two claims about current Membership for
+different principals, Organizations, Requests, or invocations do not share one
+premise merely because both are called =:current-membership=.
 
-Assumptions are explicit leaves in the proof or explanation graph.
+Assumptions are explicit leaves in the selected proof justification or
+explanation graph. Acceptance under an admission policy keeps the dependent
+claim conditional; it does not discharge the assumption. Discharge requires a
+separately checked, scope-compatible justification that inherits its own
+premises, as specified in Part IX.
 
 They are not inferred from trust in a namespace name, source location, familiar
 implementation, passing test, or matching hash.
@@ -2728,8 +2745,12 @@ result.
 
 *** Derivation
 
-A *derivation* is machine-readable evidence describing how a guarantee follows
-from certified premises and inference rules.
+A *derivation* is machine-readable proposed evidence describing how a guarantee
+follows from specified premises and inference rules. A raw derivation is not
+self-validating. Only a successful check under the applicable calculus and
+subject/premise bindings can establish the judgment it proposes; the
+interpretation and soundness of that checking mechanism remain separately
+classified claims.
 
 Derivations are useful for:
 
@@ -2764,10 +2785,15 @@ A certificate may include:
 A certificate is not a boolean.
 
 A certificate is not accepted because an ordinary Clojure map contains a key
-such as =:verified? true=.
+such as =:verified? true=. A submitted certificate-shaped value remains raw
+evidence until its required checking/re-admission boundary succeeds.
 
-A certificate is accepted only through the checker boundary appropriate to that
-certificate class.
+A certificate is accepted only through the checker and issuer boundaries
+appropriate to that certificate class. Admission binds the checked subject,
+claims, required source-derived obligations, dependency closure, permitted
+premises, and applicability. A copied successful report or a matching digest
+does not supply that issuer binding. A partial explanation of failed admission
+is useful diagnostic material, not a certificate satisfying the missing claim.
 
 *** Semantic identity
 
@@ -2835,6 +2861,24 @@ a DAG, not necessarily one linear chain:
 | Projection | The stated global-to-local behavior relation |
 | Executable plans | Semantic and artifact identity bindings |
 | Whole application | Closure, production enforcement, and independent acceptance evidence |
+
+The proof DAG records the justifications and inherited premises for the
+particular claims being established. Its acyclicity and internal completeness
+are necessary, but do not establish that all *required* application obligations
+were included. The constructor separately derives the mandatory obligation
+ledger and required dependency edges from the original source, actual semantic
+subject, and selected profile. It must check that the selected proof DAG
+accounts for those obligations as established, explicitly accepted premises
+where policy permits, or unresolved blockers. A caller-supplied graph with a
+conveniently omitted guard, operation, authority check, writer, or correspondence
+edge cannot certify the reduced subject as the complete application.
+
+Alternative sound justifications may have different dependencies; only the
+selected justification's actual premises are inherited by its dependent
+claim. No premise can be discarded merely because another claim in a shared
+artifact is assumption-free. Required obligation coverage and per-claim
+dependency closure are separate checks, not a second author-maintained proof
+registry. Part IX owns their normative checking and issuance rules.
 
 A later stage may rely only on propositions actually exported by its certified
 dependencies or named as assumptions.
