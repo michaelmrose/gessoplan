@@ -3,7 +3,15 @@
 For a newly created Request, the authoritative result belongs to the public
 Request model. The creator learns the permitted command outcome and reacquires
 the declared card or board projection. Other clients need not receive the whole
-Request from the creator's execution.
+Request from the creator's execution. A command-bound accepted result can
+also justify immediate presentation of the creator's newly created card when
+the result and membership-adoption contract supply the required content and
+scope. The framework does not force an additional board reread merely to
+display an already admitted result. Updating one card, introducing a card
+into a filtered or sorted board, and adopting complete board membership are
+different propositions; each requires the corresponding declaration and
+completion evidence. An unresolved command cannot be shown as a committed
+creation solely because an optimistic view was rendered.
 
 #+begin_src clojure
 {:operation/id :request/create
@@ -27,15 +35,35 @@ recoverable publication handoff under its declared contract. Required
 invalidation cannot depend solely on the creator's browser receiving a response
 and deciding to notify peers. Publication failure after commit leaves a
 committed command plus delivery debt; it is not a rejected create command.
-Part IV owns the atomicity or recoverability of that handoff.
+Required publication is secured by an atomic authoritative change/publication
+intent or an equivalently qualified durable discovery mechanism. A best-effort
+post-commit notification alone cannot establish no-lost-change recovery when
+a process can fail between commit and publication. The recovery contract
+preserves work identity, scope and required progression across retries and
+router or subscriber replacement. Part IV owns the atomicity, propagation
+and repair obligations of that handoff.
 
 An advisory identifies a permitted scope and justified acquisition requirement.
+Before the browser records it, the shared-event admission establishes the
+current subscription or fragment owner, source registration and instance,
+source provenance, permitted transition, and scope/requirement applicability.
+Matching a subscription identifier or accepting a transport event by itself
+does not establish those facts. Advisory payload data cannot relax the
+registered producer, recipient or disclosure contract.
 Its disclosure does not reveal a hidden Request by implication. A lower bound
 must be supplied by the admitted producer or a declared fence protocol, not
 invented from the receiver's old basis. Subscriptions and reacquisition cover
-initial registration, reconnect, and missed-notification gaps.
+initial registration, reconnect, and missed-notification gaps through a declared
+read/registration fence, durable cursor, buffered event interval, periodic
+authorized rediscovery with stated premises, or an equivalent protocol.
+Neither a new subscription alone nor an old snapshot plus best-effort events
+establishes gap-free awareness. If a producer lacks a minimum progression
+bound, a tokenless advisory needs another qualified fence or read rule;
+"newer than the recipient's last displayed basis" can be too weak.
 
-The browser uses the pure transition and effect-shell separation from Part II:
+The browser uses the pure transition and effect-shell separation from Part II.
+The following calls illustrate the semantic steps, not a second independent
+business-rule authority or a requirement to use these exact helper names:
 
 #+begin_src clojure
 (def after-advisory
@@ -61,15 +89,59 @@ returned observation is bound to the full query, projection, visibility,
 temporal context, authority, and basis required by the acquisition contract.
 
 Acquisition, permitted installation, actual installation, and semantic adoption
-are separate where the realization makes them separate. A pure state update
-does not itself swap a DOM node. Adoption discharges only requirements that the
+are separate where the realization makes them separate. An acquire-only
+obligation may be discharged by an admitted read, but an acquire-and-adopt
+obligation that requires physical installation is not discharged by a completed
+HTTP request, validated response, proposed swap or mere installation permission.
+A pure state update does not itself swap a DOM node. An asynchronous
+installation must report its admitted completion or failure, under the same
+owner, target instance, scope and observation that authorized the effect.
+The last installation-right check and the physical mutation must share an
+appropriate serialization or equivalent protection against target replacement. Adoption discharges only requirements that the
 installed/adopted observation actually covers, preserving later or unrelated
-requirements and respecting the current owner. Physical effects run outside
+requirements and respecting the current owner. Coverage is about the
+authorized query and its visibility, projection, basis and temporal semantics,
+not about the presence of a particular hidden row in the rendered HTML.
+An observation can correctly cover an advisory without exposing the Request
+when the current principal or active filters exclude it. A stronger admitted
+acquisition may discharge more than the requirement that initiated it, but
+not an unrelated scope or a requirement whose adoption milestone has not
+been reached. Physical effects run outside
 retriable state-update functions. The worked X18/X19/X20 race in Part II fixes
-the intended interpretation.
+the intended interpretation: a permitted X19 installation may satisfy X18
+while retaining an intervening X20 requirement under partial-advance policy.
+Under an all-current-requirements policy, that X19 installation instead
+defers until sufficiently covering evidence is acquired. The policy is
+declarative and must not change according to which asynchronous callback
+runs first. An owner, principal, query, resource or target replacement
+invalidates the old installation right even if the response's basis is newer.
+The accepted pure transition is the only source of emitted physical effects.
 
 Bob may therefore retain the old board while showing a Refresh affordance.
 The notification does not establish the new Request's title or visibility;
 authoritative reacquisition does. Eventual adoption remains conditional on the
 declared automatic or user trigger, not merely on the database being available.
+The creator's immediate accepted-command update and other viewers' selective
+Refresh policy can therefore coexist without giving the creator's browser
+authority to publish trusted facts for those viewers.
+
+*** Durable-publication acceptance counterexamples
+
+| Apparent shortcut | Required construction or execution outcome |
+|-------------------+--------------------------------------------|
+| A Request commits, then the web node crashes before an unprotected best-effort advisory | Preserve required publication/recovery debt or provide qualified durable discovery; do not reinterpret the committed command as rejected |
+| A viewer subscribes after the initial read and misses a change in the registration gap | Require a fence, replay, buffering or qualified rediscovery under the claimed awareness guarantee |
+| A correctly shaped advisory arrives for a retired subscription instance | Reject the obsolete shared event; payload validity does not restore source/owner rights |
+| A remote advisory includes a hidden Request title that the recipient is not entitled to see | Reject prohibited disclosure; advisory permission is not permission to reveal domain content |
+| A tokenless advisory is satisfied by reading merely later than the viewer's old basis | Require qualified coverage of the triggering change or preserve unresolved reacquisition debt |
+| The creator's command has an unknown disposition and the optimistic card is treated as a committed new row | Reconcile the stable command identity; optimistic display cannot prove authoritative incorporation |
+| A correlated accepted create result updates one card, then code assumes the entire board's sorted membership is current | Check and admit the separate membership/query scope or reacquire as the contract requires |
+| An X19 result is installed while X20 remains outstanding | Discharge only requirements X19 actually covers under the declared adoption policy; retain or defer X20 accordingly |
+| An HTTP response completes but its HTMX swap is cancelled or its target retires | Retain acquire-and-adopt debt unless another admitted installation/adoption path actually satisfies it |
+| A valid newer observation returns for an old principal context or replaced board owner | Reject obsolete installation rights; newer basis does not overcome scope or resource-instance mismatch |
+| A complete authorized board observation omits a Request hidden by access policy or selected filter | Permit coverage only under the actual query/visibility contract; do not reveal the hidden row or mistake omission for failed propagation |
+| An effect is executed inside a retriable pure state update | Reject duplicate or uncontrolled host effects; interpret only effects of the accepted state transition |
+
+These are requirements of completed Gesso. They do not prescribe a single
+database, routing topology, browser shell, or selective-adoption policy.
 
