@@ -6,12 +6,22 @@ the local plans expose sending and admitted receipt separately. The realization
 relation identifies which concrete event establishes receipt and receiver
 knowledge. A send callback may mean enqueued or accepted by a transport, not
 delivered to the peer. It must not establish the stronger event by implication.
+Nor does acceptance by a receiving transport alone establish that the correct
+role-local machine admitted and consumed the message. The realization relation
+identifies the admissible receiver event, its actual message origin, and the
+resulting knowledge transfer. Acknowledgment meaning is contract-specific:
+transport receipt, machine consumption, and business adoption establish
+different propositions.
 
 The channel contract states relevant ordering, loss, duplication, replay,
 correlation, and disclosure semantics. Where loss is possible, a required
 receive needs an appropriate retry, timeout, durable handoff, or other recovery
-path, with any eventual-delivery claim stated as a premise. A timeout establishes
-that a deadline elapsed locally; it does not prove that a remote effect failed.
+path, with any eventual-delivery claim stated as a premise. Each retry or
+handoff preserves the declared occurrence, command and session semantics,
+or explicitly establishes a new occurrence under the applicable admission rule.
+A timeout establishes that a deadline elapsed locally; it does not prove
+non-delivery, remote rejection, non-incorporation, or peer termination.
+The receiver's silence is not evidence that it chose an alternate branch.
 
 Correlation binds the message occurrence to its admitted conversation, operation,
 participants, and semantic subject as required. Command, execution, transport,
@@ -19,18 +29,34 @@ and message-occurrence identities are distinct unless the contract deliberately
 identifies particular instances. Correlation fields learned from the first
 message still need an admitted routing/source scope; accepting an unknown id
 does not let an arbitrary message choose which authority or session it belongs to.
+At first contact, an unbound correlation key may be learned only after
+trusted routing, origin and scope admission; the sender's claim of a session
+identifier cannot itself establish the authority to bind that session.
+The required relation concerns the intended occurrence and participants,
+not merely equality of supplied key strings.
 
 Duplicate handling is explicit. Reaccepting a transport delivery must not repeat
 an already consumed local transition or authoritative effect unless the declared
 repeat semantics permit it. Rejecting a stale private callback does not erase
 independently usable command-outcome evidence; reconciliation can admit it under
-its own owner and disclosure contract.
+its own owner and disclosure contract. Duplicate suppression is qualified by
+the protocol's semantic occurrence identity and admitted replay scope; a
+repeated delivery of an already consumed occurrence cannot become a second
+command or effect through a new transport attempt. Conversely, independent
+legitimate occurrences with equal payloads must not be collapsed merely
+because their bytes match. Retrying an uncertain authoritative command uses
+the declared stable command identity and reconciliation contract, not a fresh
+incorporation disguised as message redelivery.
 
 Projection also preserves causal dependencies across foreign authoritative
 steps. If role B may act only after command C has a recorded successful result,
 B needs a message or authoritative observation establishing that exact premise
 before acting. Merely traversing a foreign authoritative node in the compiler
-does not establish runtime evidence at B.
+does not establish runtime evidence at B. A message reporting transport
+acceptance or an attempted invocation is not proof that C committed. The
+authoritative result contract determines which outcomes establish the
+specified predecessor; an unresolved result retains reconciliation rather
+than satisfying success or definite failure by default.
 
 A completion descriptor naming an authority and basis is insufficient by itself.
 An admitted read of an unrelated card, a read before C became visible, or a
@@ -42,7 +68,8 @@ different premise.
 
 For a wait with several alternatives, dependency discharge is edge-specific.
 An ordinary timeout or cancellation alternative does not inherit the evidence
-provided by a successful authoritative-observation alternative. A compact plan
+provided by a successful authoritative-observation alternative. Nor does
+receipt on a different session edge establish the intended predecessor. A compact plan
 must retain that distinction or reject the unsupported projection, not discard
 the dependency because one edge could establish it.
 
@@ -76,9 +103,43 @@ Receiving this message may establish only the declared communicated facts.
 
 The receiver does not acquire arbitrary sender context, and the implementation
 must not merge unknown payload keys into machine context by convenience.
+Declared required fields are present on an admitted message; optional fields
+establish knowledge only when actually sent and received under their contract.
+A sender must know each transmitted semantic field and be entitled to disclose
+it. Receipt establishes *communicated* provenance, not independent authority
+of the transmitted assertion. A claim that the message carries a committed
+outcome also requires trusted source and command-result correlation.
 
 An explicitly open payload must follow the extension-data contract from the
 [[#req-value-schema-boundaries][value-schema boundary]]. Openness alone does not
 grant undeclared fields semantic knowledge status or permission to influence a
-branch. Any weaker guarantee actually selected remains visible in the result.
+branch. Nonsemantic transport extensions remain outside admitted fact storage,
+branch inputs, operation arguments and semantic history. Promoting any extension
+to a semantic field requires a new admitted contract and its knowledge,
+disclosure and compatibility obligations.
+
+The example's =:request-id= is domain correlation, not a transport attempt
+identity. A command-specific Claim settlement also requires the applicable
+command/result and owner binding; matching only the Request id cannot justify
+reusing another Claim's disposition. Any weaker guarantee actually selected
+remains visible in the result.
+
+*** Communication and causality acceptance counterexamples
+
+| Apparent shortcut | Required admission or evidence |
+|-------------------+--------------------------------|
+| A send adapter reports successful enqueue and the sender records peer receipt | Preserve transport completion only; require an admitted receiver consumption event for semantic receipt |
+| A proxy acknowledges receipt and the application treats the payload as installed in a browser | Require the separate installation/adoption contract; transport receipt is not UI adoption |
+| A message from untrusted first contact contains a plausible session id | Establish routing, origin and scope before binding the new correlation value |
+| A dropped message times out and the sender declares the remote authoritative effect rejected | Preserve uncertainty and original command reconciliation; local timeout does not prove non-incorporation |
+| Two deliveries of one semantic occurrence arrive through different transport attempts | Prevent a second semantic transition unless the protocol explicitly admits repeating the occurrence |
+| Two independent occurrences have equal payload bytes | Do not suppress the second solely by payload equality; occurrence identity and scope determine deduplication |
+| A notification refers to Request A and claims Command C committed, but the only trusted read is of Request B | Reject predecessor discharge; value similarity and a named authority are insufficient |
+| An await timeout and an authoritative-observation event converge, and both inherit the observation's knowledge | Keep dependency discharge edge-specific; timeout cannot inherit unobserved evidence |
+| An open message includes undeclared =:admin?=, later read from a generic context merge | Exclude the field from semantic knowledge and control flow absent an admitted extension |
+| A sender transmits optional =:outcome= but knows only the Request id | Reject the actual transmitted field; optionality does not exempt sender knowledge or disclosure |
+
+These examples constrain the finished system's semantic admission and
+correspondence obligations without prescribing a particular wire format,
+queue implementation or distributed transport.
 
