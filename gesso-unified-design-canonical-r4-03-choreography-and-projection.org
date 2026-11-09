@@ -3544,7 +3544,18 @@ a particular database engine, or these illustrative operation function names.
 *** Durable model state is the normal rendezvous point
 
 For long workflows, authoritative state provides a stable rendezvous point
-between actors who were never concurrently connected.
+between actors who were never concurrently connected. A later short execution
+acquires permitted current facts through the model's declared observation
+contract; it does not need a live communication channel to the earlier
+participant or a preserved local machine from that participant's execution.
+
+The durable subject, business workflow, command intent, protocol execution,
+actor, plan, and transport attempt have distinct identities. A later actor can
+continue work on the same durable subject without inheriting any earlier
+principal credential, resource instance, command capability or projected
+branch. A durable business fact establishes only the proposition its
+authoritative source and observation scope justify. It is not an unbounded
+certificate of every event in the subject's history.
 
 A later actor may know what happened because authority establishes:
 
@@ -3556,16 +3567,41 @@ A later actor may know what happened because authority establishes:
 #+end_example
 
 not because it receives a packet from the actor who caused that state.
+These keywords illustrate model-owned domain judgments, not privileged
+universal Gesso statuses. An accepted =:request/done= observation establishes
+the current status under its source, scope, visibility and temporal contract;
+it does not automatically establish which earlier command or actor made it so.
 
 This follows [[#req-authoritative-observation][Part II's authoritative observation
-model]]: observation is a first-class knowledge path.
+model]]: observation is a first-class knowledge path. A subsequent execution
+receives only facts it is authorized to acquire. A scoped query, authorized
+projection and justified basis may establish current eligibility, but the
+public model operation still protects its current mutable business guards
+at incorporation. Reading a queue does not grant the right to act on every
+item in that queue.
 
-Durable pending state is not itself a progress guarantee. The application must
-provide the declared opportunity for an eligible actor to discover and act on
-it, or state the environmental premises on which progress depends. Where loss
-of a required participant can strand the workflow, the runtime-condition and
-recovery requirements from Part I apply. Any lease, reassignment, cancellation,
-or other successor policy remains model-owned.
+Durable pending state is not itself a progress guarantee. The application
+declares the opportunity for an eligible actor to discover and act on it,
+or states the environmental premises on which progress depends. That contract
+covers relevant authoritative queries, recipient visibility, initial and
+reconnect acquisition, missed advisories, work/deadline scheduling if required,
+and retry or reassignment after an owner disappears. It identifies the owner
+of required unfinished work rather than assuming that some browser or
+process-local callback will remain alive indefinitely.
+
+Where loss of a required participant can strand the workflow, the
+runtime-condition and recovery requirements from Part I apply. Any lease,
+reassignment, cancellation, escalation, expiration, or other successor policy
+remains model-owned and must preserve its current authorization, fencing,
+command binding and atomicity requirements. An expired lease is not a
+permission to repeat an uncertain effect under a new command. Lost
+notifications cannot erase required durable work; failure to discover a
+pending item cannot silently change it into a terminal business result.
+
+A durable model can be available without satisfying liveness if all eligible
+actors remain offline or decline to act. Progress claims name their delivery,
+scheduler, availability, fairness and human-action premises. A proof of
+reachable terminal states does not by itself prove eventual completion.
 
 *** Deployment compatibility remains explicit
 
@@ -3575,16 +3611,73 @@ produced it.
 That is normal.
 
 What cannot be assumed is that a suspended *runtime execution* from an older
-deployment remains compatible forever.
+deployment remains compatible forever. The corresponding contracts have
+different persistence and compatibility boundaries:
 
-The later stale-plan/recovery design therefore treats durable model truth and
-runtime-plan compatibility as separate dimensions.
+| Subject across deployment | Required independently checked relationship |
+|---------------------------+---------------------------------------------|
+| Durable domain state | The current model still interprets its admitted historical and current meanings, or a protected model-owned migration establishes them |
+| Retained command/outcome and unresolved work | Original command binding, disclosure, retention, disposition and durable recovery owner remain interpretable or follow a declared typed unavailability/reconciliation contract |
+| Projected execution and resource ownership | Continuation is explicitly supported by the old-to-new plan/assembly relation, or old rights are retired and a fresh execution is admitted |
+| Physical client/server pairing | Actual route, protocol, codec, asset, producer/consumer and permitted rolling-release direction are supported or rejected before incompatible behavior |
+| Assurance or diagnostic evidence | A claim remains applicable to its exact artifact, interfaces, assumptions and physical coverage; mere functional compatibility does not transfer an exact-coordinate proof |
 
-A deployment may invalidate continuation of an old projection while leaving the
-authoritative business state entirely valid. If a deployment also changes the
-meaning or representation of persisted domain state, the model needs its own
-compatible interpretation or migration. Restarting a current browser plan does
-not perform that domain migration by implication.
+The later stale-plan/recovery design therefore treats durable model truth,
+command reconciliation, execution rights, deployed routing, and proof
+applicability as separate dimensions. A matching plan name, URL, source file,
+version number or copied digest label is not sufficient compatibility evidence.
+
+A deployment may invalidate continuation of an old projection while leaving
+the authoritative business state entirely valid. A safe recovery may retire
+old execution-private callbacks and resources, then admit a *new* execution
+under a current plan after authenticating the principal, acquiring justified
+entry facts and checking command/observation compatibility. Where a
+particular suspended execution is allowed to continue, a checked directional
+continuation or migration contract establishes its state mapping, owner
+transfer, pending effect treatment, input/output interpretation and
+recovery premises. Neither path may silently reissue an unresolved
+authoritative command with a fresh command identity.
+
+Compatibility is directional and conditional on the installed realization.
+An older browser talking to a newer server and a newer browser talking to an
+older server can require different evidence; unsupported combinations must
+be excluded by an enforced routing contract or receive typed retirement and
+recovery behavior. An offline browser cannot retain indefinite continuation
+rights simply because it once had a valid plan. Conversely, retiring the
+old execution does not erase committed business work or command-result
+records whose recovery lifetime outlasts that plan.
+
+If deployment changes the meaning or representation of persisted domain
+state, the public model requires its own compatible interpretation or
+protected migration. Migration is an authoritative writer under the
+applicable invariants, concurrency and authorization rules, not an
+incidental side effect of running a new browser plan. Rolling upgrade and
+rollback must account for the actual old/new writers and durable state
+they can encounter; rollback is not an automatic undo of incorporated
+domain migrations. Diagnostic sidecars may require exact artifact identity
+even when a declared continuation compatibility relation permits a
+different runtime artifact.
+
+*** Durable-rendezvous and deployment acceptance counterexamples
+
+| Apparent shortcut | Required completed-system outcome |
+|-------------------+-----------------------------------|
+| A Request remains =:pending= after server restart, but no permitted query or recovery worker can rediscover it | Do not claim durable workflow progress; supply qualified discovery/ownership or name the missing premise |
+| A new approver reads an authorized queue and uses the previous approver's principal or resource grant | Require current identity, permission and model incorporation guards; old execution rights do not transfer |
+| An observer sees =:request/done= and attributes it to a particular old command without a retained outcome | Require command-specific evidence for causality; current status is not proof of that historical disposition |
+| A required notification disappears during a router failover and the pending work becomes undiscoverable | Preserve durable publication/discovery or explicit weaker guarantees; local interest memory is not gap-free recovery |
+| A lease expires while an external effect might have committed, and a replacement worker creates a new command | Reconcile the stable intent and fence retired owners; lease expiry is not proof of non-incorporation |
+| A newer plan rejects the old runtime representation and the application deletes its durable domain object | Retire or reconstruct the runtime separately; keep valid model truth and perform protected domain migration only when needed |
+| A stale client presents a matching plan name to a newer server with incompatible command outcomes | Require the scoped old-to-new continuation contract or typed recovery; name equality has no authority |
+| A current client is routed to an older server that lacks its required decoder | Exclude the pairing through enforced routing or reject it before unsafe execution; old-to-new support alone is not symmetry |
+| A proof sidecar for an old runtime artifact is attached to a merely compatible newer plan | Preserve exact-artifact proof binding or establish new evidence; continuation compatibility is not proof correspondence |
+| The application retains a command ledger after old assets expire, then treats lookup failure as proof the command never committed | Apply declared retained-result, disclosure and unresolved/typed unavailability semantics; do not manufacture rejection |
+| A release changes persisted domain status representation without validating old writer and rollback behavior | Enforce model migration and writer-coexistence obligations; browser reinitialization does not migrate business truth |
+| A new plan automatically adopts all refreshed board membership, bypassing the application's explicit Refresh policy | Preserve the declared acquisition/adoption contract through deployment recovery, rather than silently adopting remote changes |
+
+These obligations specify completed Gesso independently of an individual
+deployment, particular browser, server framework, database, or routing
+topology.
 
 ** Semantic acceptance obligations
 
