@@ -24,10 +24,21 @@ Examples of build/application-preflight failures include:
 
 An affordance introduced only while constructing a concrete view is checked
 before that rendered surface is serialized or exposed through the managed
-renderer. Arbitrary Hiccup or raw HTML that bypasses that boundary does not
-inherit the rendered-surface assurance claim; supported semantic action
-construction must make this distinction explicit. Static assembly preflight checks the affordances and operation bindings available from its
-declarations; it cannot claim to have inspected future arbitrary view data.
+renderer. The checked subject is the *effective* action in its admitted render
+context, including relevant ancestor form/HTMX inheritance, target and selector
+interpretation, operation binding, and current assembly compatibility. A
+fragment checked alone cannot certify inherited behavior that depends on an
+unknown outer context. That context must be supplied and checked, or the
+corresponding managed-output claim remains unsupported and the required
+boundary rejects the output.
+
+Arbitrary Hiccup or raw HTML that bypasses this boundary does not inherit the
+rendered-surface assurance claim; supported semantic action construction must
+make the distinction explicit. Deferred, streamed, cached, and transformed
+responses require the declared checking boundary before their effective
+managed output is exposed. Static assembly preflight checks only affordances
+and operation bindings knowable from its declarations; it cannot claim to
+have inspected future arbitrary view data.
 
 
 The same HumanHelp Claim slice can fail legitimately at three different times,
@@ -57,7 +68,13 @@ A static construction defect can be rejected before the application starts:
 #+end_src
 
 Nothing about a concrete Request or principal is needed to establish that
-contradiction, so runtime is too late.
+contradiction, so runtime is too late. This deliberately abbreviated
+=broken-assembly= is a controlled negative fixture, not the recommended public
+application-definition shape. Real construction derives its required edges
+from source-owned operations and actual realization bindings, and checks the
+real build artifact rather than accepting a caller-supplied =:artifact/plans=
+report as proof of compiled content. A passing detached fixture is not
+evidence that the installed server uses this admission gate.
 
 A rendered-surface defect may depend on concrete view construction. Suppose a
 generic Request-card renderer allows applications to choose actions, but one
@@ -121,7 +138,21 @@ The three failures therefore form one continuous construction story:
 | From current external or model state | The trusted runtime boundary with the required current-state protection |
 
 "Fail early" means the earliest *legitimate* boundary, not the earliest point at
-which the framework could guess.
+which the framework could guess. An established contradiction rejects at its
+owning boundary. An unsupported analysis, unavailable source, or exhausted
+checking budget is *not* an established contradiction or an acceptance result:
+the selected admission policy must either require more evidence or explicitly
+retain a permitted premise and its enforcing boundary. A mandatory check cannot
+be silently skipped or converted into a green result because the earlier
+checker lacked enough information.
+
+A negative conformance case identifies the first expected enforcing boundary
+and the prohibited action or exposure. Its paired valid case must succeed
+through the supported path; universal rejection is not a usable admission
+policy. In particular, a late response/render failure cannot undo an earlier
+valid authoritative incorporation or be reported as a command rejection.
+Command outcome, response admission, and browser installation retain their
+separate evidence and recovery paths.
 
 *** Runtime-only conditions and required recovery
 
@@ -293,7 +324,9 @@ at =T1= and still receive a typed rejection because Bob reserved the seat at
 means the dynamic premise changed before the authoritative operation committed.
 
 Preflight can check that =:rejected= is represented and that its reacquisition
-path exists. It cannot decide in advance which traveler wins the race. The
+path exists. It must also distinguish the declared =:unknown= reconciliation
+branch from a fresh new-command retry. It cannot decide in advance which
+traveler wins the race. The
 example therefore makes the static/runtime boundary operational: dynamic
 uncertainty remains dynamic, while the permitted response to that uncertainty is
 still part of the checked application design.
