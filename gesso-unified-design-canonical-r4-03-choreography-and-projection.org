@@ -180,6 +180,38 @@ operation into the browser: elaboration includes the declared request,
 trusted-side operation, and outcome-delivery boundary. A macro or helper must
 expose this expansion for inspection and checking.
 
+For an invocation whose caller role and authority role are distinct,
+the elaborated program must account for three *different* propositions:
+the caller has issued a command under an admitted binding; the trusted
+authority has produced an admitted command-specific outcome; and the caller
+has actually acquired that outcome under its own knowledge, source, and
+correlation contract. The semantic =:authoritative= boundary belongs to
+the trusted authority, not the initiating browser or manager. A network
+request, HTTP response, or effect callback is not by itself a global
+=:authoritative= result or an admitted knowledge transfer.
+
+A declared participant communication may carry the bound request or its
+result, producing the corresponding global =:communicate= occurrence and
+projected =:send= / =:receive=. Alternatively, an explicitly authored
+environment acquisition may admit a trusted outcome observation at the
+waiting role through =:await= and its registered source contract.
+Different admissible realizations need not add a peer message merely to
+model transport. They *must* preserve whatever communication or
+observation the authored protocol actually requires, and establish
+the result's command, principal, authority, subject, outcome, and
+causal relationship before a dependent branch. No compiler insertion of a
+synthetic environment event may make an otherwise unsupported global
+history appear to have occurred.
+
+The final =:return= describes a global terminal judgment under the
+authored protocol. Individual projected roles may become locally
+=:completed= earlier; that fact neither supplies the global return
+outcome nor discharges unfinished required communication, external
+effects, recoverable delivery, or command uncertainty. Any terminal
+refinement claim relates the full admitted distributed execution to
+an actual global terminal trace under its named progress and
+environment assumptions.
+
 For example, this small graph classifies an already acquired review input. It
 does not itself perform an approval:
 
@@ -340,6 +372,35 @@ above; the table does not introduce additional hidden primitive semantics.
 | Close without notice | Manager sends the declared no-notification disposition | Notifier returns without a notification effect; any command recovery remains with its declared owner |
 | Notify or close | Notifier receives the correlated disposition | Review notice: perform the declared effect; no-notification: return without that effect; delivery failure follows the session recovery contract |
 
+**** Admitted elaboration of the review protocol
+
+The table is an authoring view. It does not justify the manager learning a
+value merely because the authoritative operation appears earlier in
+the *global* graph. Checked elaboration retains the following boundaries
+and source-to-plan evidence:
+
+| Authored step | Admitted semantic/role-local obligation |
+|---------------+----------------------------------------|
+| Manager acquires Expense and Policy | The manager's declared acquisition effect and admitted =:await= observation establish scoped, coherent input facts and a suitable authority basis, or the declared denied/retry/close path; a readable id or HTTP success does not establish those facts |
+| Manager classifies the route | A =:local= action or supported typed expression establishes the manager-known selector; a =:branch= checks both routes and any declared failure/unmatched path without exposing the selector to the notifier |
+| Manager submits C2 to Expense authority | The bound command request reaches the declared trusted operation interface under the chosen transport/participant contract; if the source declares a participant message, its actual =:communicate= occurrence is retained, not replaced with a fabricated =:local= step |
+| Expense authority settles C2 | The `=:authoritative=` semantic operation occurs at the trusted authority role with authenticated caller, immutable command binding, current guards, and an admitted committed/rejected/unknown-or-reconciliation result; a browser's completion or transport acceptance is not that occurrence |
+| Manager acquires C2's result | A declared authority-to-manager =:communicate= with admitted =:receive=, or a genuinely authored trusted =:await= outcome observation, establishes the manager's command-specific knowledge; copying the authority's global result into manager context is forbidden |
+| Manager selects notification or closure | A role-local =:branch= uses the actually admitted outcome. Recorded success uses the result-bearing notifier contract; rejection/unavailable cases use the declared no-notification/recovery paths, without treating unknown incorporation as definite failure |
+| Notifier receives the selected disposition | The chosen admitted =:communicate= establishes the notifier's permitted fields at actual receiver consumption; unmatched or overlapping variants, false correlation, and absent delivery are not accepted as another branch |
+| Notifier performs the declared notification effect | The effect, its realization, and any required completion/failure path remain explicit. A supposedly hidden =:local= calculation cannot conceal an externally significant notification |
+| The review session finishes | Local =:return= / completion may occur at different times for manager and notifier, while global =:return= is justified only after the protocol's required semantic occurrences and permitted durable handoffs have the specified outcomes |
+
+This is an *obligation mapping*, not a claim that the rows are literally
+nine global opcodes or that every deployment must use direct
+manager-to-authority messages. Different transport and observation
+choices may be valid only under their exact authored contracts and
+a checked refinement relation. The compact executable plans and
+their source/proof mappings must preserve causal order, role
+knowledge, observable operation identity, failure alternatives,
+and all terminal obligations. The notation does not assume that a
+physical provider callback is an authoritative database decision.
+
 The model outcome and the presentation settlement are distinct:
 
 | Model evidence | Permitted continuation |
@@ -437,6 +498,9 @@ its own deduplication or repeat policy permits it.
 | A retry discloses a permitted recorded successful command outcome | Do not incorporate again; notification replay still follows its *own* deduplication and disclosure rules |
 | A browser fabricates =:recorded= with a plausible Expense id or command id | Trusted-side notifier admission must establish the actual bound outcome or use an authoritative outbox |
 | A result-bearing message discloses =:review/result= to the notifier while a proof calls the notifier route-ignorant because its displayed notice is neutral | Reject the confidentiality claim or use a separately authored neutral message contract with justified coarse outcome evidence |
+| The global graph contains the authority's C2 result and the manager settles on it without a receive, trusted observation or other admitted knowledge path | Reject the manager's result-dependent continuation; a globally recorded authority output does not establish manager knowledge |
+| A manager-side HTTP 200 response is lowered into =:authoritative= at the manager rather than at Expense authority | Reject the trust/owner substitution; transport success is not the trusted operation or its verified command outcome |
+| The manager finishes locally after sending a notifier message, and the compiler reports global success while the required notifier receive/effect remains unresolved | Distinguish local completion from global terminal correspondence; preserve required delivery/effect or an expressly admitted recovery handoff |
 | Two result variants can match the same sender/event/channel and payload | Reject ambiguous projection or require a checked discriminator, not arrival-order selection |
 | An accepted model commit is followed by notification delivery failure | Retain delivery/recovery debt if notification is durable; do not retroactively reject the command |
 | The manager chooses an approval path without notifying Finance | Finance's later participation requires its own admitted queue observation and guards, not an absent earlier message |
@@ -3765,6 +3829,9 @@ realizations. Each case remains a mandatory conformance obligation:
 | Two receive alternatives accept the same correlated message with different behavior | Reject ambiguity or require an explicit discriminator/equivalence justification |
 | Role has equivalent local continuations under the supported relation | Omit an unnecessary discriminator without disclosing private data |
 | A result-bearing notifier message contains an authorized =:review/result= but the proof treats it as a neutral message because the displayed notice is identical | Keep the notifier's actual communicated knowledge in the property; reject the unjustified privacy/equivalence claim or admit an independently checked neutral protocol |
+| An authored invocation projects an authority-owned result directly into the caller without an admitted transfer or observation | Reject the unearned caller knowledge; preserve the authority event and establish the actual declared return path |
+| A browser's successful HTTP response is recorded as a trusted authority operation solely because the helper named it =:authoritative= | Reject incorrect semantic owner and origin; require the installed trusted authoritative binding and command-specific result |
+| The first projected role completes, but a required receiver/effect remains outstanding and the proof reports global terminal completion | Require terminal compatibility and disposition of required effects or durable handoffs; local completion is not global termination |
 | Role must wait in one branch and return in another | Require a distinguishing path or an explicit conditional-participation contract |
 | Unrelated authoritative read follows a foreign commit | Do not discharge a command-specific causal dependency |
 | Timeout after submission | Preserve command uncertainty; do not infer a rejected commit |
@@ -3849,6 +3916,7 @@ every application author to implement their own formal toolchain.
 | An ordinary Clojure/ClojureScript function has a complete admitted operation/effect contract but is opaque to the closed prover | Permit it under the selected qualified assurance profile, retaining the relevant explicit premises rather than claiming a proof of its body |
 | Two remote branches have equivalent authorized local behavior | Project the legal local continuation without requiring an unnecessary discriminator or revealing private global values |
 | An application chooses either a result-bearing or a truly neutral notifier contract for the same manager decision | Admit the chosen protocol with its actual knowledge, authorization, source evidence and disclosure policy; do not force all apps to reveal the branch or to hide it |
+| A manager's declared invocation elaborates through a trusted authority role and a correlated result acquisition | Admit the checked expansion and its actual participant-message or environment-observation path without inventing an extra transport message or promoting HTTP success to incorporation |
 | A declared open extension carries nonsemantic adapter data | Permit the extension under its contract while maintaining semantic payload closure |
 | A trusted operation is retried compatibly after its state has advanced | Return the permitted recorded outcome under current disclosure rules without attempting a second incorporation |
 | A valid projected schedule reorders independent hidden steps | Permit the supported partial order while preserving required causal and observable relations |
