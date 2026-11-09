@@ -1731,8 +1731,11 @@ chosen checker and physical realization do not establish.
 :CUSTOM_ID: req-value-schema-boundaries
 :END:
 
-Malli should provide the ordinary value-shape layer underneath choreographic
-types.
+Malli provides the ordinary value-shape layer underneath choreographic
+types. Its supported schemas describe data and runtime value obligations; the
+model and Choreo remain the owners of business meaning, knowledge, authority,
+and legal transitions. A schema reference is not a separate semantic registry
+that can redefine the owning operation's contract.
 
 A choreographic value may conceptually carry:
 
@@ -1751,6 +1754,14 @@ or:
  :provenance :authoritative
  :basis AuthoritativeBasis}
 #+end_src
+
+These are conceptual interface sketches, not self-authenticating runtime
+envelopes or necessarily literal Malli schema expressions. The schema
+references and the =:known-by=, =:agreement=, =:provenance=, and =:basis=
+claims have different semantic owners. Malli can check their declared shape;
+trusted admission, derivation, communication, authoritative acquisition, and
+agreement must establish the corresponding claims. Copying the map, adding a
+tag, or passing Malli validation cannot upgrade any of them.
 
 Malli is responsible for questions such as:
 
@@ -1773,16 +1784,26 @@ Malli is not responsible for questions such as:
 
 Those remain domain, FX, Choreo, or authority/progression concerns.
 
-Runtime validators should be compiled and reused for the admitted schema and
-registry definitions whose identities they reference. If those bindings belong
-to an admitted assembly generation, validator use must remain coherent with
-that assembly generation. A relevant schema or registry change requires an
-appropriately recompiled or independently validated compatible validator; an
-old compiled validator must not silently enforce an obsolete contract.
+Runtime validators are compiled and reused for the admitted schema and
+effective registry definitions whose identities they reference. Their
+applicability includes the relevant schema form, registered references,
+closedness and refinement options, custom predicate contracts, and target
+runtime semantics when these affect validation. A stable schema name, an
+unchanged source filename, or a cached compiled function is not sufficient
+evidence that the same contract remains in force.
+
+If those bindings belong to an admitted assembly generation, validator use
+remains coherent with that generation. A changed schema, registry entry,
+extension, or predicate realization requires an appropriately recompiled or
+independently established compatible validator before relying on it. A
+canonical description may name and compare known semantic dependencies; it
+does not pretend that arbitrary host-language functions can be proven
+equivalent by hashing their names or serializing them. JVM/CLJS or other
+runtime realizations may need separately qualified predicate semantics.
 Validator correspondence does not depend on a browser execution identity or
 resource-instance counter.
 
-The default design should validate important runtime boundaries in production,
+The admitted application validates important runtime boundaries in production,
 including:
 
 - externally supplied choreography inputs;
@@ -1794,15 +1815,30 @@ including:
 - settlements;
 - provisional/canonical protocol payloads.
 
-The successful path should use compiled boolean validators. Rich Malli
-explanations should be constructed only on failure.
+The successful path uses compiled boolean validators where applicable. Rich
+Malli explanations are constructed on failure or explicit diagnostic request.
 
-The default should be to keep these validations enabled in production and
-optimize only when measurement shows a real hot path. Measurement alone does
-not justify removing enforcement of a required premise. An optimization must
-preserve the contract, for example by avoiding redundant checks after a trusted
-admission boundary while retaining checks where untrusted or dynamic values
-can enter.
+These validations remain enabled in production. Optimizations based on
+measurement may remove redundant work only where an equivalent check has
+already been established at a trusted admission boundary and the binding,
+value, schema contract, and consumer scope remain valid. No optimization may
+drop a required check where untrusted or dynamic values can enter.
+
+*** Schema-boundary acceptance cases
+
+| Tempting shortcut | Required behavior |
+|-------------------+-------------------|
+| A browser sends a shape-valid principal and authoritative-basis map | Admit the shape only; authentication, observation provenance, and basis progression require their trusted semantic evidence |
+| Two schema references have the same name but different registered enum sets | Use the admitted effective registry for the consuming artifact; a cached validator from the old contract cannot silently accept the new boundary |
+| A custom predicate changes behavior while retaining its registered keyword | Preserve a changed or unresolved predicate-dependency premise; a matching name or hash of its name is not semantic equivalence |
+| A JVM predicate is unavailable or behaves differently in CLJS | Require a supported target realization or explicit qualified premise; do not infer portable meaning from a JVM validator |
+| A closed command has an extra field that later code would interpret | Reject the undeclared semantic field or apply an explicitly admitted extension contract; do not merge it into trusted machine knowledge |
+| A value was validated under an old assembly but enters a different operation after deployment | Revalidate under, or establish compatible evidence for, the receiving contract; prior validation alone is not transferable authority |
+| An implementation disables a required boundary validator after a benchmark | Preserve an equivalent trusted check and its applicability, or reject the optimization; speed does not discharge a runtime premise |
+
+These are finished-system acceptance obligations. They do not claim that
+plain Malli validation itself certifies source-to-runtime correspondence,
+trust, or the correctness of arbitrary custom predicates.
 
 *** Shape validation is necessary but not semantic certification
 
