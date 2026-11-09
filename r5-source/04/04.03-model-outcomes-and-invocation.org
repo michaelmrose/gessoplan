@@ -4,10 +4,10 @@ The operation interface uses the following model outcomes:
 
 | Outcome | Required meaning |
 |---------+------------------|
-| =:committed= | Authoritative evidence establishes incorporation of this command by the invocation being reported. |
-| =:already-incorporated= | A compatible retained command record establishes prior incorporation; the permitted recorded outcome is returned without incorporating again. |
-| =:rejected= | Authoritative evidence establishes command rejection under the declared rejection/closure policy; this is not merely an unsuccessful physical attempt. |
-| =:commit-unknown= | Available evidence does not establish an authorized definitive command outcome. Incorporation may or may not have occurred. |
+| =:committed= | Qualified affirmative physical evidence attributes incorporation of the bound command to the reported admitted submission (or an equivalently justified invocation-specific mechanism). It does not mean that later propagation or presentation succeeded. |
+| =:already-incorporated= | A compatible retained command record establishes that the command was incorporated; this resolution path returns the permitted historical result without another incorporation. The record alone does not attribute the winning physical attempt or prove incorporation predated an earlier ambiguous submission. |
+| =:rejected= | The declared authoritative rejection/closure policy establishes that the bound command is terminally rejected within its promised scope; one failed preparation or physical attempt is insufficient. |
+| =:commit-unknown= | Available evidence does not establish a permitted definitive command disposition. The command may or may not have incorporated, even when one particular physical attempt is known not to have committed. |
 
 Outcome variants have closed discriminants and variant-specific payload schemas.
 A successful variant carries command binding and result evidence; a rejection
@@ -16,13 +16,53 @@ carries the admitted reconciliation reference and uncertainty classification.
 Fields are not made optional merely to allow every variant through one loose
 map schema.
 
+A model outcome, a physical *submission-attempt* result, the historical
+semantic command disposition, and a participant's *permitted knowledge* of
+that disposition are different subjects. A positive, correlated backend
+acknowledgment can justify an invocation-specific =:committed= result under
+the qualified adapter contract. A later read of the durable command record
+can establish incorporation of the command while leaving open which of two
+attempts performed it; that read supports the compatible recovered-result
+path, not invented evidence that the immediately preceding submission
+succeeded. Physical submission receipt, transaction acknowledgment, actual
+authoritative incorporation, result disclosure, Live delivery, and browser
+installation are not one terminal event.
+
+An authoritative readback must preserve its *own* observation scope, basis,
+completeness and trusted origin. If a command record is not observed after
+a timeout, absence at one insufficient or stale read is not evidence of
+non-incorporation. If a command record *is* observed, matching the stable
+ID alone is insufficient: its full bound operation, authority, principal,
+canonical arguments and compatible interface must be checked before
+returning a recorded result. When the present principal is no longer
+authorized to learn it, disclosure can be unavailable despite known
+incorporation. An observation of a Request's present =:claimed= state
+cannot replace this bound command evidence.
+
+Rejection has a similarly exact boundary. A failed authorization precheck
+may prevent *this entry attempt* from proceeding; an explicit backend
+assertion failure may establish that *this transaction attempt* did
+not incorporate. Neither necessarily proves that a concurrent compatible
+attempt did not or will not incorporate the semantic command. A terminal
+=:rejected= outcome requires its promised authoritative exclusion/closure
+evidence, or a specifically narrower declared rejection policy that
+does not masquerade as permanent command closure. Otherwise use the
+appropriate typed invocation failure, physical attempt result, or
+unresolved command disposition. Do not manufacture a durable rejection
+record from a transaction which definitely aborted without storing one.
+
 Malformed inputs, unsupported interface versions, incompatible reuse, invalid
 credentials, disclosure denial, and backend qualification failure require typed
 handling. They are not all domain rejections. For example, an unauthorized
 caller must not be able to create a terminal rejection record for somebody
 else's command. A disclosure denial must not falsely say that the command was
 never incorporated. Privacy policy may require an intentionally indistinguishable
-unavailable response for several underlying conditions.
+unavailable response for several underlying conditions. Likewise, a caught
+exception, a failed post-commit advisory, or a delivery timeout cannot be
+reclassified as a domain rejection. A known incorporated command remains
+incorporated despite failure in a separately owned publication/response
+stage; if the physical outcome is genuinely indeterminate, preserve unknown
+until qualified evidence resolves it.
 
 The outcome recorded for replay is a historical operation result. A Request
 projection freshly acquired alongside it has a different meaning: it describes
@@ -42,7 +82,11 @@ Presentation mapping is explicit:
 A model may define successful results other than Claim success, and rejection
 details may be undisclosable. Assembly must check the actual variant mapping,
 disclosure requirements, and permitted presentation effects. A new command ID
-is not an acceptable way to disguise an unresolved retry.
+is not an acceptable way to disguise an unresolved retry. Presentation
+settlement additionally requires that the evidence be admissible to the
+*current* bound execution and resource owner. A correct model outcome
+cannot resurrect a retired browser execution, justify unrelated remote
+adoption, or discharge a required physical installation that never happened.
 
 *** An explicit invocation sequence
 
@@ -61,4 +105,26 @@ Replay does not blindly rerun notifications or other effects. A recorded durable
 intent may remain unfinished and be resumed by its declared recovery owner, but
 it retains its original work identity. A compatible replay is not a new reason
 to create a second notification or charge.
+
+Each phase may run on the same host or on a later compatible application
+node. The semantic command binding, trusted model rules, durable disposition
+and presentation/adoption policies do not change with host placement.
+Cross-host reads still need qualified sufficient progression; neither
+local cache agreement nor the fact that both hosts use the same logical
+database automatically establishes this.
+
+*** Outcome and invocation acceptance cases
+
+| Case | Required judgment |
+|------+-------------------|
+| A fresh Claim receives a qualified affirmative transaction acknowledgment bound to the actual submitted attempt | Report justified =:committed= for that invocation; record durable notification debt separately from advisory/browser delivery |
+| A Claim submission loses its acknowledgment, then a compatible command record is acquired authoritatively | Return the permitted recovered historical result; do not claim the readback identifies which attempt performed incorporation |
+| Two concurrent physical attempts share one compatible command ID, and one has a confirmed assertion failure while the other incorporated | Preserve the unsuccessful *attempt* and the successful *semantic command* as separate facts; do not report terminal =:rejected= from the failed attempt |
+| An input is malformed or the caller lacks an authenticated principal before any submission | Return the corresponding typed invocation failure without inventing a terminal command-rejection record |
+| A terminal command rejection is promised, but an abort did not record a binding-scoped exclusion and another attempt may still commit | Do not report stable =:rejected= without a qualified closure/fence; preserve uncertainty or a narrower explicitly scoped failure |
+| A known incorporation is followed by a failed Live publish or missing browser settlement | Preserve committed authoritative state and any outstanding propagation/adoption obligations; do not turn a post-commit failure into business rejection |
+| An authorized read finds a compatible command record and a newer RequestAssignment state after later Reassign | Disclose the historical Claim result separately from the qualified current projection; do not assert that the previous primary helper still owns the Request |
+| An old command record is found but the current principal lacks permission to disclose its outcome | Preserve the authoritative fact internally while returning only the permitted unavailable/indistinguishable result |
+| A replacement browser execution receives valid evidence about an old command | Admit it only through its current authority, ownership, resource and presentation mapping; the retired execution does not regain installation rights |
+| A host retries an unresolved command on another web node using the original immutable binding | Preserve the same resolve-or-incorporate rule, current backend/progression qualification and disclosed outcome contract; node placement does not create a new command |
 

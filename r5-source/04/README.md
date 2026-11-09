@@ -1,11 +1,12 @@
 # R5.1 sectional source — Part IV, Authoritative Operations and Progression
 
 **Disposition:** lossless structural preparation of the original R5 Part IV,
-with sections 04.01–04.02 now substantively reviewed against R4,
+with sections 04.01–04.03 now substantively reviewed against R4,
 Part VIII's production RequestAssignment meaning, and Gesso's source.
 Their scoped preservation audits are
-`04.01-r4-preservation-audit.md` and
-`04.02-r4-preservation-audit.md`. The other 15 numbered
+`04.01-r4-preservation-audit.md`,
+`04.02-r4-preservation-audit.md`, and
+`04.03-r4-preservation-audit.md`. The other 14 numbered
 units remain unreviewed candidates. Part IV is not yet accepted. Parts I–III
 are reviewed R5.1 candidates. The twelve-part plan remains a draft.
 
@@ -15,7 +16,7 @@ point. The R4 `main` Part IV has 3,681 newline-split lines and nine
 57 nested requirement headings, and the same nine anchors. Lossless
 splitting does **not** determine whether the shorter R5 material omits
 valuable R4 requirements. Those substantive comparisons began with
-04.01 and continue through 04.02–04.17.
+04.01 and continue through 04.04–04.17.
 
 ## Numbered source inventory
 
@@ -82,16 +83,17 @@ assembles Part I–IV and composes the remaining unreviewed R5
 published parts V–XII into `output/gesso-plan-v5.org`.
 
 The 17 source files reconstruct the published Part IV exactly.
-Sections 04.01–04.02 have since been revised, preserving the
+Sections 04.01–04.03 have since been revised, preserving the
 original root heading and anchors; the published Part IV is
-rebuilt from the two edited units and the fifteen unchanged R5 units. These are
+rebuilt from the three edited units and the fourteen unchanged R5 units. These are
 editorial/documentary checks, not runtime or formal proof evidence.
 The local Python assembly command was not run as part of the
 GitHub connector operation; run it in a checkout when available.
 
-**Next:** revise **04.03 — Model outcomes and invocation**,
-comparing R4 `main`, the current Gesso command-resolution and
-authoritative-observation code, and Parts I–III/VIII. Add its
-scoped R4 preservation audit and rebuild the published Part IV.
+**Next:** revise **04.04 — Atomic authoritative transitions
+and construction**, comparing R4 `main`, actual Gesso transaction
+and assertion mechanisms, and the RequestAssignment/public-model
+contracts. Add its scoped R4 preservation audit and rebuild the
+published Part IV.
 Subsequent `next` requests continue one bounded revision
 at a time.
