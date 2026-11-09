@@ -2404,7 +2404,12 @@ The browser may not establish by assertion:
 - that an observed-basis claim proves prior observation.
 
 Trusted server code must derive or check those propositions through trusted
-boundaries.
+boundaries. An identity-shaped value, successful browser preflight, valid
+projection, signed diagnostic, or previously acquired result does not establish
+current authorization. The server must distinguish trusted request identity,
+current operation/subject permissions, and disclosure rights for each protected
+result. An application-selected `trusted` flag or caller-owned proof record
+cannot discharge any of those obligations.
 
 *** Trusted authoritative execution
 
@@ -2425,6 +2430,20 @@ establish the obligations relevant to the branch it actually executes:
    attempt, and preserve uncertainty when authoritative evidence is insufficient.
 6. Produce only the permitted typed outcomes and scoped progression evidence,
    with disclosure and recovery rules appropriate to the current caller.
+
+These are branch-specific requirements, not instructions to repeat a mutating
+transaction for a recorded command. A compatible historical command is
+reconciled from qualified authoritative evidence under a current disclosure
+decision; a fresh incorporation must establish its applicable guards at the
+actual incorporation boundary. A failed attempt does not certify command
+rejection when another attempt might have committed, and missing or
+inaccessible command evidence does not authorize a blind retry.
+
+A checked Ring route, issued writer handle, typed identity, or successful
+source-level guard report is not, by itself, proof that the deployed server
+used that route, the authoritative transaction caused the observed result,
+or every external writer was excluded. Those are separately scoped physical
+correspondence and environment obligations.
 
 Preparation checks are protected or re-established at incorporation wherever
 intervening changes could invalidate the decision. Browser freshness does not
@@ -2449,7 +2468,10 @@ Instead the browser requests a semantic operation, conceptually:
 #+end_src
 
 and trusted server semantics decide what operation and continuation are
-permitted.
+permitted. Here `C42`, `R`, and `X17` are schematic fixture values, not
+authenticated credentials or an admitted continuation. In particular
+`:observed-basis` is protocol context, not proof that the browser observed
+that basis.
 
 *** Security boundary
 
@@ -2500,6 +2522,16 @@ Invalidation metadata, counts, existence hints, and command-outcome responses
 can themselves disclose protected information and need an appropriate scope.
 A hidden card does not make an otherwise revealing subscription harmless.
 
+The check applies at each supported disclosure boundary, not only when the
+first page or subscription is created. Subsequent fragment reads, notification
+payloads, subscriptions, command reconciliation responses, and error messages
+must satisfy the applicable current or explicitly bounded authorization and
+information-disclosure policy. Where non-disclosure of resource existence is
+required, success/denial categories, counts, timing-dependent metadata, and
+reconciliation diagnostics must not become an unreviewed existence oracle.
+This does not promise secrecy against every side channel; the concrete claim
+must name its protected outputs, observation model, and environmental premises.
+
 *** Proof artifacts are untrusted in the browser
 
 A proof sidecar or diagnostic certificate shipped to a browser cannot become a
@@ -2517,6 +2549,30 @@ evidence about why code was accepted
 !=
 runtime authority to perform operation
 #+end_example
+
+*** Adversarial boundary and evidence cases
+
+The following cases are acceptance and correspondence obligations, not proof
+that a current implementation already prevents each attack.
+
+| Adversarial action or uncertain event | Required trusted treatment |
+|---------------------------------------+----------------------------|
+| Client changes principal ID, role, tenant, command operation, or subject in its envelope | Resolve authenticated identity and admitted operation/subject binding on the server; reject unauthorized new incorporation |
+| Client reuses a recorded command ID with different semantic arguments, principal, or authority | Do not transfer the historical result or privilege to the incompatible binding; apply the current disclosure contract before exposing record facts |
+| Editing permission is revoked after preparation but before a new guarded write | Protect or re-establish the changing authorization dependency at incorporation, under the qualified atomicity contract |
+| Client fabricates a newer basis, successful settlement, or privileged continuation | Do not turn browser assertions into authoritative facts or server-machine state |
+| Client forges subscription scope or keeps using a Live stream after permission changes | Require trusted scoped admission and the declared subsequent disclosure/revalidation or revocation policy |
+| Client forges or replays a proof sidecar, browser artifact stamp, or capability-shaped map | Check trusted issuer, purpose, owner and applicability where a real capability is involved; diagnostic evidence never grants authority |
+| A write may have committed but the response or readback is missing | Preserve indeterminate incorporation and use separately authorized reconciliation; do not infer rejection or resubmit blindly |
+| A second writer or old Ring handler bypasses the inspected application path | Record the uncovered writer/deployment premise; do not claim comprehensive invariant preservation from local evidence |
+
+The adversarial browser may falsify its *own* state; the trusted boundary
+must independently protect authoritative effects and allowed disclosures.
+Conversely, an intentionally bypassing trusted host program is part of the
+claimed environment or trusted computing base unless it is prevented by an
+actually enforced isolation mechanism. Static assembly checks, runtime
+checks, physical observation, and formal certificates must each report
+only the guarantees their own evidence establishes.
 
 *** Trusted host code and accidental-misuse prevention
 
@@ -2557,6 +2613,14 @@ state it changes, including guarantees used by later operations. Its impact is
 not confined to the assurance of the single bypassing invocation. Initializers,
 migrations, jobs, and external writers therefore participate in the declared
 writer coverage or remain explicit environment assumptions.
+
+A source-derived writer inventory, locally observed Biff handler installation,
+or one-shot XTDB submission report must disclose its actual host and backend
+scope. None can silently upgrade itself into global writer completeness,
+authentication of deployed traffic, universal transaction causality, or proof
+that all writes refine admitted model operations. Any claim dependent on those
+properties keeps the corresponding premises open until the proper physical
+boundary establishes them.
 
 These mechanisms are valuable even though a sufficiently determined trusted
 application author can rewrite the program or deliberately acquire a lower-level
