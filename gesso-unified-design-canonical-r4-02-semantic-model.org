@@ -2222,7 +2222,16 @@ A boundary need not check every category. It must check the categories on which
 its correctness actually depends.
 
 These checks are not merely debug assertions. They determine whether a runtime
-event is semantically admissible.
+event is semantically admissible. A matching identifier establishes only the
+specific correlation it was issued to establish. It cannot substitute for
+producer provenance, current owner rights, authoritative progression, or an
+operation-specific transition guard.
+
+Failure of browser event admission does not establish that a corresponding
+authoritative command was rejected or failed to commit. A callback may be stale
+while durable command incorporation remains unknown or has already succeeded.
+The browser may retire that callback without manufacturing a business outcome;
+a separately admitted reconciliation path owns any later command resolution.
 
 The design therefore does not require one universal generation value. It
 requires independent semantic distinctions to remain independently
@@ -2232,9 +2241,12 @@ conditions appropriate to the operation it is attempting to affect.
 *** Admission follows the declared semantic owner
 
 Every asynchronous event capable of influencing Gesso semantic state passes
-the common semantic admission boundary. The boundary first resolves the event's
-declared class and semantic owner, then applies the correspondences required
-by that class.
+the common semantic admission boundary. This describes a required semantic
+gate across supported paths, not a demand that every event class use the same
+function or owner record. The boundary first resolves the event's declared
+class and semantic owner from the admitted producer/registration, then applies
+the correspondences required by that class. A normalized event tag may describe
+a candidate event, but does not by itself attest the producer or its authority.
 
 Conceptually:
 
@@ -2243,6 +2255,11 @@ Conceptually:
 2. Check owner-specific correlation and current applicability.
 3. Check that the proposed semantic transition is permitted.
 4. Admit that transition, or classify the rejection and any recovery path.
+
+The admission contract fixes the required checks; no event field or arbitrary
+application callback can select a weaker set. A missing, retired, or incompatible
+registration cannot silently fall back to another owner class. Any allowed
+alternate recovery route is separately declared and checked.
 
 The owner is not universally a command execution.
 
@@ -2253,6 +2270,9 @@ The owner is not universally a command execution.
 | Shared fragment advisory | Declared subscription or fragment coordination scope, admitted source/correlation, current source instance where required, and valid advisory requirement |
 | Authoritative acquisition completion | Admitted acquisition owner, request/resource correlation, returned observation scope and progression, and applicable installation rules |
 | Continuity completion | Declared continuity owner or slot, current resource instance, and restoration rights still held for the target |
+| Transport or asynchronous local completion | Execution and effect-generation ownership, expected attempt or pending effect, and permitted continuation |
+| Timer firing | Declared timer owner and timer generation, current execution where required, and an outstanding timer registration |
+| Optimistic settlement or timeout | Admitted optimistic scope and execution/timeout ownership, compatible settlement evidence, and permitted disposition |
 
 This table identifies distinctions rather than prescribing one public event
 record or a closed enumeration of all future events. Each supported event class
@@ -2279,13 +2299,38 @@ contract, not selected by an untrusted =:event/class= field alone. Event payload
 may carry correlation values; the callback/resource registration supplies the
 corresponding expected owner. Final applicability is checked against current
 state. Checking identity early and mutating a replacement owner later would
-leave a race.
+leave a race. Event-level admission and physical effect actuation may be
+separated by an asynchronous interval; in that case the effect must carry
+the relevant admitted owner/correlation and be rechecked where its physical
+interpreter can still touch replaceable state. The existence of an earlier
+allow-effect is not a permanent installation or restoration capability.
 
 Retirement removes the retired owner's semantic rights immediately, even if
 physical cancellation or cleanup is incomplete. Late command-outcome evidence
 may still be useful through a separately declared reconciliation path. Such a
 path does not revive the old execution or authorize its stale presentation
 effect.
+
+*** Negative cases for owner-relative admission
+
+The following are distinct counterexamples that construction coverage,
+browser-transition testing, and physical correspondence work must preserve:
+
+| Event or effect | Required treatment |
+|-----------------+--------------------|
+| A private callback reclassifies itself as shared after retirement | Do not accept the asserted owner class; reject the retired private effect |
+| A timer or transport callback matches an execution ID but not its current effect/timer generation | Treat it as stale; do not resume the newer execution |
+| An advisory matches the board scope but has no admitted subscription/source registration | Do not infer producer provenance or a permitted shared transition |
+| An acquisition completion matches its resource but carries unqualified basis, scope, or content | Correlation alone cannot authorize authoritative installation |
+| A continuity restore or swap is permitted before its owner is superseded and actuates afterward | Revalidate the physical installation/restoration right; the superseded effect cannot mutate the replacement |
+| A command's response is lost, then its browser execution retires | Retire browser effects without classifying durable command incorporation as rejection |
+
+Admission diagnostics must distinguish a stale or unowned callback, an
+unsupported or missing contract, insufficient observation evidence, and an
+actual authoritative operation outcome. These are not interchangeable typed
+results. The detailed error vocabulary belongs to the relevant supported
+transition and recovery contract; this section does not invent one universal
+error schema.
 
 These browser-runtime claims concern the admitted, cooperating implementation.
 They are not a server-verifiable proof that an adversarial browser ran those
