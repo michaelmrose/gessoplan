@@ -263,15 +263,29 @@ without requiring the application author to reproduce framework internals.
    :policy/finance-threshold 50000})
 #+end_src
 
-Here =Money= declares a nominal semantic type backed by nonnegative,
-exactly represented integer USD cents. The schema and rule declarations must
-cross their construction checks before downstream code treats them as admitted
-semantic interfaces; a metadata key or a Var name does not itself admit them. Its maximum is part of this example's
+This introductory =defrule= form, with expressions such as
+=[:expense/status :expense]=, is *schematic application-authoring notation*,
+not an expression admitted by Part IX's closed =[:read reader-id]= rule grammar.
+The baseline Part IX grammar also does not directly admit an arbitrary
+=Money= nominal value or infer its semantics from a Malli metadata key.
+A supported frontend must validate the source interfaces and provide a checked
+elaboration into the admitted typed-rule/reader semantics, with any required
+nominal codec or registered extension. Otherwise a selected checked-rule
+profile rejects the unsupported form or retains an expressly permitted opaque
+contract with its premises; it must not pretend to type-check or execute an
+unknown operator as part of the closed proof language. No specific =defrule=
+constructor or elaborator is asserted to exist by this example.
+
+Here =Money= *illustrates* an intended nominal semantic type backed by
+nonnegative, exactly represented integer USD cents. The schema and rule
+declarations must cross their construction checks before downstream code
+treats them as admitted semantic interfaces; a metadata key or a Var name
+does not itself admit them. The maximum is part of the example's intended
 portable numeric profile. Arithmetic must preserve that bound or return a
 declared failure; a JavaScript floating-point approximation must not silently
-replace exact monetary semantics. A different currency or decimal profile needs
-its own declared encoding and operations. Malli shape validation alone does not
-establish nominal semantic identity.
+replace exact monetary semantics. A different currency or decimal profile
+needs its own declared encoding and operations. Malli shape validation alone
+does not establish nominal semantic identity.
 
 Now imagine that the application author accidentally changes only the policy
 data:
@@ -308,9 +322,15 @@ contradictory:
        :submitted]])
 #+end_src
 
-A checked rule language has enough information to reject that construction
-before it becomes a choreography or reaches a model operation. A diagnostic
-could identify both the location and the expected semantic categories:
+Once a supported frontend has admitted the nominal types and *checked* an
+elaboration of these schematic expressions to Part IX's typed reader grammar,
+the checker has enough information to reject their incompatible operand
+categories before the rule enters choreography or a model operation. If
+elaboration is unsupported, the correct first result is an unsupported-source
+diagnostic, not a fabricated successful type check or a claimed proof of these
+particular operand mismatches. When the typed terms actually have been
+admitted, an illustrative diagnostic can identify both the location and
+the expected semantic categories:
 
 #+begin_src clojure
 {:error/type :gesso.rule/type-error
@@ -337,9 +357,13 @@ could identify both the location and the expected semantic categories:
                          :same-semantic-category]}}
 #+end_src
 
-The difference is the foundational one this document relies on everywhere else.
-The first application can be wrong because humans chose the wrong coherent
-policy. The second is malformed because its own declarations do not compose.
+The diagnostic map shapes are illustrative output, not the public error API
+or independent evidence that a real checker ran. The distinction is the
+foundational one this document relies on everywhere else: the first
+application can be wrong because humans chose the wrong coherent policy.
+The second is malformed under the intended typed semantics because its own
+declarations do not compose. Admission of its concrete authoring syntax and
+proof of the checker implementation remain separate obligations.
 Later examples apply the same distinction to knowledge, authority, browser
 ownership, application assembly, and proof evidence.
 
