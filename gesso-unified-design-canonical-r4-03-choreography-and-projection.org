@@ -2113,7 +2113,12 @@ Sometimes the relevant fact is learned from authority outside the current
 execution and enters a later choreography as authoritative input knowledge.
 
 The projector/verifier must therefore reason in terms of knowledge requirements,
-not merely message presence.
+not merely message presence. For each local use, the obligation identifies the
+role, the scoped fact or proposition, the required provenance and authority,
+and the program point before which the fact must be available. A globally
+defined value or a proof that another actor possesses it cannot serve as
+this role's local knowledge. An entry assumption is usable only under its
+declared role, source, scope and admission premises.
 
 A role may branch only when it knows enough information to choose the branch.
 
@@ -2121,8 +2126,11 @@ The verifier should use behavior-sensitive choice analysis:
 
 - if a role behaves differently between two branches, it must know the
   discriminator or an equivalent fact before its behavior diverges;
-- the required knowledge may be justified through communication, authoritative
-  observation, input knowledge, declared derivation, or explicit assertion;
+- the required local evidence may be supplied through declared communication,
+  authorized authoritative observation, role-specific entry knowledge,
+  supported derivation, or an explicit assertion within its admitted contract;
+  assertion establishes that the source asserted a proposition, not the
+  proposition's independent truth or authority;
 - if its behavior is equivalent across the branches, it does not need to learn
   the choice merely because it is syntactically mentioned.
 
@@ -2140,13 +2148,22 @@ message if the helper can instead obtain the required approval fact through a
 declared, authorized authoritative observation that satisfies the same branch
 obligation.
 
-The substitution must preserve subject, scope, provenance, and the relationship
-to the decision being continued. Reading a currently approved Request does not
-necessarily establish which earlier command was approved or which historical
-branch was selected. If later model changes can erase or supersede the needed
-fact, the protocol needs a suitable retained outcome, receipt, communication,
-or different continuation contract. The projector must not invent that history
-or treat an arbitrary later read as equivalent evidence.
+An alternate knowledge path is valid only when it establishes the *specific
+proposition required by this continuation*, with its subject, scope, provenance,
+causal predecessor, and temporal/authority qualification. Reading a currently
+approved Request does not necessarily establish which earlier command was
+approved or which historical branch was selected. If later model changes can
+erase or supersede the needed fact, the protocol needs a suitable retained
+outcome, receipt, communication, or different continuation contract.
+
+Knowledge-path equivalence is not automatically protocol equivalence.
+A required global communication cannot be silently replaced by a reread
+simply because both yield equal values: the replacement must be admitted by
+the authored choreography or by a proved, contract-preserving refinement
+that accounts for observable communication, correlation, participant
+waiting, control flow, failure and progress obligations. The projector must
+neither invent missing history nor add a different physical action to rescue
+an otherwise inadmissible declaration.
 
 Messages should be closed by default.
 
@@ -2161,8 +2178,13 @@ knowledge of every semantic fact it transmits. Receipt from an adversarial
 participant still requires the trusted-boundary treatment defined in
 [[#req-knowledge-provenance][the knowledge model]].
 
-Receiving a message should only introduce the declared communicated values into
-the receiving context.
+Receiving a message establishes only the declared communicated values
+after the message's required source, channel, correlation, payload and
+owner-relative admission. The same-shaped bytes from a different sender,
+scope or execution do not establish the original sender's proposition.
+Required and actually transmitted optional semantic fields remain subject
+to sender knowledge and disclosure checks; undeclared fields in explicitly
+open physical payloads do not become semantic knowledge.
 
 Projection must not erase communication that is genuinely required to justify
 knowledge.
@@ -2191,10 +2213,18 @@ local behavior, including when relevant:
 - provenance requirements;
 - resource ownership;
 - failure/terminal structure;
-- executable guards required by local semantics.
+- executable guards required by local semantics;
+- the causal prerequisites that distinguish local authorization to act from
+  mere presence of an identically shaped fact;
+- scope and disclosure restrictions on what the role may actually receive;
+- explicit alternatives for unavailable communication or observation, when
+  the global contract requires recoverable continuation.
 
-At the same time, it should omit global facts that the role neither knows nor
-needs.
+At the same time, it omits global facts the role neither knows nor needs.
+A globally available private discriminator is not permitted in a local
+artifact merely because it would make branch selection convenient.
+Preserving global semantics does not authorize revealing private premises
+or relying on information that the recipient is not allowed to acquire.
 
 The target is neither "copy the whole global machine to everyone" nor "erase
 everything inconvenient."  It is a justified local program.
@@ -2227,7 +2257,29 @@ upgrade:
 | Client-supplied principal id | Trusted authenticated principal binding |
 
 Projection preserves or weakens claims according to explicit semantics; it does
-not strengthen them by serialization.
+not strengthen them by serialization. Distinguish a valid local use of an
+*asserted* fact from a claim of authoritative truth, a known value from
+a definitely present optional binding, and a current observation from a
+retained command-specific decision.
+
+*** Knowledge-preservation acceptance counterexamples
+
+| Apparent local justification | Required checker outcome |
+|------------------------------+--------------------------|
+| The global state contains =:approved?=, but the browser has no entry fact, receive or observation path | Reject the local use; global existence does not create role knowledge |
+| The server asserts that a Request is approved, and projection marks it authoritative | Preserve asserted provenance or require an admitted authority-bound justification; do not promote assertion into truth |
+| The helper sees the Request's current =:approved= status and resumes an earlier command-specific approved branch | Require a retained result/correlation fact or an explicitly different continuation contract |
+| The helper reads a result for Request A but continues Request B, whose status value is equal | Reject subject/scope substitution despite value equality |
+| A participant sends an optional =:review/result= field without having established its value | Reject the actual transmitted field or require its legitimate sender knowledge |
+| A received message carries the right payload from an unbound sender or old execution | Do not establish knowledge before source, correlation and owner-relative admission |
+| A compiler replaces a required global notification with an authoritative reread that yields the same status | Require an authored alternative or justified semantic refinement preserving the communication and continuation contract |
+| The browser knows a private discriminator only because projection copied the authority's local state | Reject the projection; a global fact cannot bypass permitted acquisition or disclosure |
+| Two local branches look identical after ignoring an effect or timeout outcome | Do not erase the distinguishing observable or recovery obligation to claim branch equivalence |
+
+These are finished-system obligations. Their enforcement may be distributed
+among construction-time knowledge verification, refinement checking, and
+trusted runtime admission; no one layer may silently assume the others have
+already discharged its premises.
 
 *** Behavior-sensitive choice is the central branch rule
 
