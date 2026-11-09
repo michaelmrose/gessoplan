@@ -18,10 +18,12 @@ not a replacement for the application's implementation language. Opaque code
 retains its named contracts and accepted premises through verification,
 projection, assembly, and execution.
 
-Examples use illustrative declaration and API names. They specify required
-semantics, not a promise that the displayed syntax is an existing executable
-API. Generated plan excerpts and state tables are inspection views, not a second
-handwritten workflow. Fixture symbols such as R, C, and E denote identities or
+Examples use illustrative declaration and API names. Their normative
+content is the specified semantic contract rather than the literal spelling
+of an example's helper names. Any public construction surface realizing the
+example must establish the corresponding checked bindings. Generated plan
+excerpts and state tables are inspection views, not a second handwritten
+workflow. Fixture symbols such as R, C, and E denote identities or
 values bound by the surrounding example.
 
 ** What a choreography is
@@ -216,16 +218,17 @@ constructor cannot accept a partial success-only graph as a totality proof.
 The displayed map is an illustrative semantic graph, not a verified
 standalone typed program. Its =:review/inputs= entry binding and the
 =:review/path= enum are supplied by external admitted entry/action contracts;
-neither is established merely by the keys in this map. The current portable
-semantic core checks state structure, declared value keys, and branch
-successors; role-local must-analysis can check whether a selector is
-definitely available. Those checks do not by themselves prove that an opaque
+neither is established merely by the keys in this map. Structural
+verification establishes the well-formed state, value-key and branch
+successor contracts; role-local definite-knowledge analysis establishes
+whether the selector is available at the required program point. Those checks do not by themselves prove that an opaque
 Clojure action always returns one of the two enum alternatives or that its
 implementation respects the intended policy. A checked nominal enum and
 complete cases require a separately admitted type/operation contract and
-correspondence evidence, or an explicit unmatched-value failure. The current
-core rejects nil branch case values: a future profile supporting present nil
-must define that extension rather than confusing nil with absence or false.
+correspondence evidence, or an explicit unmatched-value failure. The baseline branch-case contract does not admit =nil= as a case value.
+An explicitly admitted extension for *present nil* distinguishes it from
+an absent value and from =false=, and checks all corresponding case and
+failure continuations.
 
 *** Vocabulary admission counterexamples
 
@@ -301,7 +304,7 @@ Compatibility of independently acquired values must be established by the
 read/authority contract; merely putting them in the same return map does not
 prove they were read from one coherent basis.
 
-The R4 sketch also named a manager-limit policy field. This simplified
+A domain may also impose a manager approval ceiling. This simplified
 Finance-threshold example does not silently assert that a manager has
 unlimited approval authority: if the real domain applies a manager ceiling,
 that rule belongs to the admitted public model operation and its
@@ -371,16 +374,16 @@ threshold. A small inspection view of its contract is:
  :delivery-contract :expense/review-notification}
 #+end_src
 
-The =:variants= entry in this map is *higher-level contract inspection data*.
-It is not a supported field of the current six-opcode global
-=:communicate= node. Checked elaboration must turn these alternatives into
-actual admissible communications and disjoint projected receive alternatives,
+The =:variants= entry in this map is *higher-level contract inspection data*,
+not a self-executing global =:communicate= operation or a second independent
+message language. Checked elaboration turns the alternatives into actual
+admissible communications and disjoint projected receive alternatives,
 for example with separately identified events or an admitted discriminating
 closed payload contract. Each resulting communication retains its required,
 optional, correlation, sender/receiver, and disclosure contracts. The
 constructor must reject unresolved overlaps rather than letting message
-arrival or an optional field arbitrarily choose a continuation. The current
-portable verifier's knowledge-flow checks alone are not proof of the
+arrival or an optional field arbitrarily choose a continuation.
+Role-local knowledge-flow checks alone are not proof of the
 application-level tagged result's meaning or trusted source.
 
 The admitted review session supplies its correlation identity at entry. Only
@@ -413,18 +416,18 @@ its own deduplication or repeat policy permits it.
 | Case | Required response |
 |------+-------------------|
 | Manager's Policy/Expense observation is inconsistent or no longer eligible by incorporation | Reject or reacquire under the declared command path; do not publish an uncommitted success notice |
-| The R4 manager ceiling applies but is absent from the chosen operation's guarded policy | The operation contract is incomplete; do not count browser routing as enforcement |
+| A manager approval ceiling applies but is absent from the chosen operation's guarded policy | The operation contract is incomplete; do not count browser routing as enforcement |
 | A retry discloses a permitted recorded successful command outcome | Do not incorporate again; notification replay still follows its *own* deduplication and disclosure rules |
 | A browser fabricates =:recorded= with a plausible Expense id or command id | Trusted-side notifier admission must establish the actual bound outcome or use an authoritative outbox |
 | Two result variants can match the same sender/event/channel and payload | Reject ambiguous projection or require a checked discriminator, not arrival-order selection |
 | An accepted model commit is followed by notification delivery failure | Retain delivery/recovery debt if notification is durable; do not retroactively reject the command |
 | The manager chooses an approval path without notifying Finance | Finance's later participation requires its own admitted queue observation and guards, not an absent earlier message |
 
-These are example-level acceptance and correspondence obligations. They do
-not certify the current Gesso compiler, HumanHelp application, or notifier
-service. The R4 all-participant demonstration remains a permissible
-choreography *when* the declared delivery and branch-knowledge obligations
-can be met; this short review intentionally uses a later Finance execution
+These are example-level acceptance and correspondence obligations, not
+by themselves a certification of compiler, application, or notifier
+realization. An all-participant choreography remains permissible *when*
+its declared delivery and branch-knowledge obligations can be met;
+this short review intentionally uses a later Finance execution
 rather than requiring an idle Finance participant to wait indefinitely.
 
 Projection produces complementary plans, not separately authored workflows:
@@ -555,9 +558,10 @@ does not create semantic authority.
 | A replacement authority reports the same semantic name with different database lineage | Re-establish qualified authority continuity and admissible observations before relying on the old history |
 | A projected executable plan is repackaged or deployed elsewhere | Check the admitted artifact/assembly compatibility, principal context and actual execution correspondence; equal plan labels do not suffice |
 
-These cases are realization and assurance obligations, not claims that
-physical transport and browser effects have already been proved equivalent to
-the abstract Choreo machine in current Gesso.
+These cases define realization and assurance obligations. Listing the
+cases is not a proof that physical transport and browser effects refine
+the abstract Choreo machine; that stronger judgment requires its own
+property, premises, and correspondence evidence.
 
 #+LATEX: \newpage
 
@@ -790,10 +794,10 @@ obligations and explicitly maps model outcomes into presentation behavior:
 The model-operation reference imports its authoritative interface. Its current
 Request, Membership, Organization policy, and Request/Organization association
 are protected by the new-incorporation contract; those are not facts the browser
-is expected to establish. In particular, the R4 sample's current-membership,
-current-request, current-organization, and current-claim-authority premises must
-remain actual model-owned dependencies; moving them out of the declaration
-does not remove their transactional guard obligations. The checked import must
+is expected to establish. In particular, current Membership, Request,
+Organization, and Claim authority premises remain actual model-owned
+dependencies; keeping them behind an imported public operation does
+not remove their transaction-current guard obligations. The checked import must
 identify the source-owned operation and applicable contract revision, including
 which rules are inspected or still opaque. An authorized observed card supports
 only the declared optimistic presentation. A non-optimistic invocation can have
@@ -872,14 +876,14 @@ It must not require the author to copy the generated plan name back into a
 separate bootstrap registry. Repeated metadata may be an inspection view or
 an explicit correspondence constraint, but is not an independent source of truth.
 
-These code blocks are *proposed authoring and realization contracts*, not a
-claim that =gesso/action=, =assembly/realize-operation=, the illustrated
-=assembly/require-dispatched-binding!= handler, or all of their generated
-bindings are current public Gesso APIs. Current plan registries and
-application preflight provide narrower checked joins; they cannot simply be
-renamed into an end-to-end source-derived executable binder. The future
-authoring surface must either derive the promised edge from admitted source
-material or expose the independently authored binding and its open
+These code blocks specify *authoring and realization contracts*. The names
+=gesso/action=, =assembly/realize-operation= and
+=assembly/require-dispatched-binding!= are illustrative; their spelling
+is not a separate normative requirement. A plan registry or preflight
+check that proves a narrow structural join cannot simply be renamed into
+an end-to-end source-derived executable binder. The admitted authoring
+surface either derives the promised edge from checked source material or
+exposes the independently authored binding and its explicit open
 correspondence premise.
 
 A schematic trusted handler illustrates the authority handoff:
@@ -1191,8 +1195,8 @@ realizations include:
 - smart constructors with inaccessible or conventionally private construction;
 - checker-produced admitted values;
 - explicit tagged data whose use is guarded by the appropriate admission path;
-- an existing Gesso representation that already prevents the accidental
-  substitution.
+- another admitted representation that prevents accidental
+  semantic-category substitution.
 
 The choice should be the smallest mechanism that makes the wrong ordinary call
 difficult and the resulting diagnostic precise.  A representation technique is
@@ -1462,11 +1466,12 @@ may be perfectly well formed while encoding the wrong policy.
 
 Gesso should make the former difficult or impossible to certify *within the
 supported typed rule language*. It cannot infer the latter merely from syntax.
-The two Clojure-shaped examples illustrate the intended semantic distinction;
-they are not claims that the existing checker accepts or analyzes arbitrary
-host-language Clojure forms. The current closed rule AST has explicit reader
-types and operators, where a numeric ordering comparison against a nominal
-enum should fail admission. Arbitrary Clojure policy functions instead retain
+The two Clojure-shaped examples illustrate the semantic distinction;
+they do not imply that arbitrary host-language Clojure expressions are
+automatically translated into a closed proof language. The admitted typed
+rule language has explicit reader types and operators, so a numeric
+ordering comparison against a nominal enum fails admission under
+the corresponding type discipline. Arbitrary Clojure policy functions instead retain
 an opaque typed/effect contract unless their relevant source is elaborated
 into an inspected language or checked by another admitted mechanism.
 
@@ -1557,8 +1562,9 @@ an authoritative second definition of a business rule.
 | =:indeterminate= | Delivery or outcome evidence is insufficient; retain command-specific uncertainty and a permitted recovery path instead of inventing rejection |
 | =:policy-mismatch= | Product policy is allegedly wrong despite type-correct syntax; require a source-owned rule, product acceptance criterion, or counterexample rather than pretending the type checker knows intent |
 
-These names are specification-level diagnostic classes, not an assertion
-that the current Gesso API exports this exact enum. A useful report identifies
+These names describe required diagnostic distinctions; an API may
+expose them using an equivalent typed representation rather than
+these literal enum keywords. A useful report identifies
 the declaration and semantic subject, the role and program point where
 relevant, required versus available knowledge/provenance, the supported
 checker property, the failing or open premise, and the correct next
@@ -1708,8 +1714,10 @@ assembly, and concrete runtime contracts needed for the claimed use.
 
 *** Acceptance counterexamples for full-language boundaries
 
-These examples are semantic obligations of the intended construction checker,
-not claims that the current portable verifier handles unrestricted Clojure:
+These examples state construction-checking obligations under the
+selected supported assurance profile. Unrestricted Clojure does not
+become fully proved merely because an opaque action has a declared
+type or effect contract:
 
 | Apparent shortcut | Required checking or runtime outcome |
 |-------------------+--------------------------------------|
@@ -3699,7 +3707,7 @@ to claim success when the system should have accepted an ordinary valid
 application under the same declared contract.
 
 The following cases constrain Gesso's completed semantic language and its
-realizations. The existing R5 cases remain mandatory:
+realizations. Each case remains a mandatory conformance obligation:
 
 | Case | Required result |
 |------+-----------------|
