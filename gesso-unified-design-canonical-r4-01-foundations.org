@@ -2935,10 +2935,19 @@ runtime defaults do not define portable semantics by accident.
 For a guarded assignment, all right-hand sides refer to the same prestate and
 admitted inputs unless the operation explicitly declares sequential intermediate
 steps. Its frame identifies state required to preserve both presence and value.
-The compiler derives the write set from assignments and the required read
-footprint from supported expressions. It derives the default unchanged-field
-frame relative to the declared state projection. Independently supplied
-footprints are checked for agreement rather than treated as extra authority.
+For supported expressions and assignments, construction derives the direct
+read and write footprints and the default unchanged-field frame relative to
+the declared state projection. This syntactic footprint is not automatically
+the complete *protected semantic dependency set*: relational predicates,
+absence/uniqueness conditions, opaque policy calls, and cross-model
+authorization may depend on state not named by a direct field read. Those
+dependencies are exported through their owning semantic interfaces and
+incorporated into the source-derived obligation set. Where Gesso can check
+their coverage and physical protection, it does; otherwise the precise
+unestablished relation remains an explicit premise or an admission blocker
+under policy. A caller-supplied footprint may provide a declared dependency
+contract but cannot override derived evidence, hide dependencies, or grant
+authorization by assertion.
 
 An abstract frame over three declared fields does not prove that every other
 physical database field is preserved. The storage mapping must account for
@@ -2977,10 +2986,17 @@ protocol. Postcommit invalidation or external delivery requires its own durable
 or otherwise justified recovery contract; a successful domain write does not
 prove that an interested browser learned about it.
 
-The physical transaction may involve several resources. A Request guard may
-depend on Membership and Organization state while its writes include a Request
-and command record. The design must represent this composition. A supported
-backend profile may impose explicit limits, but prototype restrictions such as
+The physical transaction may involve several resources. HumanHelp self-Claim
+can depend on the current Request, Membership, Organization and relevant
+RequestAssignment facts, including absence of a conflicting active primary
+assignment. The admitted incorporation changes the Request and its production
+assignment relationship, and atomically records the command result and
+required durable publication intent under the operation's declared policy.
+Protecting only Request status or constructing a toy =:request/helper= field
+does not establish this composition. The model's own public contract determines
+which relationships, guards, and assignment writes are actually necessary;
+this example does not invent their physical schema. A supported backend
+profile may impose explicit limits, but prototype restrictions such as
 one document, literal-only assignments, or disabled notifications are not the
 general semantic model.
 
@@ -3048,8 +3064,15 @@ undeclared interference with protected state.
 
 *** State semantic intent once
 
-The ordinary coherent formulation should state semantic intent in one
-canonical place.
+The ordinary coherent formulation should state each semantic fact at its
+owning source, then derive or verify its uses. "One canonical place" means
+one authoritative owner *per fact*, not one monolithic declaration for every
+domain rule, choreography, view, route, acquisition, and runtime adapter.
+The public model owns business/transition meaning; choreography owns declared
+coordination; views select operations and bind actual arguments; ingress and
+providers own genuine physical choices. The application constructor joins
+those exports and checks required correspondences. No layer gains authority
+to replace another owner's contract merely by generating plausible metadata.
 
 If Gesso already knows:
 
@@ -3097,9 +3120,20 @@ presentation choices:
        "Claim"))])
 #+end_src
 
-Visibility is a presentation decision, not authorization. The action constructor
-resolves the admitted operation, validates the arguments before exposure, and
-obtains its command/execution protocol from that operation. The author does not
+The example's status-only =when= is a presentation filter, not a complete
+Claim-eligibility rule. Actual HumanHelp availability may additionally depend
+on the selected actor, effective Membership, Organization policy, current
+assignment, and permitted view projection. Those policies remain model-owned;
+a view can consume a prepared permitted affordance without rewriting the
+authoritative predicate. An eligible positive path must still exist and be
+tested under the independent product acceptance contract.
+
+Visibility is not authorization. The action constructor resolves the admitted
+operation, validates the exposed arguments under its construction contract,
+and obtains the command/execution protocol from that operation. A rendered
+action and browser-carried command ID do not establish the current principal,
+commit-time eligibility, or command incorporation. Those remain trusted
+invocation and authoritative-operation responsibilities. The author does not
 manually create an authority token or a command-outcome query.
 
 From those semantic declarations, Gesso may derive or validate lower-level
