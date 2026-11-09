@@ -1002,8 +1002,13 @@ A role is not automatically:
 - a web server;
 - an authorization grant.
 
-A principal or actor may instantiate a role only under the rules of the
-particular operation and trusted runtime boundary.
+An actor may realize the projected behavior of a role only through an
+admitted binding. That binding is not itself a grant of business authority.
+The authenticated principal's permission to exercise that role for a subject
+and operation is determined at the applicable trusted boundary; dynamic
+business permissions must also be protected where the authoritative operation
+incorporates its effects. A browser-selected role label or actor ID cannot
+supply that permission.
 
 *** Principal
 
@@ -1224,11 +1229,23 @@ later session represents the same principal. The applicable contract states
 which bindings survive and which must be re-established. No universal session
 epoch or global counter is required.
 
+Identity correspondence evidence must name its actual issuer and trust
+boundary. A typed principal value, a matching command ID, or equality between
+caller-supplied maps does not authenticate a request, authorize an actor, or
+establish that the recorded semantic arguments were the ones admitted. The
+physical request path must derive the principal from trusted authentication,
+validate the command's operation, subject and arguments against the admitted
+binding, and disclose which authorization and backend premises have actually
+been established. Structural identity agreement alone is not a certificate
+of authority.
+
 
 A collaborative editor makes the categories easier to follow when several
 change independently. Suppose Alice is permitted to edit document D. The
-following is inspection data, not a credential accepted from the browser. The
-fixture names U, D, C1, E19, and C77 denote bound identities of the stated kinds.
+following is inspection data, not a credential accepted from the browser. The fixture symbols U, D, C1, C2, E19, E20, C77, and C88 stand for
+prebound values of their respective identity kinds. The Clojure expressions
+illustrate the identity relationships; they are not a standalone application,
+a credential, or a checked authorization proof.
 
 #+begin_src clojure
 (def editor-session
@@ -1292,7 +1309,9 @@ reconciliation contract. Copying a session map is not a command-transfer or
 authorization protocol.
 
 The authoritative server path authenticates each invocation independently of
-the inspection fields:
+the inspection fields. The following `auth/current-principal!` and
+`document-model/save!` functions denote application-owned contracts, not APIs
+that this section claims Gesso already provides:
 
 #+begin_src clojure
 (defn invoke-save!
@@ -1326,6 +1345,46 @@ authorization relation changes. Their continued existence does not imply
 continued editing rights. Category-specific diagnostics identify which binding
 or permission changed rather than reporting an unexplained generic id mismatch.
 
+*** Identity-sensitive admission and replay counterexamples
+
+The collaborative-editor scenario also has distinct negative cases that a
+complete application check must cover. They are not reducible to comparing
+identity fields in a handler or to checking that the projected role exists:
+
+- *Revocation before new incorporation.* If Alice's current editing permission
+  is revoked before a new save is admitted at the qualified authoritative
+  incorporation boundary, the new effect is not admitted. A prior positive
+  handler check cannot replace transaction-current protection of a dependency
+  that can change concurrently. An unauthorized caller also must not be able
+  to create a durable terminal rejection for somebody else's command.
+- *Revocation racing with incorporation.* The outcome must follow the
+  application's qualified atomicity and conflict semantics for the relevant
+  authorization dependencies. A previously incorporated effect is not undone
+  by a later revocation; neither a process-local ordering guess nor a browser
+  timestamp may decide which authoritative transition won.
+- *Previously incorporated C77 after revocation.* Compatible, authorized
+  read-only resolution uses C77's original principal, operation, subject and
+  semantic-argument binding, with a fresh current disclosure decision. It
+  does not rerun the save, and a disclosure denial does not turn historical
+  success into a claim that the command never happened.
+- *Identity or argument substitution.* C77 cannot be transferred to another
+  principal or silently rebound to new content, an operation, or an authority
+  by changing browser-supplied fields. Incompatible or unauthorized resolution
+  is not permission to disclose the recorded result or its existence.
+- *Lost or indeterminate response.* Missing, expired, or inaccessible command
+  evidence may leave incorporation unknown. It is not evidence of rejection,
+  and neither an alternate host nor a fresh request grants an automatic
+  resubmission right.
+- *Session or host change.* A second browser tab, account switch, credential
+  replacement, or retry through node C requires the applicable current trusted
+  bindings. Stable command or authority identity cannot carry permissions
+  across principal contexts or database incarnations without the declared
+  compatibility and recovery contract.
+
+These are normative acceptance and correspondence obligations, not a claim
+that a current Gesso gateway already authenticates principals, command
+arguments, session context, or backend causality. Application assembly and
+assurance reports must retain any such undischarged premises explicitly.
 ** Logical identity and physical realization
 :PROPERTIES:
 :CUSTOM_ID: req-logical-physical-identity
