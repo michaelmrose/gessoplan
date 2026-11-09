@@ -3190,9 +3190,17 @@ admission, resource, evidence, and disclosure obligations.
 :END:
 
 A choreography may describe a logical workflow that spans human-scale time.
+Its business meaning can remain continuous while its participating runtime
+executions start and finish independently. Neither the global description nor
+the presence of an =:await= operation implies that one Aleph node, browser, or
+other process must retain a suspended machine in memory for hours or days.
 
-That does not imply that one Aleph node should retain a suspended server-side
-machine in process memory for hours or days.
+An in-execution wait and a durable business wait have different contracts.
+An active role-local =:await= suspends that execution until an admitted event,
+retirement or recovery decision. A durable business wait instead records a
+model-owned pending condition or obligation from which later authorized actors
+can establish new entry facts. That distinction is explicit in the assembly;
+neither form silently acquires the guarantees of the other.
 
 For example, a business flow may conceptually involve:
 
@@ -3203,15 +3211,22 @@ A robust HumanHelp realization may instead be:
 
 | Period | Short execution and durable connection |
 |--------+----------------------------------------|
-| Request submission | E1 records pending approval and settles or hands off its own command |
-| Human-scale delay | Pending authority remains discoverable under the model's contract |
-| Approver action | E2 observes current premises and records a permitted decision |
-| Later requester action | A fresh observation supplies entry knowledge for E3 if further work is needed |
+| Request submission | E1 incorporates pending approval, binds its command result, and records required durable follow-up under the authoritative operation contract |
+| Human-scale delay | Pending domain state and any deadline/work obligation remain discoverable and recoverable under their declared authority and retention contract |
+| Approver action | E2 starts with its own authenticated principal, admitted plan, permitted current observation and explicit selection, then incorporates a guarded decision |
+| Later requester action | E3 separately acquires its authorized entry facts, if further work is needed, without inheriting E1's or E2's execution-private resources |
 
-The durable wait lives in model state.
+The durable wait lives in model state, along with whatever command/outcome,
+pending-work, deadline or notification obligations the business contract
+requires. Durable existence alone does not guarantee that a later actor will
+discover or act on it. Where progress is required, the application declares
+the discoverable query, permitted recipients, wakeup or scheduling strategy,
+missed-notification repair, and assumptions about authorization, actor
+action, availability and fairness. A pending state without any permitted
+continuation is not a completed workflow.
 
-Subject to the authoritative store's declared durability and recovery
-assumptions, the durable workflow fact can survive:
+Subject to the authoritative store's declared durability, recovery,
+retention and compatibility assumptions, the durable workflow fact can survive:
 
 - web-node failure;
 - deployment;
@@ -3220,14 +3235,21 @@ assumptions, the durable workflow fact can survive:
 - browser suspension;
 - long offline periods.
 
-The ordinary Gesso choreography contract does not promise durable persistence
-of arbitrary suspended server-local executions.
+The ordinary Gesso choreography contract does not promise durable persistence,
+transparent relocation or automatic migration of arbitrary suspended
+server-local executions. A durable model record, an admitted command receipt,
+and a recoverable task are not snapshots of all in-flight runtime state.
 
-If a future application genuinely needs durable workflow-machine continuations,
-that should be an explicit opt-in capability with its own persistence, ownership,
-versioning, and recovery semantics.
-
-It must not silently become a requirement of ordinary choreography.
+Applications that require persisted workflow-machine continuations use a
+separately admitted, opt-in capability. Its contract covers stable checkpoint
+identity, atomicity relative to authoritative decisions and pending effects,
+recovery discovery, owner/fencing transfer, plan and data compatibility,
+replay and idempotency, uncertain effect disposition, resource reconstruction,
+expiry, cancellation, and eventual retirement. Restarting from a serialized
+machine map without these guarantees is not durable-continuation admission.
+The capability may be realized by a dedicated workflow engine or a
+Gesso-managed facility, provided the same semantic obligations hold.
+No such facility is imposed on ordinary short choreographies.
 
 *** Durable waiting belongs in authoritative state by default
 
@@ -3236,8 +3258,8 @@ a suspended in-memory choreography execution.
 
 This has several consequences.
 
-First, subject to those persistence and compatibility assumptions, the durable
-workflow meaning can survive:
+First, subject to those persistence, retention and compatibility assumptions,
+the durable workflow meaning can survive:
 
 - deployment;
 - process loss;
@@ -3246,11 +3268,51 @@ workflow meaning can survive:
 - reconnect;
 - long periods without any participant online.
 
-Second, later actors can acquire the relevant facts by authoritative
-observation rather than requiring the original process to resume.
+Second, later actors can acquire the relevant facts by authorized
+authoritative observation rather than requiring the original process to resume.
+The observation establishes current, scoped eligibility; the actor's fresh
+execution still checks its own authorization and operation guards at
+incorporation. A queue entry or notification is not a grant to approve every
+visible item, and the later execution does not automatically inherit the
+historical outcome or transient authority of a prior command.
 
-Third, the framework avoids making one runtime's memory an accidental source of
-business truth.
+Third, a deadline belonging to business policy is durable authoritative
+meaning, not merely a browser or process-local timer. If the contract requires
+action after a deadline, a qualified durable scheduler, recovery scan or
+equivalent admitted mechanism owns that obligation. The scheduled attempt
+must recheck current eligibility and distinguish deadline occurrence,
+effect dispatch, and successful incorporation. A delayed callback cannot
+retroactively turn an expired authorization or retired resource into a valid
+operation.
+
+Fourth, a durable operation with unfinished publication, external-provider
+work or command resolution retains that work's stable identity and recovery
+owner after its initiating execution retires. A process failure or timeout
+does not prove the corresponding effect never occurred. Reconciliation and
+retries follow the public operation's idempotency and disclosure rules;
+a new execution identity does not silently create a new command intent.
+
+Finally, the framework avoids making one runtime's memory an accidental
+source of business truth. The later-execution and expense-history examples
+in the following section elaborate those identity and command boundaries.
+
+*** Durable-wait acceptance counterexamples
+
+| Apparent shortcut | Required semantic outcome |
+|-------------------+---------------------------|
+| E1 records =:pending= only in an in-memory Choreo machine and its web node crashes | Do not claim durable workflow survival; persist the required authoritative state and recovery obligations |
+| A durable pending record exists but no actor, queue, schedule or discovery path can reach it | Do not claim required eventual completion; supply a qualified continuation strategy or state the missing progress premise |
+| E2 starts from an authorized pending queue but directly approves every row visible in it | Require explicit admitted selection where the application needs it and recheck current operation guards at incorporation |
+| A user was authorized when E1 started, so E2 inherits that principal and capability days later | Reject borrowed transient authority; E2 establishes a fresh principal, knowledge, plan and current permission |
+| An E1 notification fails after commit, and the application reports E1's authoritative command rejected | Keep the committed outcome and separately recover required publication debt |
+| A process-local deadline timer fires after the workflow's authority, owner or policy changed | Recheck durable deadline and current business eligibility; local timer arrival is not authorization |
+| A worker times out on an external effect and starts a new command to perform the same business intent | Preserve stable command/effect binding and reconcile uncertainty before any retry or newly admitted intent |
+| A persisted continuation is loaded with an incompatible plan and reused effect capabilities from its old process | Require checked migration or retirement, owner fencing, effect recovery, and reconstructed resources |
+| Two approvers concurrently observe pending state and both submit approval commands | Authoritative incorporation must guard the current state and command binding; earlier read eligibility is not a shared commit permit |
+| The workflow has a graph path to an approved terminal but every eligible actor may remain offline forever | State the environmental fairness and actor-action premises; graph reachability is not a liveness proof |
+
+These requirements describe completed Gesso independently of one particular
+process manager, workflow engine, database, transport, or scheduler.
 
 *** A later choreography is not automatically the same execution
 
