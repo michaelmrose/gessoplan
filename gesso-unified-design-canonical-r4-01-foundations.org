@@ -616,6 +616,7 @@ The declaration syntax is illustrative; its distinctions are required.
         [:request/organization-id :request]]
     [:= [:request/status :request] :open]
     [:= [:membership/status :membership] :active]
+    [:no-conflicting-active-primary-assignment :request]
     [:call :organization/claim-policy
      {:organization :organization
       :membership :membership
@@ -635,10 +636,15 @@ The declaration syntax is illustrative; its distinctions are required.
    {:guard claimable-rule
     :policy-binding organization-claim-policy-binding
     :transition
-    {:set {:request/status :claimed
-           :request/helper [:user/id :principal]}
-     :preserve :other-request-domain-fields}
-    :atomic-with :command/result-record}
+    {:request {:status :claimed}
+     :primary-assignment
+     {:effect :establish-active-primary
+      :request [:request/id :arguments]
+      :helper :authenticated-principal}
+     :preserve [:unrelated-request-fields
+                :unrelated-assignment-facts]}
+    :atomic-with [:command/result-record
+                  :required-durable-publication-intent]
 
    :repetition
    {:binding [:operation :semantic-arguments :principal :authority-scope]
@@ -677,9 +683,32 @@ cannot be substituted merely because it is active or has a permissive policy.
 An implementation may establish these bindings through checked acquisition
 contracts, explicit guards, or both; the obligation is not optional.
 
-The policy call uses the contract defined above. Its argument/result checking
-is mechanically available. Any undischarged implementation or effect assertion
-remains a dependency of the corresponding Claim guarantee.
+This declaration is a *semantic sketch*, not a parsed Part IX rule or an
+available Gesso constructor. In particular, its field-path forms, the
+=:no-conflicting-active-primary-assignment= condition, and =[:call ...]=
+are not operators in Part IX's closed reader-based rule grammar. To make a
+typed-rule claim, Gesso must use that grammar with a supported, checked
+elaboration from the source meaning. Otherwise those obligations remain
+explicit opaque contracts with their applicable implementation premises.
+Neither a familiar-looking vector nor arbitrary host evaluation can substitute
+for rule checking. The illustration does not assert that such an elaborator
+already exists.
+
+The Organization policy call represents the contract defined above. Its
+interface and result category can be checked, but policy correctness and
+effect behavior remain conditional on its named implementation assertions
+unless stronger corresponding evidence is supplied.
+
+This is the self-Claim variant: the trusted actor is also the intended helper.
+Reassign and manager-assisted Claim require separate actor/target-helper
+authorization and eligible Membership conditions. Real helper responsibility
+belongs to the production RequestAssignment model, not a fabricated
+=:request/helper= field. The transition sketch describes a Request status change
+and establishment of an active primary assignment under the appropriate
+relationship and absence/uniqueness guards. It does not define physical
+RequestAssignment fields or XTDB lowering. Those belong to the public production
+model and its qualified authoritative realization, with a complete frame and
+durable publication intent.
 
 The guard belongs to new incorporation. It is not a precondition for recognizing
 an already incorporated command. Otherwise a successful retry would be rejected
@@ -692,7 +721,8 @@ Verification of the declaration produces claim-specific evidence. For example:
 | Proposition | Required evidence and scope |
 |-------------+-----------------------------|
 | The new-claim guard is well typed | Dedicated semantic checking over its declared inputs and policy-call interface |
-| New incorporation requires the guard | A checked reachability/transition argument over the admitted operation semantics |
+| New incorporation requires the guard and excludes a competing primary assignment | A checked reachability/transition argument over the admitted operation semantics and protected assignment relations |
+| Role projection does not create Claim authority | A checked distributed-admissibility/projection judgment over the supported semantics; current authority still requires trusted enforcement |
 | Compatible replay does not incorporate again | A checked command-protocol argument, conditional on the authoritative command-record contract |
 | Replay disclosure requires its own authority | Checked semantic requirement plus concrete runtime enforcement |
 | The declaration covers accepted, rejected, and unknown settlements | Exhaustive checking over that finite declared outcome set |
@@ -749,10 +779,12 @@ Incompatible identity reuse is rejected without disclosing another principal's
 record or outcome.
 
 For new incorporation, the Request identity and state, the principal's active
-Membership, the Organization identity and policy, and every relevant
-relationship or predicate dependency are protected by the same atomic contract
-as the ownership change and successful command-result record. A pre-read may
-prepare a candidate; it cannot replace commit-time protection of those facts.
+Membership, the Organization identity and policy, the absence of a conflicting
+active primary assignment, and every relevant relationship or predicate
+dependency are protected by the same atomic contract as the Request/assignment
+changes, successful command-result record, and required durable publication
+intent. A pre-read may prepare a candidate; it cannot replace commit-time
+protection of those facts.
 
 Two attempts can both initially observe no command record. If one commits and
 the other's guard fails, the failing attempt must use the command protocol to
