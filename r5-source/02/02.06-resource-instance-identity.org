@@ -22,6 +22,14 @@ Does this event belong to the currently admitted instance of this replaceable
 resource?
 #+end_quote
 
+An instance ID must be associated with the physical producer by the
+registration and callback-closure boundary. Merely finding an equal value
+inside event data does not prove that association. The owning runtime records
+which producer and lifecycle supplied the expected identity, while event
+correlation checks the claim against that registration. The trustworthiness of
+those registrations remains an explicit host/runtime premise, not a property
+established by equality of two untrusted maps.
+
 A resource-instance generation counter, scoped epoch, opaque token, UUID,
 object identity, or another suitable mechanism may represent resource-instance
 identity. The representation must provide the properties required by the boundary;
@@ -237,13 +245,17 @@ only after the rest of the acquisition contract has also been established:
          ;; an event-supplied selector or a caller-selected check list.
          :contract
          (acquisition/require-registered-contract!
-           trusted-context runtime event)}))))
+           trusted-context runtime)}))))
 #+end_src
 
-The resolved contract determines the mandatory checks. These include the
-expected acquisition plan, authorized principal context, source provenance,
-observation scope, compatible progression, current resource owner, and permitted
-installation right. Event fields and arbitrary callers cannot remove a check.
+The resolved contract determines the mandatory checks. The illustrative
+=acquisition/require-registered-contract!= and =acquisition-admission/admit!=
+names describe trusted-runtime contracts, not public Gesso Vars guaranteed to
+exist. In particular, the runtime selects the contract from its previously
+admitted acquisition registration; the event cannot select or replace it.
+These checks include the expected acquisition plan, authorized principal
+context, source provenance, observation scope, compatible progression, current
+resource owner, and permitted installation right. Event fields and arbitrary callers cannot remove a check.
 Owner correlation alone cannot make received HTML semantically admissible for
 installation. Content escaping, active-content policy, and DOM effect safety
 remain additional realization obligations; provenance is not sanitization.
@@ -334,6 +346,9 @@ The subscription check is only owner correlation. Shared semantic admission
 also checks the declared event class, source provenance, full scoped requirement,
 and permitted advisory transition under the registered contract. A client-supplied
 =:owner= or =:event/class= does not by itself prove any of those premises.
+The illustrative =subscription/require-registered-contract!= and
+=advisory-admission/admit!= names likewise denote semantic boundaries, not
+established exported Gesso APIs.
 
 This short example fixes one board projection with no additional query parameters.
 A query-specific board must retain those parameters and its visibility context.
@@ -350,3 +365,26 @@ This is the executable consequence of owner-relative admission: first determine
 which declared semantic owner governs the event class, then apply the
 correspondence checks that owner's transition actually needs.
 
+*** Adversarial ownership and actuation cases
+
+A whole-application checker and the browser refinement tests must be able to
+distinguish the following cases. These outcomes concern cooperating runtime
+semantics; security against a hostile browser remains a server responsibility.
+
+| Scenario | Required classification or behavior |
+|----------+-------------------------------------|
+| Refresh A's callback reaches the target after B replaces A's resource | Reject A's retired ownership; do not mutate B's state |
+| Cancellation or cleanup for A finishes after B starts | Cleanup is best effort and must not retire or delete B's new resource |
+| The event repeats B's resource ID but comes from an unregistered producer, another principal, or another board scope | ID equality alone is insufficient; require trusted producer/scope admission |
+| B's own callback carries a view from an incompatible projection or an insufficient authoritative observation | Owner may correlate, but semantic installation is not thereby permitted |
+| A swap is admitted, then its owner retires before a delayed DOM effect executes | Recheck the installation right at actuation; stale approval cannot install |
+| A valid shared subscription advisory arrives while no command execution is active | Check the subscription/source contract without inventing an execution owner |
+| A private callback asserts that it is shared after its execution retires | Reject the untrusted reclassification; do not transfer private rights |
+
+The event's normalized class and registered producer determine which check is
+applicable. Cancellation cannot stand in for semantic retirement, a matched
+request ID cannot stand in for producer provenance, and a previously admitted
+effect cannot stand in for current permission when the physical action runs.
+A rejected late callback must not erase or roll back a newer owner's installed
+state. These obligations must be tested at the race boundaries, not only on
+isolated identity-value fixtures.
