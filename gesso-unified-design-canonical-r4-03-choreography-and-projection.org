@@ -2299,8 +2299,13 @@ If two global branches project to equivalent local behavior for role R, R need
 not learn the branch solely because R appears somewhere inside both branches.
 
 If they diverge, the projector/verifier must establish a valid knowledge path
-before the divergence.
-
+before the divergence. Whether behavior differs is judged against the
+declared local semantic observations and obligations, including waiting,
+effects, outcomes, correlation, resources and relevant causal order. Equal
+final values or superficially equal message maps are not sufficient.
+A branch choice may remain private only when the projection also respects
+its disclosure and information-flow contract; equivalence under a coarse
+trace alphabet does not alone prove confidentiality.
 
 A focused expense example separates private choice from public behavior.
 Suppose an accepted manager review has one of two recorded results:
@@ -2323,7 +2328,12 @@ input, typically an explicitly communicated permitted outcome.
 The two notification paths must also have compatible causal prerequisites.
 Here each notice follows an authoritative result establishing a recorded review
 of the same Expense under the declared message contract. Merely finding equal
-payload shapes in two branches would not establish that meaning.
+payload shapes in two branches would not establish that meaning. If a
+notification occurs in only one branch, or if observable destination,
+cardinality, delay or resource behavior differs in a way the contract
+distinguishes, the notifier may learn something about the choice even from
+identical bytes. Any such distinction requires its own admitted knowledge
+and disclosure path rather than an unsupported equivalence assertion.
 
 Finance is different when it is already a participant in the short session.
 The global contract must distinguish both continuations, for example through a
@@ -2338,7 +2348,18 @@ declared disposition message:
  :disposition-type [:enum :review-required :not-required :review-unavailable]}
 #+end_src
 
-The projected receive can branch on an admitted =:review/disposition=. A
+This is a schematic intended message interface, not an assertion that
+=:disposition-type= is itself an implemented or independently sufficient
+Choreo constructor option. Its admitted payload schema must bind the
+required =:review/disposition= to this closed variant set and establish
+disjoint received alternatives where the projected receiver needs them.
+The sender must know the actual disposition and its correlation to the
+original review command, and must be permitted to disclose it to Finance.
+A matching enum tag and command id supplied by a different actor cannot
+establish that binding.
+
+The projected receive can branch on an admitted =:review/disposition= after
+trusted source, subject, session and command correlation are established. A
 =:review-required= message justifies entering a current observation/action
 path; it does not itself authorize Finance approval. A =:not-required= message
 permits local return without claiming that Finance acted. =:review-unavailable=
@@ -2397,7 +2418,10 @@ a termination bound. Stronger equivalence rules must identify their mechanism
 and premises; equality of final values or of function names is not such a rule.
 
 A receiver may merge remote alternatives when admitted incoming messages
-distinguish the alternatives before their different behavior. If alternatives
+distinguish the alternatives before their different behavior. The branch
+selector must be established at the receive boundary, rather than inferred
+from the absence of a message or from a value in a mutually overlapping
+optional field. If alternatives
 share a sender, event, channel, and correlation scope, their admitted payload
 contracts must be disjoint or an explicit discriminator must select them.
 Optional fields alone commonly overlap. A supported checker rejects a known
@@ -2429,7 +2453,28 @@ with the appropriate evidence. Liveness remains conditional on its named
 delivery, availability, fairness, or application-action assumptions.
 
 These obligations supplement, rather than replace, the independent application
-capability acceptance defined in Part I.
+capability acceptance defined in Part I. A concrete witness that one schedule
+projects correctly is not a proof about every admitted schedule; a proof of
+trace inclusion is not necessarily trace coverage, absence of deadlock,
+liveness, authorization, or secrecy. Completion and acceptance use the
+specific theorem and environmental premises that their claims require.
+
+*** Branch-choice acceptance counterexamples
+
+| Apparent shortcut | Required construction or execution outcome |
+|-------------------+--------------------------------------------|
+| Both branch continuations emit the same neutral notification payload, but only one branch emits a notification | Preserve the observable occurrence difference or justify it under the actual abstraction and disclosure contract; equal bytes are not local equivalence |
+| Finance reads a manager-only threshold from the global branch selector | Reject the projection unless Finance has an authorized knowledge path; a global choice cannot grant private input |
+| Finance waits only for =:review-required=, while the other branch has no message or local terminal path | Reject the claimed total participation or require the authored not-required/disposition path; silence is not knowledge |
+| Finance receives a permitted =:review-required= variant from a different session or with a copied command id | Reject mismatched sender/subject/session/correlation admission despite valid enum and payload shape |
+| A notifier's destination or effect changes by route while its payload remains the same | Require justified discriminator and disclosure rights for the changed observable effect |
+| Two receive alternatives have overlapping optional-field schemas and the runtime picks the first match | Reject ambiguous alternatives at the checked boundary; declaration order is not a semantic discriminator |
+| The manager's command is unresolved and a =:review-unavailable= message is treated as proof of rejection | Preserve unknown-incorporation reconciliation and its owner; unavailable is not uncommitted |
+| A finite structural check finds some terminal path and claims Finance always completes | Keep liveness conditional on required delivery, scheduling and actor-action premises; terminal reachability is insufficient |
+| A concrete replay succeeds and its result is labeled universal projection refinement | Retain witness-scoped evidence; universal safety, progress and secrecy require their separately stated assurance |
+
+The cases express the finished language's admission requirements, without
+prescribing a particular projection algorithm or proof backend.
 
 *** Communication, causality, and completion
 
