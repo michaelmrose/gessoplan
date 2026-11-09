@@ -1430,7 +1430,12 @@ and a valid operation contract do not reserve future eligibility.
 
 This separation lets Gesso reason strongly about operation identity and
 distributed protocol structure without pretending to statically prove current
-business facts that can change between render and commit.
+business facts that can change between render and commit. A valid source-level
+operation interface also does not attest that its named handler, current
+authenticated principal, or transactional guard was actually installed and
+enforced. An admission diagnostic must identify whether it checked
+choreography structure, current model authorization, or the physical join;
+an unavailable independent premise is not a successful authorization.
 
 *** Malformed operation type versus wrong business policy
 
@@ -1455,8 +1460,15 @@ If the application states:
 when product policy actually intended another valid status test, the expression
 may be perfectly well formed while encoding the wrong policy.
 
-Gesso should make the former difficult or impossible to certify.  It cannot
-infer the latter merely from syntax.
+Gesso should make the former difficult or impossible to certify *within the
+supported typed rule language*. It cannot infer the latter merely from syntax.
+The two Clojure-shaped examples illustrate the intended semantic distinction;
+they are not claims that the existing checker accepts or analyzes arbitrary
+host-language Clojure forms. The current closed rule AST has explicit reader
+types and operators, where a numeric ordering comparison against a nominal
+enum should fail admission. Arbitrary Clojure policy functions instead retain
+an opaque typed/effect contract unless their relevant source is elaborated
+into an inspected language or checked by another admitted mechanism.
 
 This distinction becomes more explicit in the later compositional-proof part,
 where typed business-rule expressions and certified semantic interfaces are
@@ -1492,7 +1504,14 @@ checking, including:
   authoritative observation.
 
 This is one of the central reasons Choreo needs a semantic type/knowledge layer
-richer than ordinary function typing.
+richer than ordinary function typing. A global value store's containing a
+binding does not make it definitely available to the chosen role on every
+incoming path. Nor do a claimed authoritative basis and a correctly typed
+provenance record prove the observation was actually acquired or permits this
+use. A role may depend on an optional value only after its applicable presence
+refinement. A program point may therefore be rejected even when its predicate
+is intrinsically well typed and its runtime inputs would happen to be present
+in one favorable execution.
 
 *** Operation declarations should remain inspectable data
 
@@ -1520,6 +1539,47 @@ The desired direction is:
 Author-facing syntax elaborates into explicit normalized semantic data. That
 same subject supports verification, projection, diagnostics, and certification;
 none may silently interpret a different policy hidden in the syntax layer.
+The checked normalization retains the owning source and the identity of the
+semantic contract, even if locations and pretty source snippets remain
+diagnostic-only rather than contributing to semantic identity. A generated
+plan, copied checker report, or friendly syntax cannot independently become
+an authoritative second definition of a business rule.
+
+*** Operation-admission diagnostic classes
+
+| Classification | Evidence and response |
+|----------------+-----------------------|
+| =:invalid= | A contradiction is established in the admitted syntax, type, value-flow, role knowledge, or stated interface; reject at the earliest competent boundary |
+| =:unsupported= | The construct is outside the checker’s supported language or bounded capacity; do not report a successful check or silently discard it |
+| =:open-premise= | A needed model/authority, external Clojure, runtime producer, or physical deployment correspondence was not established; preserve the premise and the owning boundary |
+| =:runtime-required= | A declared dynamic fact such as authenticated eligibility, current transaction state, or resource ownership must be established when the relevant action occurs |
+| =:runtime-rejected= | An actual guarded operation was rejected by its trusted boundary; do not reinterpret this as a static type failure |
+| =:indeterminate= | Delivery or outcome evidence is insufficient; retain command-specific uncertainty and a permitted recovery path instead of inventing rejection |
+| =:policy-mismatch= | Product policy is allegedly wrong despite type-correct syntax; require a source-owned rule, product acceptance criterion, or counterexample rather than pretending the type checker knows intent |
+
+These names are specification-level diagnostic classes, not an assertion
+that the current Gesso API exports this exact enum. A useful report identifies
+the declaration and semantic subject, the role and program point where
+relevant, required versus available knowledge/provenance, the supported
+checker property, the failing or open premise, and the correct next
+construction, runtime, or product-acceptance boundary.
+
+*** Admission counterexamples
+
+| Apparent success | Required outcome |
+|------------------+------------------|
+| A nominal status enum is passed to a numeric comparison in the admitted typed-rule AST | Reject the malformed type use, without claiming arbitrary Clojure compilation was analyzed |
+| A well-typed predicate tests =:open= but product policy intended another permitted status | Type checking may succeed; the policy-intent discrepancy needs independent rule/acceptance evidence |
+| A browser branch reads a private fact known only to the server | Reject that role-local use; global value availability does not grant browser knowledge |
+| An optional receive field was present on one path but omitted on another | Require path-specific presence refinement before unconditional use |
+| An input claims an authoritative basis with the expected schema | Do not upgrade a claimed token to a trusted acquired observation on shape alone |
+| A valid choreography has a declared but physically uninstalled required command handler | Report the missing implementation/assembly premise, not successful physical admission |
+| A command times out after being sent | Preserve the indeterminate outcome and reconciliation contract; do not classify timeout as a rejected business rule |
+
+A failed supported check, an unsupported check, an open external obligation,
+and a genuine runtime rejection must remain separate. None can be laundered
+into success through a structural fingerprint, a synthesized assertion, or an
+exception path that swallows a checker limitation.
 
 *** Full-language computations retain their contracts
 
