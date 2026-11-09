@@ -69,7 +69,18 @@ Each operation atomically protects its current dependencies, domain changes,
 and command-result record under Part IV. The preparation read determines which
 operation to try; it does not reserve eligibility or authorize incorporation.
 A compatible replay follows the recorded-outcome and current disclosure rules
-without reapplying a new-incorporation status guard.
+without reapplying a new-incorporation status guard. The authoritative
+incorporation's notification contract is chosen independently of the
+subsequent caller-visible send. If the business operation requires a
+*durable review notification*, C2 incorporation also establishes the
+relevant stable publication/work intent at that atomic boundary, or the
+operation supplies an equivalently qualified durable discovery path.
+A manager browser's later result-bearing send may prompt that work but
+cannot be the only recoverable record when the browser may disappear
+between commit and send. If the notice is deliberately best effort,
+the operation does not manufacture mandatory delivery debt; its
+accepted command and terminal claims explicitly retain that weaker
+notification guarantee.
 
 Here is the choreography's control structure. The invocation and acquisition
 rows are authoring constructs whose elaboration exposes the boundaries described
@@ -102,7 +113,7 @@ and source-to-plan evidence:
 | Manager acquires C2's result | A declared authority-to-manager =:communicate= with admitted =:receive=, or a genuinely authored trusted =:await= outcome observation, establishes the manager's command-specific knowledge; copying the authority's global result into manager context is forbidden |
 | Manager selects notification or closure | A role-local =:branch= uses the actually admitted outcome. Recorded success uses the result-bearing notifier contract; rejection/unavailable cases use the declared no-notification/recovery paths, without treating unknown incorporation as definite failure |
 | Notifier receives the selected disposition | The chosen admitted =:communicate= establishes the notifier's permitted fields at actual receiver consumption; unmatched or overlapping variants, false correlation, and absent delivery are not accepted as another branch |
-| Notifier performs the declared notification effect | The effect, its realization, and any required completion/failure path remain explicit. A supposedly hidden =:local= calculation cannot conceal an externally significant notification |
+| Notifier performs the declared notification effect | The effect has a declared semantic footprint and a separately evidenced physical issue/outcome, with stable work identity and allowed retry/duplicate handling. A hidden =:local= calculation cannot conceal a notification whose completion the contract claims |
 | The review session finishes | Local =:return= / completion may occur at different times for manager and notifier; the claimed global =:return= requires the actual semantic receiver occurrence, declared notification-effect disposition or a separately admitted durable handoff/retirement under the selected terminal contract |
 
 This is an *obligation mapping*, not a claim that the rows are literally
@@ -208,7 +219,29 @@ plausible result string cannot establish that a review occurred. If the service
 instead derives the notice from an authoritative outbox, that is the declared
 realization and causal path; projection must not invent it silently.
 
-The delivery contract also decides what failure means. An accepted
+The delivery contract also decides what failure means. The following
+milestones have *different* completion evidence:
+
+| Review/notification milestone | What it establishes, and what remains open |
+|-------------------------------+---------------------------------------------|
+| C2 incorporated | The bound Expense operation and command outcome are authoritative; if required, a protected durable notification intent also exists, but delivery does not follow |
+| Publication work recorded | The model owns a stable scoped work/intent identity and recovery obligation; neither a particular notifier's receive nor a provider-side effect has occurred by implication |
+| Manager local =:send= completed | The manager's declared local emission succeeded under the send contract; the notifier may still know nothing |
+| Notifier admitted =:receive= | The particular global semantic =:communicate= occurrence is realized and declared communicated facts are learned; no outside notification is proved |
+| Physical notification issued or accepted | The registered notifier/provider completed the *named* physical stage under its correlation and failure contract; an accepted dispatch is not proof a human saw the notice |
+| Notification effect fulfilled, failed or handed off | Only the separately declared completion, failure, retry, retirement or durable continuation evidence discharges the corresponding effect obligation; a terminal claim names the actual milestone it asserts |
+
+The stable delivery/work identity is not interchangeable with C2's
+semantic command identity, a transport attempt, or the root identity of
+one participant message. A compatible command replay does not create
+new required work. A retried delivery may create a new physical attempt
+without authorizing an additional externally significant notification;
+the provider and receiver contracts govern deduplication, reconciliation,
+and any legitimately repeated effect. An exactly-once physical effect
+claim requires evidence strong enough for the chosen failure model;
+a durable outbox by itself does not establish it.
+
+An accepted
 =:send= completion establishes that the sender discharged its *local sending*
 boundary, not that the global =:communicate= occurred at the recipient or
 that the notification effect executed. The declared semantic communication
@@ -220,9 +253,18 @@ own business meaning. Neither a missing receive nor a sender's local
 notification, the model transaction or another justified handoff must retain
 recoverable notification work. A direct browser send that can disappear after
 commit cannot establish eventual notification. For a best-effort notice, loss
-may be allowed but the assurance claim must say so. Replaying an accepted
-command result must not resend an externally significant notification unless
-its own deduplication or repeat policy permits it.
+may be allowed but the assurance claim must say so. The normal global
+terminal for such a protocol may promise an *attempt* or admitted
+retirement, not guaranteed delivery. A durable-handoff terminal may
+promise that recoverable work exists, not that the future effect
+already happened; that stronger future-delivery claim remains subject
+to explicit scheduler, provider, and fairness premises. If the declared
+terminal promises actual physical fulfillment, the proof must also
+include the qualified effect-completion evidence and the physical
+observation/refinement contract, not only a coarse distributed trace.
+Replaying an accepted command result must not resend an externally
+significant notification unless its own deduplication or repeat
+policy permits it.
 
 *** Worked-review counterexamples and correspondence duties
 
@@ -240,6 +282,9 @@ its own deduplication or repeat policy permits it.
 | The manager finishes locally after sending a notifier message, and the compiler reports global success while the required notifier receive/effect remains unresolved | Distinguish local completion from global terminal correspondence; preserve required delivery/effect or an expressly admitted recovery handoff |
 | Two result variants can match the same sender/event/channel and payload | Reject ambiguous projection or require a checked discriminator, not arrival-order selection |
 | An accepted model commit is followed by notification delivery failure | Retain delivery/recovery debt if notification is durable; do not retroactively reject the command |
+| C2 commits and a required notification is lost because the browser closes before sending, with no durable intent or discovery | Reject the claimed required-delivery construction; the authoritative incorporation must establish qualified recoverable work independently of the browser |
+| A notifier admits the review message and the global terminal is reported as a delivered user notification before the provider effect completes | Reject the stronger effect claim; semantic receipt is not physical fulfillment |
+| A notification worker retries after an unknown provider response using a new unbound work identity | Preserve/reconcile original delivery intent and its duplicate policy; a second attempt is not permission to double-notify |
 | The manager chooses an approval path without notifying Finance | Finance's later participation requires its own admitted queue observation and guards, not an absent earlier message |
 
 These are example-level acceptance and correspondence obligations, not

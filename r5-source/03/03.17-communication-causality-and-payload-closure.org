@@ -93,7 +93,17 @@ such as a declared acknowledgement; local send completion is insufficient.
 
 The refinement claim names its observation alphabet. A coarse distributed trace
 may hide local calculations or reads, but that does not prove local branch
-correctness, confidentiality, resource safety, or presentation behavior. Those
+correctness, confidentiality, resource safety, or presentation behavior.
+Nor can it prove an externally significant notification simply because
+the receiver admitted the message that *requested* one. The
+notifier's issued/fulfilled/failed effect evidence belongs to its
+declared effect contract and the physical realization relation.
+Where an application promises a durable notification, the
+authoritative command's required publication/work intent and the
+notification worker's later physical attempts have distinct,
+stable, correlated identities and separate disposition milestones.
+An acknowledged message, a broker acceptance, and a provider
+fulfillment cannot be collapsed into one semantic event. Those
 properties require their own retained observations and judgments. Choosing an
 alphabet that hides all useful behavior cannot establish application acceptance.
 
@@ -143,6 +153,7 @@ remains visible in the result.
 | A send adapter reports successful enqueue and the sender records peer receipt | Preserve transport completion only; require an admitted receiver consumption event for semantic receipt |
 | A sender completes a required closure send and returns locally while the receiver remains waiting | Do not report the authored global terminal from the sender's local completion; require actual receive or separately justified terminal recovery/handoff |
 | A proxy acknowledges receipt and the application treats the payload as installed in a browser | Require the separate installation/adoption contract; transport receipt is not UI adoption |
+| A global trace hides the notifier's local effect and a proof of message receipt is advertised as proof of external delivery | Reject the unsupported physical completion claim; observe and check the registered effect stage under its own evidence contract |
 | A message from untrusted first contact contains a plausible session id | Establish routing, origin and scope before binding the new correlation value |
 | A dropped message times out and the sender declares the remote authoritative effect rejected | Preserve uncertainty and original command reconciliation; local timeout does not prove non-incorporation |
 | Two deliveries of one semantic occurrence arrive through different transport attempts | Prevent a second semantic transition unless the protocol explicitly admits repeating the occurrence |
