@@ -1,0 +1,342 @@
+** Semantic evidence vocabulary
+
+The following vocabulary is shared by the later compositional hardening and
+whole-application proof architecture.
+
+It is defined here so later layers do not need to redefine what their evidence
+means.
+
+*** Identity and instance terminology
+
+An identity names a particular semantic object or concrete instance. Its meaning
+must be explicit wherever admission, ownership, compatibility, or evidence
+binding depends on it. The canonical distinctions include:
+
+- *Command identity:* the logical intent, which may survive multiple attempts.
+- *Execution identity:* one concrete semantic execution of a choreography or
+  operation; its relation to a command is explicitly declared.
+- *Resource-instance identity:* one concrete timer, subscription, transport
+  request, continuity capture, or other managed resource, distinct from its
+  reusable logical resource/target name.
+- *Transport-request identity:* one transport attempt, distinct from the domain
+  object being acted upon and from the command it may carry.
+- *Submission-attempt identity:* one attempt to incorporate a command at an
+  authoritative boundary; one transport request need not imply exactly one
+  backend attempt.
+- *Capability-instance identity:* a concrete grant to perform a scoped action
+  under its lifetime and usage contract; it is not the command identifier.
+- *Admitted assembly generation:* the immutable application realization admitted
+  together, including its routes, providers, prepared operations, and artifacts.
+- *Compatibility identity/version:* the declared protocol or plan compatibility
+  class, distinct from exact executable-artifact identity and from deployment.
+
+A deployment may host multiple admitted assembly generations during a supported
+transition. A deployment identifier, assembly generation, execution identity,
+and resource-instance identity are not interchangeable coordinates.
+
+Use =generation= only when its owning subject and purpose are explicit, such as
+=assembly generation= or a declared =resource-instance generation counter=.
+A counter is one possible representation; opaque identity is sufficient where
+only equality and non-aliasing are needed. Do not imply an ordering, universal
+counter, or shared lifetime merely by calling a value a generation. A later
+reference may abbreviate a locally established subject only when it remains
+unambiguous.
+
+For browser transport examples, =:transport-request-id= names the transport
+attempt. Domain Request arguments such as HumanHelp's =:request-id= retain their
+domain meaning. Different transport attempts must not be conflated because they
+carry the same command or concern the same domain Request.
+
+Operation identity is *preserved* through realization: it cannot be silently
+erased or substituted. Reserve *monotonic* for a stated ordering or information-
+growth relation. In particular, preventing retired work from restoring obsolete
+presentation does not imply that all observations form one totally ordered
+history or that every valid domain transition increases a numeric value.
+
+*** Executable semantic core, proof kernel, and dedicated checkers
+
+The *executable semantic core* defines the production transition meaning for its
+supported semantic subset. It consumes the applicable executable rules, admitted
+state, and inputs/events, and yields semantic state and declared effects. A
+portable machine step or browser adapter transition function is an executable
+semantic core within its stated scope. There need not be one universal step
+function for all layers.
+
+The *proof kernel* checks derivations against explicit inference rules and
+premises. It accepts or rejects the claimed judgment; it does not perform the
+application's runtime transitions or supply runtime authorization. It is
+separate from the richer elaborator that proposes terms and evidence. It must
+not trust the elaborator's conclusion merely because the elaborator supplied it.
+
+A *dedicated semantic checker* establishes a particular judgment or property,
+such as exact finite-state exploration or structural application closure,
+through its declared checking mechanism. It need not be implemented as part of
+the proof kernel. Its result retains the evidence class and trust premises of
+that mechanism.
+
+These components may share canonical semantic definitions. Sharing definitions
+neither merges their responsibilities nor establishes implementation soundness.
+The relationship between the checked subject and the production object remains
+an explicit correspondence obligation. Canonical terminology calls the runtime
+component the executable semantic core, reserving =proof kernel= for derivation
+checking; external proof-assistant kernels must be identified as external.
+
+The trust base of a claim includes every component that establishes a judgment
+without supplying evidence checked by another identified mechanism. Depending
+on the claim, this includes parsing, typing, normalization, substitution,
+transition interpretation, frame rules, initiality, invariant preservation,
+induction, certificate admission, and source-to-artifact binding.
+
+A small propositional kernel does not make the whole assurance system equally
+small if other modules directly establish additional semantic judgments. Those
+modules must either produce evidence accepted by the appropriate checker or
+remain explicit parts of the trusted checker implementation. Part IX owns their
+rules; Part X owns the corresponding soundness and implementation arguments.
+
+The architecture separates semantic definitions, elaboration, derivation
+checking, runtime realization, and observations/reports. Checking a derivation
+does not submit a database transaction. An integration runner may perform real
+effects to collect evidence, but it is then an effectful realization boundary,
+not part of the pure proof kernel. The runtime consumes admitted semantics and
+current premises, not a diagnostic report standing in for either.
+
+These definitions fix responsibilities without requiring one monolithic
+namespace. Shared definitions reduce drift; independent correspondence checks
+and soundness arguments address mistakes shared by execution and checking.
+
+*** Raw declaration
+
+A *raw declaration* is user, application, or framework data that has not yet
+crossed the semantic checker appropriate to its role.
+
+Examples include:
+
+- a raw Malli or domain schema;
+- a raw business-rule expression;
+- a raw operation contract;
+- a raw choreography;
+- a raw authority declaration;
+- a raw derivation;
+- a raw dependency reference;
+- a raw application assembly declaration.
+
+Raw data is permitted at construction boundaries.
+
+Raw data must not masquerade as a certified semantic artifact merely because it
+has the same map shape as one.
+
+*** Admitted semantic value
+
+An *admitted semantic value* is a value that has crossed the construction,
+verification, authoritative-acquisition, or other checking boundary required
+for the semantic category in which downstream code will consume it.
+
+Admission answers a question such as:
+
+#+begin_quote
+May this value be treated by the supported program as an instance of semantic
+category C at this boundary?
+#+end_quote
+
+Admission does not automatically answer every stronger question about the
+value.  In particular:
+
+- admission into a nominal category is not automatically a proof of every
+  proposition named by that category;
+- admission does not create current authorization unless authorization is the
+  proposition established by the trusted runtime boundary;
+- admission does not make a client-carried value authoritative merely because
+  it was once authoritative before serialization;
+- an admitted artifact identity binds the relevant object to its construction
+  history but does not establish semantic truth by identity alone.
+
+A nominal type, opaque wrapper, private constructor, checked constructor, or
+registry-resolved object may help represent admission.  The requirement is that
+unsupported construction or same-shaped raw data cannot silently receive the
+stronger semantic treatment through the normal API.
+
+*** Semantic interface
+
+A *semantic interface* is the normalized meaning exported by one checked
+component to its dependents.
+
+It contains only propositions downstream reasoning is permitted to rely on.
+
+Depending on the component, this may include:
+
+- declared value types;
+- variants;
+- cardinality;
+- optionality/refinement rules;
+- relationships;
+- operation input/output facts;
+- preconditions;
+- postconditions;
+- authority requirements;
+- provenance requirements;
+- effects and resources;
+- named assumptions;
+- named guarantees;
+- compatibility constraints.
+
+Implementation details irrelevant to downstream reasoning should not become
+semantic commitments merely because they are convenient to serialize.
+
+*** Assumption
+
+An *assumption* is a named proposition accepted from outside the proof currently
+being established.
+
+Assumptions are explicit leaves in the proof or explanation graph.
+
+They are not inferred from trust in a namespace name, source location, familiar
+implementation, passing test, or matching hash.
+
+*** Guarantee
+
+A *guarantee* is a proposition established by the current checked component
+relative to its certified dependencies and named assumptions.
+
+*** Obligation
+
+An *obligation* is a proposition required for a particular judgment, admission,
+or assurance claim. A mandatory check must be established before its result is
+issued. Where admission policy permits an unproved contract as a premise, the
+resulting certificate states the dependent conditional judgment; it does not
+claim that the original contract obligation was discharged.
+
+An unresolved obligation must remain visible.
+
+It must not be replaced by a default success value or silently omitted from the
+result.
+
+*** Derivation
+
+A *derivation* is machine-readable evidence describing how a guarantee follows
+from certified premises and inference rules.
+
+Derivations are useful for:
+
+- mechanical checking;
+- diagnostics;
+- explanation;
+- repair;
+- trusted-computing-base reduction through independently checked evidence.
+
+A derivation is evidence, not runtime authority.
+
+*** Certificate
+
+A *certificate* is a closed evidence artifact stating enough information for an
+appropriate checker to decide the claims it represents. Closed means that its
+required references and dependencies are accounted for, including named
+assumption leaves. It does not mean that those assumptions have been proved or
+that future runtime premises already hold.
+
+A certificate may include:
+
+- the semantic object checked;
+- its semantic identity;
+- certified dependency identities;
+- assumptions;
+- guarantees;
+- proof obligations;
+- derivations or checked references to derivations;
+- applicable semantic-checker or proof-kernel version;
+- result classification.
+
+A certificate is not a boolean.
+
+A certificate is not accepted because an ordinary Clojure map contains a key
+such as =:verified? true=.
+
+A certificate is accepted only through the checker boundary appropriate to that
+certificate class.
+
+*** Semantic identity
+
+A *semantic identity* is a deterministic identity of the semantic material
+normalized under a declared encoding and normalization contract. It identifies
+that material; it is not a decision procedure for equivalence of arbitrary
+Clojure programs.
+
+It is deliberately distinct from:
+
+- source-file checksum;
+- file path;
+- namespace name;
+- build timestamp;
+- runtime locator;
+- physical artifact location.
+
+Whitespace, comments, local helper names, and implementation details outside
+the exported contract need not alter its semantic identity. A claim about the
+concrete implementation may nevertheless need a new implementation binding or
+new correspondence evidence after such a change.
+
+Changes to relied-upon semantic commitments must invalidate dependent evidence
+unless a checked compatibility or implication argument justifies reuse. A
+matching contract identity alone does not authorize evidence reuse across
+different implementations.
+
+Examples include changes to:
+
+- value types;
+- rule contracts;
+- authority contracts;
+- operation postconditions;
+- provenance requirements;
+- compatibility rules;
+- resource semantics.
+
+Semantic identity identifies normalized semantic material under the declared
+normalization and identity contract. A matching untrusted identifier is not
+self-authenticating evidence that the corresponding material was checked.
+
+Semantic identity by itself does not prove the truth of that material. Evidence
+about a particular generated artifact or implementation must also remain bound
+to the concrete object to which that evidence applies. Equality of normalized
+contract material does not automatically transfer test
+results or physical artifact correspondence from an earlier build to a different
+one. For opaque functions, the exported contract, admitted implementation
+binding, and evidence applicability are separate identities. Gesso does not
+require deciding extensional equivalence of those functions.
+
+*** Proof DAG
+
+A *proof DAG* is the dependency graph from a root checked artifact through all
+certified semantic dependencies and named assumptions.
+
+A root may depend on the following semantic layers; actual dependencies form
+a DAG, not necessarily one linear chain:
+
+| Semantic layer | Typical exported evidence |
+|----------------+----------------------------|
+| Schemas, domains, and relationships | Typed interfaces and relationship constraints |
+| Business rules | Well-formedness, proved properties, and explicit opaque contracts |
+| Model operations | Transition obligations, invariants, and realization premises |
+| Choreography | Knowledge, authority, coordination, and resource judgments |
+| Projection | The stated global-to-local behavior relation |
+| Executable plans | Semantic and artifact identity bindings |
+| Whole application | Closure, production enforcement, and independent acceptance evidence |
+
+A later stage may rely only on propositions actually exported by its certified
+dependencies or named as assumptions.
+
+No stage receives credit for a predecessor's intended meaning when that meaning
+was never certified.
+
+The certificate dependency DAG must be acyclic. Recursive or fixed-point
+semantics may be supported only through a deliberately formalized rule with
+checked premises; introducing a dependency cycle does not supply that
+justification.
+
+This requirement is distinct from ordinary recursive computation. In
+particular, a cycle among Clojure namespace dependencies is a load-time
+dependency error, not a mechanism for expressing logical recursion. Any
+recursive reasoning admitted by the certification system must therefore be
+represented explicitly in its semantics rather than encoded as a cyclic
+namespace or certificate dependency.
+
+#+LATEX: \newpage
+

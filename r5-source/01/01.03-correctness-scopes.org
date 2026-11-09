@@ -1,0 +1,364 @@
+** Correctness scopes
+
+The system intentionally combines several correctness scopes.  No one scope
+subsumes the others.
+
+*** Domain correctness
+
+Application models define domain meaning.
+
+Examples include:
+
+- whether a Request may be claimed;
+- whether a Membership is active;
+- whether an Organization permits an operation;
+- what a "reconciled" claim outcome means;
+- which facts must be protected atomically at commit time.
+
+Gesso may check that a rule expression is well typed, that a declared operation
+contract composes with its dependencies, and that the distributed execution
+respects that contract.  Gesso does not infer whether the Organization chose
+the right business policy.
+
+*** Choreographic correctness
+
+Choreo defines and checks distributed coordination around public semantic
+operations.
+
+It reasons about:
+
+- participating roles;
+- principal and authority requirements;
+- knowledge;
+- provenance;
+- communication;
+- authoritative observation;
+- branch discriminators;
+- provisional state;
+- command and execution identity;
+- settlement;
+- resource ownership;
+- convergence;
+- failure and recovery;
+- projection into role-local behavior.
+
+*** Runtime correctness
+
+Runtime code realizes the checked semantics.
+
+It must preserve:
+
+- semantic identities;
+- execution-instance identity and declared resource-instance ownership;
+- stale-work rejection;
+- correlation;
+- progression requirements;
+- resource lifetimes;
+- provisional-versus-authoritative distinctions;
+- permitted machine transitions;
+- transport and server realization.
+
+*** Whole-application closure
+
+Individually valid components can still form an impossible application.
+
+The assembled application therefore has its own closure boundary.  For an authoritative browser command, a rendered
+semantic affordance must have a coherent path through the applicable application
+boundaries:
+
+| Closure step | Required relationship |
+|--------------+-----------------------|
+| Affordance | Resolves to the declared semantic operation and valid arguments |
+| Choreography | Supplies an admitted trajectory for that operation |
+| Projection | Produces the required actor-local plan |
+| Browser artifact | Realizes that plan under the admitted compatibility contract |
+| Transport | Reaches the declared trusted server capability |
+| Model binding | Invokes the public authoritative operation with bound inputs |
+| Outcome handling | Preserves typed settlement and progression obligations |
+| Acquisition | Obtains a permitted authoritative successor under current read authority |
+| Presentation | Renders that successor through the admitted ownership and lifecycle rules |
+
+This is the path for the stated browser-command case. A read-only operation,
+subscription, background task, or workflow with no browser presentation has its
+own declared effects, outcomes, and lifecycle; it need not manufacture a browser
+plan, domain write, or card reacquisition. Closure checks follow the obligations
+of the declared operation kind.
+
+Later parts of this design specify that closure in detail. Its inclusion here
+establishes an important foundational rule: local correctness does not imply
+whole-application correctness.
+
+*** Three distinct application assurance claims
+:PROPERTIES:
+:CUSTOM_ID: req-application-assurance-claims
+:END:
+
+Whole-application assurance separates three claims that are related but not
+interchangeable.
+
+| <18> | <41> | <41> |
+| Claim | What it establishes | What it does not establish |
+|-------+---------------------+----------------------------|
+| Declared closure | Required relationships among the application elements within the declared assembly scope are checked | That every intended product capability was declared |
+| Production enforcement | Actual supported execution passes through the boundaries that make the declared checks effective | That every possible host-language escape hatch is impossible |
+| Behavioral completeness | Required user capabilities and authoritative outcomes are present and usable | That their internal assembly is structurally closed unless closure is checked separately |
+
+A self-consistent assembly can omit intended functionality.  Conversely, a
+behaviorally successful path can exist while bypassing a checker that the design
+claims is mandatory.  The three claims therefore reinforce one another without
+collapsing into one another.
+
+Assembly closure is always relative to declared scope.  Gesso cannot infer an
+application author's missing business intention merely because the remaining
+graph is closed.  Required product behavior therefore needs an acceptance basis
+independent of the assembly's own declaration set.  That acceptance basis should
+state user capabilities and authoritative outcomes rather than duplicate route
+strings, operation registries, projected-plan identities, or other realization
+metadata already owned by the assembly.
+
+Production enforcement is a separate obligation.  A checker that correctly
+rejects an isolated malformed fixture provides no application guarantee when the
+real application path can bypass that checker.  Strong claims about an assembled
+application must therefore identify the production boundary that makes the
+relevant check effective.
+
+Inside trusted host-language code, deliberate escape hatches may remain possible.
+For example, trusted application code that intentionally obtains a lower-level
+transaction capability may bypass the model/Gesso path.  The ordinary assurance
+goal inside that trusted boundary is misuse prevention: supported application
+construction should make accidental semantic bypass difficult, explicit, and
+diagnosable. A deliberate departure from that supported path requires an
+explicit boundary
+and assurance scope. A raw writer can invalidate dependent invariants for later
+operations over the affected state, not just the assurance of its own request.
+The dependency graph must represent that impact. Ordinary opaque computation
+inside a managed contract is not itself such a departure.
+
+These distinctions are foundational for later HumanHelp acceptance:
+
+#+begin_example
+assembly closed
+    !=
+production path demonstrably enforced
+    !=
+all required HumanHelp capabilities present
+#+end_example
+
+
+One Claim implementation can be used to see all three application-level claims
+without inventing three unrelated examples.
+
+The author supplies operation declarations and independent realization choices.
+The following source is an excerpt of an application declaration; named view,
+acquisition, recovery, and artifact providers must be supplied by the surrounding
+application. Admission rejects unresolved providers.
+
+#+begin_src clojure
+(def humanhelp-application
+  {:assembly/id :humanhelp/web
+   :operations [claim-request]
+   :views [:request/card]
+   :realizations
+   {:request/claim
+    {:model-implementation #'request-model/claim!
+     :transport {:kind :http/post :path "/requests/claim"}}}
+   :providers
+   {:request/card request-card-provider
+    :request/reconcile-claim claim-outcome-provider
+    :browser/runtime gesso-browser-artifact-provider}
+   :assurance-policy :humanhelp/managed-application})
+
+(def humanhelp-assembly
+  (assembly/prepare humanhelp-application))
+#+end_src
+
+The operation supplies its semantic identity, input, settlement, and recovery
+requirements. The realization supplies a concrete model implementation and a
+transport choice. Framework-owned plan, route, and capability identities are
+derived and resolved; the author does not reproduce them in several registries.
+The policy reference resolves to the application's declared admission policy.
+
+Inspection can expose the expanded graph without making that graph a second
+source of truth:
+
+#+begin_src clojure
+(assembly/inspect humanhelp-assembly)
+;; illustrative derived output, not an author-maintained input:
+{:assembly/id :humanhelp/web
+ :operation :request/claim
+ :edges
+ [[:request/card :claim :request/claim]
+  [:request/claim :plan :plan/request-claim]
+  [:plan/request-claim :artifact :artifact/gesso-live]
+  [:request/claim :transport :transport/trusted-post]
+  [:transport/trusted-post :route :route/request-claim]
+  [:route/request-claim :capability :server/request-claim]
+  [:server/request-claim :model-operation :request/claim]
+  [:request/claim :settlement :request/claim-settlement]
+  [:request/claim-settlement :acquisition :request/card]
+  [:request/claim-settlement :recovery :request/reconcile-claim]]}
+#+end_src
+
+A closure checker establishes relationships over the resolved sources:
+
+#+begin_src clojure
+(assembly/check humanhelp-assembly)
+;; =>
+{:result :accepted
+ :evidence :assembly-verified
+ :closed-edges
+ [[:request/card :claim :request/claim]
+  [:request/claim :choreography :request/claim]
+  [:request/claim :plan/request-claim]
+  [:plan/request-claim :artifact/gesso-live]
+  [:request/claim :transport/trusted-post]
+  [:transport/trusted-post :route/request-claim]
+  [:request/claim :route/request-claim]
+  [:route/request-claim :server/request-claim]
+  [:server/request-claim :request/claim]
+  [:request/claim :request/claim-settlement]
+  [:request/claim-settlement :request/card]
+  [:request/claim-settlement :request/reconcile-claim]]}
+#+end_src
+
+The checker must collect these entries from the actual admitted choreography,
+projected plan, artifact bytes, route table, server binding, model operation,
+settlement, and acquisition/recovery declarations. Copying plausible entries
+into a disconnected map would show only that the map agrees with itself. The
+accepted report is illustrative of a checker that resolves every referenced
+source and validates the recorded edges.
+
+That still does not establish production enforcement. The actual startup and
+request path must make the admitted assembly unavoidable for the claimed
+supported path. Conceptually, production wiring might look like:
+
+#+begin_src clojure
+(defn start-humanhelp!
+  [ctx]
+  (let [prepared (assembly/prepare humanhelp-application ctx)
+        admitted (assembly/admit! prepared)
+        handler (routes/build admitted)]
+    ;; The Biff integration owns installation and the before-serving gate.
+    ;; Returning a handler in an unused map is not installation evidence.
+    (biff-host/start!
+      ctx
+      {:biff.ring/handler handler
+       :before-serving
+       (fn [installed-runtime]
+         (assembly/require-installed! admitted installed-runtime))})))
+
+(defn claim-handler
+  [ctx request]
+  (let [binding
+        (assembly/require-route-binding!
+          (:admitted-assembly ctx)
+          :route/request-claim)]
+    (server/invoke-bound-operation! ctx binding request)))
+#+end_src
+
+Now the relevant malformed production fixture is not merely passed to an
+isolated checker. It is sent through the same startup boundary:
+
+#+begin_src clojure
+(deftest stale-artifact-prevents-startup
+  (is
+    (thrown-with-msg?
+      clojure.lang.ExceptionInfo
+      #"browser artifact does not realize admitted plan"
+      (start-humanhelp!
+        (assoc test-ctx
+          :browser-artifact
+          artifact-without-request-claim-plan)))))
+#+end_src
+
+The Biff-host calls are an illustrative integration contract, not additional
+public Biff APIs. The integration must own the actual module lifecycle, final
+handler installation, and ordering before requests are served. Checking a
+detached route table or accepting an unused handler does not satisfy it.
+
+The controlled defect supplies tested evidence for production enforcement of
+this boundary. A corresponding valid startup and usable Claim path must also
+succeed. Broader production enforcement requires the other applicable
+boundaries to have their own evidence.
+
+Behavioral completeness still needs an independent statement of what the user
+must actually be able to do:
+
+#+begin_src clojure
+(def required-humanhelp-capabilities-excerpt
+  [{:capability :request/create
+    :eligible-scenario :authenticated-customer
+    :required-outcome :request/created-and-visible-to-creator}
+
+   {:capability :request/claim
+    :eligible-scenario
+    :authenticated-active-helper-sees-open-request
+    :required-outcome
+    :request/claimed-by-helper}
+
+   {:capability :board/refresh
+    :eligible-scenario
+    :helper-has-outstanding-board-advisory
+    :required-outcome
+    :authorized-current-board-adopted}])
+#+end_src
+
+These three entries are an excerpt for the Claim illustration, not HumanHelp's
+complete required-capability basis. The complete independent acceptance basis
+and its operational milestone scope are specified in
+[[#req-humanhelp-required-capabilities][Part VIII's required capabilities]].
+
+If =:request/claim= is removed from both the view and the assembly, the remaining
+assembly may still be perfectly closed. The independent capability list is what
+prevents that self-consistent omission from being called complete.
+
+Conversely, a hand-written =POST /claim= route may make a browser acceptance test
+appear green while bypassing =assembly/admit!= and the declared Claim operation.
+Behavior happened, but production enforcement of the claimed Gesso boundary was
+not established.
+
+The point of keeping all three claims separate is therefore practical rather
+than terminological: each one catches a different way a plausible application
+can "work" while failing the assurance statement the project intends to make.
+
+*** Operational correctness
+
+Formal semantics do not eliminate operational concerns.
+
+Real-browser tests, fault injection, property tests, load tests, lifecycle
+tests, and application acceptance remain necessary for:
+
+- browser primitive assumptions;
+- HTMX and EventSource/SSE behavior;
+- compiler/runtime implementation correspondence;
+- scheduler and timer behavior;
+- memory and CPU characteristics;
+- dependency outages and reconnect behavior;
+- application-specific semantics;
+- human-visible interaction behavior.
+
+*** Required capabilities are independent of exposed capabilities
+
+A milestone's behavioral acceptance must name the required user capabilities
+and authoritative outcomes independently of the set currently exposed by the
+implementation. Tests derived only from existing affordances cannot establish
+that an intended affordance was not omitted.
+
+For each required capability, acceptance must establish an eligible scenario in
+which the intended interaction is usable and reaches its required outcome.
+Relevant ineligible scenarios must establish the specified unavailability,
+rejection, or recovery behavior. Marking every occurrence unavailable does not
+satisfy a requirement to provide a usable capability.
+
+An explicitly narrower milestone may defer a capability. Its scope must say so;
+its completion must not be reported as completion of a broader milestone that
+requires that capability. This specification distinguishes such deferral from
+unavailability caused by current production model policy.
+
+The independent acceptance basis owns user capabilities and outcomes. It must
+not become a second registry of route strings, generated plan identities,
+transport metadata, or model implementation already owned by the assembly.
+
+#+LATEX: \newpage
+
+

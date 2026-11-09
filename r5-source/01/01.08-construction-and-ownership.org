@@ -1,0 +1,279 @@
+** Construction principles
+
+The following principles apply throughout the design.
+
+They are not implementation-history advice.  They are properties of the
+intended finished system.
+
+*** Canonical semantic construction and controlled effects
+:PROPERTIES:
+:CUSTOM_ID: req-canonical-transition-construction
+:END:
+
+The operation's canonical semantic source determines the obligations of its
+realization. For an authoritative state-changing operation, that source contains
+or references:
+
+1. The typed state projection and input contract, including optionality, nominal
+   distinctions, identity bindings, and supported value representations.
+2. Its invocation, repetition, and new-incorporation protocols.
+3. Its guard and declared dependencies on authoritative state or external facts.
+4. Its permitted transition relation, writes, preserved fields, and other
+   declared effects.
+5. Its result meanings, command outcome protocol, and required acquisition or
+   recovery successors.
+6. Its opaque implementation contracts, assumptions, and evidence requirements.
+
+State semantics distinguish absence, present nil where permitted, and false.
+An accessor, serializer, predicate, or physical database mapping must not erase
+that distinction when the declared semantics uses it. Numeric ranges, overflow,
+comparison, nominal enums, and time representations are equally explicit; host
+runtime defaults do not define portable semantics by accident.
+
+For a guarded assignment, all right-hand sides refer to the same prestate and
+admitted inputs unless the operation explicitly declares sequential intermediate
+steps. Its frame identifies state required to preserve both presence and value.
+The compiler derives the write set from assignments and the required read
+footprint from supported expressions. It derives the default unchanged-field
+frame relative to the declared state projection. Independently supplied
+footprints are checked for agreement rather than treated as extra authority.
+
+An abstract frame over three declared fields does not prove that every other
+physical database field is preserved. The storage mapping must account for
+domain fields, framework revision/time metadata, replacement versus patch
+semantics, and any fields outside the projection. Mapped identities must not
+collide through key normalization or encoding. Part IV specifies that mapping
+and its authoritative effect contract.
+
+An opaque computation may supply a candidate result or change plan. Admission
+can check its typed result, target binding, supported guard/assignment/frame
+relation, and effect footprint before those effects are submitted. Such a check
+can establish those instance properties without proving the computation for
+all inputs. It does not prove that the computation had no earlier hidden effect;
+effect containment still needs its own enforcement or retained assumption.
+
+*** From an admitted candidate to an authoritative outcome
+
+A candidate is neither a committed transition nor a receipt. The controlled
+realization has these distinct responsibilities:
+
+| Boundary | Required responsibility |
+|----------+-------------------------|
+| Preparation | Obtain appropriately bound inputs and observations; construct the candidate using admitted semantic sources |
+| Candidate admission | Check the actual proposed targets, changes, frame, declared effects, and command binding rather than a caller-supplied success report |
+| Lowering | Translate the admitted semantic operation to a physical transaction/effect plan under the applicable storage and backend contract |
+| Submission | Submit that admitted plan through the scoped capability; reject unnoticed substitution or additional effects |
+| Incorporation | Enforce current dependencies atomically with the required domain and command-record changes |
+| Outcome admission | Interpret authoritative result evidence at its actual scope; preserve unknown status where evidence is insufficient |
+| Delivery and recovery | Resolve participant knowledge and declared propagation obligations without inventing a commit outcome |
+
+The boundaries may be combined in an implementation, but their obligations
+cannot disappear. A candidate validated against an earlier observation needs
+commit-time guards or an equivalent atomic realization. Independently writing
+the ledger after the domain change does not implement an atomic command
+protocol. Postcommit invalidation or external delivery requires its own durable
+or otherwise justified recovery contract; a successful domain write does not
+prove that an interested browser learned about it.
+
+The physical transaction may involve several resources. A Request guard may
+depend on Membership and Organization state while its writes include a Request
+and command record. The design must represent this composition. A supported
+backend profile may impose explicit limits, but prototype restrictions such as
+one document, literal-only assignments, or disabled notifications are not the
+general semantic model.
+
+*** Invariant obligations and coverage
+
+For a stated invariant =I=, a closed operation catalog supports induction only
+when the relevant obligations are established:
+
+- every admitted initial state satisfies =I=;
+- each admitted transition preserves =I= from a state satisfying =I=;
+- all state-changing behavior relevant to the claim is represented by those
+  transitions or by explicit environment assumptions;
+- the concrete realization corresponds to the stated transition semantics under
+  its retained premises.
+
+Conceptually, the base and step obligations are:
+
+#+begin_example
+For every s:
+    Init(s) implies I(s)
+
+For every admitted operation o and every s, x, s':
+    I(s) and T_o(s, x, s') imply I(s')
+#+end_example
+
+=T_o= includes that operation's permitted guards, assignments, and effects at
+the stated abstraction. The proof scope names the state projection and operation
+catalog; it does not silently include every possible database writer. Feasible
+initialization and usable required operations need separate positive evidence,
+so an impossible initial condition or a guard rejecting every invocation cannot
+be used to satisfy product completeness.
+
+Initializers, migrations, imports, administrative operations, scheduled work,
+and external writers must have an explicit place in the coverage argument.
+Their absence from a developer-maintained list is not evidence that they do not
+exist. A proof about the supported catalog remains a conditional catalog proof
+until production writer coverage and correspondence justify its application.
+
+*** Managed capabilities and admitted realizations
+
+The ordinary application assembly supplies the capabilities needed to realize
+declared effects. Code receives the scoped capabilities required by its role;
+it should not ordinarily obtain raw database submission authority merely to
+construct a candidate. Read-only and static routes do not need writer
+capabilities. Background and asynchronous work receive explicit lifetime and
+transfer rules rather than borrowing an HTTP request's identity indefinitely.
+
+A one-use capability bounds one grant's use. It does not make a logical command
+idempotent across new grants or retries. That requires the authoritative command
+binding and record protocol. Conversely, a command record does not prove that
+every write occurred through the intended scoped capability.
+
+An admitted assembly generation binds the semantic sources, implementations,
+providers, routes, artifact identities, qualification profiles, and policy used
+by its realization. A relevant replacement requires re-admission or a checked
+compatibility transition. Supported development reload and deployment overlap
+must make that transition explicit; repeatedly checking mutable Var identities
+is not a substitute for a declared lifecycle and dependency contract.
+
+Managed capability construction prevents accidental bypass in trusted
+application code. It is not a sandbox against hostile code sharing the JVM.
+Any additional containment claim must identify the actual isolation mechanism
+and its assumptions. Neither opaque Clojure nor explicit assertions excuse
+undeclared interference with protected state.
+
+*** State semantic intent once
+
+The ordinary coherent formulation should state semantic intent in one
+canonical place.
+
+If Gesso already knows:
+
+- operation identity;
+- participating role;
+- projected browser plan;
+- command schema;
+- transport requirement;
+- expected settlement;
+- progression requirement;
+
+then views, routes, browser registries, and server handlers should not all
+independently restate those facts unless an independent physical choice
+genuinely exists.
+
+Prefer:
+
+One semantic declaration supplies derived browser metadata, derived or checked
+transport bindings, diagnostics, and application closure edges.
+
+over:
+
+An operation, button, plan name, transport, route string, and bootstrap entry
+are independently maintained as if they were unrelated declarations.
+
+When independently authored values must agree, correspondence must be checked
+explicitly.
+
+
+A Claim card reuses the =claim-request= operation already defined. It does not
+introduce a second version of Claim's authority, replay, or recovery semantics.
+The view supplies only the operation reference, domain arguments, and local
+presentation choices:
+
+#+begin_src clojure
+(defn request-card
+  [{:request/keys [id status title]}]
+  [:article.request
+   [:h3 title]
+   [:p (name status)]
+   (when (= status :open)
+     (gesso/action
+       {:operation :request/claim
+        :args {:request/id id}}
+       "Claim"))])
+#+end_src
+
+Visibility is a presentation decision, not authorization. The action constructor
+resolves the admitted operation, validates the arguments before exposure, and
+obtains its command/execution protocol from that operation. The author does not
+manually create an authority token or a command-outcome query.
+
+From those semantic declarations, Gesso may derive or validate lower-level
+realization data:
+
+#+begin_src clojure
+(project :request/claim)
+;; =>
+{:plan/id :plan/request-claim
+ :operation :request/claim
+ :role :helper
+ :argument-schema ClaimInput
+ :command-envelope-schema
+ [:map
+  [:arguments ClaimInput]
+  [:gesso/command-id uuid?]]
+ :presentation-owner :gesso/execution-id
+ :command-correlation :gesso/command-id
+ :transport-requirement :trusted-semantic-post
+ :settlement
+ {:accepted :request/card
+  :rejected :request/card
+  :unknown :request/reconcile-claim}}
+
+(realize humanhelp-assembly
+  :request/claim)
+;; =>
+{:browser/binding
+ {:operation :request/claim
+  :plan :plan/request-claim}
+
+ :transport/binding
+ {:kind :trusted-semantic-post
+  :route :route/request-claim}
+
+ :server/binding
+ {:capability :server/request-claim
+  :model-op :request/claim}}
+#+end_src
+
+The exact projection and realization representations are open design choices.
+What matters is that the view author did not separately type:
+
+#+begin_src clojure
+;; This is the kind of manually synchronized authoring Gesso should avoid.
+
+[:button
+ {:hx-post "/requests/claim"
+  :data-operation "claim-request"
+  :data-plan "humanhelp-claim-plan-v7"
+  :data-command-param "__gesso_live_optimistic_command"
+  :data-server-handler "claim-handler"
+  :data-model-op "request/claim"}
+ "Claim"]
+#+end_src
+
+That second version contains several strings that all purport to describe one
+semantic intent. Each value can be locally plausible while the collection is
+globally contradictory. A typo can easily produce a path that appears to render
+correctly and even sends an HTTP request while no longer corresponding to the
+declared choreography.
+
+The desirable API therefore pushes complexity inward. Application code states
+the semantic operation and domain arguments; Gesso derives what it owns and
+checks correspondence where an independent physical choice genuinely remains.
+The illustrative =gesso/action= form is not an API commitment. It is a usability
+constraint on the supported public API.
+
+*** Derive rather than synchronize
+
+Duplication creates programs whose pieces are individually plausible but
+mutually contradictory.
+
+Whenever a fact can be derived safely from a stronger semantic source, derive
+it.
+
+Do not create a second source of truth merely to make one layer easier to
+implement.
+#+LATEX: \newpage

@@ -1,0 +1,503 @@
+*** Runtime-enforced premises
+
+Some semantic or proof premises can be discharged only when a particular
+execution meets concrete external state.
+
+Examples include:
+
+- Malli value shape at external boundaries;
+- authenticated principal binding;
+- operation-registry lookup;
+- route and capability correspondence;
+- execution-instance identity and relevant resource-instance identity;
+- command/correlation identity;
+- projected-plan compatibility;
+- browser-artifact identity;
+- progression token/header decoding;
+- current server-side authorization;
+- authoritative basis interpretation;
+- protected read/subscription authorization;
+- concrete effect results;
+- transaction outcomes;
+- current model/entity existence;
+- current membership or relationship state.
+
+A runtime-enforced premise is best understood as:
+
+#+begin_example
+static semantic result:
+    if premise P holds,
+    transition T is admissible
+
+concrete runtime:
+    check P for this execution
+
+if P succeeds:
+    execute within proved/checked boundary
+
+if P fails:
+    reject or follow declared recovery semantics
+#+end_example
+
+Runtime enforcement connects the static result to a concrete execution only
+when it establishes the required premise for the relevant subject, basis,
+scope, and time. A pre-read followed by an unguarded write does not establish a
+commit-time premise. A postcondition check after an irreversible effect cannot
+be described as preventing that effect.
+
+An instance check does not discharge a universally quantified implementation
+contract. Validating one returned candidate does not prove that the callback
+was pure, that it had no earlier hidden effect, or that it returns valid
+candidates on every input. The enforcement mechanism and its correspondence to
+the checked predicate are themselves part of the assurance argument.
+
+For example, a static semantic result may establish:
+
+#+begin_quote
+A new incorporation of =:request/claim= requires an authenticated principal
+and a transaction-current claim-authority premise. A replay requires the
+compatible command binding and current disclosure authority instead.
+#+end_quote
+
+The runtime system must still establish which principal this HTTP request
+actually represents and whether the model currently authorizes that principal
+to perform the operation.
+
+These are not second-class guarantees.  They are explicit dynamic boundaries
+whose successful enforcement keeps concrete execution inside the premises of
+the semantic result.
+
+If a runtime premise fails, execution must reject, reacquire authority, restart
+under a current plan, reauthorize, or follow another explicitly declared
+semantic recovery path.  It must not silently weaken the operation.
+
+In particular:
+
+#+begin_quote
+A required choreography premise fails, but the runtime performs an ordinary
+weaker HTMX action anyway.
+#+end_quote
+
+is forbidden.
+
+#+LATEX: \newpage
+
+
+*** Trusted assumptions
+
+Some propositions remain outside the currently mechanically discharged core.
+
+Examples include:
+
+- authentication middleware establishes the named principal correctly;
+- the qualified XTDB backend profile supplies the specific guarded transaction,
+  outcome, and consistency semantics on which the claim relies;
+- an application model operation satisfies a semantic contract not yet
+  discharged by a stronger model certificate;
+- HTMX follows the documented lifecycle subset Gesso depends on;
+- browser primitives implement the operations assumed by the browser effect
+  shell;
+- Clojure, ClojureScript, JavaScript, JVM, and compiler/runtime behavior
+  preserve the implementation semantics assumed by the checker;
+- cryptographic/hash primitives used for artifact identity or authenticated
+  evidence satisfy their required engineering assumptions;
+- operating-system/network primitives behave according to the explicitly
+  assumed contract.
+
+A trusted assumption is part of the trusted computing base for every
+proposition that depends upon it.
+
+An assumption is not a failure.
+
+An invisible assumption is a failure of the assurance boundary.
+
+Assumptions must therefore be named, classified, attached to the claims that
+rely on them, visible in explanation/root assurance output, and narrowed or
+discharged when stronger evidence becomes available.
+
+Useful classifications include:
+
+- =:authentication=;
+- =:trusted-model-contract=;
+- =:runtime-primitive=;
+- =:external-library=;
+- =:external-system=;
+- =:compiler-runtime=;
+- =:environment-liveness=.
+
+*** Backend contracts and qualification
+:PROPERTIES:
+:CUSTOM_ID: req-backend-assumption-qualification
+:END:
+
+Gesso proves or checks its own semantic and realization properties relative to
+explicit backend assumptions. A proof of XTDB's implementation is not required
+to make such a conditional argument useful. The exact behavior relied upon must
+nevertheless be stated and actively challenged by qualification evidence.
+
+A backend profile records:
+
+- backend product, exact version or build, and relevant configuration;
+- Gesso adapter/lowering identity and supported transaction forms;
+- value encodings, schema/storage mapping, and relevant time/basis semantics;
+- the named assumptions on which each dependent claim relies;
+- conformance cases, adversarial schedules, results, and their coverage limits;
+- conditions requiring requalification or invalidating applicability.
+
+The profile is derived from resolved dependencies and actual deployment
+configuration. A manually entered version label or passing report for another
+configuration does not qualify the deployment.
+
+The contract must distinguish at least these obligations where a claim uses
+them:
+
+| Obligation | Required backend behavior and challenge |
+|------------+-----------------------------------------|
+| Atomic guarded transition | Relevant assertions and writes form the declared atomic operation; a failed assertion cannot leave a partial domain or ledger write |
+| Current dependency protection | Point reads, cross-document relationships, absence, and predicate dependencies used for the decision receive the protection assumed by the proof |
+| Write and frame semantics | Replacement, update, deletion, metadata, and missing-field behavior match the compiler's interpretation |
+| Command incorporation | Domain effects and the compatible command-result record cannot be committed independently where the contract requires atomicity |
+| Outcome evidence | A reported committed or rejected result has the stated authoritative meaning; delivery failure remains distinguishable from rejection |
+| Observation basis | Read tokens, visibility, valid/system time where relevant, and progression requirements have the stated scope and interpretation |
+
+A generic claim of transactional support is insufficient. For example, two
+blind writes and two guarded writes may have different conflict behavior. A
+revision check protects a dependency only if all relevant changes advance the
+revision under the accepted writer contract. A per-document check does not
+automatically protect a predicate over a changing collection.
+
+Qualification tests must be indexed by the assumption they challenge. Required
+cases include conflicting guarded attempts, aborted writes, ledger/domain
+agreement, missing and extra fields, concurrent changes to protected
+relationships, outcome loss, and basis-sensitive reads where applicable.
+Independent expected results and deliberately weakened guards must demonstrate
+that the suite can expose the relevant violation. Merely replaying the same
+compiler logic as an oracle is insufficient independent evidence.
+
+Finite testing cannot guarantee discovery of every possible backend violation.
+Successful qualification supports an explicitly accepted backend premise; it
+does not convert that premise into a theorem about all backend executions.
+Part X specifies the required evidence scope and correspondence argument.
+
+A relevant backend, adapter, configuration, encoding, or transaction-form change
+requires requalification before the affected qualified claim is reused.
+Contradictory evidence marks the premise violated; a mismatched or expired
+applicability condition marks it unavailable. Both propagate to dependent
+deployment claims. The system must identify the affected operations and apply
+their declared admission or operational failure policy, rather than continue
+advertising the old guarantee. Existing uncertain commands remain subject to
+their outcome protocol; withdrawing qualification does not invent their result.
+
+The conditional abstract theorem may remain valid when a backend violates a
+premise. What becomes unavailable is its application to that realization.
+Reports must distinguish theorem validity from deployment qualification.
+
+An externally observable transaction-internal prestate is one possible evidence
+mechanism, not a universal prerequisite. A valid realization argument may rely
+on the specified atomic assertion/write semantics and a correct lowering under
+the qualified contract. The proof obligation is semantic correspondence, not
+possession of a particular internal snapshot token.
+
+*** Application assertions
+
+Application assertions remain distinct from framework/trusted implementation
+assumptions.
+
+An application may need to state semantic facts that Gesso cannot derive.  For
+example:
+
+#+begin_example
+"this external identity provider is the authority for employee status"
+
+"this role mapping is organizational policy"
+
+"this third-party callback means payment has been accepted"
+#+end_example
+
+Such statements may be necessary premises.  They must not be represented as
+though Gesso proved them.
+
+An =:application-asserted= proposition remains an explicit premise until
+evidence establishes that same proposition over the required scope. A runtime
+check may discharge an invocation-specific premise; it must not be used to
+silently discharge a universal implementation contract. If another accepted
+assumption replaces a premise, the explanation retains that dependency rather
+than reporting an assumption-free result.
+
+This distinction is useful because:
+
+#+begin_example
+framework trusts browser primitive X
+!=
+application asserts business fact Y
+#+end_example
+
+Both are assumptions, but they have different owners and repair paths.
+
+*** Assembly-verified properties
+
+Some important propositions concern whether a finite collection of individually
+valid artifacts forms one closed executable application.  These are naturally
+checked as graph/assembly properties.
+
+Examples include:
+
+- every rendered semantic affordance names a declared semantic operation;
+- every browser-managed semantic operation has its required projected plan;
+- every browser plan has a corresponding compatible browser artifact;
+- every operation requiring transport has a declared transport realization;
+- every such transport resolves to its declared trusted boundary;
+- every trusted capability resolves to the declared authoritative operation;
+- required execution capabilities are supplied;
+- settlement/progression obligations have declared realization paths;
+- every managed fragment has initial authoritative content or an allowed
+  acquisition path;
+- every operation successor can be reacquired through an authorized
+  authoritative path;
+- no ordinary anonymous transport occupies a route reserved for a semantic
+  operation;
+- generated browser artifacts correspond exactly to the current assembly;
+- startup lifecycle ordering makes required preflight unavoidable.
+
+Assembly verification is mechanical, but it is useful to classify the result
+separately from a semantic theorem.  It establishes closure over a concrete
+application graph.
+
+For example:
+
+#+begin_example
+choreography theorem:
+    projected Claim respects knowledge requirements
+
+assembly verification:
+    this application's Claim button actually resolves to that plan,
+    current browser artifact,
+    route,
+    server operation,
+    settlement,
+    and reacquisition path
+#+end_example
+
+Both can be true or false independently.
+
+Assembly checks should therefore be classified with precise language such as:
+
+- =:assembly-verified=;
+- =:preflight-closed=;
+- =:artifact-current=;
+
+rather than being upgraded automatically to =proved=.
+
+Where an assembly proposition is established by a formal proof mechanism, its
+evidence may state that stronger result with the exact proposition and scope.
+Ordinary graph checking does not acquire that classification by association.
+
+#+LATEX: \newpage
+
+*** Conditional liveness
+
+Liveness is not an independent evidence mechanism.  It is a qualification on
+propositions whose truth depends on future behavior of the environment.
+
+A statement such as:
+
+#+begin_quote
+Every provisional claim eventually reaches a resolving outcome.
+#+end_quote
+
+is meaningful only relative to premises such as:
+
+- required events are eventually delivered;
+- authoritative dependencies remain reachable;
+- required authoritative rereads eventually complete;
+- participants continue executing;
+- relevant clocks/timers eventually fire;
+- retry policy continues where required;
+- the application can recover from an incompatible stale projection;
+- application-defined conflicts do not remain permanently unresolved;
+- required external systems eventually respond where the claim depends upon
+  them.
+
+The claim should therefore have a form conceptually like:
+
+#+begin_example
+assuming:
+    eventual event delivery
+    eventual authoritative availability
+    continued participant execution
+
+prove/check:
+    every admitted provisional state eventually reaches
+    a resolving semantic state
+#+end_example
+
+The assumptions are part of the proposition.  Removing them changes the
+proposition.
+
+The design must distinguish:
+
+- *reachability:* there exists a path to a terminal/resolving state;
+- *deadlock freedom:* every reachable nonterminal state has an enabled modeled
+  continuation; this does not by itself require that the continuation is taken;
+- *fairness-dependent progress:* enabled progress eventually occurs under a
+  fairness assumption;
+- *environment-dependent convergence:* the system converges if specified
+  external events eventually occur;
+- *unconditional termination:* every execution terminates without such
+  assumptions.
+
+These are materially different claims.
+
+The design must not call "there exists a path to terminal state" an
+unconditional termination proof, nor hide network recovery, browser resumption,
+user action, or external-system availability inside the word =eventually=.
+
+*** Tested evidence
+
+Tests remain a required assurance layer even where stronger semantic checking
+exists.
+
+Testing is particularly important for:
+
+- implementation correspondence between semantic core and runtime shell;
+- real JVM/Node/Chromium execution;
+- HTMX/SSE lifecycle behavior;
+- XTDB integration;
+- browser primitive assumptions;
+- HTTP/session/authentication integration;
+- generated-artifact loading;
+- fault injection;
+- race schedules;
+- reconnect behavior;
+- load/resource behavior;
+- multi-client HumanHelp behavior;
+- multi-node realization once it exists.
+
+Useful test classes include unit tests, property/generated tests, differential
+tests, mutation tests, integration tests, adversarial tests, browser acceptance
+tests, and load/fault tests.
+
+Tests may provide very strong practical evidence.  They must nevertheless
+remain classified as =tested= unless the particular procedure genuinely
+exhausts the explicitly claimed semantic domain and is classified more
+precisely, for example =exact-finite-checked=.
+
+Thus:
+
+#+begin_example
+100,000 generated executions passed
+#+end_example
+
+does not mean:
+
+#+begin_example
+all executions satisfy the theorem
+#+end_example
+
+unless a separate argument establishes that the tested set is exhaustive for
+the claimed semantic domain.
+
+#+LATEX: \newpage
+
+*** Composition of assurance claims
+
+The most important property of the assurance model is that evidence composes
+without losing its classification.
+
+A downstream artifact should be able to say conceptually:
+
+| Claim-plan dependency | Evidence and retained premises |
+|-----------------------+--------------------------------|
+| Rule well typed | Dedicated typed semantic check |
+| Helper knows the Request identity | Checked knowledge derivation |
+| New-incorporation authority | Checked semantic requirement and concrete atomic runtime enforcement |
+| Model implementation contract | Proof where supplied; otherwise an explicitly accepted implementation premise |
+| Projection preservation | Appropriate checked argument; a finite abstraction requires a sound refinement argument for an unbounded concrete claim |
+| Browser realization closure | Assembly verification against actual admitted sources and artifacts |
+| Browser shell correspondence | Stated implementation argument, trusted primitive contracts, and independently classified browser tests |
+
+The resulting assurance claim must not erase those differences and simply say
+"Claim is verified."
+
+A stronger downstream result cannot silently upgrade a weaker premise.
+
+For example:
+
+#+begin_example
+trusted model contract
+    +
+proved choreography rule
+#+end_example
+
+does not become:
+
+#+begin_example
+proved model implementation
+#+end_example
+
+The conclusion remains conditional on the trusted model contract.
+
+Likewise:
+
+#+begin_example
+assembly verified
+    +
+browser test green
+#+end_example
+
+does not establish a projection theorem.
+
+Each evidence class retains its identity through composition.
+
+The root report should therefore expose what was proved, kernel-checked,
+exact-finite checked, assembly-verified, runtime-enforced, trusted,
+application-asserted, conditional on liveness assumptions, and supported by
+testing.
+
+#+LATEX: \newpage
+
+*** Failure and repair interpretation
+
+The assurance classification should tell the developer where repair belongs.
+
+Typical relationships include:
+
+| Failure | Owner of repair or interpretation |
+|---------+-----------------------------------|
+| Rule typing | Rule or domain declaration |
+| Knowledge entailment | Justified information path or the consuming behavior |
+| Authority derivation | Authority premise, binding, or policy boundary |
+| Message payload closure | Message contract or undeclared information transfer |
+| Projection preservation | Choreography, projector, or semantic definitions |
+| Assembly closure | Application construction and bindings |
+| Runtime authorization | The attempted concrete operation is not presently admissible |
+| Contradicted assumption | The trusted boundary or applicability of the assumption |
+| Browser failure despite a valid abstract theorem | Runtime correspondence or an assumed primitive |
+| Missing liveness premise | The dependent progress conclusion is unavailable |
+
+This is why precise assurance terminology is not cosmetic.  It makes a failed
+claim point toward the layer that owns the repair.
+
+*** Assurance-model invariant
+
+The governing invariant is:
+
+#+begin_quote
+Every meaningful Gesso guarantee identifies the proposition being claimed, the
+evidence supporting it, the premises on which it depends, and the boundary
+between mechanically discharged facts and facts that remain runtime-enforced,
+trusted, asserted, conditional, or tested.
+
+No stronger assurance classification may be inferred merely because several
+weaker forms of evidence happen to agree.
+#+end_quote
+
+The intended result is not that every statement becomes a formal theorem.
+
+The intended result is that Gesso can state, mechanically and honestly, *why*
+each accepted artifact or application is believed to be valid, what remains
+outside that claim, and exactly where construction or execution must stop when
+one of its premises fails.
+
+#+LATEX: \newpage
+

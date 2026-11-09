@@ -1,0 +1,164 @@
+*** Fail closed rather than silently downgrade semantics
+
+A semantically managed operation must never become an ordinary weaker operation
+merely because required semantic metadata is absent.
+
+Forbidden examples include:
+
+| Missing requirement | Forbidden silent fallback |
+|---------------------+---------------------------|
+| Required authoritative basis | Emit the semantic mutation without its basis |
+| Required browser plan | Guess a route and send anyway |
+| Admitted browser-artifact correspondence | Run the managed plan without establishing compatibility |
+| Required command envelope | Perform an ordinary mutation instead |
+
+If a semantically managed realization cannot be constructed, the correct
+behavior is a precise failure or an explicitly modeled unavailable operation.
+The unavailable state must preserve operation identity and the reason its
+realization is unavailable. It does not satisfy a milestone that independently
+requires the operation to be usable in an eligible scenario.
+
+This rule does not make ordinary HTMX illegal.  Ordinary non-semantic HTMX
+remains valid where the application intentionally requested an ordinary HTMX
+interaction.
+
+The prohibition is against silent loss of previously declared semantics.
+
+*** Production boundaries carry the promised checks
+
+A construction check contributes to an application's assurance only when the
+supported production path actually invokes it before the corresponding action
+becomes possible. An isolated checker test does not establish that relationship.
+
+For a claimed production-enforced obligation, evidence must identify the
+boundary that admits the relevant object or action and demonstrate rejection
+of a representative controlled defect through that boundary. The corresponding
+valid fixture must remain usable, so a checker that rejects everything cannot
+satisfy the requirement.
+
+The detailed startup, handler, generated-artifact, and rendered-surface
+boundaries belong to the whole-application construction part. Their assurance
+classification follows the [[#req-application-assurance-claims][three application assurance claims]].
+
+*** Keep authoring vocabulary small and canonical
+
+The ordinary path should have one obvious representation.
+
+If five public APIs express the same semantic operation binding, humans and
+LLMs gain four extra ways to build inconsistent applications.
+
+Prefer:
+
+#+begin_example
+explicit data
++ strong derivation
++ strong validation
++ strong explanation
+#+end_example
+
+over:
+
+#+begin_example
+implicit magic
++ duplicated configuration
++ weak runtime discovery
+#+end_example
+
+Ordinary Clojure behind an admitted contract is part of the normal path.
+Escape hatches for crossing a managed effect or authority boundary must instead
+be explicit, identify affected guarantees, and preserve unrelated invariants.
+An assertion is a declared premise, not a generic switch disabling checks.
+
+The same principle applies to semantic-category distinctions.  Stronger
+internal admission should reduce downstream ambiguity rather than impose a
+manual wrapping tax.  Where Gesso can mechanically derive or construct an
+admitted value from declarations it already owns, ordinary application authors
+should not be required to construct nominal wrappers, certificate maps,
+transitive proof objects, or authority tokens by hand.
+
+The desirable developer experience is therefore asymmetric:
+
+| Authoring situation | Required developer experience |
+|---------------------+-------------------------------|
+| Correct ordinary construction | Little additional ceremony |
+| Semantic-category mistake | An early, precise diagnostic |
+| Crossing a managed boundary manually | A deliberate API and explicit assurance impact |
+
+*** Errors are part of the public correctness surface
+
+Important failures should have stable structured representations.
+
+A useful error should answer, where applicable:
+
+1. What failed?
+2. Which semantic object or operation was involved?
+3. Where was the obligation introduced?
+4. Which semantic/proof/application edge failed?
+5. What was required?
+6. What was actually available?
+7. Which known alternatives are legal?
+8. Which assurance class was expected?
+9. Which assumption, if any, would be required to proceed?
+10. Is the result a contradiction, unsupported proof fragment, inconclusive
+    check, inapplicable evidence, or failed runtime premise?
+11. Is the reported fact about this attempt, the logical command, or a later
+    authoritative observation?
+
+Developer diagnostics may include more detail than a participant response.
+Disclosure policy must prevent errors or reconciliation endpoints from leaking
+protected records, prior outcomes, principal data, or existence information.
+Diagnostic detail is not an alternate authority channel.
+
+Fuzzy suggestions may help diagnostics but must not silently alter
+security-sensitive execution.
+
+*** Proof/check state is inspectable
+
+A developer or LLM should not need to reconstruct application closure by
+mentally executing dozens of namespaces.
+
+The finished system should be able to expose stable summaries of:
+
+- semantic operation registry;
+- role and authority declarations;
+- projected plans;
+- executable artifact identity;
+- view affordances;
+- transport bindings;
+- trusted server capabilities;
+- settlement/progression bindings;
+- authoritative acquisition paths;
+- open obligations;
+- named assumptions;
+- result classification, subject, scope, mechanism, and applicability for each
+  guarantee;
+- exact implementation and backend profile bindings where relevant;
+- accepted assertions distinguished from discharged obligations;
+- dependencies affected by changed or contradicted premises;
+- the actual admitted writer/effect coverage and its remaining assumptions.
+
+Inspection is diagnostic.
+
+Inspection does not create a new semantic input to runtime.
+
+*** Stronger proof machinery must pay for itself
+
+Every increase in proof complexity should answer:
+
+#+begin_quote
+Which concrete malformed application, unsafe behavior, or required application
+behavior becomes impossible or immediately recognizable because of this
+addition?
+#+end_quote
+
+Soundness work on an existing claimed guarantee also has concrete value: it
+establishes why the checker may be relied upon, even when it rejects no new
+surface syntax. Formal machinery should justify its complexity through such a
+guarantee, a useful class of accepted programs, or a recognizable defect.
+
+The proved fragment grows from real correctness requirements. The application
+language remains the full host language. Improving proof coverage must not
+force authors to abandon useful Clojure computation or silently reclassify
+accepted assertions as proofs.
+
+#+LATEX: \newpage

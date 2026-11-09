@@ -1,0 +1,306 @@
+*** Machine-checked semantic properties
+
+A machine-checked semantic property is established mechanically from an
+explicit semantic model, checked derivation, exhaustive semantic state space,
+proof kernel, model checker, theorem prover, or another precisely identified
+formal mechanism.
+
+The important requirement is not the name of the tool.  The important
+requirement is that the claimed proposition and the relationship between the
+checked object and the production semantic object are explicit.
+
+Candidate framework properties include:
+
+- well-typed checked rule expressions;
+- knowledge entailment;
+- provenance entailment;
+- authority derivation and non-escalation;
+- message payload closure and knowledge-transfer constraints;
+- behavior-sensitive branch knowledge;
+- projection preservation for the supported language subset;
+- declared resource invariants;
+- progression algebra invariants;
+- browser-adapter transition invariants;
+- retired execution/resource isolation;
+- semantic dependency compatibility;
+- executable-plan provenance;
+- certificate dependency consistency.
+
+The individual phrases above name different judgments rather than one generic
+notion of "verification":
+
+- *Well-typed checked rule expressions.* An expression in the supported
+  reasoning fragment is checked against its closed semantic rule language. An
+  opaque call is checked against a resolved declared interface, and its
+  implementation assumptions remain explicit. Referenced fields must exist on
+  the declared semantic type; operators must be applied to compatible operand
+  types; enum values must belong to the declared variant set; optional values
+  must be refined before operations requiring presence; relationship
+  predicates must use valid endpoint types; and closed case analysis must be
+  exhaustive where required.  This establishes semantic well-formedness of the
+  rule.  It does not establish that the product organization chose the desired
+  rule.  A coherent but undesirable policy remains representable.
+
+- *Knowledge entailment.*  The checker asks whether a role is justified in
+  knowing a semantic fact at the point where that fact is consumed.  Relevant
+  sources include declared entry knowledge, communication, authoritative
+  observation, checked deterministic derivation, and explicit trusted
+  assertion.  Knowledge does not arise merely because a value happens to exist
+  in a host-language map, another role knows the fact, the browser physically
+  received related data, or an undeclared field survived serialization.
+
+- *Provenance entailment.*  The checker asks whether the claimed source or
+  epistemic strength of a fact follows from the path through which the fact was
+  obtained.  A browser-supplied value is not an authoritative observation
+  merely because it has the same shape or value.  A fact learned by
+  communication does not automatically become an independent authoritative
+  observation.  Any strengthening of provenance must be an explicit semantic
+  rule rather than an inference from physical message origin.
+
+- *Authority derivation and non-escalation.*  Every authority or capability
+  consumed by a semantic step must arise from an explicit trusted/runtime
+  premise or an allowed checked derivation.  Untrusted input, mere knowledge,
+  provenance labels supplied by the browser, possession of a rendered
+  affordance, possession of a URL, or successful schema validation cannot
+  silently manufacture stronger authority.  Principal, resource, scope,
+  operation, and authority identity remain part of the judgment, so authority
+  over one resource cannot be reused for another merely because their
+  representations have the same shape.
+
+  The framework-level claim is not "Alice is currently authorized to claim
+  Request R."  That concrete fact normally depends on runtime authentication
+  and current model state.  The machine-checkable claim is closer to:
+
+  #+begin_quote
+  No admitted semantic execution may consume claim authority unless the
+  required authority premise is present through a declared trusted/runtime
+  source or permitted derivation, and no weaker or untrusted fact can silently
+  manufacture stronger authority.
+  #+end_quote
+
+#+LATEX: \newpage
+
+  The following inference is invalid:
+
+  #+begin_quote
+  The browser says that its role is helper, therefore it has helper authority.
+  #+end_quote
+
+  A valid new-incorporation path instead establishes the relevant premises:
+
+  | Establishing boundary | Required premise |
+  |-----------------------+------------------|
+  | Trusted authentication | This invocation represents principal P |
+  | Bound authoritative state | The Membership belongs to P and the applicable Organization |
+  | Atomic new-incorporation guard | Membership, Request, Organization policy, and their relationships permit this transition for P |
+  | Authoritative operation | Incorporation is permitted only under those current guarded premises |
+
+  Every establishing edge must have the appropriate declared evidence and
+  current runtime enforcement. An observation from an earlier basis does not
+  silently satisfy a transaction-current premise.
+
+- *Message payload closure and knowledge-transfer constraints.*  A semantic
+  message defines the information flow permitted by one choreography
+  communication boundary.  By default its semantic payload is closed: only
+  fields declared by the message contract participate in the semantic message.
+  Physical transport metadata may accompany the message, but it does not
+  silently become choreography knowledge.
+
+  The checker should establish that every semantic payload field is declared,
+  the sender has justified knowledge of every semantic fact it communicates,
+  receipt introduces only the semantic facts declared by the message contract,
+  provenance introduced by receipt follows the declared communication rule,
+  and undeclared transport or implementation fields cannot become branch
+  discriminators, authority premises, or arbitrary additions to choreography
+  context.
+
+  Conceptually:
+
+  #+begin_example
+  receiver knowledge after receive
+      =
+  receiver knowledge before receive
+      +
+  declared semantic consequences of message
+  #+end_example
+
+  rather than:
+
+  #+begin_example
+  receiver knowledge after receive
+      =
+  receiver context merged with arbitrary incoming map
+  #+end_example
+
+  An explicitly extensible payload may be supported where required, but the
+  semantic status of extension data must remain explicit.  For example,
+  extension data may be transported opaquely without automatically creating
+  first-class choreography facts.  Payload closure is therefore distinct from
+  ordinary Malli shape validation: Malli may establish that a value has the
+  expected structure, while choreography checking establishes which
+  information that communication is semantically allowed to transfer.
+
+- *Behavior-sensitive branch knowledge.*  A role must know enough to
+  distinguish branches before its observable behavior diverges between those
+  branches.  If a role behaves identically in both alternatives, it need not
+  learn a choice solely because the condition occurs in the global
+  choreography.  If its behavior differs, the verifier must justify knowledge
+  of the discriminator through an allowed path.  This prevents both
+  under-checking and needless communication introduced only to mirror global
+  syntax.
+
+- *Projection preservation.*  Projection relates the accepted global
+  choreography to generated role-local machines.  Executions of those
+  projected machines must remain within behavior admitted by the global
+  choreography for the supported language subset.  Projection must not invent
+  knowledge or authority, erase communication required for justified behavior,
+  lose required resource constraints, admit forbidden branch behavior, change
+  terminal/failure meaning, or introduce executions absent from the accepted
+  global semantics.  The exact preservation/refinement theorem must state the
+  supported language subset and observable behavior relation.
+
+- *Declared resource invariants.*  Where choreography semantics include
+  resources, the checker may establish that a resource is used only after
+  acquisition, exclusive ownership is not duplicated, transfers occur only
+  through declared rules, release occurs according to the declared lifecycle,
+  terminal paths do not retain resources that must be released, and stale or
+  retired executions cannot retain semantic ownership.  Physical cleanup debt
+  does not confer continuing semantic ownership.
+
+- *Progression algebra invariants.*  Progression requirements form a semantic
+  consistency algebra rather than an arbitrary collection of tokens.
+  Canonicalization should be deterministic; composition must preserve every
+  required authoritative constraint; weaker frontiers must not masquerade as
+  satisfying stronger requirements; unrelated requirements must compose
+  without destructive interference; contradictory or malformed requirements
+  must be rejected; and normalization must not silently discard semantically
+  relevant coordinates.  Concrete XTDB tokens remain runtime values even when
+  the algebra governing their requirements is checked independently.
+
+- *Browser-adapter transition invariants.*  The browser adapter is modeled as
+  an explicit transition relation such as:
+
+  #+begin_example
+  AdapterStep
+    (ExecutablePlan,
+     AdapterState,
+     NormalizedEvent)
+        ->
+    (AdapterState',
+     AbstractEffects)
+  #+end_example
+
+  Candidate invariants include execution-instance isolation, resource-instance
+  ownership, prevention of obsolete presentation being restored after justified
+  authoritative supersession within the applicable observation scope,
+  separation of provisional and authoritative state, immediate semantic
+  retirement of obsolete work, scope-preserving acquisition requirements for
+  queued refreshes, and terminal ownership/cleanup conditions.  The proof applies to the abstract
+  transition semantics; separate implementation-correspondence evidence is
+  required for the browser shell that normalizes concrete events and performs
+  abstract effects.
+
+- *Retired execution/resource isolation.* Once an execution instance or resource
+  instance loses its relevant semantic ownership, a callback, timer, network
+  result, settlement, continuation event, or delayed effect cannot use that
+  retired ownership to resume execution or mutate a replacement owner's state.
+  Admission identifies the event's declared owner and concrete resource instance;
+  matching a reused logical target name is insufficient. Physical cleanup may
+  occur later, and new logical ownership need not wait for every obsolete
+  physical operation to disappear. Independently useful authoritative or
+  command-outcome evidence may enter only through its separately declared
+  admission path; it does not reactivate the retired owner.
+
+- *Semantic dependency compatibility.*  A certified downstream artifact may
+  depend only on upstream semantic interfaces whose guarantees satisfy the
+  assumptions recorded when the downstream artifact was checked.  A
+  same-shaped value, namespace, or source path is insufficient.  A relevant
+  upstream semantic change must invalidate stale downstream certification
+  rather than silently compose.
+
+- *Executable-plan provenance.*  An accepted =ExecutablePlan= must remain
+  traceable to the semantic inputs from which it was produced, including the
+  accepted choreography, relevant semantic dependencies, projection target,
+  and exact executable representation identity.  Executable identity is not
+  itself a proof; it binds the executable object to the checking history and
+  semantic inputs that produced it.
+
+- *Certificate dependency consistency.*  A certificate may claim only
+  guarantees justified by its checked derivation, certified dependencies,
+  explicit assumptions/assertions, and the checker or proof-kernel rules applicable to
+  its certificate class.  Certificates may not self-certify, depend on
+  undeclared semantic inputs, silently accept stale dependencies, form
+  unsupported circular justification, or claim stronger conclusions than
+  their derivations establish.
+
+"Machine checked" is deliberately broader than "formally proved."  Useful
+result classifications include:
+
+- *Kernel-checked or theorem-proved:* a proposition is accepted by a proof
+  kernel or theorem prover from explicit premises and checked derivations.
+
+- *Exact finite-state checked:* a finite semantic state space is exhaustively
+  explored and the property holds for every state/transition in that exact
+  model.  This is stronger than sampled testing but is not automatically a
+  theorem about an unbounded concrete system.
+
+- *Abstraction-based machine proof:* an unbounded concrete claim may be
+  justified through a finite or symbolic abstraction only when a stated
+  abstraction/refinement argument shows that every semantically relevant
+  concrete behavior is represented soundly by the abstraction.
+
+- *Proof-producing elaboration:* a richer compiler or elaborator constructs
+  derivations that are accepted by a smaller checker/kernel.  The elaborator
+  does not become trusted merely because it emits proof-looking data; a buggy
+  elaborator must be unable to convince the checker of an invalid conclusion.
+
+Where the design calls a property *proved*, the proof claim must identify:
+
+- the exact proposition;
+- the formal or executable semantic model over which it is established;
+- the assumptions/premises;
+- the supported language subset;
+- the observable/refinement relation where one is involved;
+- any abstraction used to reduce an unbounded concrete domain;
+- why that abstraction is sound for the claimed property;
+- whether the result is bounded or unbounded;
+- the checker, kernel, model checker, theorem prover, or proof mechanism;
+- the identity/version of the checked semantic object where relevant;
+- the relationship between the checked object and the production object;
+- any implementation-correspondence assumption remaining outside the proof.
+
+Passing generated examples is not by itself a proof.
+
+Property-based testing is not by itself a proof.
+
+Exhaustively checking a finite concrete truncation is not by itself an
+unbounded proof.
+
+A proof over an abstraction may support an unbounded claim only when the
+abstraction/refinement argument justifies mapping all semantically relevant
+concrete cases into that abstraction.
+
+Bounding a count of requests, executions, or queue slots does not by itself
+bound the information retained inside them or establish a finite semantic state
+space. The claim must identify the state dimensions being bounded, the retained
+data that remains unbounded if any, and the abstraction used for the property.
+
+Conformance vectors generated from a formal model retain their actual evidence
+class. Executing every generated vector is not proof that those vectors cover
+all production inputs or derivations. Rule coverage alone is not a general
+production/formal correspondence theorem. A stronger claim requires a stated
+exhaustiveness or sound correspondence argument for its claimed domain.
+
+The unqualified word =proved= must never be used merely to mean:
+
+- unit tested;
+- property tested;
+- preflight accepted;
+- schema valid;
+- assembly closed;
+- observed to work in Chromium.
+
+Those may all be important evidence.  They are different evidence.
+
+#+LATEX: \newpage
+

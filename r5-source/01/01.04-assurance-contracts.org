@@ -1,0 +1,296 @@
+** Assurance model
+:PROPERTIES:
+:CUSTOM_ID: req-assurance-classification
+:END:
+
+Gesso uses several kinds of evidence, and the design must not collapse them
+under a single word such as =verified=, =safe=, or =proved=.
+
+The governing question for every assurance claim is:
+
+#+begin_quote
+What proposition is being claimed, over what object, under what assumptions,
+and what evidence justifies accepting it?
+#+end_quote
+
+Every claim has separately identifiable dimensions:
+
+| Dimension | Required meaning |
+|-----------+------------------|
+| Proposition | The statement, variable bindings, quantifiers, and observation scope |
+| Subject | The semantic interface and, where relevant, concrete implementation or artifact |
+| Mechanism | Derivation checking, dedicated checking, runtime enforcement, testing, or an explicit assertion |
+| Premises | Assumptions, dependency guarantees, and concrete premises required for application |
+| Coverage | Supported language, bounds, abstractions, and correspondence relation |
+| Applicability | Versions, configuration, validity conditions, and evidence that the claim still applies |
+| Status | Established at the stated scope, accepted as a premise, open, contradicted, or inapplicable |
+
+These dimensions need not appear as one literal map in every API, but they must
+be recoverable in the assurance explanation. Conditionality and boundedness
+qualify a claim; neither supplies an evidence mechanism. Several mechanisms can
+support different parts of the same argument. There is no single total ranking
+that turns all evidence into a universal confidence score.
+
+The assurance model distinguishes:
+
+1. properties established mechanically from explicit semantics or checked
+   derivations;
+2. premises enforced dynamically when a concrete execution meets the external
+   world;
+3. assumptions that remain outside the mechanically discharged core;
+4. whole-application closure properties checked over assembled artifacts;
+5. liveness claims whose validity depends on named environmental assumptions;
+6. test evidence over trusted implementation boundaries and concrete systems.
+
+These classifications are related, but they are not interchangeable.
+
+For example:
+
+#+begin_example
+proved semantic property
+!=
+exact finite-state check
+!=
+closed application assembly
+!=
+runtime-enforced premise
+!=
+trusted assumption
+!=
+green integration test
+#+end_example
+
+A complete assurance argument may require several of them simultaneously.
+
+
+A store checkout provides a useful worked example because one ordinary button
+crosses nearly every assurance class without any one class subsuming the rest.
+
+Suppose the semantic operation is declared approximately as:
+
+#+begin_src clojure
+(def place-order
+  {:operation/id :checkout/place-order
+   :actor :customer
+   :input [:map [:cart/id uuid?]]
+   :invocation
+   {:requires [:authenticated-customer :admitted-command-binding]}
+   :new-incorporation
+   {:guard :cart/checkout-eligible?
+    :requires [:bound-current-cart]
+    :atomic-with :command/result-record}
+   :repetition
+   {:requires :command/result-disclosure-authority
+    :result :permitted-recorded-outcome}
+   :provisional
+   {:view :checkout/submitting
+    :owner :gesso/execution-id
+    :correlate :gesso/command-id}
+   :effect
+   [:model/invoke :order/place
+    {:cart-id [:cart/id :arguments]
+     :customer :authenticated-customer
+     :command-id :gesso/command-id}]
+   :settlement
+   {:accepted
+    {:learns [:command/recorded-success :gesso/command-id]
+     :reacquire [:order/by-command :gesso/command-id]}
+    :rejected
+    {:learns [:command/typed-rejection :gesso/command-id]
+     :reacquire [:cart/current [:cart/id :arguments]]}
+    :unknown
+    {:recover [:order/reconcile-command :gesso/command-id]}}})
+#+end_src
+
+The command envelope supplies the stable command identity. Every presentation
+execution and managed resource has its own applicable ownership identity.
+Payment authorization, if required, is a separately declared external protocol;
+a database transaction must not pretend to make a payment provider atomic with
+an order write. The operation must define which provider outcome or durable
+obligation permits order placement and how unknown external outcomes recover.
+
+An assurance report during assembly may include both accepted claims and an
+open progress obligation:
+
+#+begin_src clojure
+{:subject
+ {:assembly :store/web
+  :operation :checkout/place-order
+  :plan :plan/checkout-place-order
+  :artifact-digest "sha256:..."}
+
+ :claims
+ [{:id :checkout/rule-well-typed
+   :proposition [:rule/well-typed :cart/checkout-eligible?]
+   :status :established
+   :evidence {:class :semantic-checked
+              :mechanism :typed-rule-checker
+              :result :check/cart-checkout-rule}}
+
+  {:id :checkout/principal-required-at-runtime
+   :proposition [:runtime/requires-current-principal
+                 :checkout/place-order]
+   :status :enforcement-bound
+   :evidence {:class :runtime-enforced
+              :boundary :server/authenticated-checkout-handler}
+   :premises #{:authentication/correct-principal-binding}}
+
+  {:id :checkout/payment-provider-contract
+   :proposition [:provider/validated-acceptance-means
+                 :payment-authorized]
+   :status :accepted-as-premise
+   :evidence {:class :trusted
+              :owner :external/payment-provider
+              :assumption :payment/provider-contract-v4}}
+
+  {:id :checkout/application-path-closed
+   :proposition [:application/closed-path :checkout/place-order]
+   :status :established
+   :evidence {:class :assembly-verified
+              :report :assembly/store-web-A12}}
+
+  {:id :checkout/browser-realization-tested
+   :proposition [:implementation-corresponds-in-scenarios
+                 :checkout/place-order
+                 #{:accepted :rejected :unknown}]
+   :status :tested
+   :evidence {:class :tested
+              :suite :chromium/checkout-lifecycle}}
+
+  {:id :checkout/retry-eventually-recovers
+   :proposition [:eventually [:checkout/settled-or-reconciled]]
+   :status :open-obligation
+   :environment-premises
+   #{:eventual-provider-availability
+     :eventual-authoritative-read
+     :continued-participant-execution
+     :fair-recovery-scheduling}
+   :required-evidence :checked-progress-argument
+   :evidence []}]}
+#+end_src
+
+Names in this report resolve to source-bound evidence or accepted premises;
+they are not self-authenticating flags. In particular, the runtime row identifies
+the required enforcing boundary, not a principal for every future request.
+Production enforcement of that boundary has its own evidence.
+
+The last row is deliberately open. Naming environmental premises is not a
+progress proof. A release whose acceptance policy requires that progress
+argument cannot claim completion from this report. If a suitable argument is
+later checked, its mechanism and scope replace the open status while its
+environmental premises remain attached.
+
+The report is deliberately heterogeneous. Consider what happens if each claim is
+misread as another:
+
+#+begin_src clojure
+;; Wrong: a type-check result does not authenticate this request.
+(when (checking/accepted? :check/cart-checkout-rule)
+  (treat-request-as-authenticated! request))
+
+;; Wrong: a green Chromium test does not prove the provider contract.
+(when (tests/green? :chromium/checkout-lifecycle)
+  (assume-provider-cannot-lie!))
+
+;; Wrong: assembly closure does not imply eventual provider availability.
+(when (assembly/closed? :store/web)
+  (claim-unconditional-termination!))
+
+;; Wrong: the trusted provider premise does not prove the browser adapter.
+(when (trusted? :payment/provider-contract-v4)
+  (claim-browser-correspondence-proved!))
+#+end_src
+
+The correct composition keeps the propositions separate. A downstream release
+claim may depend on all of them, but the resulting explanation should still be
+able to say exactly which part is mechanically checked, which is dynamically
+enforced, which remains trusted, which is assembly evidence, which is tested,
+and which is conditional on future environmental behavior.
+
+That is what the assurance vocabulary is for. It is not a taxonomy applied after
+the fact; it prevents evidence from silently acquiring a stronger meaning as it
+moves through the application.
+
+The classification belongs to the *claim and its evidence*, not merely to the
+source file, namespace, subsystem, or tool that produced it.  A single
+component may therefore participate in several assurance classes.
+
+For example, the browser adapter may have:
+
+- machine-checked transition invariants;
+- runtime-enforced event normalization and plan-identity checks;
+- trusted assumptions about DOM/browser primitives;
+- Chromium integration tests providing tested evidence of implementation
+  correspondence;
+- conditional liveness claims requiring eventual event delivery.
+
+The root assurance report must preserve these distinctions rather than reducing
+them to a single boolean such as =verified?=.
+
+Nominal or otherwise admitted semantic categories participate in this model but
+do not add a new assurance class by themselves.  For example, an admitted
+=VerifiedChoreography= value may be the product emitted after verification, but
+its assurance comes from the verifier/checker and its stated premises, not from
+the runtime type name.  Likewise, an =AuthoritativeObservation= representation
+is authoritative only when the trusted acquisition path establishes that
+provenance.
+
+This distinction prevents the implementation convenience of nominal typing from
+being mistaken for proof:
+
+| Boundary | What acceptance establishes |
+|----------+-----------------------------|
+| Representation validation | The value has the permitted shape |
+| Semantic-category admission | Supported code may treat the value as category C at this boundary |
+| Checked judgment or certificate | The stated proposition follows under the recorded premises and mechanism |
+
+Those stages may be represented by different types, by checked constructors, or
+by other existing mechanisms.  Their assurance meaning remains distinct even
+if an implementation combines some of the physical representations.
+
+*** Admission policy and unresolved proof obligations
+:PROPERTIES:
+:CUSTOM_ID: req-admission-assurance-policy
+:END:
+
+Admission is a decision under a declared policy, not a synonym for proving every
+application function. The policy identifies mandatory structural checks,
+required evidence for particular claims, and which explicitly owned contracts
+may remain asserted. The normal policy supports full-language implementations
+while retaining their assumption dependencies.
+
+Construction derives the obligations relevant to its declared claims and runs
+the supported automated checks under an explicit resource policy. Results must
+identify unsupported reasoning and exhausted checking budgets rather than omit
+the obligation. An accepted assumption must not hide an available failed check.
+
+Mandatory identity, interface, authority-source, effect-binding, and required
+recovery checks cannot be disabled by adding an assertion. A named opaque
+functional contract may be an accepted premise where policy permits it. The
+result remains conditional; the premise is not marked discharged.
+
+The checker and assembly must distinguish these outcomes:
+
+| Outcome | Meaning and consequence |
+|---------+-------------------------|
+| Established judgment | The stated proposition follows by the identified mechanism over its stated scope |
+| Accepted assumption | A named premise is permitted by policy and remains in dependent explanations |
+| Unsupported proof fragment | The reasoning mechanism lacks a rule or representation; this does not establish that the program is false |
+| Inconclusive check | A limit, cancellation, or tool failure prevented a result; no success may be inferred |
+| Counterexample | The checked model contains a violation; report its scope and whether concrete correspondence is established |
+| Malformed declaration | Required semantic structure does not compose; reject construction |
+| Failed runtime premise | A concrete execution cannot proceed on that premise; follow declared rejection or recovery |
+| Inapplicable evidence | The subject, scope, dependency, or backend profile no longer matches; dependent acceptance requires re-establishment |
+
+An unsupported or inconclusive proof obligation may be retained as an explicit
+assumption only by a policy that permits that exact kind of premise. The system
+must not silently convert a checker failure into trust. A known counterexample
+cannot be erased by asserting the contradicted proposition under the same
+claim. A correction to the specification, abstraction, implementation, or claim
+scope must itself be explicit and checked as applicable.
+
+The interface must make clear which obligations block admission and which
+remain accepted premises. A component may be structurally admitted yet lack a
+particular application theorem or release qualification. The root report must
+not confuse these states.
+

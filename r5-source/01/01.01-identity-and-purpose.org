@@ -1,0 +1,393 @@
+#+title: Gesso Unified Design
+#+subtitle: Canonical architecture, assurance model, and reference application
+#+date: 2026-11-07
+#+startup: nofold
+#+options: toc:3 num:nil
+#+property: canonical-revision r4-draft
+#+property: part-revision 01-20261107
+#+property: supersedes gesso-unified-design-canonical-r3
+
+* Part I — Foundations
+:PROPERTIES:
+:CUSTOM_ID: part-01-foundations
+:END:
+
+** Canonical document identity and provenance
+
+This document specifies the intended canonical r4 Gesso unified design. It is
+an end-state specification of the required architecture and behavior, not a
+claim that the current implementation already satisfies those requirements.
+
+R4 is assembled from twelve ordered parts. The complete reviewed assembly
+supersedes canonical r3. During sectional delivery, an individual part specifies
+only its stated scope; it must not be presented as a complete replacement for
+the entire r3 specification. The revision remains marked =r4-draft= until all
+parts and their cross-references have been reconciled.
+
+Historical source plans remain provenance. They do not carry independent
+normative revision identities inside this specification.
+
+The principal source lineage is:
+
+| <45> | <55> |
+| Source | Revision / role |
+|--------+-----------------|
+| Gesso Choreography Design | v4.5; foundational choreography semantics |
+| Gesso Provable Hardening Plan | v7.376; compositional rejection and proof direction |
+| Gesso/HumanHelp Biff 2 Migration Plan | native Biff 2 substrate and lifecycle integration |
+| Gesso/HumanHelp Preflight Recovery Plan | v662; no-silent-downgrade and production-path closure |
+| Gesso Unified Design | canonical r2; prior consolidation |
+| Gesso Unified Design | canonical r3; direct textual predecessor |
+| Gesso Unified Design Revision and Validation Plan | plan revision 2; r3 review discipline |
+
+Historical plans explain the origin of the design. The requirements in the
+reviewed r4 assembly govern the intended system, including explicit corrections
+to earlier approaches. A change in implementation does not by itself change a
+requirement, and an implementation restriction does not become a design
+restriction merely because it made one proving experiment tractable.
+
+This specification describes the intended architecture from zero. It does not
+classify features as implemented or unfinished, prescribe patches to a current
+checkout, or treat a passing implementation test as a normative decision.
+Implementation-specific remediation belongs in a separate document.
+
+*** Revision scope
+
+R4 specifies the semantic, construction, runtime, acceptance, and assurance
+boundaries of Gesso as one coherent architecture. Its requirements remain owned
+by the sections that define them; this summary is a navigation aid.
+
+The revision emphasizes:
+
+- the full host language within checked managed application construction;
+- explicit contracts for opaque computations, with assumptions preserved through
+  every dependent guarantee;
+- typed semantic transitions, derived obligations, and controlled realization
+  of admitted effects;
+- backend contracts supported by versioned qualification and adversarial
+  conformance evidence;
+- owner-relative admission for asynchronous events, including shared events;
+- scope-preserving acquisition requirements and precisely stated resource bounds;
+- independent required-capability acceptance alongside assembly closure and
+  production-path enforcement;
+- participant-relative command uncertainty after local retirement or lost delivery;
+- explicit HumanHelp adoption policy and testable product outcomes;
+- production/formal correspondence classified by the evidence actually supplied;
+- a single normative home for each obligation, with examples that preserve it;
+- connected reference realizations and controlled defects on production paths.
+
+Unresolved product choices remain explicit. A completion claim that depends on
+one of those choices is unavailable until the choice and its acceptance
+conditions are specified. Generic Gesso semantics do not silently choose
+HumanHelp business policy.
+
+*** Document organization and sectional assembly
+
+The document has the following logical parts. The two-digit delivery order is
+also the concatenation order.
+
+| <7> | <25> | <68> |
+| Order | Part | Scope |
+|-------+------+-------|
+| 01 | I — Foundations | Purpose, ownership direction, normative interpretation, correctness scopes, assurance, evidence vocabulary, construction principles |
+| 02 | II — Semantic model | Identity, time, resource instances, trust, knowledge, provenance, observation evidence, agreement |
+| 03 | III — Choreography language and projection | Choreography, operation types, Malli, branch knowledge, projection, long logical workflows |
+| 04 | IV — Authoritative operations and progression | Model integration, FX, atomic transitions, delivery debt, XTDB basis and scoped progression, command/execution identity |
+| 05 | V — Provisional state and executable presentation | Optimism, continuity, views, portable execution, ExecutablePlan and diagnostic sidecars |
+| 06 | VI — Browser realization and recovery | Adapter refinement, owner-relative event admission, acquisition coordination, stale plans, managed effects, absence, failure and convergence |
+| 07 | VII — Whole-application construction | ApplicationAssembly, closure, artifacts, routes, capabilities, settlement/acquisition, static and dynamic preflight, Biff lifecycle, diagnostics |
+| 08 | VIII — HumanHelp proving application | Production model ownership, example integration, lifecycle, creation, adoption, board behavior, product decisions and independent acceptance |
+| 09 | IX — Compositional certification | Semantic interfaces, typed rules, certificate hierarchy, dependency identity, proof kernel, mutation corpus, HumanHelp proof pilot |
+| 10 | X — Formal correspondence and system boundaries | Assurance targets, theorem families, formalization, production correspondence, TCB, validation, multi-node semantics |
+| 11 | XI — Release and completion | Incremental builds, release evidence, non-goals, progress measures and the four completion scopes |
+| 12 | XII — Implementation order and final invariants | Ordered stages, dependency relationships, cross-stage acceptance and final unified principle |
+
+Only Part I carries the document-wide Org title, date, options, and revision
+metadata. Subsequent parts begin with their own top-level part heading and use
+subordinate headings within that part. Concatenation introduces no additional
+document headers, include directives, or independent normative documents.
+
+Internal links may refer forward to sections in later parts. Such references
+are resolved against the complete assembly. Every referenced anchor must occur
+exactly once in that assembly. Historical Part references are replaced by the
+corresponding r4 section links or current part names during revision.
+
+#+LATEX: \newpage
+
+*** Cross-cutting requirement references
+
+The following links are a navigation aid, not a second semantic registry.  The
+linked sections are the authoritative homes of the corresponding requirements.
+
+| <43> | <57> |
+| Requirement / decision | Authoritative section |
+|------------------------+-----------------------|
+| Assurance classification | [[#req-assurance-classification][Assurance model]] |
+| Full-language construction | [[#req-full-language-construction][Full-language application logic and checked construction]] |
+| Admission and proof results | [[#req-admission-assurance-policy][Admission policy and unresolved proof obligations]] |
+| Backend assumptions | [[#req-backend-assumption-qualification][Backend contracts and qualification]] |
+| Canonical transition construction | [[#req-canonical-transition-construction][Canonical semantic construction and controlled effects]] |
+| Semantic category and admission | [[#req-semantic-admission][Semantic category, representation, and admission]] |
+| Trusted-code boundary | [[#req-trust-boundary][Trusted application code and accidental misuse]] |
+| Observation evidence | [[#req-observation-evidence][Observation claims, receipts, and authority]] |
+| Progression scope | [[#req-progression-scope][Progression requirements are scoped]] |
+| Advisory discharge | [[#req-advisory-discharge][Advisory obligations and authoritative acquisition]] |
+| Participant-relative command uncertainty | [[#req-command-participant-uncertainty][Participant-relative command uncertainty]] |
+| Provisional resolution | [[#req-provisional-resolution][Provisional resolution and local retirement]] |
+| Scoped authoritative installation | [[#req-runtime-scoped-authoritative-installation][Scoped authoritative installation]] |
+| Application assurance claims | [[#req-application-assurance-claims][Three separate application assurance claims]] |
+| Assembly construction phases | [[#req-assembly-construction-phases][Assembly construction and admitted generations]] |
+| Production-path enforcement | [[#req-production-path-enforcement][Production-path enforcement evidence]] |
+| HumanHelp selective adoption | [[#req-humanhelp-selective-adoption][Selective board adoption]] |
+| HumanHelp Refresh coverage | [[#req-humanhelp-refresh-coverage][Refresh coverage and concurrent activity]] |
+| HumanHelp remote lifecycle policy | [[#decision-humanhelp-remote-lifecycle-adoption][Remote lifecycle changes]] |
+
+** Purpose
+
+This document specifies the intended end-state design of Gesso choreography,
+proof, execution, application assembly, and its use by HumanHelp.
+
+The goal is not merely to provide a convenient syntax for distributed state
+machines.  Gesso should provide a useful correctness boundary for distributed
+application operations.  It should make coherent programs straightforward to
+express, malformed programs difficult to assemble, and contradictions visible
+as early and as locally as the available information permits.
+
+The central design target is:
+
+#+begin_quote
+A Gesso application may still express a coherent but domain-wrong business
+rule, but it should be difficult to assemble a structurally contradictory
+distributed program that appears to work.
+#+end_quote
+
+Gesso therefore distinguishes two very different failure classes.
+
+A *well-formed but domain-wrong* program may express the wrong policy while
+remaining internally coherent.  For example, an application may validly encode
+a rule that an Organization chose incorrectly.  Gesso cannot infer product
+intent merely from syntax.
+
+A *malformed* program contradicts its own declared semantic structure.  Examples
+include:
+
+- a role consuming a fact it cannot know;
+- a browser affordance naming an operation that has no projected realization;
+- an operation requiring authority that no trusted server path can establish;
+- a provisional trajectory with no permitted resolution or recovery path;
+- a projected plan whose required semantic dependency no longer matches the
+  certified dependency used to produce it;
+- a lifecycle operation silently degrading to a weaker ordinary request because
+  required semantic metadata is absent;
+- a proof or diagnostic artifact being accepted as runtime authority;
+- a stale callback mutating a newer execution merely because both refer to the
+  same logical DOM target.
+
+Those are framework-recognizable contradictions and must be rejected when the
+applicable supported checker has the information needed to establish them.
+Diagnostics must identify the violated obligation and its owning boundary.
+
+A computation being outside the supported proof fragment is a different matter.
+It is not thereby malformed or prohibited. Ordinary Clojure remains available
+within checked construction, with precisely stated interfaces, effects, and
+assumptions. The framework must distinguish an invalid construction from an
+unproved proposition and from an explicitly accepted asserted contract.
+
+
+The distinction is easier to see in a small but nontrivial application slice.
+Suppose an expense system models submitted expenses and a current approval
+policy. The following code is illustrative rather than a frozen public API, but
+it shows the amount of semantic structure Gesso should be able to reason about
+without requiring the application author to reproduce framework internals.
+
+#+begin_src clojure
+(def Money
+  [:int
+   {:min 0
+    :max 9007199254740991
+    :semantic/type :money/usd-cents}])
+
+(def Expense
+  [:map
+   [:expense/id uuid?]
+   [:expense/employee-id uuid?]
+   [:expense/department keyword?]
+   [:expense/amount Money]
+   [:expense/status
+    [:enum :draft
+           :submitted
+           :approved
+           :rejected
+           :needs-finance]]])
+
+(def ApprovalPolicy
+  [:map
+   [:policy/department keyword?]
+   [:policy/manager-limit Money]
+   [:policy/finance-threshold Money]])
+
+(defrule manager-may-approve?
+  {:inputs {:expense Expense
+            :policy ApprovalPolicy}
+   :returns :boolean}
+  [:and
+   [:= [:expense/status :expense] :submitted]
+   [:= [:expense/department :expense]
+       [:policy/department :policy]]
+   [:< [:expense/amount :expense]
+       [:policy/manager-limit :policy]]])
+
+(defrule needs-finance?
+  {:inputs {:expense Expense
+            :policy ApprovalPolicy}
+   :returns :boolean}
+  [:and
+   [:= [:expense/status :expense] :submitted]
+   [:>= [:expense/amount :expense]
+        [:policy/finance-threshold :policy]]])
+
+;; Suppose this is what the Organization actually intends.
+(def accounting-policy
+  {:policy/department :accounting
+   :policy/manager-limit 50000
+   :policy/finance-threshold 50000})
+#+end_src
+
+Here =Money= declares a nominal semantic type backed by nonnegative,
+exactly represented integer USD cents. The schema and rule declarations must
+cross their construction checks before downstream code treats them as admitted
+semantic interfaces; a metadata key or a Var name does not itself admit them. Its maximum is part of this example's
+portable numeric profile. Arithmetic must preserve that bound or return a
+declared failure; a JavaScript floating-point approximation must not silently
+replace exact monetary semantics. A different currency or decimal profile needs
+its own declared encoding and operations. Malli shape validation alone does not
+establish nominal semantic identity.
+
+Now imagine that the application author accidentally changes only the policy
+data:
+
+#+begin_src clojure
+(def accounting-policy
+  {:policy/department :accounting
+   :policy/manager-limit 500000
+   :policy/finance-threshold 500000})
+#+end_src
+
+The program may still be perfectly coherent. =500000= is a valid amount in
+this USD-cent representation: $5,000 rather than $500.
+The rule is well typed. The operation may project correctly. The authoritative
+transaction may apply the rule exactly as declared. Gesso has no basis for
+inventing the unstated product intention that the limit should have been
+=50000= cents.
+
+Contrast that with a malformed rule whose own semantic structure is
+contradictory:
+
+#+begin_src clojure
+(defrule malformed-manager-rule
+  {:inputs {:expense Expense
+            :policy ApprovalPolicy}
+   :returns :boolean}
+  [:and
+   ;; A status enum is not an ordered monetary value.
+   [:< [:expense/status :expense]
+       [:policy/manager-limit :policy]]
+
+   ;; A money value is not a status variant.
+   [:= [:expense/amount :expense]
+       :submitted]])
+#+end_src
+
+A checked rule language has enough information to reject that construction
+before it becomes a choreography or reaches a model operation. A diagnostic
+could identify both the location and the expected semantic categories:
+
+#+begin_src clojure
+{:error/type :gesso.rule/type-error
+ :rule       'malformed-manager-rule
+ :at         [:and 0]
+ :operator   :<
+ :left       {:type [:enum :draft :submitted :approved
+                     :rejected :needs-finance]
+              :source [:expense/status :expense]}
+ :right      {:type :money/usd-cents
+              :source [:policy/manager-limit :policy]}
+ :required   {:operator :<
+              :operands [:ordered :ordered]}}
+
+{:error/type :gesso.rule/type-error
+ :rule       'malformed-manager-rule
+ :at         [:and 1]
+ :operator   :=
+ :left       {:type :money/usd-cents
+              :source [:expense/amount :expense]}
+ :right      {:type [:enum-value :submitted]}
+ :required   {:operator :=
+              :operands [:same-semantic-category
+                         :same-semantic-category]}}
+#+end_src
+
+The difference is the foundational one this document relies on everywhere else.
+The first application can be wrong because humans chose the wrong coherent
+policy. The second is malformed because its own declarations do not compose.
+Later examples apply the same distinction to knowledge, authority, browser
+ownership, application assembly, and proof evidence.
+
+#+LATEX: \newpage
+
+The choreography system should provide the following broad properties:
+
+- one global choreography describes an allowed distributed interaction;
+- the global choreography crosses checked construction before execution, with
+  the supported semantic judgments established and accepted assumptions retained;
+- the choreography is projected into actor-local machines;
+- local machines execute independently in Clojure and ClojureScript;
+- actors acquire justified knowledge through declared provenance paths such as
+  inputs, communication, authoritative observation, deterministic derivation,
+  and explicit trusted assertion;
+- authoritative model transitions remain atomic at their model transaction
+  boundaries;
+- clients may hold explicit provisional state without confusing it with
+  authoritative state;
+- actors may temporarily observe different frontiers of an evolving world;
+- where convergence is required, the protocol provides a path toward justified
+  knowledge of the relevant authoritative facts;
+- durable application facts normally rendezvous through model authority rather
+  than requiring direct client-to-client delivery;
+- browser-local concerns such as continuity remain implementation concerns
+  rather than becoming distributed truth;
+- sleeping, reconnecting, stale, or incompatible browser projections have a
+  defined recovery path rather than being assumed compatible forever;
+- browser actors are treated as adversarial participants that may replace or
+  modify every byte of client JavaScript and protocol state;
+- authoritative security never depends on an honest browser projection;
+- portable choreography and browser-adapter semantics are explicit transition
+  systems suitable for machine-checked reasoning;
+- the production browser adapter uses the same semantic transition model that
+  is checked or proved rather than independently reimplementing a paper model;
+- HTMX remains responsible for the ordinary declarative browser lifecycle it
+  already owns;
+- Gesso-owned browser effects remain behind a narrow explicit boundary;
+- verification and projection produce one canonical executable artifact plus
+  separate optional proof and diagnostic artifacts;
+- proof or diagnostic artifacts cannot participate in runtime semantic
+  decisions;
+- whole-application assembly checks the correspondence between the semantic
+  operation, projected plan, browser artifact, transport, trusted server
+  capability, authoritative operation, settlement/progression, and permitted
+  authoritative reacquisition;
+- safety properties called proved identify their checked derivations or sound
+  exhaustive/refinement arguments; asserted contracts and tested properties
+  remain separately identified;
+- tests remain essential for trusted assumptions, implementation
+  correspondence, real browsers, external libraries, operational behavior, and
+  application policy.
+
+The design should make downstream application code easier to reason about even
+when Gesso itself becomes substantially more sophisticated.
+
+Correctness, explicit boundaries, debuggability, strong guarantees, and clear
+repair paths are more important than minimizing implementation size.
+
+#+LATEX: \newpage
+

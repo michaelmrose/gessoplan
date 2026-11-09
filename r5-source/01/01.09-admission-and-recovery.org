@@ -1,0 +1,353 @@
+*** Fail at the earliest legitimate boundary
+
+A contradiction should fail at the earliest layer that possesses enough
+information to establish it.
+
+Examples of definition/construction-time failures include:
+
+- malformed choreography;
+- unknown role;
+- impossible local transition;
+- invalid message declaration;
+- inconsistent operation metadata;
+- invalid certified dependency reference.
+
+Examples of build/application-preflight failures include:
+
+- declared semantic affordance with no projected executable plan;
+- stale generated artifact;
+- missing transport;
+- missing trusted route/capability;
+- missing server execution capability;
+- managed fragment with no permitted initial acquisition;
+- authoritative successor with no permitted reacquisition path.
+
+An affordance introduced only while constructing a concrete view is checked
+before that rendered surface is serialized or exposed through the managed
+renderer. Arbitrary Hiccup or raw HTML that bypasses that boundary does not
+inherit the rendered-surface assurance claim; supported semantic action
+construction must make this distinction explicit. Static assembly preflight checks the affordances and operation bindings available from its
+declarations; it cannot claim to have inspected future arbitrary view data.
+
+
+The same HumanHelp Claim slice can fail legitimately at three different times,
+depending on when enough information exists.
+
+A static construction defect can be rejected before the application starts:
+
+#+begin_src clojure
+(def broken-assembly
+  {:operations
+   {:request/claim
+    {:plan :plan/request-claim
+     :route :route/request-claim}}
+
+   ;; Accidentally generated from an older application assembly.
+   :artifact
+   {:plans #{:plan/request-create
+             :plan/request-refresh}}})
+
+(assembly/admit! broken-assembly)
+;; throws:
+{:error/type :assembly/missing-browser-plan
+ :operation :request/claim
+ :required-plan :plan/request-claim
+ :artifact-plans #{:plan/request-create
+                   :plan/request-refresh}}
+#+end_src
+
+Nothing about a concrete Request or principal is needed to establish that
+contradiction, so runtime is too late.
+
+A rendered-surface defect may depend on concrete view construction. Suppose a
+generic Request-card renderer allows applications to choose actions, but one
+particular rendering asks for =:request/reassign= without supplying the required
+target relationship:
+
+#+begin_src clojure
+(render
+  configurable-request-card
+  {:request request
+   :actions
+   [{:operation :request/reassign
+     :args
+     {:request/id (:request/id request)}
+     ;; required :helper/id is absent
+     }]})
+
+;; render preflight rejects before serialization:
+{:error/type :view/operation-arguments-incomplete
+ :view :request/configurable-card
+ :operation :request/reassign
+ :missing #{:helper/id}
+ :available #{:request/id}}
+#+end_src
+
+The assembly may contain a perfectly valid Reassign operation. The defect exists
+only in this attempted concrete rendering, so render-time preflight is the
+earliest legitimate boundary.
+
+Finally, current authorization may change after a completely valid render:
+
+#+begin_src clojure
+;; T1: Alice is currently an active helper.
+(html
+  (request-card
+    {:request/id R
+     :request/status :open}))
+;; => contains a valid bound :request/claim affordance
+
+;; T2: Alice's Membership is withdrawn.
+
+;; T3: Alice submits a new command C42 from the still-visible affordance.
+;; The authoritative operation establishes this rejection and its reason.
+(invoke-claim!
+  current-server-context
+  {:request/id R :gesso/command-id C42})
+;; => {:outcome :rejected :reason :membership-inactive}
+#+end_src
+
+Static preflight should not have rejected the application merely because a
+helper can later lose authorization, and rendering should not claim that the
+authorization can never change. The runtime boundary owns that dynamic fact and
+must reject the concrete invocation using current authority.
+
+The three failures therefore form one continuous construction story:
+
+| Information becomes available | Earliest legitimate rejection boundary |
+|-------------------------------+----------------------------------------|
+| From declarations | Construction or assembly admission |
+| From a concrete rendered surface | Before serialization and exposure |
+| From current external or model state | The trusted runtime boundary with the required current-state protection |
+
+"Fail early" means the earliest *legitimate* boundary, not the earliest point at
+which the framework could guess.
+
+*** Runtime-only conditions and required recovery
+
+Some facts relevant to an execution can be established only at runtime. Examples
+include:
+
+- the current authenticated principal is not authorized for a concrete Request;
+- the Request changed after it was rendered;
+- a transaction guard fails;
+- an external provider is unavailable;
+- a browser or another required participant disconnects;
+- an expected environment event has not occurred within an application-relevant
+  lease, deadline, or interval.
+
+Do not attempt to statically prove genuinely dynamic domain facts merely to
+increase preflight coverage.
+
+Runtime-only establishment does not place these conditions outside the
+application's correctness model. The distinction is between knowing before
+execution whether a condition will occur and knowing before execution that the
+application has a coherent response if it does occur.
+
+Where a declared operation or workflow can encounter a runtime condition that
+invalidates its premises, removes a participant required for progress, or would
+otherwise strand the workflow, the application must define a permitted path
+forward. Depending on the application, that path may involve rejection,
+authoritative reacquisition, retry, compensation, timeout, retirement,
+reassignment, cancellation, explicit degradation, or another declared successor
+state.
+
+Static checking may therefore establish a conditional property such as:
+
+#+begin_example
+if runtime condition F is established,
+the admitted application has a declared path
+from F to a valid recovery, successor,
+or terminal state
+#+end_example
+
+without claiming to establish statically whether F will occur in a particular
+execution.
+
+A Request changing after rendering is one example. Gesso cannot establish
+beforehand that the Request will remain unchanged until the user acts. It can
+require that an operation whose rendered premises have become stale is checked
+against current authority and model state and that failure of those premises
+leads through declared rejection, reacquisition, or recovery semantics rather
+than allowing execution to proceed from obsolete state.
+
+
+A seat-reservation operation shows what that requirement can look like as a
+small executable contract rather than a prose-only promise.
+
+#+begin_src clojure
+(defoperation reserve-seat
+  {:operation/id :flight/reserve-seat
+
+   :actor :traveler
+
+   :input
+   [:map
+    [:flight/id uuid?]
+    [:seat/id uuid?]]
+
+   ;; This observation justifies what the traveler saw. It does not reserve the
+   ;; seat or guarantee that the observation remains current until invocation.
+   :entry
+   [[:authoritative-observation
+     :seat/availability
+     {:scope [:flight/id :seat/id]}]]
+
+   :invocation
+   {:requires [:authenticated-traveler :admitted-command-binding]}
+
+   :new-incorporation
+   {:requires [:current-seat-state :current-traveler-eligibility]
+    :atomic-with :command/result-record}
+
+   :repetition
+   {:requires :command/result-disclosure-authority
+    :result :permitted-recorded-outcome}
+
+   :effect
+   [:model/invoke :seat/reserve
+    {:flight-id :flight/id
+     :seat-id :seat/id
+     :traveler :authenticated-traveler
+     :command-id :gesso/command-id}]
+
+   :settlement
+   {:accepted
+    {:learns [:command/reservation-recorded :gesso/command-id]
+     :reacquire [:flight/seat-map :flight/id]}
+
+    :rejected
+    {:reason-set #{:seat/already-reserved
+                   :seat/no-longer-offered
+                   :traveler/not-eligible
+                   :reservation/precondition-changed}
+     :reacquire [:flight/seat-map :flight/id]}
+
+    :unknown
+    {:recover
+     [:seat/reconcile-reservation
+      {:flight-id :flight/id
+       :seat-id :seat/id
+       :command-id :gesso/command-id}]}}})
+#+end_src
+
+The admitted command boundary allocates =:gesso/command-id= once, before the
+first possible submission, and the authoritative boundary establishes or
+validates its trusted binding as described for Claim. The model guards
+eligibility, the flight/seat association, and availability under the same atomic
+contract that records the reservation and command result. A pre-read may aid
+presentation or preparation but cannot replace that guard or authoritative
+command reconciliation:
+
+#+begin_src clojure
+(defn reserve-seat!
+  [{:keys [db principal now]} {:keys [flight-id seat-id command-id]}]
+
+  (seat-model/transact-reservation!
+    {:db db :now now}
+    {:flight-id flight-id
+     :seat-id seat-id
+     :traveler-id (:user/id principal)
+     :command-id command-id
+
+     ;; New incorporation protects these transaction-current predicates.
+     ;; A compatible replay is handled before applying new-command guards.
+     :commit-guards
+     [[:traveler/eligible? (:user/id principal) flight-id]
+      [:seat/belongs-to-flight? flight-id seat-id]
+      [:seat/offered? flight-id seat-id]
+      [:seat/unreserved? flight-id seat-id]]
+
+     ;; The scoped identity binds principal, operation, flight, and seat.
+     ;; A compatible repeat returns the permitted recorded outcome,
+     ;; subject to current disclosure authority, without another reservation.
+     :deduplicate-by
+     [:flight/reserve-seat (:user/id principal) command-id]
+     :bind-arguments
+     {:flight-id flight-id :seat-id seat-id}}))
+#+end_src
+
+The transaction API is schematic. Its realization must establish the stated
+guard, relationship, frame, and atomic command-record properties under the
+qualified backend contract. If ordinary Clojure computes eligibility outside
+the transaction, all facts on which it depends must receive equivalent
+commit-time protection; pre-read correctness alone is insufficient.
+
+An aggregate transaction-guard failure may not identify which predicate failed.
+The model can return =:reservation/precondition-changed= when that is the
+strongest supported reason. A more specific reason requires authoritative
+evidence of the stated scope. A later reread can describe current availability
+but must not be presented as proof of the historical cause of an earlier
+transaction failure.
+
+Before interpreting a failed attempt as command rejection, the outcome protocol
+must account for a compatible command incorporated by a concurrent attempt.
+When incorporation or delivery cannot be established, the participant retains
+=:unknown= and reconciles by the bound command identity. A timeout, a missing
+record at an insufficient read basis, or an unavailable dependency is not
+authoritative rejection.
+
+A valid browser interaction may therefore begin from an authoritative observation
+at =T1= and still receive a typed rejection because Bob reserved the seat at
+=T2=. That rejection does not mean the earlier observation was fraudulent; it
+means the dynamic premise changed before the authoritative operation committed.
+
+Preflight can check that =:rejected= is represented and that its reacquisition
+path exists. It cannot decide in advance which traveler wins the race. The
+example therefore makes the static/runtime boundary operational: dynamic
+uncertainty remains dynamic, while the permitted response to that uncertainty is
+still part of the checked application design.
+
+Loss of a participant is another example. A physical network disconnect does
+not necessarily establish that the participant is semantically unavailable;
+temporary network failure, browser suspension, or reconnect may be ordinary
+execution conditions. The application therefore owns the policy that determines
+when loss of participation becomes semantically relevant. That policy may use a
+lease, heartbeat, deadline, authoritative presence state, explicit withdrawal,
+or another declared mechanism.
+
+Once a participant is established to be unavailable, however, a workflow whose
+progress depends on that participant must not simply remain indefinitely
+dependent on an actor that can no longer satisfy its role. HumanHelp may decide
+that the affected Request becomes stale, becomes reassignable, returns to an
+available pool, remains assigned for a bounded lease, is cancelled, or follows
+another coherent application-defined path. Gesso does not choose among those
+policies, but absence of any declared handling is not itself an acceptable
+policy when the condition can leave the admitted workflow permanently
+non-serviceable.
+
+The same distinction applies to transaction conflicts and external dependencies.
+A transaction guard may fail only at commit time, and an external service may
+become unavailable only during execution. Those facts need not be statically
+knowable. Their possible effect on an admitted workflow still requires declared
+semantics whenever failure can invalidate the current trajectory or prevent
+required progress.
+
+Some workflows may deliberately rely on an environmental event eventually
+occurring rather than define a timeout or alternate path. In that case the
+corresponding liveness claim is explicitly conditional on that environmental
+assumption. Omitting the failure or non-participation path must not silently
+transform a conditional progress claim into an unconditional completion
+guarantee.
+
+When a required premise is known not to hold, the dependent liveness conclusion
+is unavailable. A conditional eventual-recovery assumption must not be used to
+claim progress for a participant already established to be permanently unable
+to satisfy the required role. Safety obligations continue to apply while
+progress is unavailable.
+
+Local timeout, retirement, cancellation of a browser resource, and physical
+disconnect must not invent an authoritative command outcome. The command's
+status remains participant-relative until the required outcome evidence is
+available. Application recovery and current authoritative eligibility remain
+model-owned even if a retired or disconnected browser later resumes.
+
+The governing rule is:
+
+#+begin_quote
+Dynamic facts need not be statically knowable, but dynamically possible
+conditions that materially affect correctness must have declared semantics
+sufficient to preserve the application's stated safety and liveness claims.
+#+end_quote
+
+
