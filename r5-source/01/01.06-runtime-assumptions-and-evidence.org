@@ -157,6 +157,8 @@ them:
 | Current dependency protection | Point reads, cross-document relationships, absence, and predicate dependencies used for the decision receive the protection assumed by the proof |
 | Write and frame semantics | Replacement, update, deletion, metadata, and missing-field behavior match the compiler's interpretation |
 | Command incorporation | Domain effects and the compatible command-result record cannot be committed independently where the contract requires atomicity |
+| Command exclusion and retention | Compatible concurrent attempts cannot incorporate twice; recorded binding, expiry, tombstones or other exclusion mechanisms have the declared lifetime and replay semantics, with result-disclosure retention distinguished from duplicate-prevention retention |
+| Required publication intent | Where the operation promises durable advisory work, that intent is incorporated with the authoritative model effect and command record; provider atomicity does not itself prove dispatch or browser delivery |
 | Outcome evidence | A reported committed or rejected result has the stated authoritative meaning; delivery failure remains distinguishable from rejection |
 | Observation basis | Read tokens, visibility, valid/system time where relevant, and progression requirements have the stated scope and interpretation |
 
@@ -169,7 +171,9 @@ automatically protect a predicate over a changing collection.
 Qualification tests must be indexed by the assumption they challenge. Required
 cases include conflicting guarded attempts, aborted writes, ledger/domain
 agreement, missing and extra fields, concurrent changes to protected
-relationships, outcome loss, and basis-sensitive reads where applicable.
+relationships, incompatible or repeated command identities, result expiry
+versus continued duplicate prevention, required outbox incorporation, outcome
+loss, and basis-sensitive reads where applicable.
 Independent expected results and deliberately weakened guards must demonstrate
 that the suite can expose the relevant violation. Merely replaying the same
 compiler logic as an oracle is insufficient independent evidence.
@@ -257,11 +261,16 @@ Examples include:
 - no ordinary anonymous transport occupies a route reserved for a semantic
   operation;
 - generated browser artifacts correspond exactly to the current assembly;
-- startup lifecycle ordering makes required preflight unavoidable.
+- the declared startup lifecycle orders required preflight before managed
+  serving and names the actual installation boundary that must enforce it.
 
 Assembly verification is mechanical, but it is useful to classify the result
-separately from a semantic theorem.  It establishes closure over a concrete
-application graph.
+separately from a semantic theorem. It establishes closure over a concrete
+application graph. A closed graph and an internally consistent lifecycle
+declaration do not prove that the running server installed that handler, that
+its captured dispatch path cannot bypass the gate, or that all relevant
+non-HTTP writers are covered. Those are distinct production-enforcement
+obligations under Parts VII and X, and their unresolved status remains visible.
 
 For example:
 
@@ -331,8 +340,21 @@ prove/check:
     a resolving semantic state
 #+end_example
 
-The assumptions are part of the proposition.  Removing them changes the
+The assumptions are part of the proposition. Removing them changes the
 proposition.
+
+For commands, recovery of an authoritative *current presentation* and
+recovery of the *historical command disposition* are separate progress claims.
+An authorized fresh Request/card read may repair provisional display without
+identifying which command incorporated. Eventual attribution requires the
+appropriate retained command evidence, compatible binding, continuing
+disclosure permission, and an available reconciliation path; those premises
+must not be smuggled into "eventual authoritative read." After expiry or lost
+disclosure authority, the declared system may preserve an explicit unresolved
+command status even when presentation converges. That is not evidence of
+settlement to accepted or rejected. Likewise, when the product requires a
+user-initiated Refresh, the user's eventual action is an environmental premise,
+not something the scheduler can compel or derive from a pending advisory.
 
 The design must distinguish:
 
