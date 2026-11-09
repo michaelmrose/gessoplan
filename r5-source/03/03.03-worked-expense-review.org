@@ -82,8 +82,8 @@ above; the table does not introduce additional hidden primitive semantics.
 | Invoke escalation | Trusted authority processes the bound escalation command | Settle the command-specific model result |
 | Invoke manager approval | Trusted authority processes the bound approval command | Settle the command-specific model result |
 | Settle | Manager admits the disclosed result for the actual command | Accepted: publish review notice; rejected: handle rejection and close without notice; unknown: reconcile or hand off recovery, then close this session without notice if needed |
-| Publish review notice | Manager communicates the permitted historical review result to the notifier | On admitted handoff, manager's local work may finish |
-| Close without notice | Manager sends the declared no-notification disposition | Notifier returns without a notification effect; any command recovery remains with its declared owner |
+| Publish review notice | Manager emits the permitted historical review result toward the notifier | Manager's sending boundary may finish under its declared handoff; semantic receiver consumption, physical notification and global terminal remain separate |
+| Close without notice | Manager emits the declared no-notification disposition | Notifier must admit that closure message or follow the declared missing-delivery/retirement path; command recovery remains with its owner |
 | Notify or close | Notifier receives the correlated disposition | Review notice: perform the declared effect; no-notification: return without that effect; delivery failure follows the session recovery contract |
 
 **** Admitted elaboration of the review protocol
@@ -103,7 +103,7 @@ and source-to-plan evidence:
 | Manager selects notification or closure | A role-local =:branch= uses the actually admitted outcome. Recorded success uses the result-bearing notifier contract; rejection/unavailable cases use the declared no-notification/recovery paths, without treating unknown incorporation as definite failure |
 | Notifier receives the selected disposition | The chosen admitted =:communicate= establishes the notifier's permitted fields at actual receiver consumption; unmatched or overlapping variants, false correlation, and absent delivery are not accepted as another branch |
 | Notifier performs the declared notification effect | The effect, its realization, and any required completion/failure path remain explicit. A supposedly hidden =:local= calculation cannot conceal an externally significant notification |
-| The review session finishes | Local =:return= / completion may occur at different times for manager and notifier, while global =:return= is justified only after the protocol's required semantic occurrences and permitted durable handoffs have the specified outcomes |
+| The review session finishes | Local =:return= / completion may occur at different times for manager and notifier; the claimed global =:return= requires the actual semantic receiver occurrence, declared notification-effect disposition or a separately admitted durable handoff/retirement under the selected terminal contract |
 
 This is an *obligation mapping*, not a claim that the rows are literally
 nine global opcodes or that every deployment must use direct
@@ -176,10 +176,23 @@ The admitted review session supplies its correlation identity at entry.
 The declared =:review/disposition= discriminator must be checked as
 =:recorded= or =:no-notification=, with the recorded variant's
 =:review/result= bound to its closed approved/awaiting-Finance
-alternative and exact command-result evidence. The variants' schemas,
-correlation and source admission are independent obligations; the
-=:variants= map alone does not prove them. Only
-the recorded variant carries a command outcome. The no-notification variant
+alternative and exact command-result evidence. Checked elaboration
+makes the common and variant-specific obligations explicit:
+
+| Admitted variant | Closed semantic fields and discriminator | Required justification |
+|------------------+------------------------------------------+------------------------|
+| =:recorded= | Common =:review/session-id= and literal =:review/disposition :recorded=, plus =:expense/id=, =:gesso/command-id= and =:review/result= | Trusted command-specific successful incorporation or permitted recorded replay; source, subject, command and result must agree |
+| =:no-notification= | Common =:review/session-id= and literal =:review/disposition :no-notification=; no command result or failed-read private subject | Admitted session and source with the declared closure/recovery reason; no result, non-incorporation or domain absence is inferred |
+
+The variants' schemas, source/recipient admission, correlation and
+permitted disclosure are independent obligations; the =:variants=
+inspection map alone does not prove them. They may elaborate into
+distinct identified communication events or a common event with an
+admitted disjoint tagged-payload contract. A receiver may not select
+a variant by absent optional fields, message order, or a convenient
+fallback match. The receiver's actual consumed variant alone
+establishes its declared knowledge. Only the recorded variant
+carries a command outcome. The no-notification variant
 terminates participation without claiming the Expense is absent, the command
 failed, or no review was ever recorded. It does not carry a failed read's
 private subject. Both variants have closed payload contracts and declared
@@ -195,7 +208,15 @@ plausible result string cannot establish that a review occurred. If the service
 instead derives the notice from an authoritative outbox, that is the declared
 realization and causal path; projection must not invent it silently.
 
-The delivery contract also decides what failure means. For a required durable
+The delivery contract also decides what failure means. An accepted
+=:send= completion establishes that the sender discharged its *local sending*
+boundary, not that the global =:communicate= occurred at the recipient or
+that the notification effect executed. The declared semantic communication
+is realized at admitted receiver consumption; if that cannot happen
+before local retirement, the global terminal path requires a distinct,
+explicitly admitted handoff or failure/timeout continuation with its
+own business meaning. Neither a missing receive nor a sender's local
+=:return= silently chooses =:no-notification=. For a required durable
 notification, the model transaction or another justified handoff must retain
 recoverable notification work. A direct browser send that can disappear after
 commit cannot establish eventual notification. For a best-effort notice, loss
@@ -209,6 +230,8 @@ its own deduplication or repeat policy permits it.
 |------+-------------------|
 | Manager's Policy/Expense observation is inconsistent or no longer eligible by incorporation | Reject or reacquire under the declared command path; do not publish an uncommitted success notice |
 | A manager approval ceiling applies but is absent from the chosen operation's guarded policy | The operation contract is incomplete; do not count browser routing as enforcement |
+| A recorded and no-notification disposition use the same event, and the receiver selects by whether optional result fields happen to be present | Reject ambiguous or overlapping variants unless the required literal discriminator and schema are checked at admission |
+| Manager completes a transport send of the no-notification variant and the compiler records that the notifier returned without admitting it | Reject premature receiver/global completion; a sent closure message is not a received closure event |
 | A retry discloses a permitted recorded successful command outcome | Do not incorporate again; notification replay still follows its *own* deduplication and disclosure rules |
 | A browser fabricates =:recorded= with a plausible Expense id or command id | Trusted-side notifier admission must establish the actual bound outcome or use an authoritative outbox |
 | A result-bearing message discloses =:review/result= to the notifier while a proof calls the notifier route-ignorant because its displayed notice is neutral | Reject the confidentiality claim or use a separately authored neutral message contract with justified coarse outcome evidence |

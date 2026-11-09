@@ -368,8 +368,8 @@ above; the table does not introduce additional hidden primitive semantics.
 | Invoke escalation | Trusted authority processes the bound escalation command | Settle the command-specific model result |
 | Invoke manager approval | Trusted authority processes the bound approval command | Settle the command-specific model result |
 | Settle | Manager admits the disclosed result for the actual command | Accepted: publish review notice; rejected: handle rejection and close without notice; unknown: reconcile or hand off recovery, then close this session without notice if needed |
-| Publish review notice | Manager communicates the permitted historical review result to the notifier | On admitted handoff, manager's local work may finish |
-| Close without notice | Manager sends the declared no-notification disposition | Notifier returns without a notification effect; any command recovery remains with its declared owner |
+| Publish review notice | Manager emits the permitted historical review result toward the notifier | Manager's sending boundary may finish under its declared handoff; semantic receiver consumption, physical notification and global terminal remain separate |
+| Close without notice | Manager emits the declared no-notification disposition | Notifier must admit that closure message or follow the declared missing-delivery/retirement path; command recovery remains with its owner |
 | Notify or close | Notifier receives the correlated disposition | Review notice: perform the declared effect; no-notification: return without that effect; delivery failure follows the session recovery contract |
 
 **** Admitted elaboration of the review protocol
@@ -389,7 +389,7 @@ and source-to-plan evidence:
 | Manager selects notification or closure | A role-local =:branch= uses the actually admitted outcome. Recorded success uses the result-bearing notifier contract; rejection/unavailable cases use the declared no-notification/recovery paths, without treating unknown incorporation as definite failure |
 | Notifier receives the selected disposition | The chosen admitted =:communicate= establishes the notifier's permitted fields at actual receiver consumption; unmatched or overlapping variants, false correlation, and absent delivery are not accepted as another branch |
 | Notifier performs the declared notification effect | The effect, its realization, and any required completion/failure path remain explicit. A supposedly hidden =:local= calculation cannot conceal an externally significant notification |
-| The review session finishes | Local =:return= / completion may occur at different times for manager and notifier, while global =:return= is justified only after the protocol's required semantic occurrences and permitted durable handoffs have the specified outcomes |
+| The review session finishes | Local =:return= / completion may occur at different times for manager and notifier; the claimed global =:return= requires the actual semantic receiver occurrence, declared notification-effect disposition or a separately admitted durable handoff/retirement under the selected terminal contract |
 
 This is an *obligation mapping*, not a claim that the rows are literally
 nine global opcodes or that every deployment must use direct
@@ -462,10 +462,23 @@ The admitted review session supplies its correlation identity at entry.
 The declared =:review/disposition= discriminator must be checked as
 =:recorded= or =:no-notification=, with the recorded variant's
 =:review/result= bound to its closed approved/awaiting-Finance
-alternative and exact command-result evidence. The variants' schemas,
-correlation and source admission are independent obligations; the
-=:variants= map alone does not prove them. Only
-the recorded variant carries a command outcome. The no-notification variant
+alternative and exact command-result evidence. Checked elaboration
+makes the common and variant-specific obligations explicit:
+
+| Admitted variant | Closed semantic fields and discriminator | Required justification |
+|------------------+------------------------------------------+------------------------|
+| =:recorded= | Common =:review/session-id= and literal =:review/disposition :recorded=, plus =:expense/id=, =:gesso/command-id= and =:review/result= | Trusted command-specific successful incorporation or permitted recorded replay; source, subject, command and result must agree |
+| =:no-notification= | Common =:review/session-id= and literal =:review/disposition :no-notification=; no command result or failed-read private subject | Admitted session and source with the declared closure/recovery reason; no result, non-incorporation or domain absence is inferred |
+
+The variants' schemas, source/recipient admission, correlation and
+permitted disclosure are independent obligations; the =:variants=
+inspection map alone does not prove them. They may elaborate into
+distinct identified communication events or a common event with an
+admitted disjoint tagged-payload contract. A receiver may not select
+a variant by absent optional fields, message order, or a convenient
+fallback match. The receiver's actual consumed variant alone
+establishes its declared knowledge. Only the recorded variant
+carries a command outcome. The no-notification variant
 terminates participation without claiming the Expense is absent, the command
 failed, or no review was ever recorded. It does not carry a failed read's
 private subject. Both variants have closed payload contracts and declared
@@ -481,7 +494,15 @@ plausible result string cannot establish that a review occurred. If the service
 instead derives the notice from an authoritative outbox, that is the declared
 realization and causal path; projection must not invent it silently.
 
-The delivery contract also decides what failure means. For a required durable
+The delivery contract also decides what failure means. An accepted
+=:send= completion establishes that the sender discharged its *local sending*
+boundary, not that the global =:communicate= occurred at the recipient or
+that the notification effect executed. The declared semantic communication
+is realized at admitted receiver consumption; if that cannot happen
+before local retirement, the global terminal path requires a distinct,
+explicitly admitted handoff or failure/timeout continuation with its
+own business meaning. Neither a missing receive nor a sender's local
+=:return= silently chooses =:no-notification=. For a required durable
 notification, the model transaction or another justified handoff must retain
 recoverable notification work. A direct browser send that can disappear after
 commit cannot establish eventual notification. For a best-effort notice, loss
@@ -495,6 +516,8 @@ its own deduplication or repeat policy permits it.
 |------+-------------------|
 | Manager's Policy/Expense observation is inconsistent or no longer eligible by incorporation | Reject or reacquire under the declared command path; do not publish an uncommitted success notice |
 | A manager approval ceiling applies but is absent from the chosen operation's guarded policy | The operation contract is incomplete; do not count browser routing as enforcement |
+| A recorded and no-notification disposition use the same event, and the receiver selects by whether optional result fields happen to be present | Reject ambiguous or overlapping variants unless the required literal discriminator and schema are checked at admission |
+| Manager completes a transport send of the no-notification variant and the compiler records that the notifier returned without admitting it | Reject premature receiver/global completion; a sent closure message is not a received closure event |
 | A retry discloses a permitted recorded successful command outcome | Do not incorporate again; notification replay still follows its *own* deduplication and disclosure rules |
 | A browser fabricates =:recorded= with a plausible Expense id or command id | Trusted-side notifier admission must establish the actual bound outcome or use an authoritative outbox |
 | A result-bearing message discloses =:review/result= to the notifier while a proof calls the notifier route-ignorant because its displayed notice is neutral | Reject the confidentiality claim or use a separately authored neutral message contract with justified coarse outcome evidence |
@@ -2478,8 +2501,17 @@ trusted source, subject, session and command correlation are established. A
 =:review-required= message justifies entering a current observation/action
 path; it does not itself authorize Finance approval. A =:not-required= message
 permits local return without claiming that Finance acted. =:review-unavailable=
-closes this session's participation when the manager's command could not produce
-a usable result. That last label does not assert the command never committed;
+closes this session's participation when the manager's *already bound*
+command could not produce a usable result. That variant requires the
+real =:review/command-id= referenced by this message contract; it
+must not fabricate one to describe failure before command allocation.
+If an earlier acquisition or entry admission fails before a command
+is allocated, the session needs an independently authored
+session-only closure/retirement alternative, or Finance must not
+have been admitted as a waiting participant. That closure has
+its own declared payload, causality and knowledge contract; it
+cannot masquerade as a command-specific disposition.
+=:review-unavailable= does not assert that the command never committed;
 unknown command resolution remains with its declared recovery owner.
 
 These are additional messages deliberately chosen by this session protocol.
@@ -2586,6 +2618,7 @@ specific theorem and environmental premises that their claims require.
 | A supposedly neutral review message hides =:review/result= or route-specific command metadata in its envelope while showing identical notification text | Do not claim notifier route ignorance; remove such fields through an authored neutral contract and qualify every remaining observable under the disclosure property |
 | Two receive alternatives have overlapping optional-field schemas and the runtime picks the first match | Reject ambiguous alternatives at the checked boundary; declaration order is not a semantic discriminator |
 | The manager's command is unresolved and a =:review-unavailable= message is treated as proof of rejection | Preserve unknown-incorporation reconciliation and its owner; unavailable is not uncommitted |
+| Finance is already waiting, but the manager fails before C2 is allocated and sends =:review-unavailable= with a made-up command id | Reject invented command correlation; use a declared session-only closure or do not enter the waiting session |
 | A finite structural check finds some terminal path and claims Finance always completes | Keep liveness conditional on required delivery, scheduling and actor-action premises; terminal reachability is insufficient |
 | A concrete replay succeeds and its result is labeled universal projection refinement | Retain witness-scoped evidence; universal safety, progress and secrecy require their separately stated assurance |
 
@@ -2598,8 +2631,12 @@ Global communication and physical transport have different granularity. A
 global =:communicate= describes the semantic transfer under its message contract;
 the local plans expose sending and admitted receipt separately. The realization
 relation identifies which concrete event establishes receipt and receiver
-knowledge. A send callback may mean enqueued or accepted by a transport, not
-delivered to the peer. It must not establish the stronger event by implication.
+knowledge. A local =:complete-send= boundary may permit the sender to
+finish without waiting for the peer, but semantic communication has
+not thereby occurred: its realization witness is the admitted receiver
+consumption of that same message occurrence. A send callback may mean
+enqueued or accepted by a transport, not delivered to the peer. It must
+not establish the stronger event by implication.
 Nor does acceptance by a receiving transport alone establish that the correct
 role-local machine admitted and consumed the message. The realization relation
 identifies the admissible receiver event, its actual message origin, and the
@@ -2616,6 +2653,14 @@ or explicitly establishes a new occurrence under the applicable admission rule.
 A timeout establishes that a deadline elapsed locally; it does not prove
 non-delivery, remote rejection, non-incorporation, or peer termination.
 The receiver's silence is not evidence that it chose an alternate branch.
+A sent closure/disposition message is likewise not an actual consumed
+closure. Where a participant terminates locally after sending, the
+global terminal claim still accounts for the receiver's required
+communication and subsequent effects, or an authored terminal/handoff
+alternative that explicitly owns the undelivered obligation. The
+terminal relation must not manufacture the missing receiver event,
+assume fair delivery without a premise, or erase an outstanding
+durable effect because its initiating process has retired.
 
 Correlation binds the message occurrence to its admitted conversation, operation,
 participants, and semantic subject as required. Command, execution, transport,
@@ -2723,6 +2768,7 @@ remains visible in the result.
 | Apparent shortcut | Required admission or evidence |
 |-------------------+--------------------------------|
 | A send adapter reports successful enqueue and the sender records peer receipt | Preserve transport completion only; require an admitted receiver consumption event for semantic receipt |
+| A sender completes a required closure send and returns locally while the receiver remains waiting | Do not report the authored global terminal from the sender's local completion; require actual receive or separately justified terminal recovery/handoff |
 | A proxy acknowledges receipt and the application treats the payload as installed in a browser | Require the separate installation/adoption contract; transport receipt is not UI adoption |
 | A message from untrusted first contact contains a plausible session id | Establish routing, origin and scope before binding the new correlation value |
 | A dropped message times out and the sender declares the remote authoritative effect rejected | Preserve uncertainty and original command reconciliation; local timeout does not prove non-incorporation |
@@ -3831,6 +3877,9 @@ realizations. Each case remains a mandatory conformance obligation:
 | A result-bearing notifier message contains an authorized =:review/result= but the proof treats it as a neutral message because the displayed notice is identical | Keep the notifier's actual communicated knowledge in the property; reject the unjustified privacy/equivalence claim or admit an independently checked neutral protocol |
 | An authored invocation projects an authority-owned result directly into the caller without an admitted transfer or observation | Reject the unearned caller knowledge; preserve the authority event and establish the actual declared return path |
 | A browser's successful HTTP response is recorded as a trusted authority operation solely because the helper named it =:authoritative= | Reject incorrect semantic owner and origin; require the installed trusted authoritative binding and command-specific result |
+| A recorded/no-notification receiver chooses the variant from missing optional result keys instead of validating the declared tag | Require disjoint literal discriminators and closed variant schemas, or reject ambiguous incoming messages |
+| A command-bound =:review-unavailable= message names a fabricated command when pre-command acquisition failed | Reject false command correlation and require authored session-only retirement or a protocol without the waiting participant |
+| The sender locally completes a required no-notification disposition and the global outcome is marked complete before receiver consumption or permitted durable handoff | Reject unsupported global termination while preserving allowed local completion and any explicit recovery obligation |
 | The first projected role completes, but a required receiver/effect remains outstanding and the proof reports global terminal completion | Require terminal compatibility and disposition of required effects or durable handoffs; local completion is not global termination |
 | Role must wait in one branch and return in another | Require a distinguishing path or an explicit conditional-participation contract |
 | Unrelated authoritative read follows a foreign commit | Do not discharge a command-specific causal dependency |
@@ -3917,6 +3966,8 @@ every application author to implement their own formal toolchain.
 | Two remote branches have equivalent authorized local behavior | Project the legal local continuation without requiring an unnecessary discriminator or revealing private global values |
 | An application chooses either a result-bearing or a truly neutral notifier contract for the same manager decision | Admit the chosen protocol with its actual knowledge, authorization, source evidence and disclosure policy; do not force all apps to reveal the branch or to hide it |
 | A manager's declared invocation elaborates through a trusted authority role and a correlated result acquisition | Admit the checked expansion and its actual participant-message or environment-observation path without inventing an extra transport message or promoting HTTP success to incorporation |
+| A tagged result-bearing or no-notification message uses a checked closed discriminator and sender/receiver source correlation | Admit both unambiguous variants under their disclosure and knowledge contracts, including permitted session-only closure before a command is allocated |
+| A sender finishes a local send while the recipient is still processing a required message | Permit local completion and independent receiver progress without claiming the global terminal until its declared communication/effect or recovery obligations are satisfied |
 | A declared open extension carries nonsemantic adapter data | Permit the extension under its contract while maintaining semantic payload closure |
 | A trusted operation is retried compatibly after its state has advanced | Return the permitted recorded outcome under current disclosure rules without attempting a second incorporation |
 | A valid projected schedule reorders independent hidden steps | Permit the supported partial order while preserving required causal and observable relations |
