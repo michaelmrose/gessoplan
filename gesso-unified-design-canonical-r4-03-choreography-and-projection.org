@@ -1875,6 +1875,14 @@ larger semantic interface:
 | Authority/operation contract | The trusted boundary permits this operation under current premises |
 | Choreographic admissibility | This local action and continuation obey the distributed specification |
 
+These are independent, composable judgments, not a mandatory sequence of
+runtime calls or a ladder in which passing one automatically proves the next.
+A supported static theorem about a schema may discharge an identified
+shape-related premise; a runtime validator enforces a shape-related premise
+for a particular admitted value. Neither conclusion entails the other
+semantic judgments. Each stronger claim needs its own applicable
+construction, proof, trusted admission, or explicit open premise.
+
 A success at one layer cannot be silently promoted into a stronger proposition
 owned by a later layer.
 
@@ -1888,12 +1896,24 @@ not whether the physical carrier is a record or a map.
 
 A discriminator such as =:type :verified= is therefore useful only as data unless
 the supported API also establishes why callers are entitled to rely on that
-category.
+category. A trusted semantic category is established by an admitted producer,
+derivation or authority-bound construction and is usable only under the
+subject, scope, issuer, version and consumer constraints of that judgment.
+A caller-created lookalike must not be promoted into the same judgment by
+deserialization, rewrapping or matching a registry key. This does not require
+a special physical wrapper for every value: ordinary maps remain valid
+carriers when the trusted construction and evidence remain enforceable.
 
 *** Closed value boundaries are the default
 
-Where data crosses a semantic boundary, the declared schema should normally
-describe a closed payload.
+Where data crosses a semantic boundary, the declared schema normally
+describes a closed payload. Closedness is an admission property of the
+effective boundary contract, not a comment attached to an example map.
+It applies to the semantic fields that the receiver is permitted to
+interpret, including nested declared structures where their contract is
+closed. The source-owned schema and its admitted version, optional fields,
+variants and extension points determine the accepted semantic vocabulary;
+the sender may not select a weaker schema by supplying its name.
 
 Closedness is especially important for:
 
@@ -1908,18 +1928,57 @@ An open map is not harmless merely because consumers ignore unknown keys.
 Unexpected fields can become an accidental covert semantic channel when later
 code begins to read them.
 
-When an application genuinely needs an open payload, that must be explicit and
-its semantic treatment visible to verification and diagnostics. Transporting
-opaque extension data need not grant it first-class knowledge status. If a
-program wishes to branch on an extension field or consume it as authority,
-correlation, or an operation input, that use requires a declared contract and
-the appropriate admission.
+When an application genuinely needs an open payload, that must be explicit
+for the particular boundary, and its semantic treatment must be visible
+to verification and diagnostics. Merely permitting extra physical fields
+does not extend the machine's semantic payload or give a receiver new
+knowledge. An explicitly open transport envelope may retain undeclared
+adapter data without entering it into role-local fact storage, deterministic
+semantic history, branch decisions, operation arguments, authorization,
+semantic correlation, or proof conclusions.
+
+If an extension field is to acquire any such semantic role, its source-owned
+contract, required shape, knowledge/provenance path, disclosure restrictions,
+and compatibility with existing consumers must be admitted. A planned
+extension cannot retroactively reinterpret unknown bytes under an old
+closed semantic contract. Physical routing or telemetry may use separate
+admitted transport metadata rules; those rules do not grant domain authority.
 
 Semantic payload closure is distinct from rejecting every byte of physical
-transport metadata. The decoder may separate declared payload from transport
-metadata through an explicit contract. It must reject undeclared semantic
-fields at a closed boundary or keep explicitly permitted nonsemantic data
-outside the semantic context; it must not silently merge it into that context.
+transport metadata. The decoder separates declared semantic payload from
+permitted transport metadata through an explicit, qualified contract.
+The consumer enforces the closedness of the *decoded semantic fields*, not
+merely the spelling of their wire representation. Decoding and normalization
+must not allow incompatible encodings, duplicate physical fields, alias
+collisions or coercions to create an ambiguous or attacker-chosen semantic
+binding; an ambiguity affecting the admitted contract is rejected rather
+than silently resolved into new authority.
+
+At a closed semantic boundary, undeclared semantic fields are rejected.
+At an explicitly open physical boundary, permitted undeclared data stays
+outside semantic context unless separately admitted. This applies whether
+the data arrives through an HTTP command, participant message, event,
+FX callback, authoritative projection, settlement or reused artifact.
+Both admission and later consumers preserve the same division; a generic
+map merge, cache retrieval or serialization round trip cannot silently
+make excluded fields usable semantic inputs.
+
+*** Shape-and-closure acceptance counterexamples
+
+| Apparent success | Required admission or rejection |
+|------------------+---------------------------------|
+| A browser posts ={:type :verified :basis B}= matching a registered Malli schema | Validate its shape if applicable, but require trusted issuer, scope and observation evidence before treating B as authoritative |
+| A different principal copies another actor's correctly shaped command envelope | Reject unauthorized use despite field-level equality; schema success does not transfer the original caller binding |
+| A receive contract is closed, but the sender adds an undeclared =:admin?= field | Reject the semantic extra field; downstream consumers must not interpret or retain it as role knowledge |
+| A message expressly allows open physical data with an undeclared =:hint= | Preserve the allowed adapter field only outside the semantic machine; it grants no role-local fact, branch, or operation input |
+| A newer consumer starts branching on the old open =:hint= field without changing its admitted interface | Require a new checked semantic contract and knowledge/disclosure path; physical carriage is not retroactive admission |
+| A wire decoder maps both ="request-id"= and =:request/id= into one semantic key with conflicting values | Reject an ambiguous decoded binding; do not let key aliasing or last-write-wins select an authority-relevant value |
+| An untrusted command includes a schema/registry selector that relaxes required or closed fields | Enforce the receiver's admitted contract; an attacker-selected label does not determine the semantic schema |
+| A value passes Malli validation, but a custom predicate has no supported semantics for the chosen proof profile | Retain the predicate's premise or reject unsupported proof admission; runtime shape acceptance is not a theorem |
+| A shared cache or callback returns a map containing valid declared fields plus stale foreign-scope metadata | Recheck the consuming scope and boundary; closure and field shape do not establish identity or permitted reuse |
+
+These cases constrain the finished system without prescribing a single
+transport decoder, container representation, or proof backend.
 
 *** Runtime validation preserves static premises
 
