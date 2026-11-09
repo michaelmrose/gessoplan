@@ -1,0 +1,78 @@
+** Malli as the value-schema substrate
+:PROPERTIES:
+:CUSTOM_ID: req-value-schema-boundaries
+:END:
+
+Malli should provide the ordinary value-shape layer underneath choreographic
+types.
+
+A choreographic value may conceptually carry:
+
+#+begin_src clojure
+{:schema ClaimCommand
+ :known-by #{:helper :request-authority}
+ :agreement #{#{:helper :request-authority}}
+ :provenance :communicated}
+#+end_src
+
+or:
+
+#+begin_src clojure
+{:schema RequestProjection
+ :known-by #{:helper}
+ :provenance :authoritative
+ :basis AuthoritativeBasis}
+#+end_src
+
+Malli is responsible for questions such as:
+
+- is this a UUID?
+- does this map contain the required keys?
+- is this settlement one of the allowed values?
+- does this intermediate machine context have the promised shape?
+
+Malli is not responsible for questions such as:
+
+- did this value come from a trusted actor rather than merely having a valid
+  shape?
+- may this helper claim this Request?
+- is this Organization currently open?
+- does this principal have authority?
+- is this stale basis still semantically compatible with the operation?
+- did communication actually establish knowledge?
+- did an authoritative observation justify the actor's knowledge?
+- does this branch satisfy the global choreography?
+
+Those remain domain, FX, Choreo, or authority/progression concerns.
+
+Runtime validators should be compiled and reused for the admitted schema and
+registry definitions whose identities they reference. If those bindings belong
+to an admitted assembly generation, validator use must remain coherent with
+that assembly generation. A relevant schema or registry change requires an
+appropriately recompiled or independently validated compatible validator; an
+old compiled validator must not silently enforce an obsolete contract.
+Validator correspondence does not depend on a browser execution identity or
+resource-instance counter.
+
+The default design should validate important runtime boundaries in production,
+including:
+
+- externally supplied choreography inputs;
+- message payloads;
+- authoritative observation/projection envelopes where they cross a runtime
+  boundary;
+- FX input/output boundaries;
+- projected-machine state transitions;
+- settlements;
+- provisional/canonical protocol payloads.
+
+The successful path should use compiled boolean validators. Rich Malli
+explanations should be constructed only on failure.
+
+The default should be to keep these validations enabled in production and
+optimize only when measurement shows a real hot path. Measurement alone does
+not justify removing enforcement of a required premise. An optimization must
+preserve the contract, for example by avoiding redundant checks after a trusted
+admission boundary while retaining checks where untrusted or dynamic values
+can enter.
+

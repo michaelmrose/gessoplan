@@ -1,0 +1,134 @@
+** Projection and branch knowledge
+:PROPERTIES:
+:CUSTOM_ID: req-projection-branch-knowledge
+:END:
+
+Projection creates a local machine for each role.
+
+Projection must preserve whatever mechanism is required to justify local
+behavior.
+
+Sometimes that mechanism is communication.
+
+Sometimes the actor already has justified entry knowledge.
+
+Sometimes the relevant fact is learned from authority outside the current
+execution and enters a later choreography as authoritative input knowledge.
+
+The projector/verifier must therefore reason in terms of knowledge requirements,
+not merely message presence.
+
+A role may branch only when it knows enough information to choose the branch.
+
+The verifier should use behavior-sensitive choice analysis:
+
+- if a role behaves differently between two branches, it must know the
+  discriminator or an equivalent fact before its behavior diverges;
+- the required knowledge may be justified through communication, authoritative
+  observation, input knowledge, declared derivation, or explicit assertion;
+- if its behavior is equivalent across the branches, it does not need to learn
+  the choice merely because it is syntactically mentioned.
+
+This is intentionally more precise than a simple "every role mentioned in either
+branch must know the condition" rule.
+
+For example:
+
+If authority chooses an approved or rejected continuation and the helper's
+behavior differs, the helper needs evidence distinguishing those continuations
+before it performs that differing behavior.
+
+That requirement does not imply a dedicated authority-to-helper choreography
+message if the helper can instead obtain the required approval fact through a
+declared, authorized authoritative observation that satisfies the same branch
+obligation.
+
+The substitution must preserve subject, scope, provenance, and the relationship
+to the decision being continued. Reading a currently approved Request does not
+necessarily establish which earlier command was approved or which historical
+branch was selected. If later model changes can erase or supersede the needed
+fact, the protocol needs a suitable retained outcome, receipt, communication,
+or different continuation contract. The projector must not invent that history
+or treat an arbitrary later read as equivalent evidence.
+
+Messages should be closed by default.
+
+A message contract declares the fields that may cross the boundary. Arbitrary
+extra fields should not be merged into choreography context.
+
+An explicit =:open-payload? true= may exist for cases that genuinely require an
+open payload, but closed contracts are the default.
+
+Within the admitted choreography semantics, a sender must have justified
+knowledge of every semantic fact it transmits. Receipt from an adversarial
+participant still requires the trusted-boundary treatment defined in
+[[#req-knowledge-provenance][the knowledge model]].
+
+Receiving a message should only introduce the declared communicated values into
+the receiving context.
+
+Projection must not erase communication that is genuinely required to justify
+knowledge.
+
+Conversely, projection should not manufacture communication merely because the
+global choreography contains a choice when the target role's behavior does not
+depend on it or its knowledge is established through another valid path.
+
+*** Projection is a semantic compilation boundary
+
+Projection is not a convenience transformation that happens to produce smaller
+maps.
+
+It is the boundary at which the global specification is turned into the local
+information and actions available to a role.
+
+A correct projector must therefore preserve every fact required to justify
+local behavior, including when relevant:
+
+- message schemas;
+- correlation identity;
+- entry knowledge;
+- knowledge-producing communication;
+- authoritative-observation requirements;
+- branch discriminators;
+- provenance requirements;
+- resource ownership;
+- failure/terminal structure;
+- executable guards required by local semantics.
+
+At the same time, it should omit global facts that the role neither knows nor
+needs.
+
+The target is neither "copy the whole global machine to everyone" nor "erase
+everything inconvenient."  It is a justified local program.
+
+*** Projection cannot create knowledge
+
+A projector may rearrange or encode information justified by the global
+choreography.  It may not manufacture a fact merely because the local machine
+would be easier to implement if the fact were present.
+
+Bad:
+
+Only authority knows =:approved?=, but the browser projection contains it
+without any admitted input, communication, or observation. This projection
+manufactures knowledge and must be rejected.
+
+Good:
+
+Authority communicates the permitted command outcome, or the browser obtains
+an authorized observation establishing the required proposition. The local
+branch becomes admissible after that declared knowledge path succeeds.
+
+The same principle applies to provenance.  Projected data cannot silently
+upgrade:
+
+| Supplied support | Unjustified upgrade |
+|------------------+---------------------|
+| Asserted premise | Mechanically derived proposition |
+| Communicated value | Authoritative truth without a supporting authority contract |
+| Client-supplied principal id | Trusted authenticated principal binding |
+
+Projection preserves or weakens claims according to explicit semantics; it does
+not strengthen them by serialization.
+

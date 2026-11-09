@@ -1,0 +1,45 @@
+*** Durable model state is the normal rendezvous point
+
+For long workflows, authoritative state provides a stable rendezvous point
+between actors who were never concurrently connected.
+
+A later actor may know what happened because authority establishes:
+
+#+begin_example
+:approval/pending
+:approval/approved
+:request/claimed
+:request/done
+#+end_example
+
+not because it receives a packet from the actor who caused that state.
+
+This follows [[#req-authoritative-observation][Part II's authoritative observation
+model]]: observation is a first-class knowledge path.
+
+Durable pending state is not itself a progress guarantee. The application must
+provide the declared opportunity for an eligible actor to discover and act on
+it, or state the environmental premises on which progress depends. Where loss
+of a required participant can strand the workflow, the runtime-condition and
+recovery requirements from Part I apply. Any lease, reassignment, cancellation,
+or other successor policy remains model-owned.
+
+*** Deployment compatibility remains explicit
+
+A durable business fact may outlive the executable plan that originally
+produced it.
+
+That is normal.
+
+What cannot be assumed is that a suspended *runtime execution* from an older
+deployment remains compatible forever.
+
+The later stale-plan/recovery design therefore treats durable model truth and
+runtime-plan compatibility as separate dimensions.
+
+A deployment may invalidate continuation of an old projection while leaving the
+authoritative business state entirely valid. If a deployment also changes the
+meaning or representation of persisted domain state, the model needs its own
+compatible interpretation or migration. Restarting a current browser plan does
+not perform that domain migration by implication.
+

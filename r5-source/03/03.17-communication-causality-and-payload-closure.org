@@ -1,0 +1,84 @@
+*** Communication, causality, and completion
+
+Global communication and physical transport have different granularity. A
+global =:communicate= describes the semantic transfer under its message contract;
+the local plans expose sending and admitted receipt separately. The realization
+relation identifies which concrete event establishes receipt and receiver
+knowledge. A send callback may mean enqueued or accepted by a transport, not
+delivered to the peer. It must not establish the stronger event by implication.
+
+The channel contract states relevant ordering, loss, duplication, replay,
+correlation, and disclosure semantics. Where loss is possible, a required
+receive needs an appropriate retry, timeout, durable handoff, or other recovery
+path, with any eventual-delivery claim stated as a premise. A timeout establishes
+that a deadline elapsed locally; it does not prove that a remote effect failed.
+
+Correlation binds the message occurrence to its admitted conversation, operation,
+participants, and semantic subject as required. Command, execution, transport,
+and message-occurrence identities are distinct unless the contract deliberately
+identifies particular instances. Correlation fields learned from the first
+message still need an admitted routing/source scope; accepting an unknown id
+does not let an arbitrary message choose which authority or session it belongs to.
+
+Duplicate handling is explicit. Reaccepting a transport delivery must not repeat
+an already consumed local transition or authoritative effect unless the declared
+repeat semantics permit it. Rejecting a stale private callback does not erase
+independently usable command-outcome evidence; reconciliation can admit it under
+its own owner and disclosure contract.
+
+Projection also preserves causal dependencies across foreign authoritative
+steps. If role B may act only after command C has a recorded successful result,
+B needs a message or authoritative observation establishing that exact premise
+before acting. Merely traversing a foreign authoritative node in the compiler
+does not establish runtime evidence at B.
+
+A completion descriptor naming an authority and basis is insufficient by itself.
+An admitted read of an unrelated card, a read before C became visible, or a
+current state compatible with several commands cannot discharge C's dependency.
+The witness must bind the predecessor, subject, required result, scope, and
+relevant progression. Where the continuation requires only current eligibility
+rather than C's historical success, the global contract must state that weaker,
+different premise.
+
+For a wait with several alternatives, dependency discharge is edge-specific.
+An ordinary timeout or cancellation alternative does not inherit the evidence
+provided by a successful authoritative-observation alternative. A compact plan
+must retain that distinction or reject the unsupported projection, not discard
+the dependency because one edge could establish it.
+
+This rule does not impose a global lockstep order on independent work. If an
+abstraction permits reordering independent local actions, its dependency and
+effect contracts must justify that commutation. If the global meaning really
+requires receipt before a sender's later effect, the protocol needs evidence
+such as a declared acknowledgement; local send completion is insufficient.
+
+The refinement claim names its observation alphabet. A coarse distributed trace
+may hide local calculations or reads, but that does not prove local branch
+correctness, confidentiality, resource safety, or presentation behavior. Those
+properties require their own retained observations and judgments. Choosing an
+alphabet that hides all useful behavior cannot establish application acceptance.
+
+*** Message payload closure protects knowledge boundaries
+
+Closed messages are not only a schema preference.  They are a knowledge-flow
+boundary.
+
+If a message declares:
+
+#+begin_src clojure
+{:request-id UUID
+ :outcome ClaimOutcome}
+#+end_src
+
+Here =:request-id= identifies the domain Request involved in the Claim outcome;
+it is not =:transport-request-id=, which identifies a transport attempt.
+Receiving this message may establish only the declared communicated facts.
+
+The receiver does not acquire arbitrary sender context, and the implementation
+must not merge unknown payload keys into machine context by convenience.
+
+An explicitly open payload must follow the extension-data contract from the
+[[#req-value-schema-boundaries][value-schema boundary]]. Openness alone does not
+grant undeclared fields semantic knowledge status or permission to influence a
+branch. Any weaker guarantee actually selected remains visible in the result.
+

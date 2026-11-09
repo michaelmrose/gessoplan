@@ -1,0 +1,111 @@
+*** Full-language computations retain their contracts
+
+An action reference binds a semantic interface and its concrete realization.
+The interface distinguishes the role that executes it, required scoped inputs,
+declared outputs, effects, failure/uncertainty alternatives, resource use, and
+applicable termination or progress assumptions. The implementation may be an
+ordinary Clojure function, a supported CLJC/CLJS realization, or a declared
+external effect. JVM code is not automatically executable in a browser; target
+placement and communication remain checked obligations.
+
+For inspectable typed expressions, elaboration derives required inputs and
+produced bindings. For opaque code, the declared footprint and functional
+contract remain explicit premises unless another mechanism establishes them.
+The framework should derive ordinary plumbing while avoiding duplicate manual
+inventories; it must not claim to discover all effects of unrestricted Clojure.
+
+The executable machine yields a declared effect request and later admits its
+completion or failure. It does not run arbitrary application functions while
+canonicalizing a declaration, checking its shape, or computing an artifact
+fingerprint. Callback execution belongs to an explicit realization boundary.
+
+Validating an output and recording its dependency list does not prove that the
+implementation calculated the promised result. Runtime validation, instance
+observations, checked derivations, and asserted contracts retain the evidence
+classes established in Parts I and II. A named local result cannot become
+authoritative solely because the caller supplied an =:authoritative= label.
+
+Nontermination, blocking, nondeterminism, and external effects are expressible
+but affect the available claims. If a required continuation depends on such an
+action finishing, the plan needs an applicable completion premise, enforceable
+bound, isolation/cancellation contract, or recovery path. A timeout callback in
+the same blocked event loop does not by itself enforce a bound on synchronous
+code. No universal totality proof is required for the host language.
+
+*** Definite values, knowledge, and provenance are separate analyses
+
+The abstract global value store describes values in the specification; it is
+not a shared runtime context and does not make those values known to every role.
+Entry contracts establish role-local facts with their actual provenance. A
+low-level test fixture that gives all roles the same input set is not the
+ordinary application entry policy.
+
+The verifier computes at least these distinct judgments:
+
+| Analysis | Question |
+|----------+----------|
+| Value availability | Is the required binding defined on every applicable path? |
+| Role-local knowledge | Does the consuming role have a permitted knowledge path for that binding? |
+| Provenance and support | Do its subject, scope, observation, and retained premises justify this use? |
+| Optional/presence refinement | Has this path established presence and the required variant before use? |
+| Causal eligibility | Has the predecessor observation or result required by this continuation been established? |
+
+A forward must-analysis is a useful baseline. At a join, unconditional facts
+must be justified on every reachable incoming path. Each environment-event or
+receive alternative contributes only its own established fields. Optional fields
+are not definitely present merely because one alternative can supply them.
+Path-sensitive refinements may establish stronger facts on selected edges.
+
+Agreement on a value at a join does not erase differing assumptions. The result
+retains the appropriate support for each path, or a conservative combined
+premise, without upgrading an asserted path to a proved one. Unreachable edges
+may be excluded only under the checker mechanism that establishes their
+unreachability; a branch being unlikely is insufficient.
+
+Bindings have explicit version and scope semantics. An implementation may use
+fresh immutable binding identities or a checked replacement discipline. Reusing
+one context key for a new value invalidates support that depended on the old
+binding; it does not silently inherit the old value's authoritative status.
+Omitting an optional field on a later receive must not accidentally reuse an
+earlier message's value unless the contract deliberately preserves that binding.
+Equal status values for different Requests are still different scoped facts.
+
+Required transmitted fields, and every optional field actually sent, must be
+known to the sender with the declared meaning. Static analysis establishes what
+it can; runtime construction checks the actual payload and remaining premises.
+An optional field is not an exception to knowledge or disclosure requirements.
+
+Loops require analysis to a sound fixed point over the chosen abstract domain.
+A bounded analysis reports its bound and unresolved obligations; resource
+exhaustion is not successful verification. Graph reachability of a terminal
+establishes neither that all executions terminate nor that an environment event
+will occur. Recursion, parallel composition, or another extension must carry
+explicit semantics and a checking contract; unsupported syntax cannot become
+an unchecked alternate path. Full-language work remains available behind the
+declared action boundary without pretending the checker understands it all.
+
+*** Executable plans and explanation artifacts
+
+Projection emits one canonical executable plan per role and an optional
+explanation artifact tied to that exact plan. A plan may use compact,
+non-negative integer state locators. Those locators are local to that artifact,
+not semantic operation identities and not stable across rebuilds.
+
+The executable plan retains every runtime-semantic guard, contract reference,
+binding, correlation requirement, event distinction, and outcome needed to run
+the admitted transition. Diagnostic source coordinates and proof derivations
+may live in a sidecar. Stripping a field merely because it was introduced by
+verification is invalid if runtime execution still needs its meaning.
+
+The exact plan identity binds the versioned canonical representation and all
+relevant contract identities. The explanation artifact maps exact emitted
+coordinates to source states and judgments under that identity. A compatible
+but different plan cannot inherit an old coordinate map as though it were exact.
+Compatibility for continuation remains a separate judgment.
+
+A plan-shaped map, a current version tag, and a dense locator range establish
+only their checked representation properties. They do not establish projection
+correctness, provenance, authorization, or host realization. Admission binds the
+generated artifact to the verified subject, selected assurance policy, admitted
+assembly, and concrete runtime contracts needed for the claimed use.
+

@@ -6,7 +6,7 @@ Usage:
     python3 script/assemble_r5.py --write
 
 The twelve published parts retain their established root filenames during
-R5 candidacy. Parts I and II have independently checkable sectional sources.
+R5 candidacy. Parts I, II, and III have independently checkable sectional sources.
 """
 from __future__ import annotations
 
@@ -42,9 +42,38 @@ SECTIONS_PART_TWO = (
     "02.12-agreement-frontiers.org",
 )
 SECOND_SOURCE_DIR = ROOT / "r5-source" / "02"
+THIRD_SOURCE_DIR = ROOT / "r5-source" / "03"
+SECTIONS_PART_THREE = (
+    "03.01-what-a-choreography-is.org",
+    "03.02-coordination-vocabulary.org",
+    "03.03-worked-expense-review.org",
+    "03.04-specification-and-physical-realization.org",
+    "03.05-partiality-realizability-and-early-errors.org",
+    "03.06-canonical-authoring-principle.org",
+    "03.07-choreographic-operation-types.org",
+    "03.08-operation-identity-and-boundary-categories.org",
+    "03.09-operation-interface-and-external-commitments.org",
+    "03.10-operation-admission-and-diagnostics.org",
+    "03.11-full-language-knowledge-and-plans.org",
+    "03.12-malli-value-schemas.org",
+    "03.13-schema-shape-and-closure.org",
+    "03.14-schema-runtime-validation-and-compatibility.org",
+    "03.15-projection-and-knowledge.org",
+    "03.16-behavior-sensitive-branch-choice.org",
+    "03.17-communication-causality-and-payload-closure.org",
+    "03.18-necessary-communication-versus-reread.org",
+    "03.19-durable-request-publication.org",
+    "03.20-ephemeral-typing-reports.org",
+    "03.21-projected-guards-and-failure-diagnostics.org",
+    "03.22-long-workflows-and-durable-waiting.org",
+    "03.23-later-executions-and-expense-history.org",
+    "03.24-durable-rendezvous-and-deployment.org",
+    "03.25-semantic-acceptance-obligations.org",
+)
 
 FIRST_PART = ROOT / "gesso-unified-design-canonical-r4-01-foundations.org"
 SECOND_PART = ROOT / "gesso-unified-design-canonical-r4-02-semantic-model.org"
+THIRD_PART = ROOT / "gesso-unified-design-canonical-r4-03-choreography-and-projection.org"
 OUTPUT = ROOT / "output" / "gesso-plan-v5.org"
 
 
@@ -64,13 +93,21 @@ def part_two() -> str:
     return text
 
 
-def whole_plan(first: str, second: str) -> str:
+def part_three() -> str:
+    pieces = [(THIRD_SOURCE_DIR / name).read_bytes() for name in SECTIONS_PART_THREE]
+    text = b"".join(pieces).decode("utf-8")
+    if text.count("* Part III — Choreography and projection\n") != 1:
+        raise SystemExit("Expected exactly one Part III root heading")
+    return text
+
+
+def whole_plan(first: str, second: str, third: str) -> str:
     remaining = [
         (ROOT / f"gesso-unified-design-canonical-r4-{i:02d}-"
          f"{NAMES[i]}.org").read_text(encoding="utf-8")
-        for i in range(3, 13)
+        for i in range(4, 13)
     ]
-    return first + second + "".join(remaining)
+    return first + second + third + "".join(remaining)
 
 
 NAMES = {
@@ -96,8 +133,10 @@ def main() -> None:
     args = parser.parse_args()
     first = part_one()
     second = part_two()
+    third = part_three()
     if args.check:
-        for part, assembled in ((FIRST_PART, first), (SECOND_PART, second)):
+        for part, assembled in ((FIRST_PART, first), (SECOND_PART, second),
+                                (THIRD_PART, third)):
             if part.read_bytes() != assembled.encode("utf-8"):
                 raise SystemExit(
                     f"{part.relative_to(ROOT)} differs from its numbered source"
@@ -106,10 +145,12 @@ def main() -> None:
         return
     FIRST_PART.write_bytes(first.encode("utf-8"))
     SECOND_PART.write_bytes(second.encode("utf-8"))
+    THIRD_PART.write_bytes(third.encode("utf-8"))
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
-    OUTPUT.write_text(whole_plan(first, second), encoding="utf-8")
+    OUTPUT.write_text(whole_plan(first, second, third), encoding="utf-8")
     print(f"Updated {FIRST_PART.relative_to(ROOT)}, "
-          f"{SECOND_PART.relative_to(ROOT)}, and {OUTPUT.relative_to(ROOT)}")
+          f"{SECOND_PART.relative_to(ROOT)}, {THIRD_PART.relative_to(ROOT)}, "
+          f"and {OUTPUT.relative_to(ROOT)}")
 
 
 if __name__ == "__main__":

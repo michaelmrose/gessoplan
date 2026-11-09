@@ -1,0 +1,68 @@
+** Long logical workflows and short runtime executions
+:PROPERTIES:
+:CUSTOM_ID: req-durable-workflow-boundary
+:END:
+
+A choreography may describe a logical workflow that spans human-scale time.
+
+That does not imply that one Aleph node should retain a suspended server-side
+machine in process memory for hours or days.
+
+For example, a business flow may conceptually involve:
+
+An approval workflow requests approval, waits under its domain policy, and
+continues when an admitted decision establishes the next condition.
+
+A robust HumanHelp realization may instead be:
+
+| Period | Short execution and durable connection |
+|--------+----------------------------------------|
+| Request submission | E1 records pending approval and settles or hands off its own command |
+| Human-scale delay | Pending authority remains discoverable under the model's contract |
+| Approver action | E2 observes current premises and records a permitted decision |
+| Later requester action | A fresh observation supplies entry knowledge for E3 if further work is needed |
+
+The durable wait lives in model state.
+
+Subject to the authoritative store's declared durability and recovery
+assumptions, the durable workflow fact can survive:
+
+- web-node failure;
+- deployment;
+- load-balancer rerouting;
+- client disconnect;
+- browser suspension;
+- long offline periods.
+
+The ordinary Gesso choreography contract does not promise durable persistence
+of arbitrary suspended server-local executions.
+
+If a future application genuinely needs durable workflow-machine continuations,
+that should be an explicit opt-in capability with its own persistence, ownership,
+versioning, and recovery semantics.
+
+It must not silently become a requirement of ordinary choreography.
+
+*** Durable waiting belongs in authoritative state by default
+
+Human-scale waiting is normally represented as durable domain state rather than
+a suspended in-memory choreography execution.
+
+This has several consequences.
+
+First, subject to those persistence and compatibility assumptions, the durable
+workflow meaning can survive:
+
+- deployment;
+- process loss;
+- browser suspension;
+- load-balancer rerouting;
+- reconnect;
+- long periods without any participant online.
+
+Second, later actors can acquire the relevant facts by authoritative
+observation rather than requiring the original process to resume.
+
+Third, the framework avoids making one runtime's memory an accidental source of
+business truth.
+

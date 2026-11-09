@@ -1,0 +1,98 @@
+*** A concrete coordination vocabulary
+
+The canonical global representation is a versioned graph of typed semantic
+states. States have stable source identities for explanation, successors, and
+the contracts their transitions use. Semantic keys and options are closed for
+the selected representation version: an unknown opcode, misspelled required
+field, unsupported option, or unresolved contract reference produces a specific
+construction failure. An explicit nonsemantic metadata/extension area may be
+retained, but its contents cannot affect execution or strengthen a claim without
+a declared interpretation. A supported baseline has six node kinds:
+
+| Global node | Meaning | Required contract |
+|-------------+---------+-------------------|
+| =:local= | Work at one role | Named implementation, placement, inputs, outputs, effects, failure and completion behavior |
+| =:authoritative= | Result of a public authoritative operation at its trusted owner | Operation interface, caller/authority binding, result alternatives, and realization premises |
+| =:branch= | Selection using an already established local value | Owning role, typed selector, exhaustive supported alternatives or an explicit unmatched-value failure |
+| =:communicate= | One semantic transfer between roles | Sender, receiver, payload, correlation, disclosure, and channel contract |
+| =:await= | A role admits an event from its environment | Registered source, event alternatives, owner, payload, and provenance obligations |
+| =:return= | Declared global terminal disposition | Meaning of completion, remaining obligations, and any permitted handoff |
+
+The corresponding role-local vocabulary includes =:send= and =:receive= for
+the two sides of communication, alongside local work, authoritative work,
+branching, environment waits, and local return. A participant message cannot
+satisfy an environment wait merely because its event keyword matches. An
+environment event likewise cannot impersonate a participant receive.
+
+Selectors distinguish missing bindings, present nil, and false according to the
+declared type. If nil is a supported member of that selector type, it needs an
+explicit alternative; it must not be conflated with an absent value. A target
+that cannot represent such a selector rejects the unsupported contract during
+construction rather than interpreting the value through generic truthiness.
+
+A local node is not permission to conceal a database write, outbound message,
+protected disclosure, or required resource transition. Its interface exposes
+effects that matter to the claimed behavior. A computation may be hidden in a
+particular distributed trace only when the trace abstraction permits it; it
+remains subject to local safety, resource, and implementation obligations.
+
+An authoritative result is not synonymous with a committed write. It may report
+rejection, a disclosed recorded outcome, or uncertainty under the operation's
+contract. The result's category and payload determine what the next state may
+conclude. Merely naming the state =:authoritative= establishes no runtime trust.
+
+An acquisition can be realized as a declared effect followed by an environment
+completion carrying an admitted authoritative observation. It need not be a new
+portable observation opcode, and it must not be mistaken for a new model
+mutation. The observation contract binds the authority, subject, query,
+projection, principal context, basis, and temporal meaning required by Part II.
+
+Higher-level constructs such as an operation invocation, authoritative
+acquisition, retry, resource scope, or a source-language conditional elaborate
+to these transitions or to an explicitly versioned extension with defined
+semantics. An invocation at a browser role does not relocate the authoritative
+operation into the browser: elaboration includes the declared request,
+trusted-side operation, and outcome-delivery boundary. A macro or helper must
+expose this expansion for inspection and checking.
+
+For example, this small graph classifies an already acquired review input. It
+does not itself perform an approval:
+
+#+begin_src clojure
+(def classify-review-graph
+  {:name :expense/classify-review
+   :initial :classify
+   :states
+   {:classify
+    {:op :local
+     :role :manager
+     :action :expense/classify-route
+     :requires #{:review/inputs}
+     :outputs #{:review/path}
+     :next :choose}
+    :choose
+    {:op :branch
+     :role :manager
+     :on :review/path
+     :cases {:finance :finance-required
+             :manager :manager-route}}
+    :finance-required
+    {:op :return :outcome :review/finance-required}
+    :manager-route
+    {:op :return :outcome :review/manager-route}}})
+#+end_src
+
+The operation entry binds =:review/inputs= to the manager's admitted observation.
+The action interface promises an output of type =[:enum :finance :manager]=
+under its typed policy or retained opaque contract. The branch consumes that
+output; it does not compute the policy or invent the selector. If the action
+can fail or yield a third alternative, its actual interface and graph must
+expose that path or the admitted outer failure contract must handle it. The
+constructor cannot accept a partial success-only graph as a totality proof.
+
+The sample spells out input/output sets to show the semantic representation.
+Authoring helpers derive them from inspectable expressions and operation
+interfaces where possible. An opaque action's declared boundary remains an
+explicit commitment. Source states such as =:classify= may become compact
+runtime locators; that encoding does not change these semantics.
+

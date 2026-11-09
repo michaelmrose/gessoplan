@@ -1,0 +1,111 @@
+*** Operation identity is semantic, not transport identity
+
+A choreographic operation has a stable semantic identity that is distinct from
+the mechanism used to invoke it.
+
+For example:
+
+#+begin_example
+:request/claim
+#+end_example
+
+is not synonymous with:
+
+#+begin_example
+POST /requests/123/claim
+#+end_example
+
+nor with:
+
+#+begin_example
+button id="claim-request"
+#+end_example
+
+nor with:
+
+#+begin_example
+browser plan index 17
+#+end_example
+
+The transport, view, and executable-plan coordinates are realizations of the
+semantic operation.  They may change across refactors or deployments without
+changing the operation's meaning, provided compatibility rules permit the
+change.
+
+This distinction is required so that application closure can later verify
+correspondence instead of mistaking physical equality for semantic identity.
+
+A stable operation name is also distinct from the normalized semantic identity
+of its contract. Keeping =:request/claim= unchanged while changing a relied-upon
+authority rule, input requirement, outcome, or postcondition does not preserve
+dependent validity merely because the name stayed the same. Conversely, a
+transport refactor need not change the semantic contract if its checked
+realization and compatibility obligations remain satisfied.
+
+*** Semantic categories at operation boundaries
+
+Operation APIs must preserve distinctions whose accidental substitution would
+violate a semantic invariant even when the underlying Clojure representations
+are identical or structurally compatible.
+
+Representative distinctions include:
+
+- =ObservedBasisClaim= versus trusted =AuthoritativeBasis=;
+- semantic =CommandId= versus runtime =ExecutionId=;
+- provisional versus authoritative observations;
+- raw declarations versus checker-admitted declarations;
+- raw certificate data versus checker-accepted certificate evidence.
+
+The requirement is semantic non-interchangeability through the supported API.
+The design does not mandate that every such category be implemented as a
+=defrecord=, Java class, wrapper object, or other nominal runtime type.  Permitted
+realizations include:
+
+- nominal or opaque host-language values;
+- smart constructors with inaccessible or conventionally private construction;
+- checker-produced admitted values;
+- explicit tagged data whose use is guarded by the appropriate admission path;
+- an existing Gesso representation that already prevents the accidental
+  substitution.
+
+The choice should be the smallest mechanism that makes the wrong ordinary call
+difficult and the resulting diagnostic precise.  A representation technique is
+not valuable merely because it looks more typed.
+
+Ordinary downstream application code should normally author domain values and
+semantic declarations, not manually wrap every UUID, basis token, command, or
+projection in framework ceremony.  Gesso should perform category establishment
+at elaboration, checking, authoritative acquisition, model, or runtime
+boundaries wherever it can derive the distinction itself.
+
+For example, a useful public failure is conceptually:
+
+#+begin_example
+boundary:                trusted claim preparation requiring an acquired basis
+requires:                AuthoritativeBasis for the declared scope
+received:                unadmitted ObservedBasisClaim
+missing step:            trusted authoritative acquisition / admission
+#+end_example
+
+rather than accepting the same-shaped value and relying on a comment to explain
+why the caller should not have done so. The diagnostic applies at the boundary
+that requires the acquired basis. A command intake may legitimately accept an
+=ObservedBasisClaim= as weaker context; it must not demand that the browser
+manufacture server-trusted authority before submitting a command.
+
+The category and admission rules are defined in
+[[#req-semantic-admission][Part II]]. When the supplied category cannot be
+established, diagnostics report an unknown or unadmitted value rather than
+trusting a client-supplied category label.
+
+A nominal host-language value also does not retain trusted status merely because
+it was serialized and reconstructed.  Crossing an adversarial wire boundary
+returns the value to an untrusted representation until the relevant verifier,
+authenticator, decoder, or trusted acquisition path re-establishes the stronger
+semantic category.
+
+This is primarily an accidental-misuse boundary inside cooperating application
+code.  It does not claim that deliberately hostile trusted host code is unable
+to bypass Gesso, import lower-level implementation namespaces, or directly use a
+database capability it already possesses.
+

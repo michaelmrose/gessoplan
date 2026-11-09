@@ -1,0 +1,114 @@
+*** Availability is not authorization
+
+An operation may be present in a model or choreography registry without being
+currently executable by a particular principal.
+
+Likewise, a prepared or bound operation may be rendered as an affordance without
+becoming durable authorization.
+
+These distinctions must remain explicit:
+
+| Established fact | What it does not establish by itself |
+|------------------+-------------------------------------|
+| Operation exists | Its use is valid at this choreography state |
+| Use is structurally valid at this state | The current principal is authorized now |
+| View renders an affordance | The browser has authority over protected state |
+
+The trusted side re-establishes dynamic authorization at execution and protects
+the relevant model premises at the authoritative transition boundary where
+intervening changes matter. A rendered affordance, a successful earlier check,
+and a valid operation contract do not reserve future eligibility.
+
+This separation lets Gesso reason strongly about operation identity and
+distributed protocol structure without pretending to statically prove current
+business facts that can change between render and commit.
+
+*** Malformed operation type versus wrong business policy
+
+The unified design distinguishes structural/type malformedness from product
+correctness.
+
+If a declaration says that =:request/status= is an enum and a rule attempts:
+
+#+begin_src clojure
+(< (:request/status request) 10)
+#+end_src
+
+the expression is malformed relative to its semantic types and should be
+rejected.
+
+If the application states:
+
+#+begin_src clojure
+(= (:request/status request) :open)
+#+end_src
+
+when product policy actually intended another valid status test, the expression
+may be perfectly well formed while encoding the wrong policy.
+
+Gesso should make the former difficult or impossible to certify.  It cannot
+infer the latter merely from syntax.
+
+This distinction becomes more explicit in the later compositional-proof part,
+where typed business-rule expressions and certified semantic interfaces are
+defined in detail.  It is already a language-design constraint here because
+Choreo must not confuse "type checks" with "is the policy humans intended."
+
+*** A valid rule may still be inadmissible at a distributed program point
+
+Intrinsic rule validity is not enough.
+
+For example:
+
+#+begin_example
+rule:
+    (= (:request/private-review request) :approved)
+
+intrinsic type:
+    Boolean
+    VALID
+
+browser use before browser knows :request/private-review:
+    INVALID AT THIS PROGRAM POINT
+#+end_example
+
+A distributed use of a rule therefore creates obligations beyond ordinary type
+checking, including:
+
+- the role knows every required fact;
+- required provenance is available;
+- trust or authority requirements are satisfied;
+- optional values have been refined before use;
+- authoritative-basis requirements are met where the rule depends on
+  authoritative observation.
+
+This is one of the central reasons Choreo needs a semantic type/knowledge layer
+richer than ordinary function typing.
+
+*** Operation declarations should remain inspectable data
+
+The ordinary authoring surface may eventually include macros or helpers, but the
+semantic representation after elaboration should remain explicit enough to:
+
+- inspect;
+- normalize;
+- verify;
+- project;
+- fingerprint semantically;
+- explain on failure;
+- compare against dependent declarations.
+
+Convenient syntax must not create an opaque second semantics.
+
+Normalization must preserve the information needed to identify the owning
+declaration and explain failed obligations without making source coordinates
+part of semantic identity when they are diagnostic-only. The compiler or
+elaborator must not synthesize an undeclared trusted assertion simply to make a
+knowledge, authority, or continuation obligation pass.
+
+The desired direction is:
+
+Author-facing syntax elaborates into explicit normalized semantic data. That
+same subject supports verification, projection, diagnostics, and certification;
+none may silently interpret a different policy hidden in the syntax layer.
+

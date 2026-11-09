@@ -1,0 +1,150 @@
+*** Behavior-sensitive choice is the central branch rule
+
+A role needs evidence sufficient to select its continuation when its observable
+local behavior depends on a choice. The required knowledge must exist before
+the first differing behavior, not merely become available eventually.
+
+This avoids both extremes:
+
+- projecting too little and leaving a role unable to decide its next behavior;
+- overcommunicating every global discriminator to every mentioned role.
+
+The analysis should compare continuations semantically rather than merely by
+source syntax.
+
+If two global branches project to equivalent local behavior for role R, R need
+not learn the branch solely because R appears somewhere inside both branches.
+
+If they diverge, the projector/verifier must establish a valid knowledge path
+before the divergence.
+
+
+A focused expense example separates private choice from public behavior.
+Suppose an accepted manager review has one of two recorded results:
+
+| Manager result | Notifier behavior | Finance behavior in an explicitly participating short session |
+|----------------+-------------------+-------------------------------------------------------------|
+| Awaiting Finance | Notify that a manager review was recorded | Receive review-required, acquire current permitted facts, and offer the Finance action |
+| Approved by manager | The same notification with the same declared payload | Receive not-required and terminate local participation |
+
+In this variant the notifier's message is deliberately neutral: it says that a
+manager review was recorded for this Expense and admitted review session,
+not which operation or result it produced or what the Expense's current status
+is. The neutral payload uses the common session identity; it does not require
+the two branches to create identical command identities. Its effect and result-handling
+contract are the same on both successful branches. The notifier does not need
+the private threshold or the route selector. If the application changes the
+notification text or destination by branch, that difference requires a justified
+input, typically an explicitly communicated permitted outcome.
+
+The two notification paths must also have compatible causal prerequisites.
+Here each notice follows an authoritative result establishing a recorded review
+of the same Expense under the declared message contract. Merely finding equal
+payload shapes in two branches would not establish that meaning.
+
+Finance is different when it is already a participant in the short session.
+The global contract must distinguish both continuations, for example through a
+declared disposition message:
+
+#+begin_src clojure
+{:message/id :expense/finance-disposition
+ :from :manager
+ :to :finance
+ :required #{:expense/id :review/command-id :review/disposition}
+ :correlation #{:expense/id :review/command-id}
+ :disposition-type [:enum :review-required :not-required :review-unavailable]}
+#+end_src
+
+The projected receive can branch on an admitted =:review/disposition=. A
+=:review-required= message justifies entering a current observation/action
+path; it does not itself authorize Finance approval. A =:not-required= message
+permits local return without claiming that Finance acted. =:review-unavailable=
+closes this session's participation when the manager's command could not produce
+a usable result. That last label does not assert the command never committed;
+unknown command resolution remains with its declared recovery owner.
+
+These are additional messages deliberately chosen by this session protocol.
+They must not be inserted by the projector merely to rescue an otherwise
+unrealizable declaration. Their delivery, timeout, and session-retirement paths
+must also be defined. A role that simply waits for =:review-required= forever
+cannot claim completion of both branches; absence of a message is not knowledge
+that Finance was unnecessary.
+
+The invalid alternative is to give Finance a branch on =:needs-finance?= simply
+because the projector knows the manager's selector. Finance has neither that
+selector nor its private policy inputs. The projector must report the missing
+knowledge rather than copy either into Finance's context.
+
+The normal durable alternative avoids this participating short session. The
+manager commits =:awaiting-finance=, and a later Finance actor starts a new
+execution from an authorized queue observation. Selection from that queue is
+an explicit user/application input, not automatic approval of every visible
+Expense. The chosen operation rechecks current eligibility at incorporation.
+
+That alternative establishes a new workflow entry condition; it is not proof
+that a particular old command or branch occurred unless the observation also
+establishes that command-specific link. Projection may use it only where the
+global contract declares that continuation semantics.
+
+Behavior-sensitive projection therefore controls both how much knowledge is
+distributed and when it must exist. Equivalent local continuations can share a
+plan; different continuations require evidence before the first difference,
+including a difference between waiting, performing an effect, and terminating.
+
+**** Supported equivalence and conservative rejection
+
+Behavior-sensitive checking must define the local equivalence relation used by
+its supported language subset. The observables include whichever messages,
+effects, authoritative invocations, resource actions, and terminal or failure
+outcomes the semantic contract distinguishes. Relevant ordering and timing
+constraints must not disappear merely because the final values happen to match.
+
+Permitted internal steps may be abstracted only under an explicit semantic
+relation. The checker is not required to decide equivalence of arbitrary
+Clojure functions or unrestricted programs.
+
+A concrete conservative baseline compares normalized continuation graphs up to
+renaming of diagnostic state identities and local binding names. It preserves
+operation/action contract identities, bound inputs and results, message
+destinations and payload meanings, observable effects, owner scopes, and
+terminal/failure alternatives. Ignoring source coordinates does not ignore
+causal dependencies or substitute one implementation contract for another.
+Cycles require a checked graph relation rather than recursive unfolding without
+a termination bound. Stronger equivalence rules must identify their mechanism
+and premises; equality of final values or of function names is not such a rule.
+
+A receiver may merge remote alternatives when admitted incoming messages
+distinguish the alternatives before their different behavior. If alternatives
+share a sender, event, channel, and correlation scope, their admitted payload
+contracts must be disjoint or an explicit discriminator must select them.
+Optional fields alone commonly overlap. A supported checker rejects a known
+ambiguity and reports an unresolved obligation when opaque schema predicates
+prevent establishing disjointness. It must not choose the first matching branch
+by map or registration order.
+
+When the supported analysis cannot establish equivalence or a sufficient
+knowledge path, it must reject or report an unresolved obligation at the
+appropriate admission boundary. It must not silently assume equivalence,
+disclose a private discriminator, or introduce an undeclared message to make
+projection succeed. An explicit supported communication path or visible trusted
+assumption may be authored where permitted by the relevant contract. An asserted
+equivalence remains a premise of the resulting projection claim; it cannot
+silently create missing input data, discharge a mandatory failed owner check,
+or authorize private disclosure.
+
+**** Trace preservation and progress are separate obligations
+
+Excluding forbidden local traces is a safety claim. It does not by itself prove
+that a projected program can perform every required interaction, avoid deadlock,
+or eventually complete. A projection that admits no useful behavior must not
+satisfy the required operation merely because its empty behavior is safe.
+
+Each claimed projection result must state the global/local behavior relation
+and the entry and environmental premises under which it applies. Required
+realizability, terminal behavior, and progress obligations must be discharged
+with the appropriate evidence. Liveness remains conditional on its named
+delivery, availability, fairness, or application-action assumptions.
+
+These obligations supplement, rather than replace, the independent application
+capability acceptance defined in Part I.
+

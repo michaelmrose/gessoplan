@@ -1,0 +1,155 @@
+*** A worked expense review
+
+Consider a manager reviewing a previously submitted Expense. This short
+choreography starts with a submitted Expense selected from an authorized queue.
+The employee's earlier submission and Finance's possible later approval are
+separate short executions connected by durable state. This keeps an unused
+Finance role from waiting forever in a protocol that never needed its action.
+
+The application owns the domain schemas and public operations:
+
+#+begin_src clojure
+(def Expense
+  [:map {:closed true}
+   [:expense/id uuid?]
+   [:expense/employee-id uuid?]
+   [:expense/department keyword?]
+   [:expense/amount Money]
+   [:expense/status
+    [:enum :draft :submitted :awaiting-finance :approved :rejected]]])
+
+(def ApprovalPolicy
+  [:map {:closed true}
+   [:policy/department keyword?]
+   [:policy/finance-required-at Money]])
+
+(def finance-route-rule
+  {:rule/id :expense/requires-finance
+   :inputs {:expense Expense :policy ApprovalPolicy}
+   :preconditions
+   [[:= [:expense/department :expense] [:policy/department :policy]]
+    [:same-currency [:expense/amount :expense]
+                    [:policy/finance-required-at :policy]]]
+   :returns :boolean
+   :expression
+   [:money/>= [:expense/amount :expense]
+               [:policy/finance-required-at :policy]]})
+#+end_src
+
+=Money= and its operations use the explicit money profile from Part I. The rule
+does not compare unspecified host decimals or mix currencies. Its policy is
+deliberately simple: amounts at or above the threshold require Finance; smaller
+amounts may take the manager path, subject to all other model guards. A real
+application may supply a richer opaque Clojure policy under an explicit contract.
+
+The review acquisition returns Expense and Policy under one compatible read
+context. It binds the Expense to the selected id and the Policy to that Expense's
+department. Knowing an id does not establish any of these facts. The manager
+principal and permission to read come from trusted acquisition context.
+
+The operation invocation contracts are:
+
+| Operation | New-incorporation requirement | Successful recorded effect |
+|-----------+--------------------------------+----------------------------|
+| =:expense/approve-as-manager= | Current manager permission, submitted Expense, applicable Policy, and manager-route eligibility | Expense becomes approved |
+| =:expense/mark-awaiting-finance= | Current manager permission, submitted Expense, applicable Policy, and Finance-route eligibility | Expense becomes awaiting Finance |
+
+Each operation atomically protects its current dependencies, domain changes,
+and command-result record under Part IV. The preparation read determines which
+operation to try; it does not reserve eligibility or authorize incorporation.
+A compatible replay follows the recorded-outcome and current disclosure rules
+without reapplying a new-incorporation status guard.
+
+Here is the choreography's control structure. The invocation and acquisition
+rows are authoring constructs whose elaboration exposes the boundaries described
+above; the table does not introduce additional hidden primitive semantics.
+
+| State | Owner and action | Successors |
+|-------+------------------+------------|
+| Acquire review inputs | Manager requests the admitted Expense/Policy observation | Success: classify; denied/not-found: close the session without notice; temporary failure: declared retry or close without notice |
+| Classify | Manager applies the typed Finance-route rule to the bound observation | Finance required: invoke escalation; otherwise: invoke manager approval |
+| Invoke escalation | Trusted authority processes the bound escalation command | Settle the command-specific model result |
+| Invoke manager approval | Trusted authority processes the bound approval command | Settle the command-specific model result |
+| Settle | Manager admits the disclosed result for the actual command | Accepted: publish review notice; rejected: handle rejection and close without notice; unknown: reconcile or hand off recovery, then close this session without notice if needed |
+| Publish review notice | Manager communicates the permitted historical review result to the notifier | On admitted handoff, manager's local work may finish |
+| Close without notice | Manager sends the declared no-notification disposition | Notifier returns without a notification effect; any command recovery remains with its declared owner |
+| Notify or close | Notifier receives the correlated disposition | Review notice: perform the declared effect; no-notification: return without that effect; delivery failure follows the session recovery contract |
+
+The model outcome and the presentation settlement are distinct:
+
+| Model evidence | Permitted continuation |
+|----------------+------------------------|
+| =:committed= with recorded successful approval/escalation | Accepted continuation for that exact command |
+| =:already-incorporated= with a permitted recorded success | The same accepted continuation, without another incorporation |
+| =:rejected= with an authoritative command rejection | Rejection handling; no accepted-success notice |
+| =:commit-unknown= or indeterminate result delivery | Unknown handling until command-specific authoritative evidence resolves it |
+
+If a model retains other terminal outcomes, the disclosed recorded disposition
+has its explicit mapping. A transport failure after a successful commit does
+not turn that commit into a rejection. An unrelated Expense now being approved
+does not establish that this command approved it.
+
+The notification contains only the declared, disclosure-permitted review
+information. It does not contain a manager's entire observation or private
+threshold. A small inspection view of its contract is:
+
+#+begin_src clojure
+{:message/id :expense/review-disposition
+ :from :manager
+ :to :notifier
+ :required #{:review/session-id :review/disposition}
+ :correlation #{:review/session-id}
+ :variants
+ {:recorded
+  {:required #{:expense/id :gesso/command-id :review/result}
+   :result-type [:enum :approved :awaiting-finance]
+   :source-evidence :admitted-command-outcome}
+  :no-notification
+  {:required #{}}}
+ :delivery-contract :expense/review-notification}
+#+end_src
+
+The admitted review session supplies its correlation identity at entry. Only
+the recorded variant carries a command outcome. The no-notification variant
+terminates participation without claiming the Expense is absent, the command
+failed, or no review was ever recorded. It does not carry a failed read's
+private subject. Both variants have closed payload contracts and declared
+recipient permission; timing and participation metadata also follow the
+declared disclosure policy. A required participant is not left waiting merely because
+an earlier acquisition or operation failed; unavailable delivery follows the
+session's explicit timeout/retirement or recovery contract.
+
+This is contract inspection data, not a credential. The trusted notification
+boundary must validate the origin and permitted command outcome if an
+adversarial manager browser transports the notice. A manager-role label or
+plausible result string cannot establish that a review occurred. If the service
+instead derives the notice from an authoritative outbox, that is the declared
+realization and causal path; projection must not invent it silently.
+
+The delivery contract also decides what failure means. For a required durable
+notification, the model transaction or another justified handoff must retain
+recoverable notification work. A direct browser send that can disappear after
+commit cannot establish eventual notification. For a best-effort notice, loss
+may be allowed but the assurance claim must say so. Replaying an accepted
+command result must not resend an externally significant notification unless
+its own deduplication or repeat policy permits it.
+
+Projection produces complementary plans, not separately authored workflows:
+
+| Projection | Required behavior and knowledge |
+|------------+---------------------------------|
+| Manager | Knows selected Expense id; acquires scoped inputs; derives the route; invokes the selected operation; interprets its command result; transfers a permitted notice or closes participation without notice |
+| Expense authority | Admits each actual invocation, authenticates the caller, applies replay or atomic new-incorporation semantics, and discloses the permitted result |
+| Notifier | Receives the declared disposition; performs the notification effect with its own outcome handling or returns without that effect |
+
+The notifier needs the public review result if its message differs by result.
+It does not need the private threshold used to choose the route. Finance's
+later queue observation establishes entry knowledge for a new execution; no
+unused role in this short choreography has to infer that a missing message
+means it may terminate.
+
+A role's local return means that role has no remaining work under its contract.
+It is not proof that every other role completed, every message was delivered,
+or the whole business workflow finished. The global completion judgment and
+any durable recovery handoff retain those distinctions.
+

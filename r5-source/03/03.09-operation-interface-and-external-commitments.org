@@ -1,0 +1,87 @@
+*** Operation contracts export a semantic interface
+
+An operation type should expose a normalized semantic interface containing only
+facts that downstream reasoning is allowed to rely on.
+
+Depending on the operation, that interface may include:
+
+- input value types;
+- required entry knowledge;
+- required provenance;
+- role participation;
+- principal/authority constraints;
+- model operation identity;
+- possible semantic outcomes;
+- values/facts produced;
+- authority changes;
+- resource requirements;
+- provisional permissions;
+- settlement requirements;
+- continuation compatibility;
+- named assumptions and guarantees.
+
+It should not include arbitrary implementation details merely because those
+details are easy to serialize.
+
+For Claim, the normalized interface identifies the helper's actual entry
+knowledge, the trusted principal/authority handoff, the public model operation,
+and its result contract. It separates four model outcome categories:
+
+| Category | Interface meaning |
+|----------+-------------------|
+| =:committed= | Authoritative evidence of the command's incorporation and its recorded outcome |
+| =:rejected= | A justified command rejection under the operation's contract; not merely failure of one competing attempt |
+| =:already-incorporated= | Compatible repetition with a permitted recorded outcome; no additional incorporation |
+| =:commit-unknown= | The boundary cannot establish the command's disposition from the available evidence |
+
+The payload states the command binding, disclosed disposition, and any scoped
+observation or progression evidence. A successful callback or HTTP response is
+not sufficient to construct one of these outcomes. =:commit-unknown= denotes
+uncertainty of the observing boundary, not a third database truth between
+committed and uncommitted. It may arise from indeterminate delivery even when
+the authoritative transaction has a definite result.
+
+=:confirmed= and =:reconciled= may describe protocol events if explicitly defined;
+they are not substitute names for the canonical model outcome taxonomy. The
+presentation mapping to =:accepted=, =:rejected=, and =:unknown= remains an explicit
+checked contract. A recorded result does not imply permission to disclose it.
+
+The semantic interface does not encode incidental realization details such as:
+
+#+begin_example
+specific Ring handler var
+specific Reitit route index
+specific DOM node id
+specific XTDB Java class
+specific browser bundle offset
+#+end_example
+
+Those belong to later realization layers unless independently required by
+runtime semantics.
+
+*** External commitments versus derived structure
+
+Operation declarations should state only semantic commitments that cannot or
+should not be safely inferred.
+
+The verifier/projector should derive:
+
+- reachable continuations;
+- behavior-sensitive branch obligations;
+- knowledge propagation caused by declared communication;
+- terminal paths;
+- local plan structure;
+- resource obligations that follow from the body.
+
+It should not require the author to restate those facts manually in metadata.
+
+Redundant declarations are dangerous because each copy may remain individually
+plausible while disagreeing with the others.
+
+The preferred rule is:
+
+#+begin_quote
+Declare external semantic commitments; derive internal control-flow facts from
+the choreography body.
+#+end_quote
+

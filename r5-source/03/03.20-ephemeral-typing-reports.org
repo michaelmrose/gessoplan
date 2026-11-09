@@ -1,0 +1,116 @@
+**** Ephemeral typing reports
+
+A typing indicator has a different meaning. It reports that an admitted editor
+channel recently sent a typing intention; it does not prove that a human is
+physically typing and need not have a durable database fact to reread.
+
+The wire payload carries intent, not sender identity:
+
+#+begin_src clojure
+(def TypingPayload
+  [:map {:closed true}
+   [:document/id uuid?]
+   [:typing? boolean?]])
+
+(def valid-typing-payload? (m/validator TypingPayload))
+
+(def typing-contract
+  {:message/id :document/typing
+   :from :editor
+   :to :peer-editor
+   :payload TypingPayload
+   :sender-binding :authenticated-registered-document-channel
+   :receiver-binding :authorized-document-subscription
+   :delivery {:durability :ephemeral
+              :delivery-guarantee :best-effort
+              :replay :none}
+   :ordering {:source :registered-actor-stream
+              :duplicates :ignore
+              :older-sequence :ignore}
+   :display {:meaning :recent-admitted-typing-report
+             :expires-after-receipt-ms 3000}})
+#+end_src
+
+The trusted boundary uses the registered channel and current document policy:
+
+#+begin_src clojure
+(defn admit-typing-message!
+  [registered-channel decoded-message]
+  (when-not (valid-typing-payload? decoded-message)
+    (throw (ex-info "Invalid typing payload"
+                    {:error/type :typing/invalid-payload})))
+  (let [document-id (:document/id decoded-message)
+        sender (channels/require-current-sender! registered-channel)
+        permission
+        (document-model/require-typing-permission!
+          (:trusted-context sender) document-id)]
+    (typing-boundary/issue!
+      {:contract :document/typing
+       :registered-source registered-channel
+       :sender sender
+       :permission permission
+       :payload decoded-message})))
+#+end_src
+
+These API names specify boundary responsibilities. The channel supplies the
+authenticated principal, admitted actor, current source instance, and their
+binding; the payload supplies none of those. The model permission result binds
+that principal and document under the declared authorization timing policy.
+Issuance checks their correspondence and constructs the receiver envelope.
+Recipient routing separately checks each subscription's permission to receive
+this document's indicators. Later revocation follows the explicit subscription
+policy; initial registration is not an indefinite disclosure grant.
+
+The issuer assigns a sequence within the admitted actor-stream instance, or
+uses another admitted ordering mechanism with the same contract. The receiver
+compares sequences only within that instance. Reconnection requires an admitted
+new source binding; a random larger number or unfamiliar epoch cannot replace
+the source merely by arriving. This provides receiver ordering of reports, not
+a proof of when the sender actually typed.
+
+The peer maintains one indicator owner for the document, admitted actor, local
+principal context, and source instance. The following table is its semantic
+transition contract:
+
+| Event | Required admission | Result and effect |
+|-------+--------------------+-------------------|
+| New =typing? true= report | Correct source and owner; sequence exceeds last accepted within that stream | Retain sequence, show indicator, retire old timer, allocate a fresh expiry resource |
+| New =typing? false= report | Same checks | Retain sequence, retire timer, hide indicator, remain ready for later reports |
+| Duplicate or older report | Same source but non-advancing sequence | No display change and no expiry extension |
+| Expiry callback | Current timer instance still owns this indicator and its deadline has elapsed | Hide indicator and retire that timer; retain the accepted source sequence |
+| Retired timer/source callback | No current ownership | Reject/no-op; do not hide or revive a replacement indicator |
+| Navigation, account change, or subscription retirement | Owner lifecycle transition | Retire indicator resources and reject later events under the old owner |
+
+The sequence high-water mark remains while that registered stream can deliver
+messages, including after a stop or expiry. Otherwise a delayed duplicate could
+resurrect an indicator. Bounds and cleanup follow stream retirement; identities
+from unrelated streams are not numerically ordered.
+
+The timer uses a local elapsed-time contract. The display claim is three
+seconds after the last accepted report, not three seconds after an unverifiable
+human action. A delayed first delivery can still show a recent-receipt report;
+if the product instead requires bounded age from issuance, it needs additional
+age and clock/delivery premises. A suspended browser rechecks expiry when it
+resumes rather than treating a late timer callback as evidence of continued
+typing. Timer scheduling alone is not a hard wall-clock guarantee.
+
+Envelope consumers bind =:document/id= and =:actor/id= to distinct local names,
+such as =document-id= and =actor-id=. Their UUID-shaped representations must not
+erase the distinction between the document being discussed and the sender. This
+is the ordinary authoring consequence of Part II's identity categories.
+
+If a report is lost, a database reread two minutes later cannot reconstruct it
+usefully. The indicator may simply remain absent or expire; there is no required
+durable replay. That differs from required acquisition of durable Request state:
+
+| Property | Request publication | Typing report |
+|----------+---------------------+---------------|
+| Durable semantic truth | Public Request model | None required for typing intent |
+| Remote coordination | Scoped advisory and authoritative acquisition | Admitted ephemeral message |
+| Loss handling | Declared repair/discovery path for required convergence | Absence or expiry is permitted |
+| Local resource protection | Acquisition and installation owner checks | Source ordering and timer-instance checks |
+
+Projection preserves the selected knowledge and recovery path. It must neither
+replace genuinely ephemeral semantics with a later database query nor require
+direct peer delivery where a declared authoritative rendezvous is sufficient.
+

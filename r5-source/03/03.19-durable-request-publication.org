@@ -1,0 +1,75 @@
+**** Durable Request publication and selective adoption
+
+For a newly created Request, the authoritative result belongs to the public
+Request model. The creator learns the permitted command outcome and reacquires
+the declared card or board projection. Other clients need not receive the whole
+Request from the creator's execution.
+
+#+begin_src clojure
+{:operation/id :request/create
+ :authority :request
+ :caller-role :customer
+ :command-protocol :stable-bound-command
+ :accepted-continuation
+ {:creator-acquisition :request/created-card
+  :remote-coordination :request/board-advisory}
+ :rejected-continuation :request/create-rejected
+ :unknown-continuation :request/reconcile-create}
+#+end_src
+
+This is an inspection view of imported contracts. The admitted create
+operation supplies the authorized caller and command-specific created Request
+identity. An arbitrary new row found by a query does not establish which Request
+this command created.
+
+Remote coordination is triggered from the authoritative incorporation or a
+recoverable publication handoff under its declared contract. Required
+invalidation cannot depend solely on the creator's browser receiving a response
+and deciding to notify peers. Publication failure after commit leaves a
+committed command plus delivery debt; it is not a rejected create command.
+Part IV owns the atomicity or recoverability of that handoff.
+
+An advisory identifies a permitted scope and justified acquisition requirement.
+Its disclosure does not reveal a hidden Request by implication. A lower bound
+must be supplied by the admitted producer or a declared fence protocol, not
+invented from the receiver's old basis. Subscriptions and reacquisition cover
+initial registration, reconnect, and missed-notification gaps.
+
+The browser uses the pure transition and effect-shell separation from Part II:
+
+#+begin_src clojure
+(def after-advisory
+  (board-runtime/step current-board admitted-board-advisory))
+
+(def refresh-start
+  (board-runtime/step
+    (:state after-advisory)
+    admitted-user-refresh-event))
+
+;; The shell executes the emitted acquisition effect. It retains its
+;; registered owner, concrete instance, scope, and principal-context binding.
+(:effects refresh-start)
+
+;; The completion is admitted against the latest board state, not the state
+;; captured before the request. A later installation completion may be needed.
+(board-runtime/step latest-board admitted-acquisition-completion)
+#+end_src
+
+The server derives the caller from its actual authentication context. The
+browser effect cannot grant a principal identity by carrying a field. The
+returned observation is bound to the full query, projection, visibility,
+temporal context, authority, and basis required by the acquisition contract.
+
+Acquisition, permitted installation, actual installation, and semantic adoption
+are separate where the realization makes them separate. A pure state update
+does not itself swap a DOM node. Adoption discharges only requirements that the
+installed/adopted observation actually covers, preserving later or unrelated
+requirements and respecting the current owner. Physical effects run outside
+retriable state-update functions. The worked X18/X19/X20 race in Part II fixes
+the intended interpretation.
+
+Bob may therefore retain the old board while showing a Refresh affordance.
+The notification does not establish the new Request's title or visibility;
+authoritative reacquisition does. Eventual adoption remains conditional on the
+declared automatic or user trigger, not merely on the database being available.
+

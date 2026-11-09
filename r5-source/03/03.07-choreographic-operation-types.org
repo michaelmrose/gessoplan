@@ -1,0 +1,97 @@
+** Choreographic operation types
+:PROPERTIES:
+:CUSTOM_ID: req-choreographic-operation-contract
+:END:
+
+A choreographic operation type is richer than an ordinary function type.
+
+An ordinary function type is roughly:
+
+#+begin_example
+A -> B
+#+end_example
+
+A choreographic operation type describes an entry into a distributed protocol
+and the valid continuations from that entry.
+
+It may include:
+
+- ordinary value schemas;
+- evolving values and their basis;
+- roles participating in the operation;
+- principal and authority requirements;
+- facts known by each role on entry;
+- provenance justifying those facts;
+- facts on which roles agree;
+- resources required by operations;
+- facts and values produced;
+- possible outcomes;
+- provisional execution permissions;
+- authority transitions;
+- continuation requirements;
+- compatibility/version requirements where a suspended projection may outlive a
+  deployment.
+
+The operation type should *not* duplicate the complete choreography by manually
+listing every branch already represented by the choreography.
+
+The choreography is the source of truth for control flow.
+
+The type declaration supplies external semantic commitments that cannot or
+should not be inferred, while analysis derives as much as possible from the
+actual choreography.
+
+For example, the declaration may state:
+
+#+begin_src clojure
+{::choreo/roles
+ {:helper
+  {:principal :user
+   :actor :client}
+
+  :request-authority
+  {:authority :request}}
+
+ ::choreo/inputs
+ {:request-id
+  {:schema :uuid
+   :known-by #{:helper}
+   :provenance :input}
+
+  :observed-basis
+  {:schema ObservedBasisClaim
+   :known-by #{:helper}
+   :provenance :input}}
+
+ ::choreo/authority
+ {:request-authority #{:request/claim}}
+
+ ::choreo/optimism
+ {:role :helper
+  :projection :request/claim}}
+#+end_src
+
+This example declares role requirements, input knowledge, and the intended
+optimistic realization. It does not grant claim authority to whoever sends a
+matching role label. Trusted server admission must establish the concrete
+principal, subject, and operation premises. The helper's input knowledge of an
+=ObservedBasisClaim= is knowledge of the claimed token, not evidence that the
+helper acquired the observation it names.
+
+The names =ObservedBasisClaim= and =AuthoritativeBasis= are conceptual semantic
+categories.  They do not require two unrelated physical token formats, nor do
+they require a particular Clojure nominal-type implementation.  The browser may
+carry the same underlying XTDB token bytes that trusted code later compares or
+uses to construct a consistency requirement, while the semantic status of those
+values remains different.
+
+XTDB-specific representation belongs in the XTDB/Live consistency adapter rather
+than being permanently baked into the generic Choreo type vocabulary.
+
+The verifier derives knowledge changes, branch requirements, and continuation
+structure from the choreography body.
+
+The exact Clojure syntax remains tentative. These semantics are the intended
+contract.
+
+#+LATEX: \newpage

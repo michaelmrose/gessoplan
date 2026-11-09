@@ -1,0 +1,80 @@
+*** Choreography is specification, not a hidden coordinator
+
+The global choreography is the semantic specification of allowed distributed
+behavior.  It is not a requirement that Gesso run one omniscient global state
+machine alongside every projected role.
+
+The implementation must therefore preserve two complementary truths:
+
+- the global description is authoritative for what behaviors are admitted;
+- projected actors execute locally and independently using only the knowledge,
+  resources, and authority available to them.
+
+A runtime architecture that requires every local step to consult a central
+choreography interpreter solely to rediscover projected control flow would
+defeat an important purpose of projection. This does not prohibit a declared
+authoritative operation from consulting its centralized model authority or
+checking a trusted runtime premise. The prohibition concerns an unnecessary
+global control interpreter, not model-owned coordination whose semantics the
+application actually requires.
+
+Conversely, independently executing local machines do not become semantically
+independent programs.  Their combined traces remain constrained by the global
+description.
+
+
+#+LATEX: \newpage
+
+The intended relationship is:
+
+| Stage | Product and obligation |
+|-------+------------------------|
+| Global specification | Declares the allowed distributed behavior |
+| Verification and projection | Derives admitted role-local plans with explicit premises |
+| Independent local execution | Produces concrete interactions under the realization contracts |
+| Refinement judgment | Relates those interactions to the admitted global behavior and stated observation alphabet |
+
+The absence of a central runtime machine is therefore not a weakening of the
+global specification.  It is the point of a successful projection.
+
+*** Semantic behavior versus physical realization
+
+A choreography describes semantic behavior.  Physical realization is permitted
+to vary when that variation does not change the semantic trace.
+
+For example, the semantic statement:
+
+#+begin_example
+:request-authority establishes the result of :request/claim
+#+end_example
+
+does not require:
+
+#+begin_example
+one fixed Aleph process
+one fixed HTTP connection
+one fixed DOM node
+one fixed browser tab
+one fixed database connection
+#+end_example
+
+The authority may be realized through different physical resources at different
+times.  A retry may reach another host.  A fragment may be replaced by a new DOM
+node.  A browser may reconnect.  None of these physical substitutions creates
+a new semantic authority or silently changes the meaning of the operation.
+
+This end-state design therefore requires every layer that crosses a
+replaceable physical boundary to preserve the logical identities needed by the
+semantic layer rather than reconstruct them from physical coincidence.
+
+Detailed multi-node routing belongs to its separately scoped realization
+contract.  The semantic requirement established here is only the stronger
+and more durable one:
+
+#+begin_quote
+A host may realize a role or authority for an execution, but physical hosting
+does not create semantic authority.
+#+end_quote
+
+#+LATEX: \newpage
+

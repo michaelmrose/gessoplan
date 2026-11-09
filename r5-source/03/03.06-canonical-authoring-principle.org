@@ -1,0 +1,200 @@
+*** Canonical authoring principle
+
+Application authors should state semantic intent once whenever the system can
+derive the rest.
+
+A choreography should not require synchronized copies of the same semantic fact
+in:
+
+- operation metadata;
+- view metadata;
+- browser-plan names;
+- transport declarations;
+- route strings;
+- server registries;
+- bootstrap registries.
+
+Where an independent physical choice genuinely exists, it may be declared
+separately and checked for correspondence.  Otherwise the preferred direction
+is:
+
+One semantic declaration supplies the derived local plan, binding metadata,
+transport requirements, and diagnostics. Independently chosen realization
+parameters are checked against that declaration.
+
+This principle does not collapse all layers into one macro.  It reduces
+duplicated sources of semantic truth while preserving explicit architectural
+boundaries.
+
+
+HumanHelp's Claim action gives a useful target for that authoring principle
+because the same semantic intent must eventually appear in a view, browser plan,
+transport, trusted handler, model operation, settlement, and authoritative
+reacquisition path.
+
+A declaration-first surface separates the helper's inputs from authoritative
+obligations and explicitly maps model outcomes into presentation behavior:
+
+#+begin_src clojure
+(def request-claim
+  {:operation/id :request/claim
+   :roles
+   {:helper {:principal :user :actor :client}
+    :request-authority {:authority :request}}
+   :input [:map {:closed true} [:request/id uuid?]]
+   :entry
+   {:helper {:values #{:request/id}
+             :observation-for-optimism :request/card}}
+   :invocation
+   {:authority-role :request-authority
+    :model-operation :request/claim
+    :arguments {:request-id [:input :request/id]}
+    :principal-source :trusted-authentication
+    :command-protocol :stable-bound-command}
+   :provisional
+   {:role :helper
+    :projection :request/claiming
+    :owner-contract :current-execution-target-and-resource}
+   :settlement-contract :request/claim-settlement})
+#+end_src
+
+The model-operation reference imports its authoritative interface. Its current
+Request, Membership, Organization policy, and Request/Organization association
+are protected by the new-incorporation contract; those are not facts the browser
+is expected to establish. An authorized observed card supports only the declared
+optimistic presentation. A non-optimistic invocation can have a different entry
+contract without claiming that same provisional behavior.
+
+The admitted command boundary allocates a stable =:gesso/command-id= before the
+first possible send and binds it to the semantic operation, arguments, principal,
+and authority scope. It preserves that identity through retries. A browser may
+carry the bytes, but command authority comes from the trusted binding and model
+protocol, not from choosing a UUID.
+
+The settlement contract is inspectable as follows:
+
+| Admitted result | Presentation settlement | Required next path |
+|-----------------+-------------------------+--------------------|
+| Successful =:committed= | =:accepted= | Acquire the permitted authoritative successor |
+| Permitted =:already-incorporated= with recorded success | =:accepted= | Same successor path, with no new incorporation |
+| Authoritative =:rejected= | =:rejected= | Settle provisional ownership and permit authoritative card reacquisition |
+| =:commit-unknown= or indeterminate delivery | =:unknown= | Preserve command identity and reconcile against command-specific outcome evidence |
+
+Denied disclosure, unavailable acquisition, and an expired or incompatible
+recovery context also have declared paths. They do not become fabricated
+success or rejection. A reconciliation response may resolve a command while a
+later read is still needed to determine the current card state.
+
+The view refers to the operation and supplies only its domain arguments:
+
+#+begin_src clojure
+(defn request-card
+  [{:request/keys [id title status]}]
+  [:article.request-card
+   {:data-request-id id}
+   [:h3 title]
+   [:p.status (name status)]
+   (when (= status :open)
+     (gesso/action
+       {:operation :request/claim
+        :args {:request/id id}}
+       "Claim"))])
+#+end_src
+
+The rendering boundary supplies the admitted target and observation context;
+the raw domain map and the conditional button are not authorization. The action
+constructor resolves the operation's admitted binding and derives the necessary
+plan, transport, and runtime descriptors. User-visible absence of the button
+does not enforce the model guard.
+
+A generated helper plan has these obligations:
+
+| Concern | Derived or imported requirement |
+|---------+---------------------------------|
+| Entry | Selected Request id and the observation required for this optimistic mode |
+| Command | Stable command reference with the admitted operation/argument binding |
+| Provisional display | Current execution, target, principal context, and concrete resource ownership |
+| Result intake | Expected operation and command, admitted source, permitted result, current owner, and settlement mapping |
+| Recovery | Unknown remains unknown until reconciliation; reacquisition observes the declared scope and progression |
+
+Command identity alone is not enough to own a provisional DOM effect. A later
+execution may reconcile the same command while the earlier execution's callback
+has lost all rights to mutate the current target.
+
+Only independent physical choices need separate authoring:
+
+#+begin_src clojure
+(assembly/realize-operation
+  humanhelp-assembly
+  {:operation :request/claim
+   :transport {:kind :http/post
+               :route :route/request-claim}
+   :model-binding request-model/claim-operation})
+#+end_src
+
+The assembly derives and checks the view/action, browser-plan, server-entry,
+decoder, model, and settlement joins from the declaration and these bindings.
+It must not require the author to copy the generated plan name back into a
+separate bootstrap registry. Repeated metadata may be an inspection view or
+an explicit correspondence constraint, but is not an independent source of truth.
+
+A schematic trusted handler illustrates the authority handoff:
+
+#+begin_src clojure
+(defn request-claim-handler [ctx request]
+  (let [binding (assembly/require-dispatched-binding!
+                  ctx :route/request-claim)
+        principal (auth/current-principal! (:session ctx))
+        trusted-ctx (assoc ctx :principal principal)
+        command (server/decode-bound-command!
+                  binding trusted-ctx request)]
+    (server/invoke-bound-model-operation!
+      binding trusted-ctx command)))
+#+end_src
+
+The dispatched binding comes from the admitted route, not a route name supplied
+by the browser. Authentication precedes any binding that claims an authenticated
+principal. The decoder checks the envelope and command reference under the
+operation contract; the public model boundary independently validates the
+authoritative command binding and current permission to disclose a replay.
+For new incorporation it protects all current guard dependencies and effects
+atomically with the command record. Separate handler pre-reads cannot supply
+that atomicity or reject a compatible replay merely because Claim succeeded
+earlier and the Request is now claimed.
+
+The handler also uses the admitted response and recovery mapping. A response
+rendering failure after incorporation leaves the recorded command result intact
+and may leave the browser uncertain. Part IV owns the concrete transaction;
+Parts VI and VII own presentation and application construction.
+
+The application author should not have to synchronize:
+
+#+begin_src clojure
+;; Avoid this style of duplicated semantic naming.
+
+{:button-operation "claim"
+ :button-plan "claim-v9"
+ :hx-post "/requests/claim"
+ :wire-command "__gesso_live_optimistic_command"
+ :handler-var 'humanhelp.routes/claim
+ :server-capability "claim-handler"
+ :model-op "request/claim"
+ :settlement-fragment "request-card"}
+#+end_src
+
+when those values are all consequences of one declared semantic operation.
+Where the physical route or capability name genuinely remains independently
+authored, assembly construction should check its correspondence rather than
+hoping the strings stay synchronized.
+
+This example also makes choreography validity and whole-application realization
+visibly different. The choreography elaborated from =request-claim= can be valid while the
+=:request/card= view omits the affordance, while the current browser artifact
+omits =:plan/request-claim=, or while the route is not bound into the current
+assembly. Where those edges are required by the declared realization scope,
+those are application-realization failures. If the operation is intentionally not exposed,
+its absence is not automatically a closure defect. Whether the intended product
+capability is present remains an independent acceptance question, not a reason
+to weaken the operation contract.
+
+#+LATEX: \newpage

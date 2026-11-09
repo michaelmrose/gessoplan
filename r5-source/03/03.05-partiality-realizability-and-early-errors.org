@@ -1,0 +1,104 @@
+*** Choreography may be partial with respect to the whole application
+
+One choreography need not describe an application's entire lifetime.
+
+A choreography may describe one distributed semantic operation or one coherent
+short-lived protocol.  Durable model facts may connect many such protocols over
+hours, days, deployments, or browser lifetimes.
+
+This means that the following are both legitimate:
+
+A short Claim choreography invokes the operation, interprets the authoritative
+outcome or preserves uncertainty, settles its local obligations, and terminates
+or hands off recovery under the declared contract.
+
+and:
+
+| Execution | Authoritative role in the workflow |
+|-----------+------------------------------------|
+| E1 | Create the approval request, establish pending state, and settle or hand off its command |
+| E2, later | Acquire current approval premises, act on the request, and settle its own command |
+
+The durable relationship between E1 and E2 lives in authoritative model state
+unless the application explicitly adopts a durable workflow facility.
+
+This separation prevents Gesso from smuggling a universal workflow engine into
+ordinary Choreo merely because some business processes span human time.
+
+*** Choreography validity and application realizability are distinct questions
+
+A choreography can be internally valid while the surrounding application fails
+to realize a required use of it. An intentionally unexposed operation is not
+automatically an assembly defect: required exposure follows the declared
+realization scope and independent product acceptance.
+
+For example, a verified operation may still be unusable because:
+
+- no view binds it;
+- no projected browser plan is packaged;
+- the packaged artifact is stale;
+- no transport binding reaches the trusted server;
+- the server has no corresponding execution capability;
+- no authoritative acquisition path can observe the successor state.
+
+Missing required realization edges are whole-application assembly failures.
+Omitting an intended user capability can instead leave the remaining assembly
+closed while failing behavioral completeness. Those distinctions follow the
+[[#req-application-assurance-claims][three application assurance claims]] in Part I.
+Neither failure changes the meaning of choreography validity itself.
+
+The distinction is important:
+
+#+begin_example
+valid choreography
+    !=
+complete application realization
+#+end_example
+
+and equally:
+
+#+begin_example
+HTTP route exists
+    !=
+valid choreography
+#+end_example
+
+The unified design therefore preserves Choreo as a strong semantic layer while
+also requiring whole-application checks of the joins between semantic and
+physical/application layers, production enforcement of those checks, and
+independent capability acceptance. Closure results retain their actual assurance
+classification rather than automatically becoming semantic theorems.
+
+*** Construction must fail when the contradiction is already knowable
+
+Choreography construction and verification must reject known contradictions at
+the earliest supported boundary possessing enough information to establish them.
+Unsupported constructs must be identified explicitly; they must not receive a
+successful result by omission from the checker.
+
+Definition-time failures include, for example:
+
+- unknown roles;
+- malformed transitions;
+- impossible branch references;
+- invalid message declarations;
+- inconsistent operation metadata;
+- use of an undeclared authority;
+- a local behavior that requires a fact that the role can never know.
+
+These failures should not be deferred to browser execution merely because a
+runtime implementation could eventually notice them.
+
+This does not mean Gesso should pretend to know dynamic domain facts in
+advance.  A Request becoming claimed by another user after rendering remains a
+runtime/domain event.  Static strictness applies only where the contradiction is
+already present in the declared semantic structure. Static admission must
+also require declared handling or recovery for dynamic conditions that can
+strand a required operation. It can check that an unknown-result path exists
+without predicting whether the next network delivery will be indeterminate.
+
+A structural contradiction, unsupported proof obligation, and accepted opaque
+contract are different results. Full-language code is admitted through its
+declared boundary and assurance policy; a missing role, unresolved operation
+binding, or impossible continuation is not waived by calling it an assertion.
+

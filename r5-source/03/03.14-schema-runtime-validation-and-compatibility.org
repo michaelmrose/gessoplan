@@ -1,0 +1,61 @@
+*** Runtime validation preserves static premises
+
+Static reasoning depends on runtime values continuing to satisfy the contracts
+under which the reasoning was performed.
+
+Consequently, runtime checks are not "extra tests" after proof.  They are
+enforcement of proof premises where untrusted or dynamic values enter.
+
+Representative boundaries include:
+
+| Runtime input | Required admission before use |
+|---------------+-------------------------------|
+| Browser command bytes | Bound operation lookup, decoding/schema checks, command/caller binding, and trusted invocation contract |
+| External read result | Projection-envelope validation plus acquisition, scope, and provenance checks |
+| FX implementation result | Declared output validation, effect/owner correlation, and the continuation's semantic premises |
+| Settlement payload | Schema, source, command, current owner, and outcome-to-settlement checks |
+
+If a runtime premise fails, execution must reject or recover according to the
+declared protocol.  It must not continue on the theory that static verification
+made runtime validation unnecessary.
+
+*** Validators should be reusable and diagnostic failure should be rich
+
+The successful path should use precompiled validators where possible.
+
+The failure path should preserve enough information to explain:
+
+- which semantic value failed;
+- which schema or refinement was expected;
+- where the value entered;
+- which operation or transition depended on it;
+- whether failure concerns shape, provenance, authority, or another layer.
+
+A raw Malli explanation may be part of this evidence, but downstream error
+reporting should not force users to reconstruct the semantic context from a
+low-level schema mismatch alone. The diagnostic must respect disclosure
+policy: credentials, private payload fields, and protected model values must
+not leak through an error explanation. Stable semantic identifiers, redacted
+value summaries, and the failed obligation are usually sufficient.
+
+*** Schema changes participate in semantic compatibility
+
+A schema is not merely runtime validation configuration when another semantic
+artifact relies upon its meaning.
+
+Changes such as:
+
+- removing an enum member;
+- changing required versus optional;
+- changing cardinality;
+- changing a field's nominal semantic type;
+- changing a closed variant set;
+
+may invalidate dependent operation, rule, or choreography artifacts.
+
+Later proof/certificate work therefore assigns semantic identities to normalized
+interfaces rather than source files. These operational schema requirements do
+not depend on completion of the later certificate machinery. The language/model
+boundary must nevertheless expose those semantic dependencies instead of hiding
+them inside arbitrary host-language code.
+

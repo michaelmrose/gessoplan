@@ -1,0 +1,94 @@
+* Part III — Choreography and projection
+:PROPERTIES:
+:CUSTOM_ID: part-03-choreography-and-projection
+:PART_REVISION: 03-20261107
+:END:
+
+This part defines choreography as a global semantic specification, the operation
+contracts it exposes, and the obligations for deriving role-local behavior. It
+uses the evidence classifications of Part I and the identity, admission,
+knowledge, and authority model of Part II. Concrete model/FX integration follows
+in Part IV; browser realization and whole-application construction follow in
+Parts VI and VII.
+
+The intended architecture supports ordinary full-language Clojure under the
+[[#req-full-language-construction][checked construction contract]]. A small
+portable choreography vocabulary is an interface for distributed coordination,
+not a replacement for the application's implementation language. Opaque code
+retains its named contracts and accepted premises through verification,
+projection, assembly, and execution.
+
+Examples use illustrative declaration and API names. They specify required
+semantics, not a promise that the displayed syntax is an existing executable
+API. Generated plan excerpts and state tables are inspection views, not a second
+handwritten workflow. Fixture symbols such as R, C, and E denote identities or
+values bound by the surrounding example.
+
+** What a choreography is
+
+A choreography is a global description of a distributed state machine involving
+N roles.
+
+The global choreography is projected into N role-local machines. At runtime,
+concrete actors instantiate those roles and execute the local machines
+independently. The entry/participation contract binds each role instance to its
+actual actor and principal or authority. A role name is not a credential, and
+two tabs for one principal do not share knowledge merely because that principal
+is the same.
+
+The application may have many concurrent executions of the same choreography.
+Admission states which instances may participate, how their messages and
+resources are separated, and whether a logical role can have multiple members.
+An aggregate role is not silently treated as one omniscient actor. Projection
+of one execution also does not prove isolation from other operations; model
+invariants and atomic guards govern their shared authoritative effects.
+
+There does not need to be a second centralized global machine executing beside
+them. The global choreography is the specification from which local machines
+are verified and projected.
+
+Under the declared entry, runtime, and environmental premises, the interaction
+of admitted projected machines must refine behavior allowed by the global
+choreography. The refinement claim must identify its supported language subset,
+observable behaviors, and treatment of internal or physical steps.
+
+This claim about cooperating projected machines does not assume that an
+adversarial browser follows its projection. Trusted-side admission and model
+enforcement must still preserve the protected authority boundary for arbitrary
+client inputs, as specified in [[#req-trust-boundary][the trust model]].
+
+A choreography may describe:
+
+- local computation;
+- communication;
+- authoritative establishment and observation requirements;
+- environmental events;
+- branching;
+- authoritative operations;
+- provisional projections;
+- resource acquisition and release;
+- failure paths;
+- timeout paths;
+- settlement and reconciliation;
+- convergence requirements.
+
+A choreography does not imply that all participants change state atomically.
+Distributed actors may temporarily hold different knowledge.
+
+The important distinction is between:
+
+#+begin_example
+authoritative state
+provisional state
+actor-local knowledge
+#+end_example
+
+and not a false claim that the entire distributed system changes simultaneously.
+
+A choreography also does not imply one persistent runtime machine per connected
+client or one persistent server process per conceptual workflow.
+
+The global description may be realized by short-lived projections that interact
+through durable authoritative facts.
+
+

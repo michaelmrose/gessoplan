@@ -1,0 +1,75 @@
+*** Local executable guards belong in the executable projection
+
+Proof derivations and global proof trees do not belong in the production
+browser.
+
+However, a local predicate or guard whose result is required to execute the
+projected semantics is runtime-semantic data and must remain in the executable
+projection.
+
+The distinction is:
+
+| Material | Required location |
+|----------+-------------------|
+| Guard checking that resource instance I still owns the right to resume execution E | Executable semantics where that transition needs it |
+| Derivation explaining why that guard contributes to a property | Proof or diagnostic artifact, bound to the exact executable subject |
+
+The guard identifies the execution and resource instance required by this
+callback's admission contract; it is not a universal generation comparison.
+Shared fragment or subscription events use their own declared ownership checks.
+Passing an ownership guard does not by itself establish the knowledge,
+provenance, or authority required for the resumed branch.
+
+The executable semantic core evaluates runtime guards as part of the admitted
+transition semantics. A proof kernel or dedicated semantic checker establishes
+its stated judgment about those semantics; it does not replace the runtime
+admission check or supply missing runtime facts.
+
+The production machine must never depend on an optional proof sidecar to decide
+a transition.
+
+*** Projection failure should identify the missing justification
+
+When projection cannot produce a legal local machine, diagnostics should explain
+the actual semantic deficit.
+
+Useful failure information includes:
+
+- role;
+- global state/transition;
+- local behaviors that diverge;
+- required discriminator;
+- facts currently known;
+- available provenance;
+- missing knowledge path;
+- candidate communication or authoritative-observation paths when derivable.
+
+A generic "projection failed" error throws away precisely the information that
+the verifier already computed.
+
+*** Host-language callbacks may not bypass projected semantics
+
+A local runtime may invoke host-language functions to realize declared local
+effects, but arbitrary callbacks must not become an alternate transition path.
+
+In particular:
+
+The projected machine requests a declared effect. The registered host
+implementation performs it and submits a normalized completion or failure.
+The machine admits that event under the current owner and transition contract.
+
+is compatible with the design.
+
+But:
+
+An arbitrary host callback mutates choreography state without passing the
+declared admission and transition boundary.
+
+reopens the proof and knowledge boundary.
+
+The common boundary is
+[[#req-owner-relative-event-admission][owner-relative event admission]] in Part II.
+Part VI develops its browser implementation. An execution-private effect
+completion must not bypass that boundary, and a declared shared event must use
+its actual fragment or subscription owner rather than an invented execution.
+

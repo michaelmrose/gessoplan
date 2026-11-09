@@ -1,0 +1,81 @@
+*** Shape validation is necessary but not semantic certification
+
+Successful runtime validation establishes conformance to the particular schema
+under the validator and predicate contracts being relied upon. It is classified
+as runtime enforcement, not automatically as a formal theorem. A custom
+predicate's name does not establish an authority or provenance claim that its
+implementation never checks. Custom predicates are executable code: their
+determinism, side effects, exception behavior, and target portability are part of
+their contract when relied upon. A schema used for formal reasoning must have a
+supported semantic interpretation or explicit premises; serializing a function
+reference does not give the prover that interpretation.
+
+It does not prove:
+
+- that a browser supplied the value honestly;
+- that the value has authoritative provenance;
+- that the current principal may use it;
+- that another actor knows the same value;
+- that a model operation may be invoked;
+- that a choreography branch is globally legal.
+
+This is not a limitation to work around.  It is a deliberate separation of
+correctness scopes.
+
+The unified design therefore treats ordinary value schemas as one layer in a
+larger semantic interface:
+
+| Layer | Separate obligation |
+|-------+---------------------|
+| Value shape | The actual value satisfies its admitted schema |
+| Semantic type/refinement | Its category and applicable refinements are established |
+| Knowledge/provenance | This role has the required scoped justification |
+| Authority/operation contract | The trusted boundary permits this operation under current premises |
+| Choreographic admissibility | This local action and continuation obey the distributed specification |
+
+A success at one layer cannot be silently promoted into a stronger proposition
+owned by a later layer.
+
+The same rule applies when a stronger semantic category happens to use a nominal
+host-language representation.  Malli may validate the fields inside an
+=AuthoritativeBasis= representation, for example, but shape validation does not
+establish that the value came through the trusted authoritative acquisition
+path.  Conversely, an admitted value may still use ordinary immutable Clojure
+data internally.  What matters is the checked construction/admission relation,
+not whether the physical carrier is a record or a map.
+
+A discriminator such as =:type :verified= is therefore useful only as data unless
+the supported API also establishes why callers are entitled to rely on that
+category.
+
+*** Closed value boundaries are the default
+
+Where data crosses a semantic boundary, the declared schema should normally
+describe a closed payload.
+
+Closedness is especially important for:
+
+- client commands;
+- choreography messages;
+- provisional-state envelopes;
+- settlement envelopes;
+- authoritative projection metadata;
+- FX inputs and outputs.
+
+An open map is not harmless merely because consumers ignore unknown keys.
+Unexpected fields can become an accidental covert semantic channel when later
+code begins to read them.
+
+When an application genuinely needs an open payload, that must be explicit and
+its semantic treatment visible to verification and diagnostics. Transporting
+opaque extension data need not grant it first-class knowledge status. If a
+program wishes to branch on an extension field or consume it as authority,
+correlation, or an operation input, that use requires a declared contract and
+the appropriate admission.
+
+Semantic payload closure is distinct from rejecting every byte of physical
+transport metadata. The decoder may separate declared payload from transport
+metadata through an explicit contract. It must reject undeclared semantic
+fields at a closed boundary or keep explicitly permitted nonsemantic data
+outside the semantic context; it must not silently merge it into that context.
+
