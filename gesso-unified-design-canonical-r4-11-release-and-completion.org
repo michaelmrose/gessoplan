@@ -1,1306 +1,1216 @@
 * Part XI — Release and completion
 :PROPERTIES:
 :CUSTOM_ID: part-11-release-and-completion
+:PART_REVISION: 11-20261108
 :END:
 
-This part defines evidence reuse, candidate admission, release reports, global
-non-goals, and four distinct completion scopes. It makes a release claim
-reviewable against the actual artifacts and required capabilities without
-requiring every later proof milestone before an operational application exists.
+This part defines incremental evidence reuse, release admission, activation,
+bounded compatibility, and completion. A release claim concerns an identified
+application, supported scope, actual artifacts, and declared environment. It is
+not established by a successful build, an empty error log, a large test count,
+or a report containing a successful status.
+
+Parts I–X define the semantics and enforcing boundaries. This part makes their
+acceptance obligations concrete without introducing a second application model.
+Part XII owns realization ordering. Operational usability, compositional
+certification, external formal correspondence, and production multi-node support
+remain four separately reportable completion scopes.
+
+The plan is normative. Examples in this part illustrate release mechanisms and
+hypothetical records; they do not declare the present implementation complete.
 
 ** Incremental certification, build, and release
 :PROPERTIES:
 :CUSTOM_ID: req-release-evidence
 :END:
 
-A proof system that rebuilds the world after every edit will be resisted.
+The ordinary application constructor performs structural admission and installs
+the required production gates. A release profile adds its claim-specific proof,
+qualification, acceptance, and deployment requirements. Omitting an optional
+stronger proof profile does not disable structural construction, rendered-surface
+checking, runtime authorization, or artifact correspondence.
 
-Design for incremental recomputation:
+A selected stronger profile must be enforced by the actual candidate and
+installation path. Defining a strict checker or obtaining its report in a test
+does not establish that production invoked it. A disabled or absent policy
+cannot be treated as successful evaluation of that policy.
 
-- normalized semantic identities, certified dependency identities, checker/rule
-  profiles, and relevant assumptions determine certificate cache eligibility;
-- direct dependency identities identify what must be reconsidered;
-- unchanged semantic interfaces retain dependent validity where safe;
-- diagnostic/source metadata can change independently of semantic identity;
-- cache entries are re-admitted under the current checker/version and
-  certification-profile contract;
-- cache corruption cannot create a certificate the proof kernel or applicable
-  dedicated semantic checker would otherwise reject.
+*** Declare the claim before evaluating its gates
 
-Correctness dominates cache hit rate.
+A release intent identifies at least:
 
-The build system is where semantic identity, proof dependency identity,
-whole-application closure, and exact browser artifact correspondence become one
-release discipline.
+- the application and canonical requirement-set identity;
+- the required product capabilities, independently of the exposed-operation list;
+- the requested milestone or explicitly narrower supported scope;
+- the versioned assurance profile, mandatory judgments, permitted premise
+  classes, and required runtime enforcement;
+- the semantic, implementation, artifact, provider, and configuration subjects;
+- the intended deployment topology and supported compatibility directions;
+- the required test environments, fault scenarios, resource limits, and product
+  decisions;
+- the admission, installation, activation, and retirement conditions.
 
-*** Deterministic semantic regeneration
+The release gate derives the concrete obligations from that intent and the
+canonical application construction. It joins them to the original obligation
+ledger, rather than replacing the ledger with a list of successful checks.
+Required capabilities omitted from the implementation remain required.
 
-For unchanged normalized semantic inputs, regeneration should produce stable:
+Changing the requirement set, narrowing a proof domain, removing a capability,
+or weakening an assurance profile is an explicit change of release intent. It
+produces a distinguishable claim with its exclusions visible. It cannot make the
+original full-completion claim pass by shrinking its denominator during gate
+execution.
 
-- semantic identities;
-- certificate dependency identities;
-- projected plan identity where representation is deterministic;
-- normalized application assembly identity;
-- browser assembly manifest identity.
+A missing product decision is different from unsupported framework machinery.
+Either may block the requested claim, but diagnostics identify the actual owner.
+HumanHelp's selected remote-adoption policy is already part of Part VIII's
+requirements. Its response-flow contract remains a product decision until it is
+substantively selected and tested.
 
-Determinism is relative to the complete declared inputs, including relevant
-normalization, compiler, dependency, and format versions. It does not claim that
-semantic equality alone makes all compiler output byte-identical. Exact artifact
-bytes have their own checked identity and build binding. Build timestamps or
-other diagnostic metadata may vary only where their exclusion from the relevant
-identity is explicit.
+*** Four release decisions, with different evidence
 
-Diagnostic-only source metadata may change without forcing semantic
-re-certification when the normalized interface is unchanged.
+The release process distinguishes these decisions:
 
-*** Release gate
+| Decision | What must be established | What it does not establish |
+|----------+-------------------------+----------------------------|
+| Candidate admission | The constructed semantic/build candidate satisfies its profile and applicable pre-installation gates | That a particular server has adopted it |
+| Installation eligibility | Actual private host bindings, providers, workers, assets, and enforcement satisfy the installation contract | That all public traffic has switched or that runtime premises stay true forever |
+| Activation eligibility | The installation is current, exposure and overlap are permitted, and transition prerequisites hold | The success of every future user operation |
+| Completion claim | Every required capability and evidence gate for the named milestone is satisfied for its scope | Completion of other milestones or later changed releases |
 
-A production release must pass the gates for its declared supported scope and
-claimed milestone. It must not be admitted with any of the following defects
-within that required scope:
+These are architectural decisions, not a requirement for four public API calls.
+An implementation may combine phases while preserving their obligations.
 
-- unresolved obligations required by its selected certification profile;
-- stale semantic dependency identities;
-- invalid derivations submitted to the proof kernel or applicable dedicated
-  semantic checker;
-- stale browser artifact relative to the current assembly manifest;
-- application assembly closure errors;
-- a missing mandatory preflight lifecycle module;
-- generated runtime that is stale relative to authored ClojureScript;
-- proof/diagnostic data included as a runtime semantic decision input;
-- missing required operational capabilities or failed independent acceptance;
-- a production entrypoint that bypasses the required construction/render gates.
+A candidate can be exercised in a controlled integration environment only after
+that environment's own admission and installation gates hold. Testing an admitted
+staging installation is not the same as admitting the final production host.
+The final host establishes its environment-specific bindings before exposing
+managed behavior. This avoids both circular acceptance rules and a practice of
+exposing unchecked application paths merely to see whether they work.
 
-The operational milestone does not require completion of the later compositional
-or external-formal milestones. Conversely, a build requesting a stronger profile
-cannot silently fall back to operational assurance when certification fails.
-Admitted trusted premises remain visible; they are not unresolved proof tasks
-unless the selected profile requires their discharge.
+*** Gate results are closed, explicit, and scoped
 
-Release scope and required capabilities are declared before gate evaluation.
-Removing a failing operation or shrinking the proof subset during that evaluation
-cannot preserve the original completion claim. A deliberately narrower release
-must be identified as such, with its missing capabilities and excluded claims.
-This does not redefine the canonical HumanHelp milestone into a smaller target.
+The release-report vocabulary distinguishes the following results. An adapter
+may translate a tool's native statuses into these meanings, but it must not turn
+an inconclusive result into success.
 
-Ordinary runtime test gates remain required. A failed, skipped, unavailable,
-timed-out, or incomplete required check is not a pass. Reports distinguish a
-counterexample or invalid artifact from infrastructure failure and unsupported
-checking. An expected rejection counts as success only for a negative test
-whose expected boundary and diagnostic were specified in advance.
+| Result | Meaning | Satisfies a required gate? |
+|--------+---------+---------------------------|
+| =:passed= | The required check completed successfully for the applicable subject and scope | Yes, after evidence and applicability validation |
+| =:failed= | The check established the specified violation or unsuccessful outcome | No |
+| =:incomplete= | Work began but did not establish the required result, including timeout or exhausted exploration | No |
+| =:unavailable= | The required checker, environment, dependency, or resource could not be used | No |
+| =:unsupported= | The mechanism cannot establish the requested judgment for this input or scope | No |
+| =:skipped= | The check was intentionally not executed | No |
+| =:stale= | Existing evidence no longer applies to the current subject or premises | No |
+| =:missing= | No required result or resolvable evidence exists | No |
 
-The release gate produces a concrete candidate and evidence; it is not itself
-a deployment action. Activation follows the assembly-generation and lifecycle
-contracts in Part VII and must use the artifact that the gate admitted.
+These are release-check results, not model outcomes or evidence classes.
+=:passed= may describe a test, a kernel check, a qualification run, or a proof
+check; the record still names which mechanism ran. A passing test does not become
+a proof because its status shares the same word.
 
-*** Incremental invalidation is dependency-driven
+An expected rejection passes only a negative test whose input, first enforcing
+boundary, and expected diagnostic or prohibited effect were specified. The
+candidate rejected by that test is not thereby admitted. A test that succeeds
+because an unrelated wrapper rejected earlier does not establish enforcement
+by the intended boundary.
 
-When semantic identity A changes:
+A gate can be excluded only through the declared scope and applicability rules.
+It is recorded as excluded with a reason and requirement reference, not as a
+passing check. A gate mandatory for the canonical milestone cannot be excluded
+while retaining that milestone's complete status. Unknown applicability blocks
+the relevant decision until resolved.
 
-#+begin_example
-A changed
-    |
-direct dependents of A reconsidered
-    |
-only affected downstream proof DAG rebuilt
-#+end_example
+*** Mandatory obligations and accepted premises are not one counter
 
-The system should not rebuild unrelated artifacts merely because they live in the
-same source file or Git commit.
+The profile decides which obligations require checked derivations, which require
+runtime mechanisms, which require qualification or test evidence, and which may
+remain explicit trusted or asserted premises. A conditional admission can be
+valid while displaying such accepted premises.
 
-At the same time, cache correctness outranks speed.
+The report therefore separates:
 
-A cache hit never bypasses validation by the proof kernel or dedicated semantic
-checker required by its current version and applicable certification profile.
-Reuse may avoid repeated work through an admitted immutable in-process result or another explicitly checked cache contract. Merely finding
-a stored successful report is insufficient.
+- mandatory unmet obligations, which must be empty for the requested decision;
+- accepted premises with their exact proposition, scope, owner, and dependent
+  claims;
+- runtime obligations, whose enforcing mechanisms must be installed and whose
+  concrete conditions are evaluated when required;
+- unsupported, stale, or refuted claims;
+- exclusions and narrower scopes;
+- original source obligations and the evidence relationships that account for
+  their current disposition.
 
-Implementation changes require separate consideration. An unchanged semantic
-interface can preserve downstream contract-level derivations while invalidating
-conformance or test evidence for a changed handler, provider, compiler, or
-runtime artifact. Reuse follows each claim's actual dependencies under
-[[#req-certificate-composition]], rather than a blanket semantic-ID shortcut.
+“Zero open obligations” is not a substitute for this accounting. It can hide the
+fact that an implementation premise was merely accepted, or demand an impossible
+proof of all external systems. Mandatory obligations cannot be moved into the
+premise list because a proof failed. An accepted backend premise still needs
+its required qualification and must not be known false.
 
+A current principal, valid command binding, or permission to mutate a resource
+cannot be frozen as a build-time fact. Release evidence establishes the proper
+runtime mechanism and its scope, not the truth of every future invocation's
+premises.
 
-**** Worked invalidation slice: one policy edit rebuilds only its semantic cone
+*** Deterministic regeneration and identity layers
 
-Suppose HumanHelp changes the rule that admits a helper to Claim a Request.  The
-source edit matters because it changes normalized semantic input, not because it
-shares a file or commit with other code.
+For unchanged complete declared inputs, the normalized semantic construction
+must reproduce the identities it claims deterministic: semantic subjects,
+required dependency closure, supported projections and plans, assembly
+interfaces, and browser manifest. Relevant normalizer, rule, checker, codec,
+compiler, and format versions enter the appropriate dependencies.
 
-#+begin_src clojure
-(def claim-eligibility-source-v7
-  {:artifact/class :semantic/rule
-   :rule/id :request/claim-eligible?
-   :requires #{:membership/current :request/open}
-   :result :helper-may-claim})
+The identities answer different questions:
 
-(def claim-eligibility-v7
-  (semantic/normalize-rule
-    claim-eligibility-source-v7))
+| Identity or relation | Question answered |
+|----------------------+-------------------|
+| Semantic subject identity | Is this the same normalized meaning in the supported interpretation? |
+| Required dependency closure | Which exact subjects and premises support this claim? |
+| Implementation identity | Which concrete callable, lowering, or provider realization is bound? |
+| Exact artifact identity | Which actual bytes were built, tested, stored, or served? |
+| Assembly generation | Which immutable admitted whole-application realization owns this invocation? |
+| Continuation compatibility | May this client or execution safely use that target realization? |
+| Activation record | Which admitted realization was exposed in this environment and transition? |
 
-(def claim-operation-v12
-  {:artifact/class :semantic/operation
-   :operation :request/claim
-   :semantic/id :operation/request-claim-O12
-   :depends-on #{(semantic/id claim-eligibility-v7)
-                 :schema/request-S9}
-   :effect :request/open->claimed})
+Source paths, line numbers, Git commits, timestamps, and human version labels are
+useful provenance. They are not substitutes for those meanings. Identical source
+text under a changed primitive or compiler may not preserve the relevant claim.
+Conversely, a comment edit need not change a semantic subject.
 
-(def request-card-plan-v18
-  {:artifact/class :browser/plan
-   :plan/id :plan/request-card-P18
-   :depends-on #{:operation/request-claim-O12
-                 :projection/request-card-J6}})
+Semantic reproducibility does not imply byte-identical compiler output. Exact
+reproducible builds additionally control every byte-affecting input. Otherwise
+the build records and verifies the actual emitted bytes separately. Timestamp
+or diagnostic exclusions from an identity must be explicit and justified.
 
-(def search-plan-v4
-  {:artifact/class :browser/plan
-   :plan/id :plan/request-search-P4
-   :depends-on #{:projection/request-search-J3}})
+A changed dependency requires reconsideration of the affected artifacts; it does
+not guarantee that every artifact's bytes change. A server-side policy change
+may leave an executable browser payload unchanged if its complete relevant
+contract and dependencies remain satisfied. A new manifest or receipt is still
+required wherever its binding changes. Reuse follows checked facts, not an
+assumption that every source edit either rebuilds everything or changes nothing.
 
-;; Product policy changes: suspended helpers may no longer Claim. This
-;; source edit does not assign or forge its next semantic identity.
-(def claim-eligibility-v8
-  (semantic/normalize-rule
-    (update claim-eligibility-source-v7
-      :requires conj :helper/not-suspended)))
+*** Incremental invalidation follows actual dependency edges
 
-(def invalidation
-  (release/reconsider
-   {:changed #{(semantic/id claim-eligibility-v7)}
-    :replacement {(semantic/id claim-eligibility-v7)
-                  (semantic/id claim-eligibility-v8)}
-    :dependency-index production-dependencies}))
+The dependency index is derived from admitted source and the required claim
+closure. It includes semantic dependencies and the separate implementation,
+provider, configuration, build, and qualification dependencies needed by each
+claim. A structural graph supplied by the caller cannot establish its own
+completeness.
 
-;; Conceptual result:
-invalidation
-;; =>
-{:rebuild
- #{:operation/request-claim
-   :certificate/request-claim
-   :plan/request-card
-   :assembly/humanhelp
-   :browser-artifact/humanhelp}
- :retain
- #{:plan/request-search
-   :certificate/request-search
-   :projection/request-search}}
-#+end_src
+When a dependency changes, reconsider its transitive dependents. Retain a result
+only when the current consumer establishes its applicability, including profile
+and interpretation compatibility. Rechecking a join may show that an unchanged
+interface theorem remains reusable while physical evidence must be renewed.
+The system need not regenerate unrelated subjects because they share a file or
+Git commit.
 
-The operation must be reconstructed against =R8= because its former dependency
-identity is stale.  The Claim-facing projection/plan and the root assembly are
-then reconsidered because their dependency closure contains that operation.  If
-the generated browser artifact incorporates the changed Claim plan, its exact
-bytes and artifact identity change as well.
-Here =R7= and =R8= are mnemonic labels for identities computed from the
-normalized rules, and =production-dependencies= is the index derived from the
-admitted source graph. The new =:helper/not-suspended= predicate must have a
-typed, appropriately authoritative model input; if it does not, the rule is
-rejected rather than allowing the illustrated rebuild to proceed.
+Invalidation records distinguish these actions:
 
-The search plan does not become stale merely because its implementation lives in
-the same repository, release, or source namespace.  Its dependencies did not
-change.  This is the useful meaning of incremental certification: retain claims
-whose applicability is mechanically established, while rebuilding the complete
-semantic cone of the changed subject.
+- reconsider a claim whose dependency changed;
+- reconstruct a semantic subject or executable artifact where required;
+- recheck evidence or its applicability;
+- rerun a concrete qualification or acceptance case;
+- reacquire installation evidence for a changed physical environment;
+- retain an immutable result with the reason its applicability survives.
 
-*** Cached certificate corruption fails closed
+They must not collapse all of these into “rebuild” or imply that a retained
+abstract proof establishes unchanged production behavior.
 
-A corrupted cache entry must not become accepted simply because its filename or
-cache key matches.
+**** Executable illustration: the affected dependency closure
 
-The cache stores candidate evidence.
-
-The current trusted checker still performs the admission checks required for
-that certificate class: normalized subject, structure, dependencies, assumptions,
-checker/rule compatibility, and derivation validity where required. A copied
-semantic ID or stale success flag cannot override those checks.
-
-Corruption may reject the candidate or trigger fresh reconstruction from valid
-inputs; it must never relax acceptance. Cached values crossing serialization
-boundaries regain admission only through the validation specified in Part IX.
-
-
-**** Worked cache-admission slice: a green file is not a certificate
-
-A cache lookup may return bytes that look exactly like an earlier successful
-certificate.  Admission still checks whether those bytes establish the current
-claim under the current checker contract.
+This pure Clojure example computes a reconsideration set over a supplied finite
+graph. The graph uses subject labels, not cryptographic identities. It assumes
+that its nodes and edges have already been validated and that the graph is the
+complete relevant dependency index. It does not check those assumptions, issue
+a certificate, or decide which reconsidered result can ultimately be reused.
 
 #+begin_src clojure
-(def current-subject
-  {:semantic/id :operation/request-claim-O13
-   :depends-on #{:rule/claim-eligible-R8
-                 :schema/request-S9}})
+(def release-dependencies
+  {:claim-rule #{}
+   :model-schema #{}
+   :claim-contract #{:claim-rule :model-schema}
+   :claim-proof #{:claim-contract}
+   :claim-adapter #{}
+   :claim-conformance #{:claim-contract :claim-adapter}
+   :claim-plan #{:claim-contract}
+   :search-projection #{}
+   :search-plan #{:search-projection}
+   :browser-manifest #{:claim-plan :search-plan}
+   :application-root #{:claim-proof :claim-conformance :browser-manifest}})
 
-(def cached-report
-  {:cache/key [:operation/request-claim
-               :profile/compositional-v3]
-   :subject :operation/request-claim-O12
-   :dependencies #{:rule/claim-eligible-R7
-                   :schema/request-S9}
-   :checker :checker/operation-v6
-   :result :valid
-   ;; A hash is not the derivation or its checked subject binding.
-   :derivation-hash "71ad..."})
+(defn affected-subjects [dependencies changed]
+  (loop [affected changed]
+    (let [expanded
+          (into affected
+                (for [[subject inputs] dependencies
+                      :when (some #(contains? affected %) inputs)]
+                  subject))]
+      (if (= affected expanded)
+        affected
+        (recur expanded)))))
 
-(def admission
-  (certificate/admit-cached
-   {:expected-subject current-subject
-    :required-checker :checker/operation-v7
-    :required-profile :profile/compositional-v3
-    :candidate cached-report}))
+(def policy-change
+  (affected-subjects release-dependencies #{:claim-rule}))
 
-;; A checker that collects safe independent diagnostics can report these;
-;; a fail-fast checker may report the first blocking error instead.
-{:admitted? false
- :errors
- [{:type :certificate/subject-mismatch
-   :expected :operation/request-claim-O13
-   :actual :operation/request-claim-O12}
-  {:type :certificate/stale-dependency
-   :expected :rule/claim-eligible-R8
-   :actual :rule/claim-eligible-R7}
-  {:type :certificate/checker-mismatch
-   :required :checker/operation-v7
-   :actual :checker/operation-v6}
-  {:type :certificate/missing-required-derivation
-   :reason :digest-without-checkable-proof}]}
+(def adapter-change
+  (affected-subjects release-dependencies #{:claim-adapter}))
+
+(assert (= #{:claim-rule :claim-contract :claim-proof
+             :claim-conformance :claim-plan :browser-manifest
+             :application-root}
+           policy-change))
+(assert (= #{:claim-adapter :claim-conformance :application-root}
+           adapter-change))
+(assert (not (contains? policy-change :search-plan)))
+(assert (not (contains? adapter-change :claim-proof)))
 #+end_src
 
-A hostile variant could copy the new subject ID and leave the old derivation
-bytes.  That still fails when the applicable checker validates structure,
-dependency binding, assumptions, and derivation validity.  A cache hit is an
-optimization opportunity; it is never an alternate trust path.
+In this graph, the policy change reaches the browser manifest, while an adapter
+change reaches physical conformance and the application root without invalidating
+the abstract Claim proof. A real manifest that also binds the adapter would add
+that edge and therefore be reconsidered. A search implementation that relies on
+the changed policy would likewise add the dependency. The example does not
+justify omitting either edge when it exists.
 
+Reconsidering the manifest does not force recompilation if the actual required
+payload and build binding can be reused under the current contract. The example
+computes impact, not an optimal build schedule or a proof of cache validity.
 
-**** Worked implementation slice: unchanged contract, changed adapter
+*** Cache admission preserves the original trust boundary
 
-A different kind of edit changes production realization while leaving the
-semantic operation unchanged.  That does not justify throwing away every proof,
-but neither may the old implementation evidence be silently reused.  Crucially,
-semantic evidence is retained only after its applicability to the /current
-normalized semantic subject/ has been checked; matching a semantic-ID string is
-not itself that check.
+A persisted cache entry is candidate evidence. Its key, filename, recorded digest,
+and successful status cannot confer issuance. The trusted consumer reconstructs
+or validates the current subject and required closure, then applies the relevant
+source, derivation, assumption, interpretation, and issuer rules from Part IX.
+
+The supported reuse paths are:
+
+| Reuse path | Required validation |
+|------------+---------------------|
+| Immutable in-process issued result | Genuine issuer binding, unchanged subject and required closure, current applicability |
+| Serialized proof/evidence package | Safe decoding, complete original source/proof material, current dependency and profile checks, required semantic rechecking |
+| External formal evidence | The supported import/checking contract, exact subject representation, proof/checker identity, and applicability |
+| Previous concrete test or qualification | Exact tested subject/configuration or a justified coverage-preserving relation, with remaining environment checks identified |
+| Previous installation record | Only the installation facts it still establishes; a new host or changed binding acquires its own evidence |
+
+An opaque JVM handle is process-local. Printing or serializing it cannot make it
+a durable certificate. Copying a report into a new map cannot recover its issuer
+or the origin of its physical observations. The cache must not accept executable
+reader forms, arbitrary callbacks, or unbounded structures merely because they
+arrive under an evidence filename; its parser and resource contract are explicit.
+
+A corrupted or incomplete cache entry may fail admission or trigger fresh
+reconstruction from trusted inputs. It cannot relax the original check. A
+reconstruction failure leaves the required gate unsatisfied. Recovering from a
+cache miss is different from suppressing a counterexample or a known invalid
+premise.
+
+An unchanged immutable result can avoid repeating expensive work under an admitted
+cache contract. This does not require reparsing an unchanged proof on every
+request. It also does not cache current Membership, command disposition, live
+resource ownership, or permission to disclose a prior result as permanent facts.
+
+**** Unchanged contract, changed implementation
+
+Suppose the normalized Claim contract and proof remain unchanged while its XTDB
+adapter changes from implementation A to implementation B. The release must
+separate the following questions:
+
+| Item | Reuse decision |
+|------+----------------|
+| Abstract Claim theorem | Reusable if its actual subject, dependencies, interpretation, and profile still apply |
+| A's transaction-lowering correspondence | Does not establish B's correspondence |
+| A's backend qualification | Reusable only for the portion whose complete applicability envelope B preserves; changed adapter behavior requires qualification |
+| Handler and gateway binding | Re-establish for the actual issued B realization and installed host |
+| Browser plan and bytes | Reconsider their actual dependencies; rebuild only where needed |
+| End-to-end Claim evidence | Establish applicability to B; an A-only execution cannot be silently relabeled |
+| Whole-application root | Recheck the joins and report B's remaining premises |
+
+Implementation identity is acquired from the actual bound construction and its
+relevant dependencies. Assigning a new label in a map does not establish which
+handler the server executes. A successful source-relative join does not prove
+complete physical writer coverage or the final serving process's adoption.
+Those remain the separate production obligations defined in Parts VII and X.
+
+** Root release evidence and candidate integrity
+
+The root report has machine-readable data and a human-readable explanation of
+the same records. It is generated from checked construction and observed evidence;
+it is not a second hand-maintained application registry.
+
+*** Required report fields
+
+The report identifies:
+
+1. Release intent, canonical requirements, requested milestone/scope, assurance
+   profile, and independent required-capability inventory.
+2. Normalized subjects, required dependency closure, original obligation ledger,
+   accepted premises, mandatory unmet obligations, and excluded claims.
+3. Actual implementation bindings, source/build provenance, provider/configuration
+   identities, compiler/runtime versions, and qualification applicability.
+4. Issued plans, browser manifest, build receipt, exact artifacts, and the admitted
+   assembly generation to which they belong.
+5. Every required gate's result, evidence class, evidence reference, subject,
+   environment, bounds, and enforcing boundary where relevant.
+6. Candidate, installation, activation, compatibility, and retirement decisions,
+   including the actual serving-host evidence for the claim made.
+7. Product decisions, resource limits, retention contracts, security boundaries,
+   and conditional-liveness premises.
+8. Completion results for each requested milestone and a change-impact explanation
+   relative to any reused evidence.
+
+Every reference must resolve to evidence of the stated subject and scope. A
+passing fixture test, an old browser bundle, a supplied route inventory, and an
+actual installed handler are different evidence. The report must preserve the
+origin and limits identified in Part X rather than combining their green labels
+into an unsupported production claim.
+
+The root report is explanatory. An admitted candidate or installation uses the
+genuine checked construction result or supported revalidation contract. It does
+not trust a caller-edited =:passed= or =:eligible= field. The report never becomes
+an authorization capability for Claim or a semantic input to browser transitions.
+
+*** Executable illustration: aggregate status is not evidence admission
+
+The following pure function illustrates only the final aggregation of an
+already validated, nonempty required-gate set and gate-result records. It does
+not validate proof evidence, authorize deployment, or replace the profile's
+source-derived gate construction. Its output explains blockers to a caller.
 
 #+begin_src clojure
-(def claim-contract
-  {:normalized/semantics
-   {:pre #{:request/open :helper/eligible}
-    :post #{:request/claimed-by-authenticated-helper}}
-   :depends-on #{:rule/claim-eligible-R8
-                 :schema/request-S9}})
+(def release-result-kinds
+  #{:passed :failed :incomplete :unavailable :unsupported
+    :skipped :stale :missing})
 
-(def current-claim-subject
-  (semantic/normalize claim-contract))
+(defn summarize-required-gates [required results]
+  (when-not (and (set? required) (seq required) (map? results))
+    (throw (ex-info "Expected a nonempty required-gate set and result map."
+                    {:reason :invalid-gate-input})))
+  (let [blockers
+        (into {}
+              (keep (fn [gate]
+                      (let [present? (contains? results gate)
+                            row (get results gate)
+                            status (if present? (:status row) :missing)]
+                        (cond
+                          (not (contains? release-result-kinds status))
+                          [gate :invalid-result]
 
-(def claim-semantic-id
-  (semantic/id current-claim-subject))
+                          (= :passed status) nil
 
-(def xtdb-claim-adapter-a
-  {:implementation/id :impl/claim-xtdb-A44
-   :implements claim-semantic-id
-   :handler #'request.model/claim-v1})
+                          :else [gate status]))))
+              required)]
+    {:summary (if (empty? blockers) :requirements-passed :blocked)
+     :blockers blockers}))
 
-(def xtdb-claim-adapter-b
-  {:implementation/id :impl/claim-xtdb-B45
-   :implements claim-semantic-id
-   :handler #'request.model/claim-v2})
+(def small-required-set #{:assembly-closure :real-claim :response-contract})
 
-(def previous-evidence
-  {:semantic-certificate
-   ;; A complete previously issued certificate candidate, including the
-   ;; normalized subject, derivations, dependencies, and assumption scopes.
-   ;; The checker re-admits it below; a report saying :result :valid would
-   ;; not suffice.
-   (certificate-fixture/serialized-checked-operation-certificate
-    {:subject current-claim-subject
-     :dependencies (:depends-on claim-contract)
-     :checker :checker/operation-v7
-     :profile :profile/compositional-v3})
+(def incomplete-results
+  {:assembly-closure {:status :passed}
+   :real-claim {:status :passed}})
 
-   :implementation-conformance
-   {:subject :impl/claim-xtdb-A44
-    :against claim-semantic-id
-    :result :pass}
+(assert (= {:response-contract :missing}
+           (:blockers (summarize-required-gates
+                       small-required-set incomplete-results))))
 
-   :integration
-   {:subject :assembly/humanhelp-G31
-    :uses :impl/claim-xtdb-A44
-    :result :pass}})
+(assert (= :blocked
+           (:summary
+            (summarize-required-gates
+             small-required-set
+             (assoc incomplete-results
+                    :response-contract {:status :skipped})))))
 
-(def semantic-reuse
-  (certificate/admit-reuse
-   {:current-subject current-claim-subject
-    :current-dependencies (:depends-on claim-contract)
-    :required-checker :checker/operation-v7
-    :required-profile :profile/compositional-v3
-    :candidate (:semantic-certificate previous-evidence)}))
-
-;; Conceptually, this is true only because the current checker establishes that
-;; the certificate still applies to the current normalized subject and its
-;; dependencies.  The computed semantic ID is useful correlation, not proof.
-{:admitted? true
- :reason :subject-dependencies-and-derivation-rechecked}
-
-(def reconsidered
-  (release/reconsider-implementation
-   {:old xtdb-claim-adapter-a
-    :new xtdb-claim-adapter-b
-    :semantic-reuse semantic-reuse
-    :evidence previous-evidence}))
-
-;; Evidence about A44 cannot establish facts about B45.  The semantic theorem
-;; may be retained only through the admitted applicability result above.
-{:retain #{:semantic-certificate/operation-request-claim-O13}
- :rerun #{:conformance/claim-adapter
-          :integration/humanhelp-claim
-          :real-browser/request-claim}
- :revalidate #{:server-provider-binding
-               :assembly/humanhelp
-               :startup-preflight/humanhelp}
- :rebuild-if-bound #{:browser-manifest/humanhelp
-                     :browser-artifact/humanhelp}}
+(assert (= :requirements-passed
+           (:summary
+            (summarize-required-gates
+             small-required-set
+             (assoc incomplete-results
+                    :response-contract {:status :passed})))))
 #+end_src
 
-The semantic certificate is reusable because the current checker establishes
-that its normalized subject, semantic dependencies, checker contract, and
-profile still apply.  It is /not/ reusable merely because both versions carry
-the same computed Claim identity. A copied or stale semantic ID cannot establish
-semantic sameness.
+An arbitrary caller can fabricate the example's =:passed= rows. That is precisely
+why aggregation is downstream of evidence validation and is not an issuer. The
+real gate checks each result's evidence, subject, profile, scope, and applicability
+before it reaches this stage. An extra passing row for an unrelated capability
+cannot satisfy a missing required gate.
 
-The conformance result is not reusable because it was evidence about
-implementation =A44=.  Assembly and artifact work is recomputed precisely where
-the admitted implementation identity participates in their construction.
-The =A44/B45= labels stand for implementation identities established from the
-actual bound handler, build, and relevant dependencies. Assigning those labels
-in a map is not itself evidence that production executes those implementations;
-activation checks the current binding under Part VII's assembly lifecycle.
+The real required set is derived from the requested canonical scope and must not
+be replaced with the three-gate illustration. Rejection of an empty set is a
+small guard against vacuous aggregation, not a proof that the set is complete.
 
-This distinction prevents two opposite pathologies: rebuilding every theorem
-because a handler was refactored, and retaining either semantic or production
-evidence on the strength of matching labels that no current checker has shown to
-remain applicable.
+*** The tested object must be the activated object
 
-*** Root release report
+The candidate binds declarations, prepared operations, route/decoder behavior,
+providers, selected assurance policy, runtime/render gates, plans, manifest, and
+actual emitted bytes through the construction phases in Part VII. Mutable lookup
+or post-test replacement cannot substitute a different implementation at activation.
 
-A production build should be able to emit one machine-readable and human-readable
-root report describing at least:
+Artifact verification inspects the actual bytes and receipt relation. A filename,
+embedded manifest string, matching digest metadata, or build timestamp alone is
+insufficient. The normal build path derives the bootstrap from the admitted
+application source and uses the qualified compiler/build contract. The compiler
+remains a named premise unless stronger correspondence evidence establishes it.
 
-- application/assembly semantic identity;
-- certified artifact classes;
-- proof kernel and dedicated semantic checker versions, as applicable;
-- unresolved obligations, expected zero for certified production scope;
-- explicit assumptions/assertions;
-- whole-application closure status;
-- current browser-artifact identity and correspondence;
-- runtime/test/conformance gate results;
-- TCB classification;
-- declared milestone, supported subset, and certification profile;
-- concrete source/build provenance, admitted assembly generation, and dependency
-  versions;
-- identities of the actual tested and served artifacts;
-- required user-capability acceptance and production-enforcement evidence;
-- exclusions, unresolved product choices, and environmental/liveness premises;
-- result and evidence reference for each required gate, including incomplete
-  or skipped outcomes.
+Release acceptance records what the browser and server actually used. A generated
+artifact copied into a staging directory but never served is not evidence of
+browser correspondence. A minified asset's hash establishes byte identity under
+its assumptions, not the semantic correctness of its compiler output.
 
-Each evidence reference identifies the subject and configuration it covers.
-Passing tests for a different fixture assembly, old artifact, or shadow model
-cannot establish current release behavior. Reuse is permitted only where its
-applicability is justified by unchanged dependencies or a checked compatibility
-relation. A prior timestamp or a matching operation name is not that relation.
+Relevant differences between test and production environments are explicit
+obligations. A tested transaction adapter may be reusable while production
+credentials, backend endpoint, server adoption, or topology must be established
+at installation. Environment promotion is a checked relation over those facts,
+not a blanket assertion that staging and production are equivalent.
 
-The report is release evidence describing what was built and which assurance
-claims support it.  It is not runtime authorization and does not become a
-semantic input merely because the build that produced it was admitted.
+*** Coherent activation and failure handling
 
-*** Candidate integrity and activation
+Installation prepares the final guarded handler, provider bindings, owned workers,
+asset references, and response lifecycle under the admitted candidate. Required
+checks run before those application paths are exposed. Private initialization of
+dependencies may precede admission; an externally usable unchecked mutation path
+may not.
 
-The admitted candidate binds declarations, prepared server realizations,
-providers, routes, normalized semantic/certificate identities, executable plans,
-manifest, and actual generated bytes according to the acyclic construction
-phases in [[#req-assembly-construction-phases]]. Build and test evidence must not
-be paired with a different artifact at deployment time.
+Activation uses a compare-and-activate or equivalent checked transition that
+prevents an older concurrent candidate from replacing a newer current assembly
+without the declared policy allowing it. The binding being activated includes
+routes, executors, providers, assurance policy, render/output checks, and artifact
+references. Publishing those pieces independently can expose a mixture that was
+never admitted.
 
-Unchanged normalized inputs produce deterministic identities where claimed,
-including certificate content/identity when its encoding is deterministic.
-Diagnostic source metadata remains separate. Where exact reproducible build
-bytes are claimed, the toolchain and all byte-affecting inputs must also be
-controlled; otherwise the report claims semantic reproducibility and records
-the actual artifact bytes separately.
+Coherence is local to the stated activation boundary. A rolling deployment across
+hosts may temporarily serve several admitted assemblies under the compatibility
+contract below. It is not called a globally atomic switch unless the deployment
+mechanism actually establishes that stronger property.
 
-A dependency or mutable binding changed after admission requires the appropriate
-revalidation before activation. A failed candidate may leave a still-valid old
-assembly generation running under the lifecycle contract; it may not partially
-replace that assembly generation. Old browser plans use the explicitly supported
-compatibility or retirement/recovery path.
+Each invocation captures its immutable assembly and concrete context at entry.
+Deferred response bodies, futures, streams, and transferred work retain an
+explicit applicable context through their declared lifetime. They must not fetch
+whichever mutable registry happens to be current when completion occurs. Assembly
+binding does not freeze Membership, authorization, backend validity, or resource
+ownership; those premises remain current where the operation requires them.
 
-Reactivating an older assembly generation does not roll back committed domain
-state. Any release involving model/schema evolution must identify its supported
-state compatibility and recovery constraints before claiming that rollback is
-safe. This requirement does not introduce a universal database migration or
-workflow engine.
+A failed candidate leaves the old assembly serving only while that assembly is
+still valid. If a discovered backend, security, or semantic violation invalidates
+a required premise, failure to install a replacement is not permission to keep
+using the unsafe claim. The declared response suspends affected work or enters an
+explicit restricted mode whose remaining guarantees hold.
 
-*** Bounded rolling-release compatibility
+Failed installation retires its owned resources in dependency-safe order. It
+must not leave an unchecked listener, scheduler, or worker active. Cleanup errors
+are reported alongside the primary admission failure without concealing it.
+Failed cleanup does not restore retired effect permission.
+
+A gate failure after a command may have been submitted must not invent rejection.
+Stopping traffic, retiring an assembly, or aborting a response does not roll back
+a durable commit. Command reconciliation and publication recovery follow their
+separate authoritative contracts.
+
+*** Rollback is a new checked activation
+
+Reactivating an older artifact does not roll back domain state, command records,
+outbox entries, or previously disclosed information. The older code must still
+understand the state and protocol it will encounter and must satisfy current
+qualification and security requirements.
+
+A release involving schema or state evolution declares forward and backward
+compatibility, migration ownership, relevant writer coverage, and the invariant
+entry point after migration. A migration is an authoritative writer; it is not
+outside the proof boundary merely because it runs once from an administration
+script.
+
+Rollback eligibility considers the actual committed migration state, all writers
+that can still run, the command-result retention and decoding contract, pending
+durable work, and the supported client/server combinations. An irreversible
+change may make an older application version ineligible. The remedy is a declared
+forward repair or another qualified transition, not an unexamined code rollback.
+
+The plan does not prescribe a universal migration engine. It requires the chosen
+mechanism to make these conditions explicit and enforce the claimed boundary.
+
+** Bounded rolling-release compatibility
 :PROPERTIES:
 :CUSTOM_ID: req-bounded-release-compatibility
 :END:
 
-A release boundary must distinguish at least four different identities that are
-easy to collapse incorrectly:
-
-- the semantic identity of an operation or plan;
-- the exact identity of emitted browser/server artifacts;
-- the admitted assembly-generation identity of a releasable whole application;
-- the compatibility relation that says whether an execution originating in one
-  admitted assembly generation may continue against another.
-
-Compatibility is not inferred from matching names, numerical version ordering,
-Git ancestry, build count, wall-clock recency, or the fact that two releases were
-produced from similar source.  It is a checked relation over the continuation-
-relevant semantics and deployment capabilities of the two admitted generations.
-
-The baseline operational policy is deliberately bounded.  Ordinary rolling
-deployment needs to support a small overlap between the generation being
-replaced and the generation replacing it; it does not require arbitrary old
-browser executions to remain live forever.  A typical supported window is:
-
-#+begin_example
-assembly generation N
-        <---- checked rolling compatibility ---->
-assembly generation N+1
-
-assembly generation N+2 activates
-        |
-        +-- N execution is outside the supported window
-            -> retire stale execution universe
-            -> preserve only explicitly recoverable semantic intent
-            -> reacquire current authoritative realization
-#+end_example
-
-The symbols =N=, =N+1=, and =N+2= name an example *activation order*, not
-numerical assembly-generation identities or a proof of compatibility. The exact
-supported overlap window is a release capability. An application may choose a
-different bound, but it must be explicit, finite, and checked.
-
-Part VII fixes when an admitted assembly generation exists: a complete
-realization is constructed and validated for serving. It may be admitted during
-development without being selected for a production release. Admission binds
-the actual routes, prepared operations, providers, plans, and generated artifact
-for that generation; relevant changes require a new admission or an explicitly
-checked transition even if the semantic continuation contract is unchanged.
-A release selects admitted generation(s) for activation and records their
-rolling compatibility. Development rebuilds or commits alone neither mutate an
-existing admitted generation nor imply that its release will be activated.
-Deployment/activation order and assembly-generation identity remain different
-coordinates.
-
-**** Direction matters during overlap
-
-Rolling compatibility may be directional.  If deployment/routing permits both
-of these situations:
-
-#+begin_example
-old browser / old plan  -> new server
-new browser / new plan  -> old server
-#+end_example
-
-then the release gate must establish both directions separately.  If routing or
-activation rules make one direction impossible, the report may rely on that
-operational fact, but it must name and test it rather than silently assuming
-symmetry.
-
-The compatibility question is therefore not merely:
-
-#+begin_example
-compatible?(N, N+1)
-#+end_example
-
-but, where direction matters:
-
-#+begin_example
-may-continue?(client-generation, server-generation, operation/plan)
-#+end_example
-
-A successful result means that every continuation-relevant assumption required by
-the suspended execution remains valid under the target generation, or that an
-explicit checked adaptation contract establishes the required refinement.
-
-**** Compatibility is derived from continuation-relevant semantics
-
-Where practical, Gesso should derive a normalized continuation contract from the
-same admitted semantic objects that produce the executable plan.  The contract
-contains the facts that can affect whether suspended work may safely continue,
-for example:
-
-- operation and plan semantics;
-- command argument, result, and outcome contracts;
-- authority and principal requirements;
-- event vocabulary and relevant state transitions;
-- retry, duplicate, uncertainty, and reconciliation semantics;
-- progression/acquisition obligations;
-- required runtime/browser capabilities;
-- route and transport envelope correspondence, including the target server's
-  actual decoder and the runtime artifact that may send the envelope;
-- settlement and continuation obligations;
-- any other dependency whose change can invalidate an already projected
-  continuation.
-
-A conservative implementation may use equality of a soundly normalized,
-complete continuation-contract identity for the *semantic* portion of the
-compatibility decision. That equality is useful because a change represented
-by the contract retires the old continuation unless a stronger rule has been
-justified. It is not by itself evidence that the target server actually serves
-the bound route/decoder, that the old client artifact and target runtime support
-the same envelope/events, or that the relevant implementation and assembly
-bindings passed admission. The release gate checks those concrete facts for
-each client-to-server direction it permits, and the runtime still re-establishes
-current authorization and other dynamic premises at use.
-
-A more permissive implementation may establish a directional compatibility or
-migration relation that proves an older continuation remains safe under newer
-semantics.  Such a relation is additional checked evidence.  A handwritten
-assertion that two plans are compatible is, at best, an explicit trusted premise
-unless the selected assurance profile supplies a checker for it.
-
-The release report records which rule established compatibility.  It must not
-reduce that fact to a label such as =v3= whose meaning depends on undocumented
-human convention. The report identifies both the semantic relation and the
-actual admitted client/server realizations and evidence to which it applies.
-
-**** Retirement preserves semantic intent, not stale execution authority
-
-When an execution falls outside the supported compatibility window, the safe
-default is retirement followed by authoritative reacquisition.  Retirement is
-not an attempt to deserialize and continue arbitrary old machine state under the
-new release.
-
-Some application context may survive because it denotes stable semantic intent.
-Examples can include, where explicitly supported:
-
-- the logical route or view the user was visiting;
-- stable domain subject identifiers, such as the Request being viewed;
-- filters, sort choices, tabs, or other local presentation choices whose meaning
-  is still admitted;
-- draft user input that the application has explicitly classified as recoverable.
-
-An outstanding semantic command has a different status from a browser
-execution. If its delivery or incorporation is uncertain, retirement must not
-silently erase the command-outcome question. Where the operation's declared
-retention and recovery contract permits it, the stable command identity,
-original semantic binding, and unresolved reconciliation obligation survive
-as recoverable *command-specific intent and knowledge*. They do not carry the
-old execution's authority, and a browser-held identifier is never proof of
-incorporation or permission to disclose a recorded result. A new generation
-must admit any lookup or compatible retry under the current authenticated
-principal and the model's command-binding and disclosure rules. If attribution
-cannot be recovered under the declared contract, the result remains unknown;
-current-state acquisition may still repair the displayed view.
-
-The following are execution artifacts and do not survive merely because they
-were present in the old browser:
-
-- execution and resource-instance identities;
-- pending callbacks or continuation handles;
-- old authority observations or knowledge frontiers;
-- provisional settlement state whose basis is no longer current;
-- old artifact bindings and runtime capabilities;
-- continuation rights established only by the retired plan;
-- assumptions about current authoritative domain state.
-
-Retiring provisional presentation therefore does not convert its uncertain
-command into a confirmed failure. Nor may recovery silently assign a fresh
-command ID and resubmit the same business intent as if the old command were
-known not to have committed.
-
-A recoverable draft may preserve bytes or structured user input, but the new
-generation must re-admit and revalidate that input under current semantics before
-it can affect authoritative state.  Recovery never turns possession of stale
-browser state into authority.
-
-The governing rule is:
-
-#+begin_quote
-Release recovery preserves stable application intent and reacquires its current
-authoritative realization; it does not preserve stale execution semantics merely
-because they were present in the old browser.
-#+end_quote
-
-For example, a user who was viewing Request =R= before retirement may be returned
-to the current authoritative view of =R=.  If =R= became completed while the old
-execution was suspended, recovery shows the completed Request.  It does not
-resume the old plan at an earlier lifecycle state merely to preserve continuity.
-
-Suppose Claim command =C42= was sent before a deployment, the response was lost,
-and the originating execution is then retired. Its callbacks and provisional
-card are discarded. An authorized recovery may retain =C42= to resolve its
-recorded result or retry that *same* command under the model's compatibility,
-retention, and disclosure contract. Rereading =R= can establish its current
-state without proving that =C42= caused it. If no permitted command-specific
-evidence is available, the participant's attribution remains unknown even
-when the current card is rendered correctly.
-
-**** Unsupported skew fails closed
-
-An incompatible or unsupported generation pairing must be detected before the
-stale execution can perform a continuation that relies on changed semantics.
-The permitted outcomes are bounded compatibility, semantic retirement/recovery,
-or an explicit typed rejection when recovery is not permitted.  Silent fallback
-to an older contract is forbidden.
-
-A release gate for a rolling deployment therefore checks at least:
-
-- the assembly generations that may coexist during activation;
-- every client/server direction that routing can actually expose;
-- the continuation contracts or checked compatibility evidence used for that
-  coexistence;
-- concrete admitted target route/decoder, runtime capability, and artifact
-  evidence for each permitted client/server direction;
-- the retirement/recovery behavior for generations outside the supported window;
-- preservation and re-admission rules for recoverable application intent;
-- preservation or honest unresolved status of command-specific outcome
-  obligations across execution retirement;
-- real runtime tests showing that unsupported skew does not continue silently.
-
-This bounded policy gives deployment overlap a precise meaning without turning
-Gesso into a general historical workflow-migration system.
-
-** Global non-goals
-
-The following constraints keep Gesso's semantic and proof boundary deliberately
-smaller than the set of all possible distributed-system machinery.
-
-Applications may opt into stronger mechanisms when their domain benefits.
-
-Gesso does not require those mechanisms universally.
-
-*** No universal persisted fact DAG
-
-Gesso does not require a second persisted fact graph containing every:
-
-- authoritative fact;
-- provisional fact;
-- supersession relation;
-- command;
-- resolution;
-- dependency edge.
-
-Fact-graph concepts are useful for reasoning.
-
-Application models and their database remain the persistence authority for domain
-facts and any domain history they choose to retain.
-
-*** No universal Git-like history
-
-Gesso does not require every model to persist:
-
-- branches;
-- merge commits;
-- common ancestors;
-- three-way history;
-- universal conflict records.
-
-The Git analogy is useful for reasoning about:
-
-#+begin_example
-authoritative basis
-provisional local state
-semantic commands
-re-evaluation
-reconciliation
-#+end_example
-
-Gesso may provide reusable reconciliation machinery.
-
-The model provides the meaning of reconciliation.
-
-Applications remain free to adopt stronger domain histories such as:
-
-- event sourcing;
-- CRDTs;
-- ancestry;
-- manual reconciliation workflows;
-- base/ours/theirs resolution.
-
-*** No universal global integer revision
-
-Gesso does not invent one global monotonically increasing integer that stands
-for all authoritative application state.
-
-That would incorrectly collapse:
-
-- XTDB progression;
-- model/entity revision;
-- valid/effective time;
-- command causality;
-- actor knowledge frontier.
-
-Models may define their own integer revisions when domain semantics benefit.
-
-*** No universal cross-node participant-message fabric
-
-Durable cross-user facts normally rendezvous through authoritative model state.
-
-A global runtime directory mapping every actor to a current Aleph node is not a
-baseline requirement.
-
-Direct cross-node participant routing is added only for protocols whose message
-receipt is itself semantically required.
-
-*** No universal durable suspended workflow engine
-
-Ordinary Choreo does not persist every suspended server-side execution for hours
-or days.
-
-Human-scale waiting normally lives in authoritative model state and later short
-executions.
-
-A durable workflow engine would be an explicit separate capability.
-
-*** No transparent arbitrary stale-plan migration
-
-The framework does not promise to translate arbitrary suspended browser machine
-state from one incompatible deployment into another.
-
-The safe default is:
-
-#+begin_example
-detect incompatibility
-    |
-semantic retirement
-    |
-best-effort cleanup
-    |
-permitted authoritative reacquisition / explicit recovery action
-    |
-current-plan restart
-#+end_example
-
-Specific compatibility/migration can be added where explicitly justified.
-Retirement cannot be used to silently bypass HumanHelp's acquisition/adoption
-policy. Recovery identifies which local choices and adopted membership survive
-and what requires a new authorized acquisition.
-
-*** No proof of the entire browser/OS/hardware stack
-
-Gesso does not claim to formally verify:
-
-- Chromium/Firefox;
-- JavaScript engine;
-- JVM;
-- OS;
-- CPU;
-- network hardware;
-- HTMX internals;
-- every third-party dependency.
-
-Formal browser-adapter claims are relative to explicit primitive/FFI contracts.
-
-Real integration/fault testing remains mandatory evidence for those boundaries.
-
-*** No inference of correct product policy from syntax
-
-Gesso may establish that a business-rule expression is:
-
-- well typed;
-- compositionally compatible;
-- used only where the actor has justified knowledge/authority;
-- faithfully preserved through projection/execution.
-
-It cannot infer that the product organization chose the desired policy.
-
-A coherent but wrong business rule remains possible.
-
-*** No arbitrary Clojure theorem proving
-
-The formal subset is deliberately closed and smaller than Clojure.
-
-The framework does not initially attempt to prove arbitrary host-language
-functions.
-
-Unsupported constructs fail explicitly or remain outside the stronger proof
-boundary under a declared weaker scope. A required stronger judgment cannot be
-satisfied by silently treating unsupported behavior as an assertion.
-
-*** No elimination of runtime validation
-
-Static/certificate proof does not remove runtime validation for:
-
-- untrusted inputs;
-- schema boundaries;
-- authenticated principal binding;
-- current authorization;
-- plan/runtime compatibility;
-- concrete progression values;
-- external system failure.
-
-Those checks are premises of the complete correctness story.
-
-*** No elimination of adversarial/integration testing
-
-Formal proof does not replace:
-
-- real Chromium;
-- HTMX/SSE integration;
-- XTDB integration;
-- fault injection;
-- load/resource testing;
-- multi-node testing.
-
-Those test the trusted implementation shell and external assumptions.
-
-*** No requirement for Typed Clojure or unrestricted dependent types
-
-The typed semantic rule/choreography languages are purpose-built closed
-languages.
-
-The architecture does not depend on adopting a universal host-language type
-system or unrestricted dependent types.
-
-*** No requirement that application developers write proof-assistant code
-
-Application authors declare domain semantics, rules, operations, choreography,
-and explicit assumptions.
-
-They do not manually construct Lean proof scripts or internal proof-kernel terms
-for ordinary development.
-
-*** No conflation of semantic identity with source identity
-
-File path, namespace name, Git commit, line number, and artifact timestamp are
-not semantic identity.
-
-They may be useful provenance/diagnostic data.
-
-They are not substitutes for normalized semantic identity.
-
-*** No proof-sidecar runtime semantics
-
-Proof/diagnostic sidecars remain optional read-only explanation artifacts.
-
-They never participate in production transition decisions.
-
-*** No arbitrary unconditional distributed liveness claim
-
-Liveness/convergence claims name their environment assumptions.
-
-The framework does not prove that an unavailable network, dead client, or failed
-external system will eventually recover without such an assumption.
-
-*** No requirement that every actor know every fact
-
-Knowledge and agreement remain scoped by:
-
-- relevance;
-- role;
-- authorization;
-- privacy;
-- actual behavioral need.
-
-A correct system may intentionally expose different authoritative projections to
-different actors.
-
-*** No automatic conflict policy
-
-Gesso may provide typed reconciliation protocol structure.
-
-The model owns domain-specific conflict meaning and resolution.
-
-*** No speculative database portability
-
-Gesso may use XTDB-specific mechanisms where doing so materially strengthens
-correctness or simplicity.
-
-Semantic concepts remain separate from accidental XTDB representation details,
-but database neutrality is not purchased at the expense of the current design.
+Compatibility is a checked relation between a particular client or continuation
+and a target admitted server realization for a particular operation or protocol.
+It is not inferred from Git ancestry, similar names, numerical version ordering,
+activation recency, or an identical URL.
+
+The baseline supports a bounded overlap between a selected current assembly and
+its selected predecessor. The deployment contract declares the exact assembly
+set, maximum overlap duration, supported directions, asset and protocol retention,
+and retirement behavior. Another finite bound may be selected explicitly. A
+numerical “one version back” label is insufficient because compatibility depends
+on semantics and deployment capabilities, not arithmetic.
+
+Development rebuilds may create many admitted candidates without activating them.
+Admission identity, activation order, client artifact identity, and semantic
+compatibility remain separate coordinates. A candidate does not become the
+predecessor merely because its commit was earlier.
+
+*** Check every direction routing can expose
+
+For a two-assembly overlap, the release must account for this matrix:
+
+| Client artifact or plan | Target server | Required decision |
+|-------------------------+---------------+-------------------|
+| Previous admitted client | Previous admitted server | Continued validity of the old pairing during its allowed lifetime |
+| Previous admitted client | Current admitted server | Checked old-to-new continuation or typed retirement/recovery |
+| Current admitted client | Previous admitted server | Checked new-to-old continuation, or enforced routing exclusion |
+| Current admitted client | Current admitted server | Ordinary current-pair admission and installation |
+
+Both cross-directions need separate evidence if routing permits both. Sticky
+sessions do not eliminate a direction unless the actual routing and failover
+contract excludes it and tests demonstrate that exclusion. Host loss, reconnect,
+asset caches, and requests already in flight belong in that analysis.
+
+A routing exclusion is itself an enforced deployment premise. If an excluded
+pairing occurs, the trusted boundary rejects it before a continuation performs
+incompatible authoritative work. It does not guess at an older decoder, strip
+semantic metadata, or silently execute the request as an ordinary anonymous
+HTMX operation.
+
+The decision is scoped to the operation/plan and its continuation contract. A
+Claim-compatible pairing need not support every browser route. The supported
+scope is explicit to both admission and recovery.
+
+*** Derive a complete continuation contract
+
+The continuation contract is derived from the admitted semantic objects and
+bound physical protocol. It includes the dependencies capable of changing the
+meaning or safety of continued work:
+
+- operation meaning, placement, and relevant rule or assumption interfaces;
+- command binding, canonical arguments, result records, retention, and disclosure;
+- event vocabulary, state-machine transitions, and outcome mappings;
+- retry, duplicate delivery, uncertainty, and reconciliation behavior;
+- authority, principal, knowledge, provenance, and refinement requirements;
+- progression, acquisition, observation coverage, and adoption policy;
+- resource ownership, cancellation, retirement, and deferred effect behavior;
+- required runtime capabilities and value codecs;
+- actual route selection, transport envelope, decoder, encoder, and emitted
+  browser runtime;
+- persistent-state and durable-work formats the continuation can encounter.
+
+Equality of a complete normalized continuation contract is a useful conservative
+baseline for its semantic portion. It still requires actual route/decoder,
+artifact, implementation, and qualification bindings to be valid. A matching
+contract digest copied into a header establishes none of those facts.
+
+A more permissive directional adapter must establish the required representation
+or refinement relation. It names which arguments, events, outcomes, and states
+it transforms and what premises it preserves. If the selected profile allows a
+trusted implementation premise for that adapter, the premise remains visible.
+A claim requiring checked refinement cannot be satisfied by an unsupported
+handwritten compatibility flag.
+
+Compatibility does not grant the old principal continuing authority. Current
+session, Membership, Organization policy, and protected-disclosure conditions
+remain runtime obligations. Semantic compatibility with a new rejection outcome
+must be explicit where the old client needs to handle it; it cannot be presumed
+because both clients once used the same operation name.
+
+*** Retain assets and endpoints for the promised lifetime
+
+An active overlap requires the exact browser assets, supported decoders and
+encoders, reconciliation paths, and provider contracts promised to its clients.
+Retaining only the newest JavaScript file under a mutable URL does not satisfy
+an old artifact binding. Old assets use their exact versioned identities under
+Part VII's serving contract.
+
+Server reference counts do not measure sleeping browsers or offline commands.
+The retention policy therefore accounts for the declared maximum continuation
+window, recovery path, and command-record lifetime rather than deleting old
+resources as soon as the last visible HTTP request completes.
+
+Command reconciliation may need to outlive executable-plan compatibility. A
+current protected lookup can interpret a retained command record through a
+qualified read-only compatibility path without keeping the entire old mutation
+implementation available. It must validate the original binding and current
+disclosure permission. Supporting lookup does not imply that replay of the old
+command is safe under new semantics.
+
+Asset and route retirement are observable transitions with tests. Outside the
+supported window, clients receive the declared typed retirement or recovery
+response. An unexplained missing asset or decoder exception is not the intended
+compatibility mechanism.
+
+*** Retire execution rights while preserving unresolved intent
+
+Retirement revokes the old execution's continuation and resource permissions
+before best-effort physical cleanup. Old callbacks, timers, responses, or DOM
+identifiers cannot revive those rights. A late response may contain useful
+command evidence, but admitting that evidence and applying its physical effect
+are separate decisions.
+
+Recoverable application context may include a stable logical route, domain
+subject identifier, compatible local options, or an explicitly recoverable
+draft. The current plan revalidates that context before it affects authority.
+A preserved draft is not an admitted command and does not retain an old
+principal's permission.
+
+An unresolved command has a longer semantic lifetime than its originating browser
+execution where the declared protocol supports recovery. Preserve its stable
+=:gesso/command-id=, original operation/interface and canonical argument binding,
+authority scope, and unresolved outcome obligation through the appropriate
+recovery representation. A fresh delivery may have a new =:http-request-id=;
+that transport identifier does not replace the command identity or the domain
+Request ID.
+
+A browser-held command reference proves neither incorporation nor permission
+to disclose its result. Reconciliation uses current authentication and the
+model's binding, compatibility, retention, and disclosure checks. A compatible
+retry preserves the same command identity. Recovery must not silently allocate
+a new identifier and repeat an intent whose first incorporation remains unknown.
+
+Execution retirement does not convert =:commit-unknown= to =:rejected=. A current
+card read can repair presentation without attributing the old command. If no
+permitted command-specific evidence remains available, attribution remains
+unknown even when the current card is correct.
+
+Old observations may remain historical evidence or input to a supported recovery
+contract. They cannot retain currentness, adoption rights, or effect permission
+merely because their bytes survived. Similarly, provisional UI is retired or
+reconstructed under the current plan; an old rollback callback cannot undo new
+authoritative installation.
+
+*** Release recovery preserves HumanHelp's adoption policy
+
+HumanHelp's remote creation and remote lifecycle changes require explicit Refresh
+under [[#decision-humanhelp-remote-lifecycle-adoption]]. Retirement, reconnect,
+host replacement, or an advisory does not itself authorize acquiring and adopting
+an unrelated fresh board.
+
+The recovery contract names what local options and previously adopted membership
+can be retained safely, what protected content must be retired after a known
+authority-context change, and what acquisition grant permits reconstruction.
+A newly admitted page initialization may have its declared baseline acquisition
+grant; that fact must be explicit. It is not an accidental successor read caused
+by release mismatch. If a new user action is required, the UI makes that action
+available and preserves the unresolved obligation meanwhile.
+
+Own-command settlement and specifically admitted local rejection or unknown
+recovery keep their scoped exceptions from Part VIII. They cannot clear unrelated
+advisory debt or import unrelated remote collection membership. A reconstructed
+board also cannot regress newer locally installed authority merely because its
+response belongs to the current release.
+
+For example, Claim C was sent under the previous assembly, its response was lost,
+and its browser execution was retired during deployment. Current recovery may
+query C's retained record and, when permitted, display its recorded successful
+outcome. It does not apply the previous execution's pending swap. A current card
+acquisition determines the present Request/assignment projection. Bob's unrelated
+remote board still waits for its own permitted Refresh.
+
+*** Rolling-release acceptance cases
+
+A release requesting overlap must demonstrate:
+
+- every permitted client/server direction, using the actual artifact and decoder;
+- every excluded direction rejecting at the intended boundary or being excluded
+  by the qualified routing mechanism;
+- late callbacks and deferred output remaining bound to the proper assembly and
+  resource permission;
+- a command incorporated before activation but resolved afterward without
+  duplicate incorporation or false rejection;
+- current authorization and nondisclosure after Membership or scope changes;
+- asset availability and protocol retention throughout the promised window;
+- sleeping-client recovery after that window ends;
+- new and old workers respecting the supported durable-work and state formats;
+- schema evolution and any claimed rollback eligibility;
+- concurrent activation attempts preserving the declared compare-and-activate
+  order;
+- safe failure when a required old or new provider qualification is revoked;
+- preservation of HumanHelp's selective acquisition/adoption rules.
+
+A future-compatible decoder unit test alone does not establish a deployed
+rolling-release claim. The evidence must cover the actual reachable combinations
+and the mechanisms that constrain them.
+
+** Global non-goals and retained design freedom
+
+These boundaries keep the ordinary framework smaller than a universal
+distributed database, workflow engine, or theorem prover. They do not forbid an
+application from choosing a stronger domain-specific mechanism.
+
+*** Domain persistence and reconciliation remain application choices
+
+Gesso does not require a second persisted DAG of every fact, provisional value,
+command, and supersession edge. The application models and authoritative backend
+own durable domain facts and the history required by their contracts. A proof
+dependency graph is not a universal application fact store.
+
+Gesso does not require Git-like branching history, event sourcing, CRDTs, or
+three-way merges for every model. It may provide typed reconciliation structure;
+the model owns the conflict meaning, eligible participants, and allowed
+resolution. Optimism and command reconciliation do not imply automatic merge
+policy.
+
+No global integer stands for provider progression, domain revision, valid time,
+command causality, and actor knowledge. Domain revisions may be monotonic where
+the model declares an ordering and enforces its writer discipline. Other identities
+are preserved according to their own scopes and lifetimes.
+
+*** Placement does not require universal durable actors
+
+Durable cross-user interactions ordinarily rendezvous through authoritative model
+state and later short choreographies. A global directory of every actor's current
+host, direct participant routing, and persistence of every suspended server
+machine are not baseline requirements. A feature needing message receipt or
+durable workflow continuation has its own explicit capability contract.
+
+Gesso does not transparently migrate arbitrary suspended browser state between
+incompatible releases. Bounded compatibility, retirement, and permitted current
+reconstruction are the baseline. Domain-specific checked migrations may be added
+without making all historical runtime states permanently supported.
+
+*** The proof boundary is explicit and partial
+
+The framework does not prove arbitrary Clojure or ClojureScript merely because
+it can call the function. Full-language implementations remain first-class
+through the managed interfaces and explicit premises defined in Part I. Closed
+checkers reject unsupported syntax for their judgment; they do not forbid the
+host-language implementation from participating under an appropriate contract.
+
+The design does not require a universal host-language type system, unrestricted
+dependent types, or application-authored proof-assistant scripts. Supported
+semantic interfaces, generated obligations, and checkable evidence provide the
+ordinary path.
+
+Gesso does not prove the whole JVM, JavaScript engine, browser, HTMX, Biff,
+authentication stack, XTDB implementation, operating system, hardware, or network.
+The relevant contracts remain qualified premises as specified in Part X. This
+is compatible with useful conditional proofs about the application's semantics.
+
+A well-typed coherent policy may still be the wrong product choice. Gesso cannot
+infer intended business policy from syntax or establish correct requirements by
+checking only what the implementation chose to expose.
+
+*** Runtime enforcement and concrete testing remain necessary
+
+Proofs do not remove validation of untrusted inputs, current principals and
+permissions, command bindings, actual provider observations, resource ownership,
+or compatibility. They depend on those mechanisms supplying their concrete
+premises.
+
+Formal results do not eliminate real browser, backend, concurrency, load,
+installation, or failure testing. Conversely, more tests do not silently upgrade
+a tested claim into a theorem. Conditional progress retains availability,
+fairness, retention, disclosure, and user-action assumptions. A timeout path does
+not prove that an inactive browser or unavailable service will eventually recover.
+
+No role is required to know every fact. Relevance, privacy, and authorization may
+intentionally produce different valid projections. Agreement claims concern the
+facts and frontiers actually promised.
+
+*** Identity, sidecars, and backend choices keep their boundaries
+
+Source identity is not semantic identity. Exact artifact identity is not semantic
+proof. Optional proof and diagnostic sidecars remain nonsemantic to runtime
+transitions; mandatory admission and runtime gates still enforce the selected
+contract. Required durable audit or publication is an explicit effect rather
+than an optional sidecar.
+
+Database neutrality is not a goal purchased at the expense of a useful qualified
+XTDB realization. Semantic contracts remain separate from accidental storage
+representation, but the implementation may use provider-specific mechanisms
+where they improve correctness or simplicity. Another provider must establish
+its own correspondence and qualification.
 
 ** Progress metrics and completion boundaries
 :PROPERTIES:
 :CUSTOM_ID: req-completion-boundaries
 :END:
 
-Project progress should track semantic coverage and rejection quality rather than
-raw test count or revision count.
+Progress measures coverage of required semantics, usable capabilities, enforced
+boundaries, and honest evidence. Revision counts, source size, and raw passing
+test counts do not establish completion.
 
-*** Useful progress metrics
+*** Metrics have stable denominators and visible blockers
 
-Track, where meaningful:
+For each metric record the requirement-set identity, scope, numerator, denominator,
+missing items, evidence class, and applicable assembly or implementation. A
+change to the denominator is visible as a requirement change.
 
-- number of certified semantic artifact classes;
-- number of framework properties with explicit proof/check rules;
-- number of application assumptions surfaced;
-- number of trusted implementation boundaries;
-- TCB size;
-- proportion of downstream mutation classes rejected before runtime;
-- number of semantic dependency mismatches caught at the first possible stage;
-- number of production plans traceable to a root assurance DAG;
-- number of externally formalized proof-kernel properties;
-- number of production checker rules with an explicit formal-correspondence
-  story;
-- diagnostic completeness for rejected mutants;
-- number of exposed application operations with complete whole-application
-  closure;
-- number of real-browser/multi-client acceptance scenarios exercising actual
-  production artifacts.
+| Metric | Useful denominator | What it must not conceal |
+|--------+--------------------+--------------------------|
+| Required user capabilities exercised | Independent canonical capability set | Omitted controls, unavailable positive paths, unresolved product decisions |
+| Declared assembly closure | All exposed managed affordances in the admitted source | Required capabilities absent from that source |
+| Production-path enforcement | Relevant real entrypoint and effect-boundary classes | Undeclared writers, retained old handlers, test-only wrappers |
+| Semantic judgment coverage | Required judgment/subject pairs for the selected profile | Unsupported forms treated as checked or assertions mislabeled as proofs |
+| Required dependency closure | Obligations derived from original semantic sources | A structurally closed but incomplete caller-supplied graph |
+| Mutation rejection quality | Predeclared relevant defect classes with positive controls | Wrong rejection boundary, trivial reject-all behavior, flaky diagnosis |
+| Qualified substrate coverage | Actual provider/adapter/configuration envelopes used | Tests of a different backend, artifact, or shadow implementation |
+| Formal correspondence coverage | Named formal-to-production transfer obligations | Formal theorems lacking a production relation |
+| Recovery coverage | Required uncertainty, interruption, and retirement conditions | Happy-path reachability presented as eventual recovery |
+| Incremental reuse | Applicable unchanged evidence and affected change classes | Speed obtained by omitting necessary dependency or environment checks |
 
-Raw test count is not a primary progress metric.
+Counts of accepted assumptions and trusted components are audit aids, not a
+confidence percentage. Show which claims depend on each central premise. A small
+kernel with an unqualified production boundary is a different result from an
+end-to-end operation with qualified external premises.
 
-Each coverage metric needs a stable denominator: the required capability set,
-mutation classes, artifact classes, or theorem scope it measures. Reports retain
-missing and blocked items instead of improving percentages by dropping them.
-Count required usable operations separately from exposed closed operations.
-
-Assertion counts and TCB size are audit aids, not scalar confidence scores.
-One central unproved premise may dominate many derived facts. Report the claims
-that depend on it. Rejection quality includes an appropriate first boundary,
-repairable diagnostics, and paired valid cases; rejecting every program is not
-progress.
+Performance metrics report the hardware, concurrency, dataset, topology, resource
+limits, and workload exercised. A fast local test gate is useful feedback but
+cannot substitute for a required slower browser, backend, or fault scenario.
+Parallel execution must preserve test isolation, exact intended inventory, and
+complete result accounting; a missing worker result is not success.
 
 *** Operational application completion
 :PROPERTIES:
 :CUSTOM_ID: milestone-operational-application
 :END:
 
-The first bounded completion milestone is the usable, structurally closed Gesso
-and HumanHelp proving application.
+The operational milestone is a usable, structurally closed Gesso application
+realized by the HumanHelp proving application and its public production models.
+It requires every applicable completion gate in Part VIII, not merely a working
+Claim pilot or an error-free startup.
 
-This milestone requires, at minimum:
+The required evidence includes:
 
-- the supported final Biff lifecycle substrate;
-- authoritative production-model ownership with explicit FX value flow;
-- correct XTDB progression/consistency integration;
-- executable Choreo, projection, browser, optimism, continuity, and Live
-  semantics for the supported operational subset;
-- production execution of the same canonical =ExecutablePlan= whose semantics
-  are checked and tested;
-- mandatory whole-application assembly and rendering checks on the supported
-  production path;
-- exact current browser-artifact correspondence;
-- no silent semantic downgrade;
-- required HumanHelp creation, details, response, lifecycle, search, sorting,
-  visibility, advisory, explicit Refresh, continuity, and authorization
-  behavior;
-- real Chromium acceptance using actual controls, routes, generated artifacts,
-  and multiple authenticated contexts where the behavior is multi-client;
-- representative generic adversarial and controlled-defect tests demonstrating
-  that the production path invokes the promised checks.
+| Area | Completion condition |
+|------+----------------------|
+| Production authority | Mutations use the public production model contracts, current guarded dependencies, RequestAssignment ownership, and command-resolution semantics |
+| Canonical construction | Source, operation catalog, routes, acquisitions, render contracts, plans, and artifacts form one admitted assembly |
+| Actual host adoption | The serving path and relevant writers use the admitted handlers, gateway/provider bindings, policy, and output guards |
+| Qualified substrate | Biff lifecycle, browser/HTMX behavior, compiler/build, and XTDB adapter/configuration meet the premises used by the claim |
+| Browser operation | Actual controls execute the supported canonical plan and effect protocol with no anonymous downgrade |
+| Required capabilities | Every capability in Part VIII has an eligible successful scenario and the relevant rejection/recovery scenarios |
+| Multi-client policy | Remote creation and lifecycle changes remain advisory until permitted Refresh; own-command exceptions remain scoped |
+| Recovery and continuity | Unknown outcome, stale resource/plan, failed installation, publication loss, and reconnect gaps have tested usable behavior |
+| Enforcement sensitivity | Controlled defects fail at the intended production boundary and corresponding valid cases succeed |
+| Independent acceptance | Real browser sessions establish visible outcomes and authoritative truth through the actual generated/served application |
 
-All required HumanHelp capabilities are interpreted by Part VIII, independently
-of the implementation's exposed-action list. Claim, Unclaim, Mark on the way,
-Complete, Cancel, and Reassign require eligible positive browser scenarios;
-state-dependent unavailability is additional evidence, not a substitute.
+Creation, details, response interaction, lifecycle actions, local search, sorting,
+board options, terminal visibility, advisory feedback, explicit Refresh, selection,
+scroll continuity, and protected access are required as defined in Part VIII.
+Claim, Unclaim, Mark on the way, Complete, Cancel, and Reassign each need an
+eligible positive browser case. Disabling the control in every fixture does not
+satisfy the capability. Reassign includes real target-helper selection and the
+appropriate manager authority; it is not relabeled self-claim.
 
-The response-flow contract at [[#decision-humanhelp-response-flow]] and remote
-lifecycle policy at [[#decision-humanhelp-remote-lifecycle-adoption]] must be
-selected and tested before full completion. Refresh action scope, concurrent
-advisory handling, and successor-read permission must be explicit under
-[[#req-humanhelp-refresh-coverage]]. These decisions belong to HumanHelp; Gesso
-does not choose them to make a gate pass.
+The lifecycle model uses =:done= for the completed state. The primary assignment,
+Request state, and permitted rendered projection must agree under the public
+model contract. A provisional DOM change alone is not authoritative success.
+An accepted result uses the operation's qualified authoritative result or
+acquisition contract; an extra read is required only where that contract requires
+one, not as an unconditional ritual after every commit.
 
-Evidence separately establishes declared closure, actual production enforcement,
-and required user behavior under [[#req-application-assurance-claims]]. A server
-starting, no console errors, or HTTP 200 responses establishes none of these
-alone. Mutation success requires production-model truth and fresh authoritative
-acquisition; a provisional DOM change is insufficient.
+The following product status is canonical:
 
-This milestone establishes a usable application under its explicitly stated
-assurance and environmental assumptions. Until all required gates pass, a partial
-checkpoint must name the capabilities or decisions still missing.
+- Remote creation and remote lifecycle adoption are selected: explicit Refresh,
+  with only the admitted own-command/local recovery exceptions in
+  [[#decision-humanhelp-remote-lifecycle-adoption]]. Their positive and negative
+  scenarios are mandatory.
+- The response interaction at [[#decision-humanhelp-response-flow]] still requires
+  a concrete product contract and independent acceptance before the full
+  operational milestone can be claimed. A placeholder control or an invented
+  response meaning does not close that gate.
+- Refresh scope, concurrent advisory handling, one-grant acquisition, completion,
+  and remaining-debt behavior follow [[#req-humanhelp-refresh-coverage]].
 
-It does not claim completion of compositional certification, external formal
-verification, or production multi-node realization.
+The three claims from [[#req-application-assurance-claims]] are reported separately:
+declared closure, actual production enforcement, and required usable behavior.
+A server starts, a route returns HTTP 200, or a browser has no console errors
+without necessarily establishing any of them.
+
+Acceptance uses actual rendered controls, authenticated contexts, served assets,
+trusted routes, public production models, and physical browser lifecycle events.
+It must not manufacture hidden protocol fields in a way that bypasses the control
+being tested. Multi-client assertions require distinct appropriate contexts.
+Provider evidence and command reconciliation establish durable truth; the browser
+scenario establishes how the user sees and acts on it.
+
+The operational milestone does not require the later formal milestones. It does
+require the ordinary semantic checks and every stronger profile requirement
+explicitly selected for that release. An unmet stronger requirement cannot be
+ignored while reporting the same requested release admitted.
+
+A partial operational checkpoint names its missing capabilities or decisions. It
+cannot redefine the canonical HumanHelp target by dropping the response flow,
+Reassign, terminal behavior, or another difficult capability.
 
 *** Compositional certification completion
 :PROPERTIES:
 :CUSTOM_ID: milestone-compositional-certification
 :END:
 
-The compositional-certification milestone requires the intended semantic
-interfaces and dependency chain to be operational for the artifact classes in
-scope.
+This milestone establishes a working compositional assurance chain for the
+required artifact classes and application scope. The exact judgments, issuer
+rules, and required dependency closure are those of Part IX.
 
-It includes:
+The baseline completion contract requires:
 
-- certified semantic interfaces for the selected model/schema/domain/rule/
-  operation layers;
-- a closed typed business-rule subset that rejects malformed expressions while
-  permitting coherent but product-wrong policy;
-- distributed admissibility checks for knowledge, provenance, authority,
-  refinement, and progression;
-- certificate composition and stale-dependency rejection;
-- a deliberately small trusted proof kernel or dedicated semantic checker
-  boundary where claimed;
-- proof-producing elaboration or equivalent checked derivation construction for
-  the supported classes;
-- systematic downstream mutation sensitivity;
-- inspectable proof dependencies and repair-oriented diagnostics;
-- at least one substantial HumanHelp operation certified through the semantic
-  and whole-application chain;
-- complete required-obligation coverage and subject/derivation binding;
-- explicit transitive assumption propagation and checked discharge;
-- certificate re-admission after cache/serialization boundaries;
-- evidence binding semantic claims to the implementation or admitted assembly
-  generation actually covered, without conflating their different identities.
+1. The closed typed rule language, its value-domain and evaluation semantics,
+   conservative normalization, and malformed-input rejection to be operational
+   for the supported subset.
+2. Distributed use-site judgments for knowledge, provenance, authority,
+   refinement, and progression, with unsupported cases remaining explicit.
+3. Checked projection and executable-plan subject bindings for the claims made,
+   with physical realization premises separately recorded.
+4. The small proof kernel and dedicated checkers to enforce their actual closed
+   rules; each accepted derivation is bound to its original subject and premises.
+5. Required obligations and dependency closure to be derived from source and
+   joined into the actual issuer/admission path. A merely acyclic supplied graph
+   is insufficient.
+6. Conditional induction, where requested, to include the actual initial-state
+   and all operation-preservation obligations for every required invariant in
+   its declared catalog. Unsupported operations cannot be removed from that
+   catalog to keep its old claim green.
+7. Assumption propagation and any claimed discharge to follow checked scope and
+   substitution rules. Accepted premises stay visible in dependent conclusions.
+8. Genuine in-process issuance, currentness checking, and supported serialized
+   re-admission, with no copied-report path to an executable capability.
+9. Actual operation, issued executor, handler, build, and assembly bindings to
+   carry the appropriate evidence or explicit accepted premise.
+10. Mutation and positive-control coverage that challenges these boundaries and
+    exposes a useful first failure and repair owner.
+11. The HumanHelp Claim pilot to connect the semantic, production, and browser
+    conclusions required by [[#req-humanhelp-certification-pilot]].
 
-The Claim pilot follows [[#req-humanhelp-certification-pilot]] and connects to
-the real operational scenario. Positive valid cases accompany the mutation
-corpus. An isolated proof fixture, a root graph containing mostly unsupported
-claims, or a checker accepting only trivial rules does not satisfy the intended
-production operation scope.
+The pilot must use Claim's real multi-record public contract: Request and primary
+assignment, Membership and Organization dependencies, stable command binding,
+compatible replay and disclosure, unknown outcome, and required publication
+intent. A one-scalar-document theorem does not cover that operation merely
+because the fixture is named Claim.
 
-The executable semantic core remains the production transition semantics; the
-proof kernel checks derivations, and dedicated semantic checkers establish their
-named judgments. Completion of this milestone does not merge these roles or
-turn proof evidence into runtime transition input.
+Abstract induction and physical writer coverage remain distinct. A theorem over
+a supplied catalog cannot establish that no import, job, maintenance path, or
+direct writer exists outside it. A claim requiring whole-domain preservation
+must account for the real initialization and all relevant writer paths, or remain
+explicitly conditional under a profile permitting those premises.
 
-The milestone must name exactly which artifact classes and application scopes
-are certified.  It must not imply certification of arbitrary Clojure code or
-business intent beyond the stated contracts.
+The application is allowed to use arbitrary host code behind a declared
+implementation contract. Certification completion does not require proving all
+that code. It requires that the supported judgment chain is real, the premises
+are correctly accounted for, and mandatory proofs are actually checked. A root
+report made mostly of unavailable placeholders is not the intended chain.
+
+A conditional abstract theorem, a qualified production binding, and a passing
+browser Claim case are separately identified results. Their joined report must
+not promote the weakest relation into universal execution refinement. Nor does
+the successful Claim pilot establish every HumanHelp product capability.
+
+The executable semantic core remains the runtime's semantic source; the proof
+kernel and dedicated checkers keep their separate roles. Optional proof sidecars
+do not participate in transition decisions. Required admission gates still
+control whether an object can be constructed or installed.
 
 *** External formal verification completion
 :PROPERTIES:
 :CUSTOM_ID: milestone-external-formal-verification
 :END:
 
-The external-formalization milestone requires an independent machine-checked
-account of the stable semantic subset for which Gesso makes formal claims.
+External formal completion is scoped to a declared theorem set and its production
+transfer. It cannot be summarized as proof of all Gesso or all HumanHelp unless
+that is the actual quantified and transferred claim.
 
-It includes:
+The baseline external kernel scope follows Part X's concrete first target. It
+includes:
 
-- the formalized semantic subset;
-- exact theorem statements;
-- named assumptions and trusted boundaries;
-- soundness, refinement, or correspondence results appropriate to each theorem;
-- an explicit relationship between formal objects and the production semantic
-  objects/checker rules they justify;
-- release/correspondence evidence preventing a disconnected formally verified
-  model from being mistaken for proof about unrelated production semantics.
+- the formal syntax and semantics for the actual closed propositional rules;
+- a machine-checked soundness theorem for those rules and formal acceptance;
+- a justified correspondence from the production acceptance boundary to that
+  formal judgment, including relevant decoding, normalization, and rejection;
+- the typed-proposition bridge for the application-rule subset whose meaning is
+  transferred through the theorem;
+- binding of the formal subject and accepted evidence to the current production
+  issuer, dependency interpretation, and applicable artifacts;
+- explicit axioms, trusted toolchain/translation/runtime premises, theorem
+  versions, and reproducible checking instructions.
 
-The correspondence evidence follows [[#req-formal-production-correspondence]].
-Conformance vectors alone do not discharge a required theorem about production
-acceptance or execution. If the chosen correspondence mechanism retains trusted
-translation/extraction or runtime assumptions, the exact conditional claim and
-those premises must be reported. A theorem for a different or outdated subject
-cannot satisfy the current release gate.
+This is a substantial bounded target. Further external claims about induction,
+knowledge, projection, progression, or browser refinement each add their own
+required theorem and correspondence obligations. A release declaring that broader
+scope cannot substitute the smaller kernel target without changing its claim.
 
-Exact finite exploration, bounded testing, and unbounded theorem proving remain
-distinct evidence classes throughout this milestone. Incomplete exploration or
-an unavailable external checker cannot be reported as successful verification.
+The direction of correspondence matters. For sound admission, production
+acceptance must imply the applicable formal judgment under its premises.
+Agreement on rejected examples or one instance of each inference tag does not
+establish that statement. Execution safety additionally needs its trace or
+refinement relation; liveness needs its own progress, fairness, and divergence
+conditions.
+
+A formal theorem may rely on a named trusted extraction or translation mechanism
+where the selected profile permits it. The report identifies that conditional
+claim and remaining trusted base. A handwritten claim that the Clojure checker
+“implements the same idea” is review evidence, not the required machine-checked
+correspondence. A mechanism demanded as proved cannot be replaced by conformance
+vectors alone.
+
+An exact finite audit remains exact evidence for its named finite domain. An
+unbounded claim requires the relevant quantified theorem or sound abstraction
+transfer. Timeout, partial exploration, unavailable checking, and unsupported
+syntax remain non-passing results. A theorem about an outdated subject remains
+historical until applicability to the current subject is established.
+
+This milestone does not prove backend implementation correctness or deployed
+host behavior merely because the formal kernel is sound. Those boundaries retain
+the qualified premises and evidence defined in Part X.
 
 *** Multi-node production completion
 :PROPERTIES:
 :CUSTOM_ID: milestone-multi-node-production
 :END:
 
-Production multi-node completion requires the semantic host/authority model to
-be realized over actual multiple application nodes without deriving authority
-from host identity.
+This milestone realizes the same application meaning across actual independent
+application processes under the qualified topology from
+[[#req-multi-node-realization]]. Host identity does not confer semantic authority.
 
-It includes:
+Completion requires all of the following for the stated production envelope:
 
-- physical node topology and routing;
-- distributed invalidation/interest realization;
-- host replacement and process loss;
-- duplicate/lost publication behavior;
-- reconnect through another node;
-- progression-safe authoritative reread;
-- deployment/version compatibility;
-- multi-node adversarial, load, and fault evidence;
-- incorporation of the resulting implementation assumptions into the root
-  assurance report;
-- the concrete host-loss, publication-loss, duplicate/reordered advisory,
-  authorization, and compatibility cases in [[#req-multi-node-realization]];
-- preservation of selective adoption and explicit Refresh across reconnect;
-- declared command retry/deduplication and retention contracts where claimed;
-- stated capacity/resource bounds and load conditions for the production claim.
+| Area | Required evidence |
+|------+-------------------|
+| Physical topology | Actual independent hosts/processes, routing, qualified shared authority, and declared failure model |
+| Command semantics | Stable binding, cross-host replay/disclosure, concurrent delivery, retention, and honest uncertainty |
+| Publication recovery | Atomic durable intent where promised, dispatcher ownership, retry/acknowledgment semantics, duplicates, and crash recovery |
+| Subscriber continuity | Initial and reconnect fence/replay/gap handling, including silent missed notices and retention expiry |
+| Progression-safe reads | Another host obtains sufficient real provider evidence or reports insufficiency without false discharge |
+| Selective adoption | HumanHelp remote changes remain advisory until permitted Refresh across reconnect and host replacement |
+| Current authority | Replacement hosts enforce current authentication, Membership, scope, protected read, and command-result disclosure |
+| Release overlap | Actual reachable client/server combinations, assets, workers, state formats, retirement, and recovery satisfy the selected bound |
+| Resource envelope | Measured capacity, queue/debt/retention bounds, backpressure, and failure behavior under the declared load |
+| Root evidence | Actual topology and provider assumptions enter the same obligation and release report |
 
-Tests distinguish an operation's durable outcome from another participant's
-knowledge of it. Current-state reads do not automatically resolve command
-attribution, and lost publication must exercise the implemented recovery path.
-Progress claims include any necessary user action and availability assumptions.
-A load-balanced demonstration without this failure evidence is a prototype.
+The required fault schedule includes loss before submission, after possible
+submission, after commit before publication, after publication before completion
+recording, and during response delivery. The outcomes are not all equivalent.
+A surviving authoritative commit remains incorporated even while a browser is
+unknown. A later current-state read does not automatically attribute its command.
 
-A bounded multi-node prototype may occur earlier when sufficient executable and
-authority foundations exist and when it can expose semantic mistakes cheaply.
-That exploratory feedback does not constitute this production completion
-milestone.
+Advisory receipt, distribution acknowledgment, acquisition, physical installation,
+and adoption are separately observed. At-least-once dispatch to a named boundary
+does not establish delivery to every browser. Initial interest registration and
+reconnect gaps require their own evidence even when no advisory was received.
 
-These four milestones are completion scopes, not aliases for stage numbers.
-Scheduling may overlap where dependencies permit, while every milestone retains
-its own acceptance boundary. Production multi-node completion does not imply
-external formal completion, nor does external proof establish deployment
-resilience. A compositional pilot can be developed alongside operational work,
-but does not authorize calling incomplete HumanHelp capabilities complete.
+Load testing must exercise relevant resource limits and recovery behavior, not
+only maximum successful request rate. Independent concurrent requests must not
+share a one-shot writer capability or leak invocation context. Where deferred
+work is supported, its explicit ownership and assembly context are exercised.
+
+Progress tests state when their availability, fairness, retention, authorization,
+and user-action premises become satisfied. Under explicit Refresh, an inactive
+user is not required to adopt remote state. After authorization is revoked, the
+expected result may be nondisclosure rather than successful reconciliation.
+
+A two-host demonstration or early prototype can expose valuable semantic defects
+without satisfying this production milestone. The completion claim requires the
+actual failure, resource, and compatibility envelope, not merely a load balancer
+and a shared database.
+
+*** The four scopes do not collapse into one status
+
+Operational completion can precede external proof and production multi-node work.
+A compositional pilot can proceed while other application capabilities remain
+unfinished. A kernel theorem does not establish deployment resilience, and a
+resilient deployment does not establish kernel soundness.
+
+Scheduling can overlap where dependencies permit. Each completion record still
+needs its own scope, requirement set, and evidence. The operational definition
+cannot be weakened because proof work is advanced; the formal definition cannot
+be weakened because the UI works.
 
 *** Completion records and continued applicability
 
-A completion record names the milestone, canonical requirement set, supported
-scope, candidate assembly generation, evidence references, test environments,
-assumptions, open decisions, and exclusions. Every required gate has a result;
-missing evidence is not presumed successful. Required unresolved decisions block the
-full claim rather than being buried in release notes.
+A completion record names the milestone, canonical requirements, supported
+scope, admitted assembly and actual artifacts, accepted premises, evidence for
+every required gate, environment, open product decisions, and exclusions. Its
+complete status is computed from those records, not independently authored.
 
-Completion applies to that admitted scope and assembly generation. Later changes
-trigger re-evaluation of the affected guarantees and gates through their
-dependency relationships. A previous completion record remains historical evidence; it
-does not confer permanent correctness on later builds. Unaffected evidence may
-be reused where its applicability is established, avoiding unnecessary full
-rechecking while preserving the claim.
+Historical completion remains evidence about the release and environment that
+were checked. Later changes trigger dependency-based reconsideration of the
+applicable claims. Unaffected results may be reused where their applicability is
+established. Completion is neither a permanent property of a repository nor a
+requirement to repeat every unrelated test after every edit.
 
-Documentation changes alone cannot establish implementation completion. This
-specification defines the gates; actual implementation evidence is required to
-claim that any milestone has been met.
+Known premise violations invalidate dependent applicability even when the abstract
+theorem remains mathematically valid. The record retains both facts. Operational
+policy determines how affected work is suspended, recovered, or explicitly
+restricted; an old completion badge cannot override that policy.
 
+Documentation changes define or clarify requirements. They do not establish that
+an implementation meets them.
 
-**** Worked completion record: one release, four different answers
+**** Worked record: useful progress without a false completion claim
 
-A release report should make partial progress boringly explicit.  A usable
-HumanHelp release may have completed the operational milestone while later
-assurance scopes remain incomplete.  The report also names the exact admitted
-assembly-generation coordinate rather than using a bare, ambiguous
-"generation" field.
+Consider a hypothetical candidate whose tests establish creation, Claim, board
+options, explicit Refresh, and enforced assembly bindings, but whose response
+interaction still lacks a selected product contract. It may also have useful
+proof and two-host experiments. Its report must preserve the different answers:
 
-This is a *hypothetical future* release after HumanHelp has selected and tested
-the still-open response-flow and remote-lifecycle policies. The two decision
-references below are placeholders for independently recorded, substantive
-HumanHelp contracts; this example does not choose either policy or claim that
-the present application satisfies the operational milestone.
+| Completion scope | Hypothetical evidence | Reported conclusion |
+|------------------+-----------------------+---------------------|
+| Operational application | Several actual browser capabilities pass; required response contract and its scenario are missing | Partial and blocked for the full Part VIII milestone |
+| Compositional certification | Typed Claim guard and source-bound conditional theorem pass; required broader judgment or production joins remain missing | Partial for the stated certification scope |
+| External formal verification | One finite derivation audit passes; universal kernel/production correspondence is absent | Finite result reported; external baseline incomplete |
+| Multi-node production | Two processes can read shared state; publication-loss and reconnect-gap cases are untested | Prototype; production milestone incomplete |
 
-#+begin_src clojure
-(def humanhelp-release-2026-09
-  {:release/id :humanhelp/2026-09-r4-candidate-17
-   :assembly
-   {:semantic/id :assembly/humanhelp-A61
-    :assembly-generation/id :assembly-generation/G204
-    :assembly-generation/admission-evidence
-    :evidence/assembly-generation-G204-admission
-    :browser-artifact
-    {:manifest/id :fixture/browser-manifest-G204
-     :served-path :fixture/browser-asset-G204
-     :served-bytes-digest "sha256:83c4..."
-     :emitted-plan-registry :fixture/plan-registry-G204
-     :currentness-report :evidence/browser-currentness-G204}
-    :source {:gesso "819117f..."
-             :humanhelp "dad5c7c..."}}
+This example asserts no present implementation status. Each hypothetical passing
+item would still require a real subject-bound evidence reference. The remote
+lifecycle policy is selected and tested as explicit Refresh; it is not one of
+the unresolved decisions in this record. The missing response contract cannot
+be supplied by writing =:passed= into the aggregate map.
 
-   :canonical-requirements :humanhelp/part-viii-operational-v1
-   :selected-product-contracts
-   {:response-flow :humanhelp/response-contract-selected-v1
-    :remote-lifecycle-adoption
-    :humanhelp/remote-lifecycle-policy-selected-v1}
+If a later candidate selects the response contract and satisfies every remaining
+operational gate, it can become operationally complete while the other scopes
+retain their own incomplete results. It may release under the permitted
+operational profile. It cannot silently satisfy a requested stronger profile
+by renaming its claim after that profile failed.
 
-   :milestones
-   {:operational-application
-    {:status :complete
-     :scope #{:request/create :request/details :request/respond
-              :request/search :request/sort :request/board-options
-              :request/show-terminal :request/hide-terminal
-              :request/terminal-render
-              :request/claim :request/unclaim :request/on-the-way
-              :request/complete :request/cancel :request/reassign
-              :creator/immediate-adoption :remote/creation-advisory
-              :remote/lifecycle-selected-policy
-              :advisory/explicit-refresh
-              :advisory/late-event-retention
-              :continuity/reconnect :authorization/protected-read
-              :claim/concurrent-two-client-settlement}
-     :gate-results
-     {:gate/production-model-truth :passed
-      :gate/required-capabilities :passed
-      :gate/product-decisions :passed
-      :gate/assembly-closure :passed
-      :gate/startup-preflight :passed
-      :gate/production-entrypoint :passed
-      :gate/rendered-surface :passed
-      :gate/browser-currentness :passed
-      :gate/browser-runtime-source :passed
-      :gate/plan-compatibility-or-retirement :passed
-      :gate/jvm :passed
-      :gate/node :passed
-      :gate/chromium :passed
-      :gate/real-http :passed
-      :gate/multi-client :passed
-      :gate/adversarial-defects :passed}
-     :evidence-index
-     :evidence/operational-G204-gates}
+A downstream consumer can inspect the actual supported scope, what was checked,
+which premises remain, and what blocks the stronger claim. The record should
+make that answer simpler than reverse-engineering a long list of test names.
 
-    :compositional-certification
-    {:status :partial
-     :scope #{:request/claim}
-     :complete #{:typed-rule-subset
-                 :dependency-composition
-                 :claim-pilot}
-     :missing #{:full-required-artifact-class-coverage}}
+** Acceptance for changes to the release mechanism
 
-    :external-formal-verification
-    {:status :not-complete
-     :checked #{:formal/progression-finite-model}
-     :in-progress #{:formal/knowledge-safety-draft}
-     :missing #{:production-correspondence-theorem
-                :stable-release-bound-evidence}}
+The release system itself needs mutation and positive-control evidence. At
+minimum, exercise:
 
-    :multi-node-production
-    {:status :prototype
-     :complete #{:two-node-authoritative-reread
-                 :duplicate-advisory-test}
-     :missing #{:host-loss-suite
-                :deployment-compatibility
-                :production-load-bounds}}}
+- a semantic change invalidating its complete required dependency cone while an
+  independent subject stays reusable;
+- an implementation-only change retaining a valid abstract theorem while
+  invalidating affected physical evidence;
+- a forged or corrupted cached report failing at the issuer/re-admission boundary;
+- a missing required capability remaining missing despite all exposed operations
+  being closed;
+- failed, skipped, unsupported, unavailable, stale, and incomplete required checks
+  each blocking the claimed decision;
+- a disabled stronger policy failing a release intent that requires that policy;
+- a valid conditional claim retaining its accepted premises without inventing
+  mandatory unmet obligations or erasing the original ledger;
+- a tested artifact differing from the served bytes failing correspondence;
+- a checked local handler not adopted by the actual server failing or narrowing
+  the installed-host claim;
+- concurrent activation, partial installation failure, and cleanup preserving
+  coherent current bindings;
+- a known invalid old premise preventing fallback to an otherwise previously
+  admitted assembly;
+- compatible rolling directions succeeding and unsupported directions retiring
+  or rejecting before incompatible effects;
+- unresolved command identity surviving execution retirement without a fresh-ID
+  resubmission or false rejection;
+- protected recovery honoring current disclosure and HumanHelp's adoption policy.
 
-   :open-decisions #{}
-   :release-claim :operational-application})
-#+end_src
+The test report names the first intended enforcing boundary, actual subject and
+artifact, observation origin, fault schedule, and remaining premises. Rejection
+of every candidate is not success: ordinary supported positive releases and
+reusable unchanged evidence must continue to work.
 
-The report can admit this candidate for the operational claim if every required
-operational gate passes and the referenced assembly-generation admission
-actually establishes that this report describes the candidate being released.
-The external evidence index must resolve *each* gate to its actual result,
-test environment, production-bound subject/artifact, and independent product
-contract. The report cannot turn a missing gate into =:passed= merely by
-including a keyword in this example. In particular, the two selected contracts
-must be real and independently tested for the full operational claim; absent
-either one, =:status :complete= and =:open-decisions #{}= are invalid.
-The map does not make =G204= admitted merely by naming an admission-evidence ID;
-that evidence remains independently checked under the release boundary.
+** Working rule for every semantic or release change
 
-It cannot summarize the same record as "R4 complete" or silently reinterpret
-=:partial=, =:not-complete=, and =:prototype= as green.  Conversely, unfinished
-formal or multi-node work does not erase evidence that already establishes the
-explicitly bounded operational milestone.
+For each changed component, identify the proposition it establishes, the premises
+it needs, the evidence mechanism, the actual enforcing boundary, and the dependent
+claims that must be reconsidered. If the next layer cannot mechanically check
+the required interface and evidence relationship, that portion of the chain
+remains an explicit premise or an unmet obligation according to the profile.
 
-Later releases reevaluate only the statuses whose subjects or premises changed.
-The historical record remains useful because it names the exact admitted
-assembly generation, scope, and evidence to which each answer applied.
+The intended result is a framework that knows which claims are proved, checked,
+qualified, runtime-enforced, trusted, asserted, or tested; which concrete
+realizations those claims concern; and when they stop applying. Conditional
+liveness retains its environmental premises alongside its evidence class.
 
-** Working rule for every future semantic change
-
-For every framework or application change that claims participation in the
-provable chain, ask:
-
-#+begin_quote
-What proposition does this layer establish, what premises does it rely on, what
-evidence supports the proposition, and can the next layer mechanically verify
-that the premises and guarantees match?
-#+end_quote
-
-If the answer is not precise, the component is not yet part of the compositional
-proof chain.
-
-The intended end state is not:
-
-#+begin_quote
-Everything is formally verified.
-#+end_quote
-
-It is:
-
-#+begin_quote
-Gesso knows which claims are proved, which are kernel-checked, which are exact-
-finite checked, which are assembly-verified, which are runtime-enforced, which
-are conditional on liveness assumptions, which are trusted, which are asserted
-by the application, and which are supported only by tests.  Downstream programs
-are built compositionally from those claims, and construction stops at the first
-semantic mismatch instead of allowing incompatible assumptions to drift into an
-application that merely appears to work.
-#+end_quote
+A release is admitted because its declared requirements and applicable evidence
+compose through the actual construction and installation path. Completion is
+claimed because the required behavior and assurance scope have been established.
+Neither conclusion follows from an application merely appearing to start.
