@@ -1363,6 +1363,18 @@ qualify a claim; neither supplies an evidence mechanism. Several mechanisms can
 support different parts of the same argument. There is no single total ranking
 that turns all evidence into a universal confidence score.
 
+A claim's *disposition*, its *evidence mechanism*, an individual check's
+*result*, and the selected application's *admission or release decision* are
+separate meanings. An established judgment states what its evidence actually
+established within its quantification and observation scope. Its evidence may
+be a proof, an exact finite check, or a completed test of expressly named
+scenarios; sharing a claim disposition does not make those mechanisms equal.
+A declared enforcement requirement is not evidence that the actual installed
+host enforces it. A named trusted premise remains a premise even if policy
+accepts it. Part XI's =:passed=, =:failed=, and other closed gate results
+describe whether required checks completed at their scopes, not the semantic
+strength of the propositions or the authority of their subjects.
+
 The assurance model distinguishes:
 
 1. properties established mechanically from explicit semantics or checked
@@ -1462,9 +1474,11 @@ open progress obligation:
   {:id :checkout/principal-required-at-runtime
    :proposition [:runtime/requires-current-principal
                  :checkout/place-order]
-   :status :enforcement-bound
-   :evidence {:class :runtime-enforced
-              :boundary :server/authenticated-checkout-handler}
+   :status :open-obligation
+   :required-evidence
+   {:class :runtime-enforced
+    :boundary :server/authenticated-checkout-handler
+    :obligation :actual-installed-boundary-correspondence}
    :premises #{:authentication/correct-principal-binding}}
 
   {:id :checkout/payment-provider-contract
@@ -1485,7 +1499,8 @@ open progress obligation:
    :proposition [:implementation-corresponds-in-scenarios
                  :checkout/place-order
                  #{:accepted :rejected :unknown}]
-   :status :tested
+   :status :established
+   :coverage {:scenarios #{:accepted :rejected :unknown}}
    :evidence {:class :tested
               :suite :chromium/checkout-lifecycle}}
 
@@ -1502,9 +1517,19 @@ open progress obligation:
 #+end_src
 
 Names in this report resolve to source-bound evidence or accepted premises;
-they are not self-authenticating flags. In particular, the runtime row identifies
-the required enforcing boundary, not a principal for every future request.
-Production enforcement of that boundary has its own evidence.
+they are not self-authenticating flags. In particular, the authentication row
+is an *open physical enforcement obligation*. Naming a server boundary does
+not establish that an actual running handler adopted it, and neither this
+declaration nor a test of an isolated checker supplies a principal for a
+future request. Actual adoption needs its own evidence under Part VII.
+
+The browser row's =:established= disposition concerns only the expressly
+listed scenarios and their completed, source-bound test evidence. Its
+=:tested= evidence class does not prove universal browser correspondence,
+and a suite name alone is not evidence that a current test ran or passed.
+This row would remain open if the required run or artifact binding were
+unavailable. The example's status labels illustrate these distinctions;
+they do not introduce a rival schema for Part XI release-gate results.
 
 The last row is deliberately open. Naming environmental premises is not a
 progress proof. A release whose acceptance policy requires that progress
@@ -1615,8 +1640,14 @@ The checker and assembly must distinguish these outcomes:
 | Inapplicable evidence | The subject, scope, dependency, or backend profile no longer matches; dependent acceptance requires re-establishment |
 
 An unsupported or inconclusive proof obligation may be retained as an explicit
-assumption only by a policy that permits that exact kind of premise. The system
-must not silently convert a checker failure into trust. A known counterexample
+assumption only by a policy that permits that exact kind of premise and an
+independently identified, scoped semantic or implementation contract whose
+truth is being assumed. An exhausted proof budget, unavailable checker, or
+unsupported expression is a checking outcome, not itself an assumption
+asserting the original proposition. The policy must identify the original
+obligation, selected weaker basis, affected dependent claims, and still-missing
+evidence; a mandatory gate cannot be satisfied by renaming its failure.
+The system must not silently convert a checker failure into trust. A known counterexample
 cannot be erased by asserting the contradicted proposition under the same
 claim. A correction to the specification, abstraction, implementation, or claim
 scope must itself be explicit and checked as applicable.
