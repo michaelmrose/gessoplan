@@ -1,8 +1,10 @@
 # R5.1 sectional source — Part IV, Authoritative Operations and Progression
 
 **Disposition:** lossless structural preparation of the original R5 Part IV,
-before any R4-preservation or code-correspondence review. All 17 numbered
-units are *unreviewed candidates*, not an accepted Part IV. Parts I–III
+with section 04.01 now substantively reviewed against R4 and
+Gesso's source. Its scoped preservation audit is
+`04.01-r4-preservation-audit.md`; the other 16 numbered units remain
+unreviewed candidates. Part IV is not yet accepted. Parts I–III
 are reviewed R5.1 candidates. The twelve-part plan remains a draft.
 
 The original R5 source is preferred to R4 as the architectural starting
@@ -10,8 +12,8 @@ point. The R4 `main` Part IV has 3,681 newline-split lines and nine
 `CUSTOM_ID` anchors; the R5 Part IV has 1,702 newline-split lines,
 57 nested requirement headings, and the same nine anchors. Lossless
 splitting does **not** determine whether the shorter R5 material omits
-valuable R4 requirements. Those substantive comparisons begin with
-04.01 in the next revision.
+valuable R4 requirements. Those substantive comparisons began with
+04.01 and continue through 04.02–04.17.
 
 ## Numbered source inventory
 
@@ -77,15 +79,17 @@ Part I–IV sources against their published files; `--write`
 assembles Part I–IV and composes the remaining unreviewed R5
 published parts V–XII into `output/gesso-plan-v5.org`.
 
-At structural-preparation time, all 17 Part IV source files
-concatenate exactly to the unchanged published original R5 text;
-this is a checked source reconstruction, not test/proof evidence.
+The 17 source files reconstruct the published Part IV exactly.
+Section 04.01 has since been revised, preserving the original root
+heading and anchors; the published Part IV has been rebuilt from
+that edited unit and the sixteen unchanged R5 units. These are
+editorial/documentary checks, not runtime or formal proof evidence.
 The local Python assembly command was not run as part of the
 GitHub connector operation; run it in a checkout when available.
 
-**Next:** revise **04.01 — Model integration**, consulting R4
-`main`, relevant actual Gesso `application-assurance` code
-and earlier accepted Parts I–III. Add its scoped preservation
-audit, rebuild the published Part IV, validate and commit.
+**Next:** revise **04.02 — Core, FX, and the public Claim
+contract**, comparing R4 `main`, current Gesso model and
+assurance source, and Parts I–III. Add its scoped R4 preservation
+audit and rebuild the published Part IV.
 Subsequent `next` requests continue one bounded revision
 at a time.

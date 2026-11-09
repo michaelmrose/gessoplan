@@ -99,6 +99,48 @@ predicates, and composable authoritative obligations through those interfaces.
 They need not expose private storage paths. A coordinating operation may then
 protect the combined obligations in one transaction.
 
+A cross-model public interface must make its *semantic commitment*
+inspectable without disclosing the consulted model's private storage
+or implementation. For a condition needed by another model's
+authoritative transition, this includes its logical subject and
+parameters, relevant trusted principal/authority, declared read
+dependencies, and the point at which the condition must hold.
+An admitted implementation may supply a data-level obligation,
+a qualified guard constructor, or a trusted callback bound to that
+public contract. Merely naming =:membership/active= in an operation
+manifest does not establish that its actual guard is installed.
+
+A successful preliminary Membership or Organization read is evidence
+of that observation at its qualified basis, not automatically proof
+that its predicate still holds when a later Request Claim commits.
+Where Claim promises atomic enforcement of combined eligibility,
+the authoritative operation must compose the relevant model-owned
+conditions into the *actual protected decision* using qualified
+transaction-current guards, assertions, or an equivalently justified
+backend mechanism. A stability premise may replace such a guard only
+when separately admitted for the precise interval and scope; an
+unchecked preflight Boolean or caller-supplied `authorized?` cannot.
+If the chosen backend cannot protect the promised combined condition,
+report the missing enforcement/correspondence obligation or weaken
+the *declared* atomic guarantee explicitly; do not silently accept
+a race.
+
+| Cross-model construction | Required judgment |
+|--------------------------+-------------------|
+| Request Claim composes Request state, current Membership eligibility, and Organization policy at one admitted authoritative incorporation boundary | Permit the operation under its declared backend and trusted-guard premises; keep the originating public rule owners distinct |
+| A prior Membership read returned =:active=, but Membership was revoked before the Claim commit | The stale read alone cannot authorize incorporation; enforce the current guarded condition or retain the explicitly qualified stability premise |
+| A browser or choreography sends ={:claim-allowed? true}= and the transaction uses that value in place of current model guards | Reject the attempted authority substitution, regardless of input shape |
+| A coordinating operation uses admitted public constraints from two models without importing either model's private FX or XTDB schema | Permit composition where the declared atomic backend contract and cross-model dependencies are actually satisfied |
+| The backend cannot enforce the promised joint invariant, but an assembly report infers safety from two separately successful reads | Do not certify the joint transition; report an open or failed physical obligation at the correct boundary |
+
+The rule and its source owner remain the same in a single application
+process or across several web nodes sharing one qualified logical
+authority. Multi-node routing and propagation can change which host
+learns about a change or when it can observe a sufficient basis;
+they cannot introduce a second Claim policy or substitute a stale
+host-local authorization cache for transaction-current enforcement.
+
+
 A workflow spanning peer models should live at the level that owns the workflow.
 An onboarding flow coordinating Invitation, Membership, Organization, and
 external provisioning need not belong to Invitation merely because it starts
