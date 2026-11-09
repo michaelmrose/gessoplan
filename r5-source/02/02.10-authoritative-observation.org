@@ -1,0 +1,426 @@
+** Authoritative observation as a knowledge path
+:PROPERTIES:
+:CUSTOM_ID: req-authoritative-observation
+:END:
+
+Authoritative observation is a first-class semantic provenance path even when
+it is not represented as a first-class portable machine opcode.
+
+This distinction is important for ordinary web applications.
+
+A HumanHelp browser may learn facts such as:
+
+#+begin_example
+Request R is done
+Request R is claimed
+Membership U is inactive
+Organization O is closed
+#+end_example
+
+by rereading an authoritative representation after Live indicates that relevant
+authority may have changed.
+
+That knowledge is not weaker merely because it arrived as rendered HTML rather
+than as a dedicated choreography participant message.
+
+The authority remains in the model/database.
+
+The HTML is one representation from which the admitted actor may acquire the
+fact under the declared projection and normalization contract. Arbitrary DOM
+text, an undeclared data attribute, or a locally fabricated status does not
+become semantic knowledge by looking like the server's rendering.
+
+*** Advisory invalidation versus authoritative observation
+
+The normal causal relationship, when the application policy permits the
+acquisition, is:
+
+1. A model operation incorporates an authoritative mutation under its storage
+   contract.
+2. Live supplies an admitted, scoped advisory about potentially relevant change.
+3. Application policy or user action supplies a permitted acquisition trigger.
+4. An authorized read satisfies the applicable scope and progression requirements.
+5. The actor acquires the justified observation. Adoption and installation follow
+   their declared policy rather than being implied by notification receipt.
+
+A Live invalidation means approximately:
+
+#+begin_quote
+Relevant authority may have changed; a sufficiently current authoritative
+observation may be required for later behavior or offered for explicit adoption.
+#+end_quote
+
+It does not mean:
+
+#+begin_quote
+This particular domain fact is now true.
+#+end_quote
+
+Therefore invalidation is advisory knowledge about possible change, not
+authoritative knowledge of the changed fact.
+
+Receipt of the advisory does not by itself choose when the application adopts
+new content. Acquisition may follow an explicit user action, a declared
+automatic policy, or another admitted trigger. Any convergence claim that relies
+on such a trigger must name it among its liveness premises.
+
+*** Observation scope and selective incorporation
+
+An authoritative observation establishes only the facts and coverage justified
+by its acquisition contract. Its semantic context includes the authority,
+subject or projection scope, relevant basis/progression, and applicable temporal
+or query meaning. Filters, search terms, ordering and pagination where they
+affect coverage, projection version, and principal-specific visibility may all
+be part of that meaning. These need not all be repeated as fields when they are
+unambiguously supplied by the admitted contract.
+
+A later observation of one Request does not establish acquisition of all board
+membership at the same database progression. An actor may hold individually
+justified observations from different acquisitions without possessing a single
+consistent snapshot of their union.
+
+Consequently, installation of new authoritative content must preserve each
+observation's justified scope. Claims spanning multiple observations require
+the compatibility or consistent-acquisition premise appropriate to that claim.
+The mere existence of separate authoritative observations is insufficient.
+
+The authoritative-operations and progression part owns the detailed
+[[#req-progression-scope][scope and progression contract]] and
+[[#req-advisory-discharge][advisory discharge rules]]. Browser installation follows
+[[#req-runtime-scoped-authoritative-installation][the scoped installation contract]].
+HumanHelp's selective-adoption policy is a use of those generic contracts.
+
+An observation contract distinguishes returned rows from coverage of the query.
+A complete authorized board result may establish membership or absence within
+that projection. A page, search subset, or single-card response does not
+establish membership of the entire board. Ordering and cursor context matter
+when they determine which portion was returned.
+
+| Result | Permitted semantic conclusion |
+|--------+------------------------------|
+| Complete authorized scoped result | Returned facts and the stated coverage/absence conclusions at its read context |
+| Partial or paged result | Facts in the returned scope; completeness only for explicitly established coverage |
+| Authoritative not-found | Absence within the declared subject, visibility, temporal, and query contract |
+| Denied or privacy-masked response | Only the permitted denial/opaque result; no stronger existence conclusion |
+| Timeout, disconnect, or unavailable read | No successful observation of the missing result |
+
+Two different values at the same raw basis are not automatically an authority
+contradiction. First establish that the authority, subject, projection version,
+query parameters, temporal context, visibility context, and deterministic
+interpretation are the same. Different valid times or projections can produce
+different correct answers at one database basis. If the complete meaning is
+the same and incompatible facts remain, treat that as contradictory evidence;
+do not resolve it by last-arrival-wins.
+
+An incomparable observation can remain valid evidence in its own scope without
+being eligible to replace the currently adopted projection. Replacement needs
+the declared supersession, progression, or reconciliation relation. Equal
+displayed values do not by themselves advance a knowledge or coverage frontier.
+
+*** Acquisition, installation, and semantic adoption
+
+Acquisition produces an observation under its declared source and read
+contract. Installation applies a representation to a concrete target.
+Adoption selects the observation or projection on which subsequent behavior
+relies. The contract states when these transitions coincide and when they are
+separate.
+
+An authorized response may arrive without being installed because its owner
+was retired, the target changed, or a newer compatible result was already
+adopted. Its evidence may be usable through another declared admission path,
+but it must not mutate a replacement owner merely because it is authoritative.
+
+Scheduling an installation or emitting an allow-swap decision is not proof that
+the representation was installed. A synchronous realization may establish both
+within one supported boundary; an asynchronous realization needs a completion
+or failure contract. The adopted frontier and advisory discharge must reflect
+the transition they claim, including the actual permitted installation when
+adoption requires it. Part VI owns the concrete shell/refinement relation.
+
+An advisory received while an acquisition or installation is pending must be
+evaluated against the resulting observation's actual coverage. It cannot be
+discarded merely because it arrived before a callback or because the acquisition
+was called Refresh.
+
+
+*** Observed basis is protocol context, not proof of prior observation
+:PROPERTIES:
+:CUSTOM_ID: req-observation-evidence
+:END:
+
+A naked browser-supplied =:observed-basis= value is a client claim about the
+context from which the browser believes it is acting.  It is not, by itself,
+proof that the browser actually received or incorporated an authoritative
+observation at that basis.
+
+For ordinary Gesso commands this is intentional.  The basis is useful protocol
+context for consistency, reconciliation, provenance, stale-command handling,
+and authoritative reacquisition even when the browser is adversarial.
+
+For example, a browser may say:
+
+#+begin_src clojure
+{:request-id R
+ :observed-basis B}
+#+end_src
+
+Here =R= is the domain Request identity, not a transport-request identity.
+The server may safely use =B= to understand the command's claimed starting
+context without treating =B= as permission:
+
+| Validated comparison or context | Permitted treatment |
+|---------------------------------+---------------------|
+| B is compatible or sufficiently current for the declared use | Continue under the ordinary current model guards |
+| B is stale or incompatible for that use | Follow the declared reconciliation, rejection, or reacquisition path |
+| B is invalid, unsupported, or lacks required comparison evidence | Report or handle that condition explicitly; do not invent an ordering or treat B as authority |
+
+Current authenticated principal binding, model authorization, authoritative
+state, and transaction guards remain decisive. A client may lie about =B=
+without thereby gaining authority.
+
+The provider still validates the token's representation and applicable
+authority/database context. A client cannot select a different backend, expand
+query scope, or demand an unbounded wait by supplying a fabricated future basis.
+Supported bounds and failure responses are part of the acquisition contract;
+failure to satisfy a required basis is reported rather than silently dropped.
+
+The trust requirement changes if an application gives *prior observation
+itself* security significance.  Examples include:
+
+- an operation is allowed only after the principal was previously issued a
+  particular authoritative representation;
+- a continuation is valid only when it follows a specific server-issued
+  observation;
+- an acknowledgement must refer to an exact previously issued semantic
+  version;
+- an application distinguishes "client claims to have seen X" from
+  "the server can verify that it issued X to this principal/session."
+
+In that case a forgeable client field is insufficient.  The application needs
+an explicit server-verifiable mechanism such as:
+
+- a server-issued capability;
+- a MAC-authenticated observation receipt;
+- trusted server-side session state;
+- a signed server attestation;
+- a nonce or continuation identifier bound to a prior response;
+- another mechanism whose trust semantics are stated explicitly.
+
+The framework must never silently promote:
+
+#+begin_example
+ClientClaim<ObservedBasis>
+#+end_example
+
+into:
+
+#+begin_example
+VerifiedObservationEvidence
+#+end_example
+
+merely because the value has the expected shape or happens to equal a real
+basis.
+
+A Message Authentication Code (MAC), for example HMAC-SHA-256, is one possible
+way to let an adversarial browser carry integrity-protected server evidence,
+under the named cryptographic, key-management, encoding, and verification
+assumptions. This example specifies the trust relationship rather than a
+complete cryptographic implementation. The server authenticates a canonical
+payload using a secret key known only to trusted infrastructure:
+
+#+begin_example
+receipt-payload
+    =
+{:receipt/type :gesso/observation-issuance
+ :receipt/version 1
+ :issuer :humanhelp/observation-service
+ :audience :humanhelp/request-flow
+ :key-id K
+ :principal [:user P]
+ :authority [:authority :request R]
+ :projection :request/public-row-v1
+ :scope S
+ :basis B
+ :temporal-context T
+ :semantic-digest D
+ :purpose :prior-observation-issuance
+ :issued-event :authorized-response-constructed
+ :issued-at I
+ :expires-at E}
+
+mac
+    =
+HMAC(server-secret, canonical-encoding(receipt-payload))
+#+end_example
+
+The browser may read, store, copy, and return the payload and MAC. Under the
+declared integrity assumptions it cannot feasibly change =P=, =R=, =B=,
+=purpose=, or another authenticated field and produce accepted replacement
+evidence. The MAC does not encrypt the payload; receipt contents must therefore
+be suitable for disclosure to the recipient. Scope S and temporal context T
+include the query, visibility, and provider/basis context required by the
+projection contract; they are not inferred from the token's familiar shape.
+The digest D identifies the canonical semantic observation material, not
+arbitrary HTML bytes or the truth of the statement by itself.
+
+On receipt, the server recomputes and verifies the MAC and then checks the
+context in which the receipt is being used:
+
+1. Parse the untrusted envelope under bounded, supported encoding rules.
+2. Resolve the admitted receipt contract and its trusted verification key.
+3. Verify the MAC over the exact canonical payload.
+4. Check the required identity, scope, context, purpose, and lifecycle bindings.
+5. Admit only the historical issuance proposition justified by those checks.
+
+The verifier chooses the admitted receipt contract, trusted issuer/key mapping,
+canonical encoding, and verification mechanism. Client-supplied fields do not
+select an arbitrary algorithm or trusted issuer. Version, type, audience,
+principal or session binding, authority, subject/scope, projection, purpose,
+expiry, and semantic-material binding are checked as required by that contract.
+Key rotation, clock interpretation, and revocation/expiry behavior belong to the
+declared receipt lifecycle. Validation failure grants no stronger premise.
+
+The MAC authenticates the statement represented by the payload; it does not
+make an unjustified statement true.  If the server authenticates a bad or
+overstated proposition, the MAC faithfully preserves that mistake.
+
+In particular, a receipt normally proves something like:
+
+#+begin_quote
+Trusted server infrastructure issued an attestation for principal/session P
+about the declared semantic observation of authority A at basis B, under the
+receipt's stated issuance contract.
+#+end_quote
+
+The issuance contract must identify the event actually attested: for example,
+construction of an authorized response or release of a response to a transport.
+Issuance is not proof of successful delivery, browser installation, retention,
+or human acknowledgement. Returning the receipt proves possession of the
+authenticated bytes, not those stronger events by itself.
+
+It does not by itself prove:
+
+#+begin_quote
+The browser installed the observation, or the human read, understood, or
+consciously incorporated it.
+#+end_quote
+
+If human acknowledgement is semantically relevant, that is a stronger protocol
+and needs its own explicit proposition and evidence.
+
+Observation evidence must also remain distinct from an operation capability.
+A valid authenticated receipt concerning an old authoritative observation may
+remain historically valid even after current authority changes:
+
+#+begin_example
+valid observation receipt
+!=
+current authorization
+#+end_example
+
+For example, another helper may have claimed Request R after the receipt was
+issued.  The receipt can still prove that an earlier observation was issued,
+while current authoritative reread and model guards correctly reject a new
+claim.
+
+Gesso should therefore distinguish at least these concepts:
+
+| Concept | Semantic meaning |
+|---------+------------------|
+| ObservedBasisClaim | Client-supplied, forgeable consistency or reconciliation context |
+| AuthenticatedObservationReceipt | Server-authenticated evidence of the stated prior issuance event |
+| CurrentAuthoritativeObservation | Trusted acquisition satisfying its scope and read contract; current relative to that acquisition |
+| OperationCapability | Scoped permission under an explicit grant and its validity conditions |
+| CurrentAuthorization | A current trusted decision permitting the concrete principal's operation under the authoritative policy |
+
+None should implicitly coerce into another.  In particular, historical
+observation evidence and possession of an operation capability do not silently
+become current authorization unless the declared capability semantics explicitly
+make possession sufficient and all of that capability's current validity
+conditions are satisfied.
+
+Gesso may emit compact authenticated observation receipts alongside
+authoritative acquisitions when a supported protocol benefits from evidence of
+prior issuance. Routine issuance is an implementation option, not a baseline
+requirement justified solely by the cost of computing a MAC. Its key lifecycle,
+payload disclosure, expiry, and replay contract must be explicit. The
+authenticated object should be the *semantic observation* or a compact digest/identity of it, not
+arbitrary HTTP response bytes.
+
+The receipt contract must identify exactly what its semantic digest binds.
+A digest of an untyped map without authority, projection, temporal, or query
+meaning is not enough when those distinctions matter. Verifying a receipt
+does not re-read the model or establish that the old facts remain current.
+
+Even if such receipts become common, ordinary =:observed-basis= should remain a
+distinct weaker protocol concept.  Requiring cryptographic evidence whenever a
+client reports its starting basis would unnecessarily turn useful consistency
+context into a security credential.
+
+Replay semantics also remain explicit.  A MAC makes a token difficult to forge
+or alter; it does not make the token single-use.  A reusable observation
+receipt may legitimately be replayable because it attests to a historical
+fact.  A one-shot capability must enforce its declared consumption or replay policy.
+Expiry limits validity duration but does not by itself prevent reuse within
+that duration. A nonce distinguishes issuances but does not by itself record
+consumption. A consumed-token record or another trusted mechanism may enforce
+single use; command identity and idempotency may instead enforce a permitted
+duplicate-use outcome. Those are different contracts and must not be presented
+as interchangeable guarantees.
+
+The governing rule is:
+
+#+begin_quote
+When prior observation becomes a premise of authorization or another
+security-sensitive conclusion, the mechanism establishing that premise must
+cross an explicit server-verifiable trust boundary.  Client assertion remains
+client assertion until that boundary is crossed.
+#+end_quote
+
+*** Observation need not imply a long-lived waiting opcode
+
+Many authoritative observations form entry knowledge for a later short
+choreography.
+
+For example:
+
+| Stage | Semantic consequence |
+|-------+----------------------|
+| Browser renders an admitted Request observation at X17 | That execution may finish with its declared adopted knowledge |
+| A later Live advisory arrives | It records advisory information; it need not resume the finished execution |
+| Policy or user action permits a new acquisition | An authorized read obtains an observation satisfying the new requirement, here at X24 |
+| A new short choreography begins | Its entry contract binds the observation at X24 as justified input knowledge |
+
+The portable choreography language therefore need not acquire a universal
+=:observe= or durable wait operation merely to model ordinary web rereads.
+
+If an application genuinely needs one semantic execution to suspend on an
+authoritative condition and later resume, that facility should be designed
+deliberately with explicit persistence, compatibility, ownership, and recovery
+semantics.
+
+It must not appear accidentally as a consequence of normal Live behavior.
+
+*** Observation and representation independence
+
+Authoritative observation is semantic.
+
+Its correctness must not depend on one specific presentation format.
+
+A browser may acquire justified knowledge from an authoritative HTML projection
+when the server-rendered representation and its acquisition path establish the
+required facts.
+
+Another application may use structured data.
+
+The important proof obligations concern:
+
+- authority;
+- authorization;
+- basis/progression;
+- projection semantics;
+- correspondence between representation and declared fact.
+
+They do not concern whether the bytes happened to be HTML or EDN unless the
+representation mechanism itself introduces a relevant assumption.
+

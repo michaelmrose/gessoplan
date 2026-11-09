@@ -1,0 +1,468 @@
+* Part II — Semantic model
+:PROPERTIES:
+:CUSTOM_ID: part-02-semantic-model
+:PART_REVISION: 02-20261107
+:END:
+
+This part defines the semantic distinctions shared by choreography, authoritative
+operations, browser realization, and application assembly. It uses the assurance
+and admission vocabulary established in Part I. The definitions do not require
+a universal persisted fact graph, a new runtime class for every concept, or a
+single global revision coordinate.
+
+The model applies to full-language applications under the
+[[#req-full-language-construction][checked construction contract]]. An opaque
+Clojure computation has an explicit semantic interface and retained premises;
+it is not excluded from the application because its implementation is outside
+the proof fragment. This part defines what the surrounding claims mean.
+Part IX owns their checking judgments, and Part X owns soundness and concrete
+correspondence. The intended semantics does not inherit incidental limitations
+of one runtime representation.
+
+Examples use illustrative contract and API names unless explicitly identified
+as executable fixtures. Symbols such as R, U, B, and X17 stand for values bound
+by the surrounding example. An inspection map shows information that an admitted
+boundary must retain; writing that map does not establish admission. Later
+parts specify concrete construction, checking, and realization contracts.
+
+** Values and evolving values
+
+A value may be a singular immutable value:
+
+#+begin_src clojure
+42
+:open
+{:user/id user-id}
+#+end_src
+
+A value may also be understood as evolving across a time, revision, causal, or
+transformation-step dimension.
+
+For example:
+
+#+begin_example
+foo = :bar at T1
+foo = :baz at T2
+#+end_example
+
+or:
+
+#+begin_example
+foo = :bar at step S1
+foo = :baz at step S2
+#+end_example
+
+The observations themselves may remain immutable facts.
+
+The evolving value is the relationship among those observations and the rules
+used to select or interpret one observation relative to a particular point of
+view.
+
+"Current value" is therefore not an eternal mutable fact.
+
+It is a derived view relative to some combination of:
+
+- valid/effective time;
+- causal or transformation relation;
+- authoritative basis;
+- authoritative progression;
+- actor knowledge frontier;
+- application policy.
+
+For a HumanHelp Request:
+
+#+begin_example
+F1: Request R was unclaimed at valid time T1.
+F2: Request R was claimed by user U at valid time T2.
+#+end_example
+
+Both statements can remain true under the model's declared valid-time and
+correction semantics. The historical fact that an observation was made is
+distinct from a claim that its interpretation of the world can never be
+corrected. Recording an earlier observation does not make an erroneous domain
+assertion eternally true.
+
+The Request's current state depends on the point from which the Request is
+evaluated and on later facts that supersede, refine, reconcile, or otherwise
+relate to the earlier history.
+
+The framework must not confuse:
+
+#+begin_example
+fact existed
+fact became authoritative
+fact became visible at a database frontier
+actor learned fact
+actor derived another fact
+actor displayed representation of fact
+#+end_example
+
+These are distinct events and relationships.
+
+*** Conceptual fact graph versus required persistence
+
+The semantic model may reason in terms of facts and relations among facts
+without requiring Gesso to persist a universal fact DAG.
+
+The conceptual graph is useful because it allows the design to reason about:
+
+- provenance;
+- supersession;
+- derivation;
+- authority;
+- agreement;
+- causality;
+- command/result relations;
+- provisional versus authoritative state.
+
+Actual persistence remains owned by application models and their chosen
+authoritative systems.
+
+For HumanHelp, XTDB and public model semantics remain the primary persistence
+and authority boundary.
+
+Gesso must not introduce a duplicate universal fact store merely because the
+proof vocabulary can describe facts.
+
+*** Immutability and correction
+
+The statement that observations are immutable does not prohibit an application
+from correcting its model of the world.
+
+A later authoritative fact may state that an earlier interpretation was wrong,
+superseded, withdrawn, or effective over a different valid-time interval.
+
+What must remain explicit is the relationship.
+
+The system should avoid interpreting absence from a current projection as
+evidence that an earlier observation never occurred. This semantic distinction
+does not require indefinite storage of every observation, prohibit legitimate
+data deletion, or introduce an audit-history retention policy. Persistence and
+retention remain model-owned.
+
+This distinction becomes important for:
+
+- reconciliation;
+- idempotency;
+- audit;
+- stale-command interpretation;
+- provisional settlement;
+- authoritative reread;
+- domain-specific corrections.
+
+*** Semantic value versus representation
+
+A semantic value is not identical to a wire encoding, DOM representation, XTDB
+object, or Clojure map merely because one of those represents it.
+
+Representations may change while semantic identity remains stable.
+
+Conversely, two values with identical serialized shape may have different
+semantic meaning because their:
+
+- provenance differs;
+- authority differs;
+- basis differs;
+- principal differs;
+- operation context differs;
+- plan/protocol compatibility identity differs.
+
+Shape equality alone is insufficient when the semantic judgment depends on
+distinctions not established by that shape. Ordinary immutable values may still
+use ordinary value equality when the enclosing contract makes it sufficient.
+Gesso must not mistake matching schemas or encodings for equality of authority,
+provenance, subject, observation scope, or admission status.
+
+*** Typed values, absence, and portable interpretation
+
+The semantic interpretation of a value includes the type and context under
+which it is used. A nominal enum, currency amount, principal identifier, and
+resource identifier must not become interchangeable because their physical
+encodings overlap.
+
+The following cases are distinct:
+
+| Case | Meaning |
+|------+---------|
+| Field absent | The projection does not contain that field, or explicitly establishes its absence under its schema |
+| Field present with nil | A present value permitted only when the type admits nil |
+| Field present with false | A Boolean value, not absence |
+| Fact unknown | The actor lacks a justified proposition; this is not the proposition's negation |
+| Observation denied | The observation contract withholds disclosure; this need not establish either presence or absence |
+| Resource authoritatively absent | A justified negative result within a declared subject, basis, time, and query scope |
+
+Omission from a partial projection must not be interpreted as known absence.
+Similarly, a defaulting accessor must not collapse absent, nil, and false when
+the operation's guard, frame, or outcome depends on their distinction. The
+schema and acquisition contract determine which omissions have semantic meaning.
+
+Portable numeric and value profiles specify ranges, overflow, equality,
+ordering, strings, nominal categories, and serialization. A mathematically
+unbounded integer in a proof is not automatically a safely represented browser
+number. A canonical encoding can normalize =1= and =1N= as the same mathematical
+integer without proving that every host arithmetic operation preserves that
+meaning. Concrete interpretation has its own target and correspondence contract.
+
+Unsupported values at a wire or checked-IR boundary produce a typed rejection
+or use an explicitly admitted codec. This does not prohibit using those values
+inside an ordinary host-language computation whose exported interface is valid.
+
+*** Representation, semantic category, and admission
+:PROPERTIES:
+:CUSTOM_ID: req-semantic-admission
+:END:
+
+Representation validity, semantic category, semantic admission, and proof are
+separate questions.
+
+A Clojure map, record, scalar, wire value, DOM node, or other representation may
+carry a semantic value without the representation itself establishing the
+stronger status in which later code intends to use it.
+
+The design therefore distinguishes conceptually:
+
+| Question | What a positive answer establishes |
+|----------+------------------------------------|
+| Does the representation have the required shape? | Structural validity under the selected schema |
+| Does it belong to the required semantic category? | The required meaning, such as command rather than execution identity |
+| Has it crossed the required admission boundary? | The boundary's checked bindings and applicability |
+| Which propositions have been proved? | Only the checked conclusions under their retained premises |
+
+A positive answer to an earlier question does not automatically answer the
+later ones.
+
+This distinction matters most where two values may have the same or nearly the
+same representation while differing materially in provenance, authority,
+lifecycle, or assurance status.  Examples include:
+
+- =ObservedBasisClaim= versus an authoritative basis established by trusted
+  acquisition;
+- =CommandId= versus =ExecutionId=;
+- provisional versus authoritative projections;
+- raw versus checked choreography declarations;
+- projected plans versus admitted executable plans;
+- raw certificate data versus checker-accepted certificate evidence;
+- authenticated observation evidence versus an operation capability;
+- historical observation evidence versus current authorization.
+
+The supported Gesso APIs must not silently treat one such category as another
+merely because the underlying values have equal map shape, equal scalar
+representation, matching discriminator keys, or compatible Malli schemas.
+
+This is an admission rule rather than a requirement to turn every semantic
+concept into a new runtime class.  Permitted realizations include, where they
+satisfy the intended boundary contract:
+
+- nominal types or records;
+- opaque wrappers;
+- smart or checked constructors;
+- values reachable only through a verifier, elaborator, authoritative
+  acquisition path, or registry lookup;
+- tagged representations whose tags are validated by the appropriate trusted
+  boundary;
+- representations whose construction and use make the invalid substitution
+  impossible or immediately rejectable through the supported path.
+
+The design requires the semantic distinction and its enforcement at the
+supported boundary.  It does not prescribe a nominal-type rewrite when a
+chosen mechanism provides the required protection.
+
+Nominality is especially useful as misuse prevention inside cooperating trusted
+application code.  For example, if =CommandId= and =ExecutionId= are both
+physically UUIDs, a supported API should not make accidental interchange look
+ordinary merely because both values satisfy a UUID schema.  Similarly, a raw
+map containing the fields of a checked certificate must not become accepted
+certificate evidence solely by carrying a discriminator such as
+=:certificate/type= or =:verified? true=.
+
+A boundary must retain or establish the information required to distinguish
+the categories it promises to check. If two untagged UUIDs reach a boundary
+with no trustworthy category or correlation information, UUID shape validation
+cannot reconstruct whether one originated as a command or an execution.
+
+The supported construction path must therefore preserve the needed distinction
+through checked construction, typed or opaque values, declared field bindings,
+trusted correlation, or another mechanism that actually enforces the contract.
+Merely assigning different variable names to interchangeable unchecked inputs
+does not establish that protection. Framework-owned construction should derive
+these bindings wherever it already possesses the required information.
+
+Nominal or opaque representation alone is not a security proof.  A value called
+=VerifiedChoreography= is trustworthy only to the extent that its construction
+or admission path actually establishes the claims downstream code relies on.
+Likewise, a Clojure record constructor is not treated as a cryptographic or
+process-isolation boundary.
+
+Crossing an untrusted serialization boundary also strips any purely in-process
+admission status.  Conceptually:
+
+1. A trusted boundary admits a server-side value under its declared premises.
+2. Encoding and transmission produce bytes that may pass through an untrusted
+   participant. The original in-process admission status does not travel merely
+   because those bytes encode a familiar representation.
+3. Decoding reconstructs data. Verification or trusted reacquisition must
+   establish the premises required to admit that data for its new use.
+
+Deserializing data into the same nominal-looking representation must not by
+itself restore authority, trusted provenance, certification, or admission.
+
+Ordinary downstream application authoring should not pay unnecessary ceremony
+for these distinctions.  Gesso should preferentially construct admitted values
+behind verification, elaboration, acquisition, projection, model, and assembly
+boundaries.  Routine application code should not be required to manually wrap
+every Request id, title, status, or other ordinary domain value merely to
+satisfy framework ceremony.
+
+The practical acceptance criterion is:
+
+#+begin_quote
+Where two same-shaped values have materially different semantic meanings,
+accidental substitution through the supported API is either structurally
+unavailable or rejected at the earliest legitimate boundary with a diagnostic
+that identifies the expected semantic category, the supplied category, and the
+missing derivation or admission step. If the supplied category cannot be
+established, the diagnostic identifies it as unknown or unadmitted rather than
+inventing a trustworthy origin from an untrusted tag.
+#+end_quote
+
+
+An expense-approval path shows what this means without requiring authors to
+create three record wrappers and a registry entry by hand for every value.
+The application declares an observation contract and supplies its model-owned
+acquisition implementation. Gesso owns admission and downstream checks.
+
+#+begin_src clojure
+(def EmployeeValue
+  [:map
+   [:employee/id uuid?]
+   [:employee/department keyword?]
+   [:employee/risk-band [:enum :ordinary :enhanced-review]]])
+
+(def ExpenseValue
+  [:map
+   [:expense/id uuid?]
+   [:expense/employee-id uuid?]
+   [:expense/department keyword?]
+   [:expense/amount Money]
+   [:expense/status [:enum :draft :submitted :approved :rejected]]])
+
+(def approval-inputs-contract
+  {:observation/id :expense/approval-inputs
+   :input [:map [:expense/id uuid?]]
+   :projection {:expense ExpenseValue :employee EmployeeValue}
+   :purpose :expense/approval-preparation
+   :authorization :expense/observe-approval-inputs
+   :bindings
+   [[:= [:expense/id :expense] [:expense/id :arguments]]
+    [:= [:employee/id :employee] [:expense/employee-id :expense]]]
+   :consistency :compatible-authoritative-read-context
+   :implementation #'expense-model/read-approval-inputs!})
+
+(defn observe-approval-inputs!
+  [ctx expense-id]
+  ;; The contract is resolved from the admitted application. Authentication
+  ;; and read authorization come from ctx, never from observation arguments.
+  (observation/acquire!
+    ctx
+    :expense/approval-inputs
+    {:expense/id expense-id}))
+
+(defn approval-facts-eligible?
+  [ctx expense-id observed]
+  (let [{:keys [expense employee]}
+        (observation/require-for!
+          ctx observed
+          {:contract :expense/approval-inputs
+           :arguments {:expense/id expense-id}
+           :purpose :expense/approval-preparation})]
+    (and (= (:expense/id expense) expense-id)
+         (= (:employee/id employee) (:expense/employee-id expense))
+         (= :submitted (:expense/status expense))
+         (= (:expense/department expense) (:employee/department employee))
+         (= :ordinary (:employee/risk-band employee)))))
+#+end_src
+
+=Money= uses the declared money profile from Part I. Schema Vars and the
+observation map are declarations, not admission credentials. The public API
+names above illustrate the required contracts rather than freeze a particular
+namespace layout.
+
+The admitted observation establishes the facts returned for this preparation
+purpose. The sample eligibility function does not establish that its caller is
+a manager or may approve an expense. That is a distinct authorization decision
+owned by the authoritative approval operation. If the function is opaque to the
+checker, its functional contract remains explicitly asserted even though its
+input admission and relationship checks can be enforced.
+
+The acquisition/admission boundary must establish all of the following:
+
+| Obligation | Establishing boundary |
+|------------+-----------------------|
+| Caller identity | Trusted authentication bound to the actual context |
+| Permission to disclose | Model-owned read authorization before releasing protected data |
+| Requested Expense | The acquired Expense id matches the admitted argument |
+| Related Employee | The acquired Employee id matches that Expense's employee relationship |
+| Representation | Non-optional validation of the declared result schemas |
+| Observation meaning | Correct authority, projection contract, parameters, temporal context, and compatible read basis |
+| Permitted use | Current applicability of the admitted observation for this caller and purpose |
+| Realization fidelity | Proof, runtime enforcement, or retained assumptions connecting the acquisition implementation to its contract |
+
+A single compatible read context may be supplied by a model operation or by
+several reads under an admitted consistent-acquisition contract. Separate
+successful reads alone do not establish a coherent combined snapshot. If that
+premise cannot be established, the boundary rejects the stronger combined claim
+or exposes separately scoped observations for a contract that permits them.
+
+An implementation may use an opaque object, trusted issuance registry, or other
+checked representation for the observation. Its admission binding includes the
+result material, contract identity, subjects, basis, temporal/query context,
+principal context, purpose, and applicability required by the contract. A record
+class or =:admitted?= tag alone is insufficient. A process-local handle may be
+valid for a local invocation; continuation across hosts requires a declared
+shared, revalidated, or server-verifiable mechanism. None of this requires a
+universal persistent observation store.
+
+Now compare an observation with client-carried data containing equal values:
+
+#+begin_src clojure
+(def observed
+  (observe-approval-inputs! ctx expense-id))
+
+;; Illustration: the browser returns the same domain values it received.
+;; Parsing and shape checking are allowed; they do not restore admission.
+(def returned-values
+  {:expense expense-value
+   :employee employee-value})
+
+(= (observation/value observed) returned-values)
+;; => true in this fixture
+
+(approval-facts-eligible? ctx expense-id returned-values)
+;; => rejected: no admitted observation for the required contract and context
+
+(approval-facts-eligible? ctx expense-id observed)
+;; => evaluates the sample eligibility rule under its retained premises
+#+end_src
+
+Reconstructing a record with a familiar class or copied fields must fail the
+same boundary unless the actual admission binding is re-established. Conversely,
+there is no need to reject an ordinary scalar solely because it was serialized
+when its use requires only shape-checked value equality. Admission requirements
+follow the claimed meaning, not a rule that all decoded values are unusable.
+
+A browser may also return an observation receipt when the protocol explicitly
+supports one. Verification can establish the receipt's exact historical issuance
+claim and applicability; it does not silently supply a new current observation
+or approval authority. Otherwise the supported path reacquires authorized facts.
+
+Finally, preparation is not incorporation. The eventual approval command must
+recognize compatible replay and, for a new incorporation, protect the Expense,
+Employee relationship, eligibility facts, and current approval authority under
+the atomic contract. An earlier admitted observation is not a substitute for
+that protection. A successful old approval result likewise does not prove that
+the Expense's present state remains unchanged.
+
+The practical authoring surface remains an acquisition contract and ordinary
+functions. The richer admission representation is framework-owned, inspectable,
+and proportionate to the claims made about its use.
+

@@ -1,0 +1,227 @@
+** Trust boundaries and adversarial browser actors
+:PROPERTIES:
+:CUSTOM_ID: req-trust-boundary
+:END:
+
+A browser is an untrusted participant.
+
+This statement is stronger than saying browser input should be validated.
+
+The user controls the machine and may modify:
+
+#+begin_example
+gesso-live.js
+projected choreography data
+local machine state
+DOM
+hidden fields
+command envelopes
+role names
+principal ids
+observed basis values
+provenance labels
+provisional/authoritative markers
+available buttons
+bound capabilities
+diagnostic/proof sidecars
+runtime correlation fields
+#+end_example
+
+Therefore no browser-originated value may confer trusted authority merely
+because it has the expected representation.
+
+*** What the browser may propose
+
+A browser may propose values such as:
+
+- a semantic operation;
+- operation arguments;
+- a semantic command identity;
+- an observed-basis claim used as protocol context;
+- correlation information whose validity is checked independently;
+- provisional local state affecting only its own representation;
+- a projected-plan identity whose compatibility is checked by trusted code;
+- transport data required to correlate a request with a server-side operation.
+
+Proposal is not authority.
+
+*** What the browser may not establish by assertion
+
+The browser may not establish by assertion:
+
+- authenticated principal identity;
+- entitlement to a choreography role;
+- model authority;
+- authorization to operate on a protected target;
+- authoritative provenance;
+- an authoritative fact;
+- a privileged server-machine state;
+- permission to read protected data;
+- permission to subscribe to protected Live state;
+- the truth of a proof certificate;
+- that a stale execution is current;
+- that a provisional projection is authoritative;
+- that an observed-basis claim proves prior observation.
+
+Trusted server code must derive or check those propositions through trusted
+boundaries.
+
+*** Trusted authoritative execution
+
+For each protected authoritative operation, the supported trusted path must
+establish the obligations relevant to the branch it actually executes:
+
+1. Authenticate the concrete caller from trusted context and resolve the
+   operation through the admitted application binding.
+2. Validate the command envelope, identity binding, arguments, and compatible
+   operation interface. Client fields do not supply privileged continuation
+   state or current authority.
+3. Handle a compatible recorded command under its current disclosure policy,
+   without imposing a new-incorporation guard on historical success.
+4. For new incorporation, acquire the required facts and atomically protect
+   current authorization, relationships, guard dependencies, and domain effects
+   together with the command-result record.
+5. Account for concurrent compatible incorporation when interpreting a failed
+   attempt, and preserve uncertainty when authoritative evidence is insufficient.
+6. Produce only the permitted typed outcomes and scoped progression evidence,
+   with disclosure and recovery rules appropriate to the current caller.
+
+Preparation checks are protected or re-established at incorporation wherever
+intervening changes could invalidate the decision. Browser freshness does not
+supply that protection. Read-only operations and subscriptions follow their
+own acquisition/disclosure contracts rather than manufacturing a write protocol.
+
+The server must never treat a client-supplied machine continuation such as:
+
+#+begin_src clojure
+{:next-state :request-authority/commit-admin-operation}
+#+end_src
+
+as evidence that the client is entitled to reach that state.
+
+Instead the browser requests a semantic operation, conceptually:
+
+#+begin_src clojure
+{:gesso/command-id C42
+ :operation :request/claim
+ :arguments {:request/id R}
+ :observed-basis X17}
+#+end_src
+
+and trusted server semantics decide what operation and continuation are
+permitted.
+
+*** Security boundary
+
+A malicious browser can always lie to itself.
+
+It may render false information, suppress buttons, manufacture buttons, change
+labels, or locally pretend an operation succeeded.
+
+Preventing a user from corrupting their own local representation is not the
+security target.
+
+The security target is:
+
+#+begin_quote
+Compromising or replacing a browser projection may corrupt that browser's local
+representation and protocol participation, but must not increase the authority
+of its authenticated principal, disclose data unavailable to that principal, or
+produce an authoritative model transition unavailable to that principal.
+#+end_quote
+
+This is a verification target, not merely an application coding convention.
+
+*** Read and subscription authorization
+
+Hiding content in a view is not access control.
+
+Not rendering a button is not access control.
+
+Not advertising a Live interest is not access control.
+
+Every protected authoritative observation and subscription must be authorized
+from trusted server context.
+
+An opaque or signed token may protect integrity, correlation, or accidental
+mutation.
+
+Possession of such a token is not automatically authorization unless an
+explicit capability design says that possession has that semantic meaning and
+its applicability and validity conditions are satisfied.
+
+The protected-observation and subscription contracts must state when
+authorization is checked and what later permission changes imply for subsequent
+disclosure. Initial subscription admission must not silently become an
+indefinite permission grant. The protocol may use revalidation, bounded grants,
+revocation, or another explicit policy consistent with the claimed protection.
+No such policy can make an adversarial browser forget data already disclosed.
+Invalidation metadata, counts, existence hints, and command-outcome responses
+can themselves disclose protected information and need an appropriate scope.
+A hidden card does not make an otherwise revealing subscription harmless.
+
+*** Proof artifacts are untrusted in the browser
+
+A proof sidecar or diagnostic certificate shipped to a browser cannot become a
+security capability.
+
+An adversarial browser may fabricate, modify, remove, or replace it.
+
+Authoritative security therefore depends on trusted server-side state and
+checked protocol boundaries, not the browser's possession of proof metadata.
+
+This follows the general rule:
+
+#+begin_example
+evidence about why code was accepted
+!=
+runtime authority to perform operation
+#+end_example
+
+*** Trusted host code and accidental-misuse prevention
+
+The adversarial-browser boundary must not be confused with a claim that Gesso
+sandboxes arbitrary Clojure code executing inside a trusted application
+process.
+
+Code that deliberately obtains a lower-level transaction capability, database
+handle, model implementation namespace, or another authority-bearing resource
+may be able to bypass the supported Gesso/model path.  If such code can mutate
+the same authoritative state directly, it belongs to the trusted computing
+base for every guarantee that depends on those model invariants unless a
+stronger isolation boundary prevents the bypass.
+
+Within that trusted host-language boundary, Gesso is primarily concerned with
+preventing *accidental semantic misuse* by cooperating application code.  The
+normal path should make incorrect substitutions, missing derivations, stale
+artifacts, undeclared authority paths, and accidental bypasses difficult to
+express and easy to diagnose.
+
+The supported paths have these obligations:
+
+| Path | Required treatment |
+|------+--------------------|
+| Ordinary supported code, including opaque Clojure | Narrow semantic/model interfaces, checked construction, explicit premises, and admitted authoritative operations |
+| Accidental mismatch | Early, specific rejection at the boundary that can establish the mismatch |
+| Deliberate lower-level write | Explicit writer coverage or an environment assumption; reassess every dependent invariant and later guarantee affected by the write |
+
+Checked managed construction is the ordinary path, including opaque Clojure
+behind declared contracts. The assembly supplies scoped effect capabilities and
+binds their realization to admitted operations. View and handler construction
+does not ordinarily receive raw transaction authority simply to compute a value.
+The whole-application contract specifies the actual enforcement and remaining
+host-process assumptions.
+
+A deliberate lower-level writer may affect every dependent invariant over the
+state it changes, including guarantees used by later operations. Its impact is
+not confined to the assurance of the single bypassing invocation. Initializers,
+migrations, jobs, and external writers therefore participate in the declared
+writer coverage or remain explicit environment assumptions.
+
+These mechanisms are valuable even though a sufficiently determined trusted
+application author can rewrite the program or deliberately acquire a lower-level
+handle.  The target is not to make trusted code physically incapable of
+cheating.  The target is to make the coherent path obvious, accidental misuse
+hard, and deliberate escape from the claimed boundary conspicuous.
+
+#+LATEX: \newpage

@@ -1,0 +1,447 @@
+** Agreement frontiers
+:PROPERTIES:
+:CUSTOM_ID: req-agreement-frontiers
+:END:
+
+For evolving values, actors may agree only through a common frontier for the
+relevant facts and relation. A frontier is not necessarily one globally ordered
+position for all actor knowledge.
+
+For a single modeled chain whose prefix observations are retained and justify
+the claimed agreement, for example:
+
+| Participant | Justified retained prefix of the modeled chain |
+|-------------+------------------------------------------------|
+| Actor A | F1, F2, F3, F4 |
+| Actor B | F1, F2, F3 |
+| Common prefix for this relation | F1, F2, F3 |
+
+The example requires the stated prefix knowledge. Observing only the latest
+snapshot at F4 does not automatically establish that the actor knows every
+intermediate transition through F4. Snapshot agreement and agreement on an
+event-history prefix are different relations.
+
+The application universe may change continually.
+
+Complete instantaneous agreement among all relevant actors may never occur.
+
+That is not itself a correctness failure.
+
+Correctness instead requires:
+
+- recorded observations retain their historical meaning, while domain
+  corrections and the applicability of their interpretations remain explicit;
+- relevant divergence is explicit rather than silently erased;
+- actors possess enough justified knowledge for the behavior they perform;
+- where convergence is required, the protocol provides a valid path toward a
+  newer common authoritative frontier;
+- under quiescence and the choreography's stated liveness assumptions, required
+  agreement debt can fall to zero.
+
+*** Frontier is relation, not necessarily arithmetic
+
+A frontier need not be represented by an integer.
+
+The browser must not invent arithmetic ordering over opaque progression values
+unless the authoritative system explicitly provides a supported ordering
+operation.
+
+The relevant semantic questions are relational:
+
+- is this observation at least as strong as the requirement that triggered it?
+- are two authoritative observations compatible for the fact whose agreement
+  is being claimed?
+- has this actor incorporated the authoritative change it was required to
+  observe?
+- may this local projection continue under the current compatibility contract?
+
+The concrete XTDB and scope-coverage mechanisms are specified in the
+authoritative-operations and progression part. An ordering relation must not be
+assumed to provide a join, a greatest common frontier, or complete observation
+coverage unless the supported contract actually establishes those properties.
+
+*** Different actors may have different valid frontiers
+
+For example:
+
+| Participant | Justified scope in this example |
+|-------------+----------------------------------|
+| Authority | Modeled chain through F5 |
+| Actor A | Required prefix observations through F5 |
+| Actor B | Required prefix observations through F3 |
+| Actor C | Only its privacy-permitted subset through F4 |
+
+There may be no meaningful statement that all three actors share one universal
+application frontier.
+
+Agreement and knowledge are scoped to the relevant facts and authorities.
+
+*** Advisory knowledge and adopted knowledge
+
+An actor may learn that authority advanced without immediately adopting the new
+authoritative projection.
+
+This distinction is important for application behaviors such as a multi-user
+board:
+
+| Transition | Advisory state | Adopted projection |
+|------------+----------------+--------------------|
+| Relevant advisory received | Records the justified scoped reacquisition requirement | Existing projection remains selected |
+| Explicit Refresh succeeds under the installation policy | Discharges only requirements covered by the adopted observation | Selects the newly admitted projection |
+
+The advisory requirements and adopted authoritative observations are therefore
+distinct pieces of actor state. The word frontier is shorthand for the scoped
+knowledge relation; it does not require either state to be represented by one
+maximum scalar token.
+
+A correct application may intentionally preserve that distinction.
+
+
+HumanHelp's board can represent that distinction explicitly instead of
+overloading one current-revision slot. Suppose Alice creates Request R3 while
+Bob's adopted board contains R1 and R2. The examples below are abbreviated
+inspection and pure-transition fixtures; they are not browser assertions that
+the server must trust.
+
+The selected board projection is complete for its declared search/filter query,
+not necessarily for every Request in the Organization. Each acquisition records
+its concrete temporal context under the current-state read contract. X17, X18,
+X19, and X20 are opaque basis labels; the admitted provider establishes the
+relations used in this example.
+
+#+begin_src clojure
+(def board-scope
+  {:organization-id O
+   :projection :request/board-v1
+   :query {:search "" :show-terminal? false :order :newest}
+   :coverage-contract :complete-selected-query
+   :time-policy :current-state})
+
+(def bob-board
+  {:actor [:client :bob-tab]
+   :principal-context :session/bob-1
+   :owner [:fragment :bob-request-board]
+   :projection board-scope
+   :adopted
+   {:requests [{:request/id R1 :request/status :open :request/title "R1"}
+               {:request/id R2 :request/status :open :request/title "R2"}]
+    :observation
+    {:authority [:authority :request-board O]
+     :scope board-scope
+     :principal-context :session/bob-1
+     :basis :X17
+     :temporal-context T17}}
+   :advisory {:requirements #{}}
+   :acquisition nil})
+#+end_src
+
+For this example, the producing authority can attach a justified lower bound
+X18 to the advisory generated by its committed change. The advisory does not
+say that R3 is visible to Bob, and its issuance/disclosure follows the admitted
+subscription contract.
+
+#+begin_src clojure
+(def create-advisory
+  {:event/class :board-advisory
+   :owner
+   {:subscription/id :subscription/bob-board
+    :source-instance/id :source/bob-board-1
+    :scope board-scope}
+   :requirement
+   {:scope board-scope
+    :authority [:authority :request-board O]
+    :minimum-basis :X18}})
+
+(def current-board-subscription
+  {:board-subscription
+   {:subscription/id :subscription/bob-board
+    :source-instance/id :source/bob-board-1
+    :scope board-scope
+    :principal-context :session/bob-1
+    :status :open}})
+
+(defn record-advisory
+  [board admitted-advisory]
+  (let [requirement
+        (advisory-admission/require-requirement-for!
+          admitted-advisory
+          {:scope (:projection board)
+           :principal-context (:principal-context board)})]
+    (update-in board [:advisory :requirements]
+      requirements/conjoin requirement)))
+
+(def admitted-create-advisory
+  (admit-board-advisory
+    admitted-board-source-context
+    current-board-subscription
+    create-advisory))
+
+(def bob-after-advisory
+  (record-advisory bob-board admitted-create-advisory))
+
+(get-in bob-after-advisory [:adopted :requests])
+;; => still R1 and R2
+
+(get-in bob-after-advisory [:advisory :requirements])
+;; => the scoped requirement for at least X18
+#+end_src
+
+=requirements/conjoin= retains the conjunction of obligations, conservatively
+as an orderless set unless admitted implication evidence permits simplification.
+It does not choose whichever token arrived last. The admission functions above
+resolve registered source/owner contracts; calling a map admitted does not
+supply that evidence. The local source context belongs to the cooperating
+browser realization and is not a server credential.
+
+A requirement saying only "later than the browser's X17" would not necessarily
+cover the change at X18. The browser must not manufacture X18 from an advisory
+with no such bound. A tokenless notification needs its separately declared
+fresh-acquisition or source-fence protocol. Part IV defines how that protocol
+establishes sufficient coverage.
+
+Bob has learned that reacquisition may be needed or available for the scoped
+board. He has not thereby learned R3's title, status, requester, or visibility.
+The application may show a toast and Refresh affordance without replacing the
+adopted rows.
+
+The Refresh interaction separates a pure browser transition from the server
+acquisition and the subsequent installation:
+
+#+begin_src clojure
+;; A2 is a fresh resource instance issued by the managed runtime.
+(def refresh-start
+  (board-runtime/step
+    bob-after-advisory
+    {:event/class :board/refresh-requested
+     :trigger :user
+     :resource-instance/id A2}))
+
+;; Illustrative effect emitted by that pure step:
+[:acquisition/request
+ {:owner [:fragment :bob-request-board]
+  :resource-instance/id A2
+  :principal-context :session/bob-1
+  :scope board-scope
+  :requirements
+  (get-in bob-after-advisory [:advisory :requirements])}]
+
+;; The host performs the authorized read outside the pure step. The trusted
+;; server derives the real principal from authentication, not from this effect.
+;; The returned observation is admitted under the request/response contract.
+(def refresh-completion
+  (board-runtime/step
+    (:state refresh-start)
+    {:event/class :acquisition-complete
+     :owner [:fragment :bob-request-board]
+     :resource-instance/id A2
+     :acquisition authorized-board-observation-X19}))
+
+;; For an asynchronous realization this requests installation; it does not
+;; yet assert that the new projection was physically installed and adopted.
+(:effects refresh-completion)
+;; => a scoped installation effect for the admitted observation
+
+;; Another relevant advisory arrives before installation completes.
+(def bob-before-install
+  (record-advisory
+    (:state refresh-completion)
+    admitted-board-advisory-X20))
+
+(def installed
+  (board-runtime/step
+    bob-before-install
+    {:event/class :presentation/installed
+     :owner [:fragment :bob-request-board]
+     :resource-instance/id A2
+     :installation-result admitted-installation-result-X19}))
+
+(def bob-after-refresh (:state installed))
+;; => adopts the permitted projection at X19
+;; => discharges the X18 requirement when its full scope is covered
+;; => retains the X20 requirement and every unrelated uncovered requirement
+#+end_src
+
+This example's adoption policy permits installing the result that covers the
+captured X18 requirement while retaining a newer X20 requirement. A policy that
+requires all pending requirements to be satisfied before adoption must instead
+defer that installation and reacquire; the runtime must not silently choose
+between these policies.
+
+The displayed =board-runtime/step= contract returns state and requested effects.
+It is realized by the executable semantic core for this browser transition
+contract. The effect shell binds callbacks to registered instances, checks
+installation rights against the current owner, and reports actual completion
+or failure. The final ownership
+check and target mutation must share a declared serialization boundary; a
+check followed by an unprotected asynchronous mutation leaves the same race.
+An installation acknowledgement supplied as arbitrary client data is not
+accepted as evidence
+of this local execution. An adversarial browser can still falsify its own
+display; the server's security does not depend on this local report.
+
+The transition uses the latest state, including intervening advisories and
+owner changes. Reusing the state captured when Refresh began could erase X20.
+If another acquisition already adopted a stronger result, the query changed,
+the account context changed, or A2 was retired, this completion cannot install
+through the old ownership. A separate admitted path may retain independently
+useful outcome or observation evidence.
+
+A synchronous shell may combine installation and its successful semantic
+completion when its correspondence contract justifies doing so. In either
+realization, effects are not performed inside a retriable pure state update,
+such as a =swap!= function. Only effects from the accepted state transition are
+performed, under their declared identity and retry contract.
+
+If Bob is authorized to see R3 and it belongs to the selected query, the new
+board may contain it. If privacy or filtering excludes it, a complete authorized
+acquisition can still discharge the covered board requirement without revealing
+the hidden Request. It establishes the authorized projection, not all
+Organization state.
+
+Now consider agreement between Alice and Bob. They have separate admitted
+observations. An agreement check states the proposition and relation it needs:
+
+#+begin_src clojure
+(agreement/check
+  {:actors [[:client :alice-tab] [:client :bob-tab]]
+   :proposition [:request/status R3 :open]
+   :relation :compatible-authoritative-fact
+   :observations [alice-observation bob-observation]})
+#+end_src
+
+The result can establish agreement only if those observations justify the same
+scoped proposition under that relation. Equal =:open= values and larger-looking
+basis labels are insufficient. The observations may have different physical
+delivery paths and compatible rather than identical read contexts; the required
+compatibility is evidence, not an inference from their labels.
+
+Even established agreement that R3 is open does not establish agreement that it
+belongs in Bob's authorized board. Alice may never have learned Bob's visibility
+policy, query, or membership. That is a separate proposition with separate
+premises. Nor does a shared observation of openness authorize either principal
+to claim the Request now.
+
+Privacy can make the shared proposition strictly smaller than either actor's
+total knowledge:
+
+#+begin_src clojure
+(def alice-projection
+  {:request/id R3
+   :request/status :open
+   :request/title "Need help moving a cabinet"
+   :request/requester-phone "+1-555-0100"})
+
+(def bob-projection
+  {:request/id R3
+   :request/status :open
+   :request/title "Need help moving a cabinet"})
+#+end_src
+
+Given the appropriate admitted observations, they may agree on the shared
+Request fact while Bob has no permitted knowledge of the private phone number.
+The illustrative domain maps alone do not establish either provenance or
+agreement. No convergence rule requires disclosure of the omitted field.
+
+Bob can therefore retain board-adoption debt while holding newer justified
+knowledge about an unrelated Request or account setting. The meaningful
+question is agreement about which proposition, under which authority, scope,
+relation, and observations.
+
+*** Convergence does not require replay of every intermediate change
+
+A browser offline from X17 through X900 need not replay every invalidation
+between those points.
+
+If the application semantics permit it, the actor may converge by acquiring a
+current authoritative observation at X900 or later.
+
+The correctness obligation is not "deliver every historical notification."
+
+It is:
+
+#+begin_quote
+Provide a valid path by which the actor can acquire sufficiently current
+authoritative knowledge for the behavior it needs to perform.
+#+end_quote
+
+That path must address the interval between establishing an interest and the
+read/notification stream that covers it, as well as reconnect and source
+replacement. Missing an invalidation before registration cannot be repaired by
+assuming that all future invalidations will arrive. A supported contract may
+use an acquisition/subscription fence, durable cursor or replay, gap detection,
+or a declared periodic reacquisition trigger. The chosen mechanism and its
+coverage must be explicit; this part does not require a particular broker or
+multi-node routing topology.
+
+Eventual convergence also needs an eventual trigger. Dependency availability
+alone does not make a browser refresh if it never learns that its observation
+may be incomplete. Where the product deliberately permits indefinite manual
+deferral, the convergence claim remains conditional on the required user action
+or another declared trigger.
+
+*** Agreement debt
+
+Where the choreography requires actors to converge, the difference between
+their relevant justified knowledge may be understood as agreement debt.
+
+The design does not require one universal numeric debt metric.
+
+The useful property is qualitative:
+
+- divergence is represented;
+- required convergence paths exist;
+- stale or provisional actors do not pretend agreement already exists;
+- under stated liveness assumptions and quiescence, the required divergence can
+  be eliminated.
+
+The existence of a recovery path is distinct from its eventual execution.
+Where adoption requires a user to activate Refresh, required eventual adoption
+is conditional on that action or another permitted acquisition trigger. Where
+the product permits indefinite deferral, remaining advisory information is not
+by itself a violation of an unconditional convergence guarantee; such a
+guarantee was never established for that deferred adoption.
+
+*** Privacy constrains convergence
+
+Agreement is always scoped by authorization and relevance.
+
+The system must not satisfy a convergence property by leaking protected facts to
+actors that are not entitled to observe them.
+
+A correct convergence path may therefore involve:
+
+- one actor learning the full authoritative fact;
+- another actor learning only an authorized projection;
+- both actors agreeing on a smaller shared semantic proposition.
+
+For example:
+
+#+begin_example
+authority knows:
+    full Request details + private requester metadata
+
+helper A may know:
+    Request is available for claim
+
+observer B may know:
+    Request count increased
+
+A and B need not agree on private requester metadata.
+#+end_example
+
+*** Foundational invariant
+
+The foundational agreement invariant is:
+
+#+begin_quote
+An admitted Gesso execution never treats mere co-presence, shape equality, physical
+delivery, or coincidental local computation as semantic agreement.  Agreement
+must be justified by a declared communication, compatible authoritative
+observation, checked derivation, or explicit trusted assertion, and any claim
+over evolving facts is relative to an explicitly justified temporal and
+observation relation. Assertions remain premises, and a claimed common frontier
+does not imply a universal order, complete history, or current authorization.
+#+end_quote
+
+
+#+LATEX: \newpage

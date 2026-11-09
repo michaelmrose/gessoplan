@@ -1,0 +1,354 @@
+** Roles, principals, actors, hosts, and authorities
+:PROPERTIES:
+:CUSTOM_ID: req-semantic-identities
+:END:
+
+These concepts are distinct and must remain distinct throughout declaration,
+projection, runtime execution, proof, diagnostics, and application assembly.
+
+*** Role
+
+A *role* is a static position in a choreography.
+
+Examples:
+
+#+begin_example
+:helper
+:request-authority
+:observer
+#+end_example
+
+A role describes a position in the distributed protocol.
+
+A role is not automatically:
+
+- a user;
+- a browser tab;
+- a process;
+- a web server;
+- an authorization grant.
+
+A principal or actor may instantiate a role only under the rules of the
+particular operation and trusted runtime boundary.
+
+*** Principal
+
+A *principal* is the identity or entity whose authority is being exercised.
+
+Examples:
+
+#+begin_example
+[:user user-id]
+[:service :humanhelp]
+#+end_example
+
+A principal is a semantic/security identity.
+
+A principal is not identical to a browser actor.
+
+One principal may have:
+
+- multiple browser tabs;
+- multiple devices;
+- multiple protocol executions;
+- retries through multiple hosts.
+
+Those actors may hold different knowledge while acting for the same principal.
+
+*** Actor
+
+An *actor* is a concrete participant carrying a local projected machine,
+execution state, or knowledge state.
+
+Examples:
+
+#+begin_example
+[:client client-id]
+[:service-instance logical-service-actor-id]
+#+end_example
+
+An actor gives semantic identity to a participant beyond one physical callback
+or request.
+
+The exact runtime realization may be short-lived.
+
+An actor identity does not require a permanently resident process.
+
+*** Host
+
+A *host* is the physical runtime that happens to execute a step.
+
+Examples:
+
+#+begin_example
+[:web-node node-1]
+[:web-node node-3]
+#+end_example
+
+Hosts are replaceable physical realizations.
+
+A retry may run on another host without changing:
+
+- semantic command;
+- principal;
+- authority;
+- logical operation;
+- relevant actor identity, where the protocol preserves it.
+
+A host does not acquire semantic authority merely because it executes authority
+code.
+
+#+LATEX: \newpage
+*** Authority
+
+An *authority* is the semantic locus entitled to establish some class of
+authoritative fact.
+
+An authority is named by an authority identifier such as:
+
+#+begin_example
+[:authority :request]
+[:authority :request request-id]
+#+end_example
+
+The identifier does not itself contain an authoritative fact, nor does it name
+a particular database record or server process. It names a locus in the
+application's semantic model. Application rules, together with Gesso's
+execution rules, determine which facts and transitions that locus is entitled
+to establish and under which premises.
+
+For example:
+
+#+begin_example
+[:authority :request R]
+#+end_example
+
+may govern authoritative facts concerning Request =R=, such as its current
+lifecycle state, ownership, or the incorporation of a command affecting it.
+The concrete facts may be represented by one or several XTDB documents and may
+depend on other authoritative observations, such as Membership or Organization
+state. Those storage objects help realize the authority; they are not
+themselves its semantic identity.
+
+This distinction permits the physical representation to change without
+changing what the application means by:
+
+#+begin_example
+[:authority :request R]
+#+end_example
+
+For example, the same authority could be realized using a different document
+layout, a different database, or a different web node while continuing to
+govern the same class of semantic facts.
+
+Authority is therefore distinct from both *storage location* and *execution
+location*.
+
+A physical web node may temporarily realize an authoritative operation without
+becoming the authority itself.
+
+For a Request operation:
+
+#+begin_example
+semantic authority
+    [:authority :request R]
+
+first host
+    [:web-node A]
+
+retry host
+    [:web-node C]
+#+end_example
+
+Node =A= and node =C= may each exercise the same semantic authority while
+executing different attempts of the operation. Process-local identity or
+process-local memory does not determine the authority.
+
+The authority's logical identity can survive host replacement. The realization
+must still establish continuity of authoritative state, command records, issuer
+bindings, and applicable backend semantics. Merely reusing the authority name
+after a database reset or migration does not establish that continuity. Old and
+new progression values need an admitted comparison or migration relation before
+they can be used together.
+
+Consequently, any fact that must survive retries, failover, or migration
+cannot derive its semantic force merely from having been remembered by the
+same process. It must instead be recoverable from authoritative state, from
+evidence validly issued on behalf of the semantic authority, or from another
+mechanism whose semantics are explicitly admitted by the application and
+Gesso.
+
+
+*** Server is not a universal semantic identity
+
+"Server" is normally an implementation location or a role category, not one
+unique actor identity.
+
+Multiple web nodes may realize the same logical authority while holding
+different process-local state.
+
+The design therefore avoids proofs or runtime assumptions that rely on:
+
+#+begin_example
+same server process
+= same semantic authority
+#+end_example
+
+or:
+
+#+begin_example
+different server process
+= different semantic authority
+#+end_example
+
+Neither equivalence is generally valid.
+
+*** Relationship among role, principal, actor, host, and authority
+
+A useful conceptual example is:
+
+#+begin_example
+role
+    :helper
+
+principal
+    [:user U]
+
+actor
+    [:client C]
+
+host of the browser-side actor
+    user's browser/device
+
+authoritative role
+    :request-authority
+
+semantic authority
+    [:authority :request R]
+
+host currently realizing authority
+    [:web-node A]
+#+end_example
+
+A later retry may change the final line while leaving the semantic operation
+otherwise intact.
+
+Verification and diagnostics should identify which category an identity belongs
+to instead of overloading one generic "id" field wherever practical.
+
+Authentication establishes the principal binding. The operation's trusted
+admission and model policy establish whether that principal may instantiate a
+particular role for a particular subject. Actor and host identity provide
+correlation or realization information; neither substitutes for those decisions.
+Changing a browser tab, transport connection, or physical host must not silently
+carry permissions into a different principal or authority scope.
+
+An authentication or principal-context instance may also need identity distinct
+from the principal itself. Logout, account switching, credential replacement,
+or a declared revocation transition can invalidate pending work even when a
+later session represents the same principal. The applicable contract states
+which bindings survive and which must be re-established. No universal session
+epoch or global counter is required.
+
+
+A collaborative editor makes the categories easier to follow when several
+change independently. Suppose Alice is permitted to edit document D. The
+following is inspection data, not a credential accepted from the browser. The
+fixture names U, D, C1, E19, and C77 denote bound identities of the stated kinds.
+
+#+begin_src clojure
+(def editor-session
+  {:semantic/role :editor
+   :principal [:user U]
+   :principal-context :session/alice-1
+   :actor [:client C1]
+   :actor-host [:browser-context :alice-tab-1]
+   :authority [:authority :document D]
+   :operation :document/save
+   :command C77
+   :execution E19
+   :transport-request-id :http/204
+   :authority-host [:web-node :A]})
+
+(def retry-session
+  (assoc editor-session
+    :transport-request-id :http/205
+    :authority-host [:web-node :C]))
+
+(= (select-keys editor-session
+     [:principal :principal-context :actor :authority
+      :operation :command :execution])
+   (select-keys retry-session
+     [:principal :principal-context :actor :authority
+      :operation :command :execution]))
+;; => true
+#+end_src
+
+The operation's retry contract preserves command C77, including its admitted
+semantic arguments. The authority host and transport request change. The
+browser actor's own host does not thereby become node C, and neither physical
+location authenticates the principal.
+
+Alice opens a second tab and forms a separate save intent:
+
+#+begin_src clojure
+(def second-tab
+  (assoc retry-session
+    :actor [:client C2]
+    :actor-host [:browser-context :alice-tab-2]
+    :command C88
+    :execution E20
+    :transport-request-id :http/206))
+
+(= (:principal retry-session) (:principal second-tab))
+;; => true
+(= (:authority retry-session) (:authority second-tab))
+;; => true
+(= (:actor retry-session) (:actor second-tab))
+;; => false
+(= (:command retry-session) (:command second-tab))
+;; => false
+#+end_src
+
+These maps isolate identity relationships; they do not implement the save
+operation's argument binding or admission checks. The new intent has its own
+command identity. If the second tab instead
+reconciles C77, it may retain C77 only through that command's binding and
+reconciliation contract. Copying a session map is not a command-transfer or
+authorization protocol.
+
+The authoritative server path authenticates each invocation independently of
+the inspection fields:
+
+#+begin_src clojure
+(defn invoke-save!
+  [{:keys [session] :as ctx}
+   {:document/keys [id content] :gesso/keys [command-id]}]
+  (let [principal (auth/current-principal! session)]
+    (document-model/save!
+      (assoc ctx :principal principal)
+      {:document-id id
+       :content content
+       :command-id command-id})))
+#+end_src
+
+The admitted route binds this entry to the save operation. The public model
+operation validates command binding and current disclosure permission for
+replay, and current editing authority for new incorporation. It protects the
+relevant state dependencies atomically with a new save and its command record.
+An authorization check made earlier in a handler is insufficient if the relevant
+permission can change before incorporation.
+
+If the Organization revokes Alice's editing permission, a new save intent is
+rejected under the current policy. An already incorporated C77 is handled by
+its replay protocol: the recorded result is returned only if current disclosure
+policy permits it. Revocation must not cause a successful old save to be
+misreported as never having happened, nor must historical success bypass the
+new disclosure decision. If outcome evidence is unavailable, the caller's
+knowledge may remain unknown.
+
+The principal, actors, and semantic authority can remain the same while the
+authorization relation changes. Their continued existence does not imply
+continued editing rights. Category-specific diagnostics identify which binding
+or permission changed rather than reporting an unexplained generic id mismatch.
+

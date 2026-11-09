@@ -1,0 +1,95 @@
+** Required correspondence checks are semantic gates
+:PROPERTIES:
+:CUSTOM_ID: req-owner-relative-event-admission
+:END:
+
+At every runtime boundary, an event must satisfy the particular identity and
+correspondence conditions required by that boundary.
+
+Depending on the operation, those conditions may include:
+
+- current resource instance identity;
+- command identity;
+- execution identity;
+- plan or artifact identity;
+- authoritative basis;
+- ownership;
+- authenticated principal;
+- current authorization;
+- continuity or provisional ownership state.
+
+A boundary need not check every category. It must check the categories on which
+its correctness actually depends.
+
+These checks are not merely debug assertions. They determine whether a runtime
+event is semantically admissible.
+
+The design therefore does not require one universal generation value. It
+requires independent semantic distinctions to remain independently
+representable and requires each runtime event to satisfy the correspondence
+conditions appropriate to the operation it is attempting to affect.
+
+*** Admission follows the declared semantic owner
+
+Every asynchronous event capable of influencing Gesso semantic state passes
+the common semantic admission boundary. The boundary first resolves the event's
+declared class and semantic owner, then applies the correspondences required
+by that class.
+
+Conceptually:
+
+1. Resolve the declared event class and owner from the registered producer and
+   admitted contract.
+2. Check owner-specific correlation and current applicability.
+3. Check that the proposed semantic transition is permitted.
+4. Admit that transition, or classify the rejection and any recovery path.
+
+The owner is not universally a command execution.
+
+| <27> | <73> |
+| Event class | Relevant owner and checks |
+|-------------+---------------------------|
+| Execution-private callback | Admitted execution, current resource instance, ownership, correlation, and permitted execution state |
+| Shared fragment advisory | Declared subscription or fragment coordination scope, admitted source/correlation, current source instance where required, and valid advisory requirement |
+| Authoritative acquisition completion | Admitted acquisition owner, request/resource correlation, returned observation scope and progression, and applicable installation rules |
+| Continuity completion | Declared continuity owner or slot, current resource instance, and restoration rights still held for the target |
+
+This table identifies distinctions rather than prescribing one public event
+record or a closed enumeration of all future events. Each supported event class
+must define its own required correspondence contract.
+
+An idle board can therefore admit a legitimate shared advisory without an
+unrelated command execution. A shared event must not be assigned to whichever
+execution happens to be current. An execution-private callback must not become
+shared merely because its execution was retired.
+
+The declaration of an event as shared is part of the checked contract. An
+untrusted field such as =:shared? true= cannot select weaker admission rules.
+Shared admission permits only the declared shared transition; it does not
+restore a retired execution's private ownership or authorize installation of
+domain content carried by an advisory.
+
+The browser-realization part defines the concrete normalization, transition,
+and effect contracts implementing this boundary. All supported paths obey this
+owner-relative rule; there is no alternate callback path that may mutate
+semantic state while claiming that admission was enforced.
+
+The event's class is resolved from its registered producer and admitted
+contract, not selected by an untrusted =:event/class= field alone. Event payloads
+may carry correlation values; the callback/resource registration supplies the
+corresponding expected owner. Final applicability is checked against current
+state. Checking identity early and mutating a replacement owner later would
+leave a race.
+
+Retirement removes the retired owner's semantic rights immediately, even if
+physical cancellation or cleanup is incomplete. Late command-outcome evidence
+may still be useful through a separately declared reconciliation path. Such a
+path does not revive the old execution or authorize its stale presentation
+effect.
+
+These browser-runtime claims concern the admitted, cooperating implementation.
+They are not a server-verifiable proof that an adversarial browser ran those
+checks. The authoritative server boundary independently enforces the security
+properties stated below.
+
+

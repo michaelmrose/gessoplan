@@ -1,0 +1,352 @@
+** Resource instance identity
+:PROPERTIES:
+:CUSTOM_ID: req-resource-instance-identity
+:END:
+
+A replaceable physical or runtime resource must be distinguishable from prior
+instances of the same logical resource when events from those prior instances
+could still arrive.
+
+For example:
+
+| Event | Current instance for logical slot S | Permitted consequence |
+|-------+-------------------------------------+-----------------------|
+| Resource created | R1 | R1 may act within its admitted ownership |
+| Resource replaced | R2 | R1's rights over the replacement are retired |
+| Callback from R1 arrives | R2 | Reject mutation of R2-owned state through R1's retired ownership |
+
+Resource instance identity answers a narrow question:
+
+#+begin_quote
+Does this event belong to the currently admitted instance of this replaceable
+resource?
+#+end_quote
+
+A resource-instance generation counter, scoped epoch, opaque token, UUID,
+object identity, or another suitable mechanism may represent resource-instance
+identity. The representation must provide the properties required by the boundary;
+additional ordering or structure is unnecessary unless the contract uses it.
+
+A resource-instance generation counter is appropriate when the contract uses
+monotonic ordering between successive instances within that resource scope.
+A distinct opaque identity is sufficient when the only
+required question is whether an event belongs to the current instance.
+
+The distinction must remain valid for as long as callbacks from an earlier
+instance can still reach the boundary. Reusing a token, resetting a counter, or
+wrapping a resource-instance counter must not make a retired instance indistinguishable
+from its replacement. A reset is safe only when a separate scope or lifecycle
+boundary prevents old events from being admitted as current.
+
+Resource instance identity must not be used as a compressed representation of
+independent semantic facts.
+
+An event may be inadmissible because it belongs to a retired resource instance,
+but it may also be inadmissible because its command, execution, plan, artifact,
+authoritative basis, ownership, principal, authorization context, or another
+required semantic correspondence no longer matches the current operation.
+
+Those distinctions remain separate even when several of them happen to change
+at the same time.
+
+For example:
+
+| Coordinate | Before replacement | After replacement |
+|------------+--------------------+-------------------|
+| Continuity slot | S | S |
+| Resource instance | R7 | R8 |
+| Execution | X12 | X12 |
+| Authoritative basis | B40 | B40 |
+
+A late callback carrying R7 is rejected because that resource instance is
+retired, even though the execution and basis still match.
+
+In this case the execution and authoritative basis may still correspond. The
+callback is rejected specifically because it belongs to the replaced physical
+resource instance.
+
+Conversely:
+
+| Coordinate | Before authoritative advance | After authoritative advance |
+|------------+------------------------------+-----------------------------|
+| Continuity slot | S | S |
+| Resource instance | R8 | R8 |
+| Execution | X12 | X12 |
+| Authoritative basis | B40 | B41 |
+
+The provider justifies the basis relation. An advance of authoritative state
+does not by itself replace the physical resource.
+
+The resource instance has not changed, but an operation that requires basis B41
+must not treat possession of R8 as evidence that B40 remains admissible.
+
+This separation prevents a resource-instance counter, epoch, or opaque identity
+from becoming a universal proxy for semantic freshness. A numerical comparison
+is meaningful only within the declared counter scope and ordering contract;
+identities from different resource or execution scopes cannot be ordered merely
+because both happen to be integers.
+
+
+A browser Refresh race shows how narrow that identity can be in executable code.
+Assume a logical board target remains =:request-board= while HTMX or the Gesso
+adapter replaces the physical fetch/resource used to refresh it.
+
+The runtime might hold state resembling:
+
+#+begin_src clojure
+(def initial-board-runtime
+  {:target
+   :request-board
+
+   :execution/id
+   #uuid "70000000-0000-0000-0000-000000000012"
+
+   :current-resource
+   {:resource-instance/id
+    #uuid "71000000-0000-0000-0000-000000000007"
+
+    :kind :authoritative-acquisition
+
+    :scope
+    {:projection :request/board
+     :organization-id
+     #uuid "72000000-0000-0000-0000-000000000001"}
+
+    :status :in-flight}
+
+   :adopted-basis :B40})
+#+end_src
+
+Before Refresh A completes, the component is reconstructed and starts Refresh B:
+
+#+begin_src clojure
+(def after-replacement
+  (-> initial-board-runtime
+      (assoc
+        :current-resource
+        {:resource-instance/id
+         #uuid "71000000-0000-0000-0000-000000000008"
+
+         :kind :authoritative-acquisition
+
+         :scope
+         {:projection :request/board
+          :organization-id
+          #uuid "72000000-0000-0000-0000-000000000001"}
+
+         :status :in-flight})))
+
+(def refresh-a-result
+  {:event/class :acquisition-complete
+   :target :request-board
+   :execution/id
+   #uuid "70000000-0000-0000-0000-000000000012"
+   :resource-instance/id
+   #uuid "71000000-0000-0000-0000-000000000007"
+   :basis :B41
+   :html "<div>older acquisition</div>"})
+
+(def refresh-b-result
+  {:event/class :acquisition-complete
+   :target :request-board
+   :execution/id
+   #uuid "70000000-0000-0000-0000-000000000012"
+   :resource-instance/id
+   #uuid "71000000-0000-0000-0000-000000000008"
+   :basis :B42
+   :html "<div>current acquisition</div>"})
+#+end_src
+
+These abbreviated completion maps expose only the fields needed for the owner
+race. A complete normalized response also carries, or is bound by registration
+to, the expected source and observation contract, query/temporal context,
+principal context, and projection material. Bare =:basis= and =:html= fields
+cannot establish those premises.
+
+A narrow owner check can reject A for exactly the reason that matters, but it
+must not call that narrow result semantic admission:
+
+#+begin_src clojure
+(defn current-resource?
+  [runtime event]
+  (let [resource (get runtime :current-resource)]
+    (and
+      (= :in-flight (:status resource))
+      (some? (:target runtime))
+      (some? (:resource-instance/id resource))
+      (= (:resource-instance/id resource)
+         (:resource-instance/id event))
+      (= (:target runtime) (:target event)))))
+
+(defn same-execution?
+  [runtime event]
+  (and
+    (some? (:execution/id runtime))
+    (= (:execution/id runtime)
+       (:execution/id event))))
+
+(defn correlate-acquisition-owner
+  [runtime event]
+  (cond
+    (not (same-execution? runtime event))
+    {:result :owner-rejected
+     :reason :wrong-execution}
+
+    (not (current-resource? runtime event))
+    {:result :owner-rejected
+     :reason :retired-resource-instance}
+
+    :else
+    {:result :owner-correlated
+     :event event}))
+
+(correlate-acquisition-owner
+  after-replacement
+  refresh-a-result)
+;; =>
+;; {:result :owner-rejected
+;;  :reason :retired-resource-instance}
+
+(correlate-acquisition-owner
+  after-replacement
+  refresh-b-result)
+;; =>
+;; {:result :owner-correlated
+;;  :event ...}
+#+end_src
+
+That result establishes only the displayed equality and lifecycle checks for
+this supplied runtime state and event. Their truthful source and correspondence
+to the executing callback remain separate premises. Full semantic admission is
+a distinct boundary. Conceptually it can consume the correlated completion
+only after the rest of the acquisition contract has also been established:
+
+#+begin_src clojure
+(defn admit-acquisition-completion
+  [trusted-context runtime event]
+  (let [{:keys [result] :as owner}
+        (correlate-acquisition-owner runtime event)]
+    (if (not= result :owner-correlated)
+      owner
+      (acquisition-admission/admit!
+        {:trusted-context trusted-context
+         :runtime runtime
+         :event event
+
+         ;; Resolved from the registered acquisition owner, never from
+         ;; an event-supplied selector or a caller-selected check list.
+         :contract
+         (acquisition/require-registered-contract!
+           trusted-context runtime event)}))))
+#+end_src
+
+The resolved contract determines the mandatory checks. These include the
+expected acquisition plan, authorized principal context, source provenance,
+observation scope, compatible progression, current resource owner, and permitted
+installation right. Event fields and arbitrary callers cannot remove a check.
+Owner correlation alone cannot make received HTML semantically admissible for
+installation. Content escaping, active-content policy, and DOM effect safety
+remain additional realization obligations; provenance is not sanitization.
+
+The final state transition checks the latest owner and applicability, rather
+than relying on a correlation result cached before an asynchronous gap. If
+physical installation happens later, its effect carries the admitted owner
+binding and the shell rechecks the required installation right at actuation.
+An allowed installation is not automatically a completed installation. A
+synchronous implementation may combine them under its correspondence contract;
+otherwise completion or failure is admitted as a separate event.
+
+Notice what the owner guard does *not* infer. It does not claim that B42 is
+universally newer than every basis in the application. It does not prove that
+the returned HTML is authorized for some other user. It does not establish that
+the command which caused an invalidation succeeded. It establishes only that
+this completion belongs to the currently selected resource instance and
+execution.  The later admission boundary establishes the additional premises
+required before downstream code may treat the completion as an admitted
+authoritative acquisition result.
+
+A different event class can have a different semantic owner. For example, a
+shared advisory is not execution-private:
+
+#+begin_src clojure
+(def shared-advisory
+  {:event/class :board-advisory
+   :owner
+   {:subscription/id
+    #uuid "73000000-0000-0000-0000-000000000031"
+
+    :source-instance/id
+    #uuid "74000000-0000-0000-0000-000000000031"
+
+    :scope
+    {:organization-id
+     #uuid "72000000-0000-0000-0000-000000000001"
+     :projection :request/board}}
+
+   :requirement
+   {:kind :authority-may-have-advanced
+    :scope
+    {:organization-id
+     #uuid "72000000-0000-0000-0000-000000000001"
+     :projection :request/board}}})
+
+(def advisory-runtime
+  {:board-subscription
+   {:subscription/id
+    #uuid "73000000-0000-0000-0000-000000000031"
+
+    :source-instance/id
+    #uuid "74000000-0000-0000-0000-000000000031"
+
+    :scope
+    {:organization-id
+     #uuid "72000000-0000-0000-0000-000000000001"
+     :projection :request/board}
+
+    :status :open}})
+
+(defn admit-board-advisory
+  [trusted-context runtime event]
+  (let [subscription (:board-subscription runtime)
+        owner (:owner event)]
+    (if-not
+      (and
+        (= :open (:status subscription))
+        (some? (:subscription/id subscription))
+        (some? (:source-instance/id subscription))
+        (= (:subscription/id subscription) (:subscription/id owner))
+        (= (:source-instance/id subscription)
+           (:source-instance/id owner))
+        (= (:scope subscription) (:scope owner)))
+      {:result :owner-rejected
+       :reason :wrong-subscription-or-source}
+      (advisory-admission/admit!
+        {:trusted-context trusted-context
+         :runtime runtime
+         :event event
+         ;; The registered subscription fixes the shared-event contract.
+         :contract
+         (subscription/require-registered-contract!
+           trusted-context subscription)}))))
+#+end_src
+
+The subscription check is only owner correlation. Shared semantic admission
+also checks the declared event class, source provenance, full scoped requirement,
+and permitted advisory transition under the registered contract. A client-supplied
+=:owner= or =:event/class= does not by itself prove any of those premises.
+
+This short example fixes one board projection with no additional query parameters.
+A query-specific board must retain those parameters and its visibility context.
+The tokenless requirement shown here does not invent an acquisition lower bound;
+its registered contract must define a sufficient read/source-fence protocol.
+The later board example uses an advisory carrying an authoritative lower bound.
+
+Assigning that advisory to whichever command execution happens to be current
+would be a category error. Conversely, marking a private callback as
+=:shared? true= in untrusted event data must not bypass the execution/resource
+checks above.
+
+This is the executable consequence of owner-relative admission: first determine
+which declared semantic owner governs the event class, then apply the
+correspondence checks that owner's transition actually needs.
+

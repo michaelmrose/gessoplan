@@ -1,0 +1,200 @@
+** Facts, time, and authoritative progression
+
+The design distinguishes at least the following dimensions.
+
+*** Valid/effective time
+
+Valid or effective time describes when a domain fact applies in the modeled
+world.
+
+Examples:
+
+- Membership became active on one date;
+- a Request was open during one interval;
+- Organization policy changed at a domain-effective time;
+- a correction applies retroactively to an earlier period.
+
+Valid time belongs to domain meaning.
+
+*** Recording time and correction history
+
+Recording or system time identifies the authoritative history under which a
+fact was recorded, corrected, or withdrawn. It differs from the valid/effective
+time at which that fact applies in the domain. A correction recorded today may
+change the authoritative interpretation of an earlier valid-time interval.
+
+An observation that depends on both dimensions must retain both, directly or
+through its admitted read contract. A read basis that bounds transaction
+visibility does not alone select the valid time or historical correction view.
+The database provider defines the supported relation between these coordinates
+under its qualified backend profile.
+
+*** Domain or causal relation
+
+Domain or causal relations describe how semantic facts relate.
+
+Examples include:
+
+- based on;
+- produced by;
+- superseded by;
+- reconciled by;
+- rejected by;
+- confirmed by;
+- corrected by;
+- derived from.
+
+These relations are not necessarily database transaction order.
+
+*** Authoritative database progression
+
+Authoritative database progression describes the consistency/basis frontier at
+which authoritative facts are visible.
+
+For HumanHelp's primary persistent authority, this is supplied by the admitted
+XTDB provider under its [[#req-backend-assumption-qualification][qualified backend contract]].
+The provider owns token interpretation and the evidence for a comparison or
+read guarantee. Generic choreography code does not decode an XTDB token and
+invent those semantics independently.
+
+A basis is scoped to its authority/provider context and relevant database
+incarnation or equivalent identity. Equal raw tokens from different databases,
+tenants where applicable, or reset histories are not automatically comparable.
+
+An authoritative progression value may advance because unrelated data changed.
+
+Therefore:
+
+#+begin_example
+database advanced
+!=
+this Request changed
+#+end_example
+
+*** Actor knowledge frontier
+
+An actor knowledge frontier describes what authoritative information a
+particular runtime actor has acquired through its admitted observation paths.
+It is scoped by the facts, authority, projection, and relevant temporal context
+of those observations. It need not be one token covering all actor knowledge.
+
+For the supported browser implementation, the frontier records semantic
+acquisition and incorporation by that implementation. It is not a server proof
+that an adversarial browser or the human using it retained or understood the
+information.
+
+Two browser actors may observe the same authoritative database at different
+frontiers.
+
+The same principal may therefore have two browser tabs with different
+knowledge.
+
+The database's current state and an actor's current knowledge are distinct.
+Acquired evidence, content selected for adoption, and content successfully
+installed in a presentation may also be distinct. A protocol must identify
+which transition advances each claimed frontier; merely scheduling a read or
+allowing a DOM swap does not establish its completion.
+
+*** Physical delivery time
+
+Physical delivery time may matter operationally without becoming semantic
+authority.
+
+An SSE notification may arrive after another message.
+
+A callback may fire after an execution has been retired.
+
+A browser may wake after a deployment.
+
+The fact that an event arrived later in wall-clock time does not by itself make
+the event semantically newer or authorized to mutate current state.
+
+#+LATEX: \newpage
+*** Do not collapse dimensions into one revision integer
+
+The framework must not collapse:
+
+#+begin_example
+valid time
+recording/correction time
+domain fact identity/version
+causal relation
+XTDB progression
+actor knowledge frontier
+command identity
+execution identity
+artifact compatibility identity
+#+end_example
+
+into one global monotonically increasing application revision.
+
+A global revision number would erase distinctions that matter to correctness.
+
+For example, XTDB may advance while Request R is unchanged.
+
+Likewise, Request R may have meaningful valid-time history independent of when a
+database transaction was recorded.
+
+A browser may hold knowledge through frontier X17 while authority has progressed
+to X23 without any relevant Request fact changing.
+
+That is ordinary distributed execution, not necessarily staleness requiring
+rejection.
+
+*** Progression as provenance
+
+An observed authoritative basis records something approximately like:
+
+#+begin_quote
+The representation from which this actor formed its command was justified by an
+authoritative read consistent through this frontier.
+#+end_quote
+
+It does not mean:
+
+- the entire database is still at that frontier;
+- every fact the command depends on is unchanged;
+- the client owns authority over that frontier;
+- the client can prove merely by sending the token that it really performed the
+  observation;
+- the framework should reject every command formed from an older frontier.
+
+The authoritative-operations and progression part defines the exact command,
+scope, and XTDB semantics, including
+[[#req-progression-scope][scoped progression requirements]].
+
+At the ontology level, authoritative progression is one provenance coordinate
+among several and is not a universal domain revision.
+
+*** Scoped progression decisions and requirement composition
+
+A comparison result binds its exact operands, comparison context, and admitted
+provider contract. Generic code can validate the representation and binding of
+a witness such as "B2 advances B1"; that check does not prove the assertion is
+true. The provider or another declared reasoning mechanism must establish its
+meaning, with any backend assumptions retained.
+
+An explicit comparison distinguishes equivalence, advancement, precedence,
+known incomparability, and unavailable or invalid comparison evidence where the
+contract supports them. Failure to establish an ordering is not proof of
+incomparability, and incomparable observations need not be individually invalid.
+
+Pending acquisition requirements compose as a conjunction of scoped
+obligations. A conservative representation retains an orderless set of distinct
+requirements and removes exact duplicates. Replacing it with one basis, taking
+a numeric maximum, or discarding a requirement as subsumed needs an admitted
+coverage/implication argument. No join or total order is assumed merely because
+the provider can compare some pairs of bases.
+
+An observation discharges a requirement only when its authority, subject,
+projection/query scope, temporal meaning, principal context where relevant,
+and progression satisfy that requirement. A later card read cannot by itself
+discharge a board-membership acquisition requirement. Part IV owns the concrete
+algebra and provider contract.
+
+Bounds on retained requirements must preserve this meaning. Coalescing may
+produce a conservative stronger reacquisition obligation when the contract
+justifies it. Silently dropping debt to meet a memory bound is not permissible.
+When no sound bounded representation is available, the runtime follows its
+declared backpressure, retirement, or reacquisition policy.
+

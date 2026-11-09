@@ -1,0 +1,362 @@
+** Logical identity and physical realization
+:PROPERTIES:
+:CUSTOM_ID: req-logical-physical-identity
+:END:
+
+Logical identity must not be inferred from incidental physical identity.
+
+The following identities are distinct:
+
+#+begin_example
+role identity
+principal identity
+actor identity
+authority identity
+
+semantic operation identity
+semantic command identity
+protocol execution identity
+
+global choreography identity
+projected-plan compatibility identity
+exact executable artifact identity
+
+logical fragment/target identity
+logical resource/continuity-slot identity
+concrete effect/resource-instance identity
+concrete continuity-capture identity
+
+transport-request identity (one transport attempt)
+backend submission-attempt identity
+scoped capability-instance identity
+authentication/principal-context identity where required
+physical DOM-node identity
+web-node/host identity
+
+admitted assembly generation identity
+deployment identity
+#+end_example
+
+Some applications may not need every category in every operation.
+
+The architecture must nevertheless avoid conflating categories merely because
+one implementation currently uses the same value for two of them. Resource-
+instance identity is the general category; a transport-request identity or
+continuity-capture identity may be a specialized instance of it. Listing these
+categories does not require multiple independent tokens for the same instance.
+The representation must preserve whichever distinctions the admission contract
+actually uses.
+
+
+A checkout operation puts most of those identities into one compact lifecycle.
+The following structure is intentionally verbose so the independence is visible:
+
+#+begin_src clojure
+(def checkout-attempt
+  {:operation/id
+   :checkout/place-order
+
+   :command/id
+   #uuid "11111111-1111-1111-1111-111111111177"
+
+   :execution/id
+   #uuid "22222222-2222-2222-2222-222222222219"
+
+   :plan/id
+   :plan/checkout-place-order-v3
+
+   :artifact/id
+   "sha256:browser-artifact-A12"
+
+   :assembly/generation
+   :assembly-A12
+
+   :deployment/id
+   :deploy-2026-09-21-1
+
+   :cart/id
+   #uuid "33333333-3333-3333-3333-333333333333"
+
+   :order/id
+   nil
+
+   :transport
+   {:transport-request-id
+    #uuid "44444444-4444-4444-4444-444444444204"
+
+    ;; Fetch callback ownership is distinct from HTTP attempt correlation.
+    :resource-instance/id
+    #uuid "55555555-5555-5555-5555-555555555051"
+
+    :host
+    [:web-node :A]}})
+#+end_src
+
+Suppose the request connection disappears before the browser knows whether the
+command committed. A permitted retry might preserve the semantic command while
+replacing the transport attempt and its resource instance:
+
+#+begin_src clojure
+(def retry
+  (-> checkout-attempt
+      (assoc-in
+        [:transport :transport-request-id]
+        #uuid "44444444-4444-4444-4444-444444444205")
+      (assoc-in
+        [:transport :resource-instance/id]
+        #uuid "55555555-5555-5555-5555-555555555052")
+      (assoc-in
+        [:transport :host]
+        [:web-node :C])))
+
+(assert
+  (= (:command/id checkout-attempt)
+     (:command/id retry)))
+
+(assert
+  (= (:execution/id checkout-attempt)
+     (:execution/id retry)))
+
+(assert
+  (not=
+    (get-in checkout-attempt [:transport :transport-request-id])
+    (get-in retry [:transport :transport-request-id])))
+
+(assert
+  (not=
+    (get-in checkout-attempt [:transport :resource-instance/id])
+    (get-in retry [:transport :resource-instance/id])))
+#+end_src
+
+A different recovery strategy might retire the original execution and begin a
+new execution that still tries to reconcile the same command:
+
+#+begin_src clojure
+(def reconciliation-execution
+  (-> retry
+      (assoc
+        :execution/id
+        #uuid "22222222-2222-2222-2222-222222222220")
+      (assoc-in
+        [:transport :transport-request-id]
+        #uuid "44444444-4444-4444-4444-444444444206")
+      (assoc-in
+        [:transport :resource-instance/id]
+        #uuid "55555555-5555-5555-5555-555555555053")))
+
+(assert
+  (= (:command/id retry)
+     (:command/id reconciliation-execution)))
+
+(assert
+  (not=
+    (:execution/id retry)
+    (:execution/id reconciliation-execution)))
+#+end_src
+
+If authorized command-outcome evidence links this command to its created Order,
+a domain identity enters the picture without replacing the earlier identities.
+Finding a plausible Order by an unrelated query would not establish that link:
+
+#+begin_src clojure
+(def reconciled
+  (assoc reconciliation-execution
+    :order/id
+    #uuid "66666666-6666-6666-6666-666666666483"))
+
+{:command (:command/id reconciled)
+ :execution (:execution/id reconciled)
+ :order (:order/id reconciled)}
+;; =>
+;; three different semantic coordinates
+#+end_src
+
+And a deployment may change the admitted assembly or artifact compatibility
+without saying anything about whether command 177 committed:
+
+#+begin_src clojure
+(def after-deploy
+  (recovery/start-admitted-execution!
+    current-context
+    {:assembly admitted-assembly-A13
+     :operation :checkout/place-order
+     :command-reference
+     (commands/require-bound-reference!
+       current-context (:command/id reconciled))
+     :purpose :command/reconciliation}))
+
+;; A new admitted execution uses A13's actual artifact and bindings.
+;; The command's identity and recorded incorporation do not change.
+#+end_src
+
+The recovery boundary checks compatibility, current principal/authority scope,
+and the command's recorded binding. It does not blindly associate a new artifact
+name into an old execution. This example chooses a new execution; a contract
+that permits continuation of an existing one must explicitly define that
+transition and the resource ownership it preserves or retires.
+
+The checkout maps are also inspection fixtures. The =assoc= expressions show
+the intended identity relationships; they do not grant the ability to create a
+reconciliation execution or establish command-outcome evidence. The admitted
+runtime owns those transitions. The =assert= forms demonstrate fixture
+expectations, not optional production guards.
+
+The point is not that every runtime map must literally contain every field. The
+point is that a design using one generic =generation= or one generic =request-id=
+could not faithfully answer all of these questions:
+
+- is this the same semantic intent?
+- is this the same protocol trajectory?
+- is this the same transport attempt?
+- does this callback belong to the current physical resource?
+- is this browser artifact compatible with the admitted assembly?
+- which Order, if any, was authoritatively created?
+
+The identities exist because those questions have different answers.
+
+#+LATEX: \newpage
+
+*** Semantic command identity
+
+A semantic command identifies one logical intent to invoke an operation under
+its bound semantic arguments and authority context. It is distinct from each
+attempt to deliver or incorporate that intent.
+
+It may survive:
+
+- network retry;
+- host replacement;
+- a new protocol execution;
+- another transport attempt;
+
+where operation semantics permit that retry.
+
+The [[#req-command-participant-uncertainty][command identity and uncertainty contract]]
+in the authoritative-operations part defines the relevant retry and attribution
+conditions. Possessing the same command identifier alone does not establish
+that a retry is permitted or that the command already committed.
+
+The authoritative binding covers the operation/interface compatibility context,
+canonical semantic arguments, authenticated principal, and authority or tenant
+scope required by the operation. A new business intent receives a new command
+identity; retrying or reconciling an existing intent preserves its binding.
+Changing bytes in an identity-bearing argument is not a harmless transport
+retry unless the declared canonicalization treats the arguments as equivalent.
+
+Command-record retention and identity reuse have a declared horizon. Forgetting
+a record must not silently make an old command eligible for a second
+incorporation under an unlimited deduplication claim. Expiry, tombstones,
+namespace retirement, or another explicit protocol may bound that guarantee.
+Absence of an outcome record is not, by itself, proof that no pending attempt
+can commit.
+
+*** Protocol execution identity
+
+A protocol execution identifies one realization of a distributed trajectory.
+
+Two executions may relate to the same semantic command without being the same
+execution.
+
+Their resources and callbacks must not be interchangeable merely because the
+semantic command matches. A protocol execution can span several local steps,
+transport requests, and backend attempts. Replacing or resuming it has a
+declared ownership and compatibility contract; a new HTTP request alone does
+not determine whether the execution is new.
+
+*** Plan compatibility identity
+
+A projected plan may remain in a browser across deployment.
+
+Compatibility identity answers whether that suspended or retried projection is
+safe to continue under the current server/runtime contract.
+
+Compatibility does not necessarily require exact artifact equality. It must
+nevertheless follow an explicit supported compatibility rule. A runtime must
+not infer compatibility from matching names, approximate version ordering, or
+the absence of a visible error.
+
+*** Exact executable artifact identity
+
+Diagnostic and proof correspondence may require a stronger identity than
+runtime compatibility.
+
+The exact executable artifact identity answers:
+
+#+begin_quote
+Does this diagnostic or proof metadata describe these exact emitted runtime
+coordinates and transitions?
+#+end_quote
+
+A plan/protocol compatibility identity and an exact executable digest therefore serve
+different purposes. Evidence tied to exact emitted coordinates must not be
+attached to a merely compatible artifact as though exact correspondence held.
+Conversely, a compatible continuation need not be rejected solely because
+diagnostic-only material changed, if the declared compatibility contract permits
+it and any exact correspondence claim remains accurate.
+
+*** Admitted assembly generation and deployment identity
+
+An admitted assembly generation identifies the immutable application realization
+accepted for use under the construction contract in Part VII. Its bindings
+include the relevant routes, prepared server operations, providers, rendering
+rules, executable plans, and artifact correspondence.
+
+Deployment identity identifies a physical rollout or placement, if the
+implementation needs that distinction. One deployment may host more than one
+admitted assembly generation during a supported transition. Moving an admitted
+realization between hosts does not, by itself, change its semantic identity or
+establish a new compatibility relation.
+
+Neither identity substitutes for command, execution, or resource-instance
+identity. Two concurrent executions using the same assembly generation still
+have separate ownership. Replacing a resource inside one execution need not
+change that execution's plan or the application's assembly generation.
+
+*** Transport-request identity
+
+A transport-request identity identifies one transport attempt. In browser/runtime
+examples its canonical field name is =:transport-request-id=. A new retry attempt
+has its own transport identity even when the command identity is retained under
+the operation's retry contract. The execution-to-attempt relationship is declared
+by the supported realization rather than inferred from shared field values.
+
+HumanHelp's domain =:request-id= identifies a Request being acted upon. It does
+not identify an HTTP request. Domain arguments and route parameters retain that
+meaning; they must not be renamed as transport identities.
+
+Event correlation identifies a candidate owner/attempt. Possessing a matching
+transport-request identifier alone does not establish semantic admission,
+current ownership, authorization, or command outcome.
+
+*** Submission attempts and scoped capabilities
+
+A submission attempt is one attempt by an authoritative realization to
+incorporate a command. Several attempts may correspond to one command, and an
+HTTP request may cause zero, one, or several attempts according to its declared
+retry contract. An attempt's rejection does not necessarily reject the command
+if another compatible attempt incorporated it.
+
+A capability instance grants a scoped operation under an issuer, subject,
+principal or delegation binding, applicability period, and use policy. A
+one-shot writer capability can prevent repeated use of that grant without
+preventing a fresh grant for the same command. Durable command deduplication,
+capability consumption, and transport correlation are separate contracts.
+
+Capabilities used by asynchronous work have explicit owners and lifetimes.
+Transfer to a background execution must be admitted; merely retaining a
+request-local value after its request ends does not extend its authority.
+
+*** Logical target identity
+
+A logical UI target may survive replacement of its physical DOM node.
+
+For example, a Request card may remain the same logical fragment after HTMX
+replaces the element representing it.
+
+The runtime must not use physical-node identity as the sole semantic target
+identity when representation replacement is expected. A target also has an
+applicable actor, principal, projection, and ownership context. The same CSS id
+after navigation or account switching does not imply the same semantic target.
+Changing a query or projection meaning creates a new scope or requires an
+explicit compatibility transition.
+

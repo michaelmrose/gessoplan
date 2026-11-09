@@ -1,0 +1,344 @@
+** Knowledge
+:PROPERTIES:
+:CUSTOM_ID: req-knowledge-provenance
+:END:
+
+Knowledge is tracked with respect to actors or projected roles. In this
+specification, a knowledge judgment records what an admitted execution is
+justified in using under its premises. It is not an assertion that every
+browser-held proposition is true, that an adversarial participant ran the
+machine, or that a human understood the representation.
+
+Knowing an input value and knowing a domain proposition about that value are
+different judgments. A server may know that a browser submitted Request id R
+without knowing that R exists, that its status is open, or that the caller may
+act on it. Similarly, knowing that a client asserts F does not establish F.
+
+A fact or value may become known through several distinct provenance paths.
+
+At minimum the semantic model recognizes:
+
+- =:input=;
+- =:communicated=;
+- =:authoritative=;
+- =:derived=;
+- =:asserted=.
+
+These labels describe justification, not merely transport. Their appearance in
+an incoming map does not establish the corresponding provenance. A knowledge
+judgment includes the subject and scope of the fact and the premises on which
+the permitted use depends; a provenance label alone is not the whole judgment.
+
+The important verifier question is not:
+
+#+begin_quote
+Which packet delivered this map key?
+#+end_quote
+
+It is:
+
+#+begin_quote
+Before this actor performs behavior that depends on fact F, what justifies that
+the actor knows F?
+#+end_quote
+
+*** A knowledge judgment has a subject, scope, and support
+
+A semantic fact is more than a map key. Its judgment binds the actor or role,
+the proposition and values, the subjects, applicable temporal/query context,
+and the justification on which its permitted use depends. The surrounding
+admitted contract may supply these bindings without repeating them in every
+runtime value.
+
+For example, an inspection view might show:
+
+#+begin_src clojure
+{:actor [:client C]
+ :proposition [:request/status R :open]
+ :context
+ {:authority [:authority :request R]
+  :projection :request/card-v1
+  :arguments {:request/id R}
+  :principal-context :session/helper-1
+  :basis B
+  :valid-at V}
+ :support
+ {:kind :authoritative
+  :acquisition :acquisition/A17
+  :premises #{:request/projection-contract
+              :storage/qualified-read-semantics}}}
+#+end_src
+
+This describes the status at V under the authoritative read context B. It does
+not assert perpetual openness or grant permission to claim. The map is
+inspection data; admission must resolve its acquisition and premises rather
+than trust caller-supplied labels.
+
+A local key such as =:request/status= may index the fact only when the owning
+context fixes which Request and observation it denotes. Reusing the key for
+another subject must not merge their evidence. Equal values may have several
+independent justifications, but a justification for R1 cannot strengthen R2's
+claim merely because both values are =:open=.
+
+Support is dependency-sensitive. A derived judgment retains the contracts,
+assertions, and scoped facts used to justify it. Replacement or correction of a
+current observation changes which dependent current claims are applicable;
+it does not retroactively erase the event that an older value was observed.
+A failed or withdrawn assumption makes dependent unconditional use unavailable,
+while a conditional theorem may remain valid under its stated premise.
+
+The implementation need not retain an unbounded runtime proof history. It may
+keep sufficient bindings, compact evidence, or a reference to recheckable
+sources. Eviction and retirement follow explicit scope/lifetime rules; loss of
+evidence must not be interpreted as successful discharge.
+
+*** Input knowledge
+
+Input knowledge consists of the values and propositions supplied under the
+operation's entry contract. The contract determines whether the actor knows
+only the supplied value, knows that another participant asserted a proposition,
+or may rely on the proposition itself under a named trusted premise.
+
+Conceptually:
+
+| Premise | Meaning |
+|---------+---------|
+| A receives an input under the admitted entry contract | The input's subject, type, and context are bound |
+| The entry contract justifies the proposition being used | It distinguishes a supplied value, a reported assertion, and a trusted premise |
+| Conclusion | A may use that scoped input knowledge with =:input= provenance and the contract's retained premises |
+
+Input knowledge is not equivalent to arbitrary function arguments.
+
+The operation contract must say which incoming facts are accepted as justified
+entry knowledge and under what assumptions.
+
+For example, a trusted server may supply an authenticated principal as input
+knowledge to a server projection.
+
+A browser cannot create the same trusted input merely by serializing an
+identical principal id.
+
+*** Communicated knowledge
+
+Communication may establish knowledge constructively.
+
+Conceptually:
+
+| Premise | Meaning |
+|---------+---------|
+| A's send is justified under the message contract | The sent value and permitted semantic claims are established or explicitly assumed |
+| B admits the matching receive | Sender, execution, payload binding, and required validation satisfy that contract |
+| Conclusion | B gains the declared knowledge of X with =:communicated= provenance and the retained message premises |
+
+An admitted choreography must justify the sender's knowledge of the value it
+transmits. At an adversarial transport boundary, a message's receipt does not
+prove that the sender satisfied that semantic premise; trusted validation or
+the explicitly stated assumption must supply the justification being claimed.
+
+The receiver gains only the values and semantic consequences declared by the
+message contract. An authenticated sender can still communicate a mistaken
+claim; sender authenticity and the truth of that claim are separate premises.
+A delegated authoritative statement requires the declared issuer and validation
+contract, not merely a familiar sender name.
+
+Arbitrary extra map keys must not silently become choreography context.
+
+Communication establishes the fact that the declared value was communicated in
+that execution; it does not automatically establish that the value is
+authoritative domain truth.
+
+*** Authoritative knowledge
+
+An actor may acquire knowledge by observing a representation justified by
+authority.
+
+Conceptually:
+
+| Premise | Meaning |
+|---------+---------|
+| Authority justifies F | The proposition has a declared subject, time, and authority scope |
+| B acquires an admitted projection establishing F | The read, disclosure, projection, and basis contracts hold |
+| Conclusion | B may use F with =:authoritative= provenance at that observation context |
+
+The physical representation may be:
+
+- structured data;
+- server-rendered HTML;
+- another checked projection;
+- an application-specific authoritative representation.
+
+The representation format does not weaken the provenance if the trusted path
+from authority to observation is valid.
+
+*** Derived knowledge
+
+A role may derive a proposition from facts it already knows through a declared
+semantic rule. For a deterministic functional derivation, the justification
+includes the exact input bindings and the function contract on which the
+result depends.
+
+| Required premise | Meaning |
+|------------------+---------|
+| Inputs available | The role has the required scoped values or propositions |
+| Rule applicable | Its types, subjects, refinements, and other preconditions hold |
+| Result justified | The supported evaluator/derivation establishes the result, or the admitted opaque contract remains an explicit premise |
+| Dependencies retained | The conclusion preserves the assumptions and evidence scope used by the rule |
+
+A dependency inventory is not itself a derivation. Recording that F depends on
+X and Y, or accepting a caller-supplied result with the right shape, does not
+establish that F follows from X and Y. A provenance constructor may record this
+description, but a stronger checked judgment needs its own mechanism.
+
+Ordinary Clojure remains available. If its functional behavior is opaque, the
+semantic surface names the contract, implementation binding, and accepted
+assertions. Input/output checks can establish instance-specific properties
+without claiming universal correctness, purity, determinism, or termination.
+
+An effectful or nondeterministic computation can establish knowledge of its
+particular observed result through its declared effect/result boundary. It does
+not become a deterministic derivation from inputs that omit the clock, random
+choice, external read, or mutable state it used. Later reasoning may use that
+observed result as an explicitly bound input.
+
+The system must not infer equal results across actors from identical function
+names or source text. Cross-actor derived agreement needs compatible semantic
+inputs, the required deterministic contract, and correspondence of the
+realizations to that contract. JVM/browser arithmetic, locale, time, and other
+environmental semantics must be included where relevant.
+
+Canonicalization and structural evidence checking must not acquire hidden
+runtime effects by evaluating arbitrary application callbacks. Where execution
+is part of an evidence mechanism, that execution has an explicit trusted
+boundary, resource contract, and result scope.
+
+Deriving a value from a client assertion does not make it authoritative. An
+inference can strengthen a conclusion only when its rule and actual premises
+justify that strengthening. Provenance labels are descriptions of support,
+not a total ranking in which adding =:derived= upgrades every earlier premise.
+
+*** Asserted knowledge
+
+An explicitly accepted assertion supplies a premise that the verifier does
+not derive. It is an ordinary supported mechanism for full-language and
+external-system contracts, subject to the
+[[#req-admission-assurance-policy][admission policy from Part I]].
+
+Its identity binds the exact proposition, subject, parameters, scope, owner,
+implementation or external boundary, and applicability conditions required by
+the claim. Two assertions with the same friendly name but different subjects
+or meanings must not merge. Accepting a premise is not discharging it.
+
+An untrusted actor's assertion remains a claim by that actor unless a trusted
+entry contract explicitly permits relying on its proposition. A browser cannot
+register itself as the trusted owner of an authorization premise by sending an
+=:asserted= tag or a familiar assertion id.
+
+The assertion remains visible in every dependent explanation. It must not be
+relabeled as a proved derivation, a successful authoritative observation, or a
+runtime-enforced current premise merely because its result matches another
+value. Contradiction, expiry, or loss of applicability propagates to dependent
+uses according to their scope. Independent guarantees remain available when
+they do not depend on the affected premise.
+
+*** Knowledge use
+
+Knowledge determines whether a role may, depending on the operation:
+
+- transmit a value;
+- consume a value;
+- use a value as an FX input;
+- correlate a message;
+- choose a branch;
+- rely on a discriminator when its projected behavior diverges;
+- derive another value;
+- construct provisional state;
+- invoke an operation whose entry contract requires the fact;
+- claim agreement with another role;
+- establish a checked rule precondition.
+
+A role must not consume facts it cannot justifiably know.
+
+*** Knowledge is semantic, not incidental context
+
+The presence of a key in a runtime map is not evidence of knowledge.
+
+For example:
+
+#+begin_src clojure
+{:user/id U
+ :request/status :open}
+#+end_src
+
+does not answer:
+
+- who knows those values;
+- why they know them;
+- whether they are authoritative;
+- at what basis they were observed;
+- whether they may be transmitted;
+- whether they may justify a branch;
+- whether they are merely local provisional data.
+
+The semantic machinery must not infer provenance from incidental map
+membership.
+
+*** Knowledge and privacy
+
+Knowledge is scoped.
+
+Correctness does not require every actor to learn every fact.
+
+Privacy, authorization, role relevance, and protocol structure may deliberately
+prevent knowledge propagation.
+
+A proof that "eventually everybody knows everything" would be wrong for many
+applications.
+
+The useful property is:
+
+#+begin_quote
+Every admitted actor behavior has the scoped knowledge and premises its
+contract requires, with the claimed degree of justification made explicit.
+#+end_quote
+
+Permission to disclose, retain, use, or forward a fact is separate from the
+historical fact that it was acquired. Revocation cannot make an adversarial
+recipient forget prior disclosure, but it can remove permission for a later
+read, subscription, operation, or transmission. Knowledge alone is not a
+capability.
+
+
+#+LATEX: \newpage
+
+*** Knowledge derivations as inspectable evidence
+
+Where knowledge is machine checked, the checker should retain enough derivation
+information to explain why a fact is known.
+
+A boolean such as:
+
+#+begin_src clojure
+{:knows? true}
+#+end_src
+
+is insufficient as the long-term proof product.
+
+The derivation should be able to expose leaves such as:
+
+- input;
+- communication;
+- authoritative observation;
+- deterministic derivation;
+- explicit assertion.
+
+These derivations belong to verifier/checker artifacts. Runtime state retains
+the identities and premises actually needed for execution, not necessarily the
+entire explanatory graph.
+
+An observed adapter transition may supply a diagnostic account of a role-local
+step, requested transport, provisional display, or authoritative installation.
+It must be derived from the actual semantic transition rather than a fabricated
+successor supplied by a caller. It is still not, by itself, evidence of a
+physical network delivery, a database commit, or universal host correspondence.
+The observation category determines which stronger claim could be supported.
+

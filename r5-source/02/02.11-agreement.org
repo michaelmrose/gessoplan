@@ -1,0 +1,144 @@
+** Agreement
+:PROPERTIES:
+:CUSTOM_ID: req-semantic-agreement
+:END:
+
+Agreement is stronger than two actors having values with the same shape.
+
+Agreement means the protocol can justify that the actors share the relevant
+semantic value or fact under the declared relation, scope, and frontier.
+
+This is a judgment about those actors' relevant observations or values at the
+specified points. It does not automatically mean that either actor knows the
+other actor received the value, that both know that both know it, or that they
+continue to share the same current value after later changes. Protocols needing
+acknowledgement or stronger knowledge about receipt must declare that additional
+obligation.
+
+If A communicates X to B:
+
+The message contract justifies A's send, B admits the matching receive, and
+the sent and received values are related by the contract's declared encoding
+and semantic interpretation. Under those premises, the protocol may establish
+=:communicated= agreement on X at those two events. It does not establish
+acknowledgement, current-state equality after later changes, or domain truth
+beyond what that message contract justifies.
+
+Agreement can arise through multiple provenance paths.
+
+At minimum:
+
+- =:communicated=;
+- =:authoritative=;
+- =:derived=;
+- =:asserted=.
+
+*** Communicated agreement
+
+Communication can establish agreement on the communicated value.
+
+It does not imply agreement on every fact either actor knows.
+
+Message contracts therefore matter.
+
+Closed payloads make the agreement boundary explicit.
+
+*** Authoritative agreement
+
+Two actors may independently observe the same authoritative fact and obtain
+justified agreement without receiving one identical network packet.
+
+For example:
+
+| Actor | Physical read path | Required semantic support |
+|-------+--------------------+---------------------------|
+| A | Web node 1 | An admitted observation supporting scoped proposition F |
+| B | Web node 3 | An admitted observation supporting the same proposition F under the required compatibility relation |
+
+The agreement judgment uses that compatibility evidence; matching host or
+packet identities are unnecessary.
+
+The hosts differ.
+
+The packets differ.
+
+The required agreement is on the scoped proposition being used, not necessarily
+on an identical packet, exact read timestamp, or complete database snapshot.
+The relation must establish that the observations support that same proposition
+under compatible subject, temporal, projection, and authority contexts. Equal
+progression tokens alone do not establish this; neither do equal status values
+at unrelated times.
+
+For example, two observations that a Request is open can support agreement on a
+specified state/version or valid-time proposition when the authority contract
+justifies the relation. They do not prove that the Request never became claimed
+and reopened between those observations. Such a history claim needs its own
+evidence. A generic basis advance is not evidence that every fact was unchanged.
+
+*** Derived agreement
+
+Agreement may propagate through a declared deterministic derivation when the
+inputs and derivation justify doing so.
+
+The system must not infer derived agreement merely because two actors happen to
+run source code with the same function name.
+
+The derivation relation must be part of the admitted semantic contract. Where
+its realization is opaque, the conclusion retains the exact deterministic and
+implementation assumptions used. A nondeterministic computation may support
+agreement on an explicitly shared result, but independent invocations need not
+produce that same result.
+
+*** Asserted agreement
+
+Application code may explicitly assert agreement that Gesso cannot derive.
+
+Such assertions are named, scoped premises under the admission policy. They
+remain visible in diagnostics and proof reports, including the particular
+actors, proposition, relation, and frontier to which they apply.
+
+They cannot silently suppress a mandatory failed correspondence check or be
+introduced by an untrusted participant choosing an assertion id. An asserted
+agreement does not become mechanically derived agreement because the two
+displayed values happen to match.
+
+*** Shape equality is not agreement
+
+Two values can validate against the same Malli schema without being agreed
+semantic facts.
+
+For example:
+
+#+begin_src clojure
+{:request/status :open}
+#+end_src
+
+in two browser contexts does not establish:
+
+- same Request identity;
+- same authoritative basis;
+- same provenance;
+- same valid time;
+- same semantic observation;
+- same authority.
+
+Malli answers shape questions.
+
+Agreement answers semantic relationship questions.
+
+*** Agreement is scoped
+
+Actors need not agree on all application state.
+
+Agreement may be scoped to:
+
+- a Request;
+- a fact;
+- a command;
+- an operation input;
+- a branch discriminator;
+- an authoritative frontier;
+- another explicitly modeled semantic object.
+
+Privacy and irrelevance are legitimate reasons not to establish agreement.
+
