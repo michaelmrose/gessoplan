@@ -1688,17 +1688,27 @@ Candidate framework properties include:
 The individual phrases above name different judgments rather than one generic
 notion of "verification":
 
-- *Well-typed checked rule expressions.* An expression in the supported
-  reasoning fragment is checked against its closed semantic rule language. An
-  opaque call is checked against a resolved declared interface, and its
-  implementation assumptions remain explicit. Referenced fields must exist on
-  the declared semantic type; operators must be applied to compatible operand
-  types; enum values must belong to the declared variant set; optional values
-  must be refined before operations requiring presence; relationship
-  predicates must use valid endpoint types; and closed case analysis must be
-  exhaustive where required.  This establishes semantic well-formedness of the
-  rule.  It does not establish that the product organization chose the desired
-  rule.  A coherent but undesirable policy remains representable.
+- *Well-typed checked rule expressions.* The baseline Part IX checker admits
+  only its closed, reader-based expression grammar. Referenced readers must be
+  declared with compatible nominal types; operators require compatible operand
+  types; enum values must belong to their declared domains; and optional or
+  nullable values require the supported presence/non-nil refinements before
+  operations that need them. Strict Boolean evaluation and short-circuit order
+  are part of that grammar's semantics. An embedded arbitrary function call,
+  relationship query, or case expression is not silently an operator in this
+  baseline language.
+
+  Richer semantic construction may use opaque calls, relational predicates,
+  and closed case analysis through separately defined interfaces and checking
+  judgments. Such a predicate must use valid endpoint types and a checked
+  source-to-interface binding; closed case analysis must be exhaustive where
+  required by its admitted language. Any elaboration into the closed rule
+  language needs an explicitly checked translation. Otherwise the opaque
+  implementation premises remain in every dependent claim. A named interface
+  is not proof that its callable satisfies the declared policy or effect
+  contract. These checks establish supported semantic well-formedness, not
+  whether the product organization chose the intended rule. A coherent but
+  undesirable policy remains representable.
 
 - *Knowledge entailment.*  The checker asks whether a role is justified in
   knowing a semantic fact at the point where that fact is consumed.  Relevant
@@ -1706,7 +1716,10 @@ notion of "verification":
   observation, checked deterministic derivation, and explicit trusted
   assertion.  Knowledge does not arise merely because a value happens to exist
   in a host-language map, another role knows the fact, the browser physically
-  received related data, or an undeclared field survived serialization.
+  received related data, or an undeclared field survived serialization. A
+  static knowledge judgment assumes its named entry/acquisition/communication
+  premises; it does not prove that an actual browser message was authenticated
+  or that an authoritative observation was acquired for this execution.
 
 - *Provenance entailment.*  The checker asks whether the claimed source or
   epistemic strength of a fact follows from the path through which the fact was
@@ -1804,7 +1817,10 @@ notion of "verification":
   branches.  If a role behaves identically in both alternatives, it need not
   learn a choice solely because the condition occurs in the global
   choreography.  If its behavior differs, the verifier must justify knowledge
-  of the discriminator through an allowed path.  This prevents both
+  of the discriminator through an allowed path. The evidence must refer to
+  the applicable subject, decision, scope, and continuation: observing a
+  Request's current status does not by itself establish which historical
+  command succeeded or which earlier branch was selected. This prevents both
   under-checking and needless communication introduced only to mirror global
   syntax.
 
@@ -1815,8 +1831,13 @@ notion of "verification":
   knowledge or authority, erase communication required for justified behavior,
   lose required resource constraints, admit forbidden branch behavior, change
   terminal/failure meaning, or introduce executions absent from the accepted
-  global semantics.  The exact preservation/refinement theorem must state the
-  supported language subset and observable behavior relation.
+  global semantics. The preservation/refinement claim must state the
+  supported language subset, direction of refinement, observable behavior,
+  and treatment of internal steps. Safety refinement does not by itself
+  establish liveness when internal divergence or unfair scheduling is
+  possible; a progress claim has separate fairness and transfer obligations.
+  Nor does correctness of generated local semantics prove that an adversarial
+  browser or physical shell obeys those semantics.
 
 - *Declared resource invariants.*  Where choreography semantics include
   resources, the checker may establish that a resource is used only after
@@ -1897,6 +1918,11 @@ result classifications include:
 
 - *Kernel-checked or theorem-proved:* a proposition is accepted by a proof
   kernel or theorem prover from explicit premises and checked derivations.
+  Acceptance of a particular derivation is relative to the admitted checker
+  and proposition encoding. A universal soundness theorem for that checker
+  is a separate claim unless independently established and related to the
+  actual production checker. A finite per-derivation audit cannot silently
+  stand in for that quantified theorem.
 
 - *Exact finite-state checked:* a finite semantic state space is exhaustively
   explored and the property holds for every state/transition in that exact
