@@ -100,9 +100,20 @@ has its explicit mapping. A transport failure after a successful commit does
 not turn that commit into a rejection. An unrelated Expense now being approved
 does not establish that this command approved it.
 
-The notification contains only the declared, disclosure-permitted review
-information. It does not contain a manager's entire observation or private
-threshold. A small inspection view of its contract is:
+This worked review chooses a *result-bearing notifier protocol*: the
+recorded message deliberately discloses the permitted result of the bound
+manager command to the notifier. This is a different disclosure contract from
+the *neutral notifier protocol* in the later behavior-sensitive example.
+The outward notification text can be identical under both manager outcomes,
+but an internal recipient of =:review/result= still learns which result
+was reported. Matching text on screen is not a proof that the notifier
+cannot distinguish the branches.
+
+The message contains only the declared, disclosure-permitted review
+information. It does not contain the manager's private threshold or entire
+observation. The issuer or admitting trusted boundary justifies the command
+outcome before that result is disclosed. A small inspection view of
+this *result-bearing* contract is:
 
 #+begin_src clojure
 {:message/id :expense/review-disposition
@@ -132,7 +143,13 @@ arrival or an optional field arbitrarily choose a continuation.
 Role-local knowledge-flow checks alone are not proof of the
 application-level tagged result's meaning or trusted source.
 
-The admitted review session supplies its correlation identity at entry. Only
+The admitted review session supplies its correlation identity at entry.
+The declared =:review/disposition= discriminator must be checked as
+=:recorded= or =:no-notification=, with the recorded variant's
+=:review/result= bound to its closed approved/awaiting-Finance
+alternative and exact command-result evidence. The variants' schemas,
+correlation and source admission are independent obligations; the
+=:variants= map alone does not prove them. Only
 the recorded variant carries a command outcome. The no-notification variant
 terminates participation without claiming the Expense is absent, the command
 failed, or no review was ever recorded. It does not carry a failed read's
@@ -165,6 +182,7 @@ its own deduplication or repeat policy permits it.
 | A manager approval ceiling applies but is absent from the chosen operation's guarded policy | The operation contract is incomplete; do not count browser routing as enforcement |
 | A retry discloses a permitted recorded successful command outcome | Do not incorporate again; notification replay still follows its *own* deduplication and disclosure rules |
 | A browser fabricates =:recorded= with a plausible Expense id or command id | Trusted-side notifier admission must establish the actual bound outcome or use an authoritative outbox |
+| A result-bearing message discloses =:review/result= to the notifier while a proof calls the notifier route-ignorant because its displayed notice is neutral | Reject the confidentiality claim or use a separately authored neutral message contract with justified coarse outcome evidence |
 | Two result variants can match the same sender/event/channel and payload | Reject ambiguous projection or require a checked discriminator, not arrival-order selection |
 | An accepted model commit is followed by notification delivery failure | Retain delivery/recovery debt if notification is durable; do not retroactively reject the command |
 | The manager chooses an approval path without notifying Finance | Finance's later participation requires its own admitted queue observation and guards, not an absent earlier message |
@@ -184,11 +202,19 @@ Projection produces complementary plans, not separately authored workflows:
 | Expense authority | Admits each actual invocation, authenticates the caller, applies replay or atomic new-incorporation semantics, and discloses the permitted result |
 | Notifier | Receives the declared disposition; performs the notification effect with its own outcome handling or returns without that effect |
 
-The notifier needs the public review result if its message differs by result.
-It does not need the private threshold used to choose the route. Finance's
-later queue observation establishes entry knowledge for a new execution; no
-unused role in this short choreography has to infer that a missing message
-means it may terminate.
+Under this result-bearing contract the notifier acquires the disclosed
+=:review/result= when the recorded variant is admitted, whether or not
+its physical notification text varies with that result. This contract
+cannot be used to prove that the notifier is ignorant of the manager's
+route. It does not require disclosure of the private threshold itself.
+An application requiring a route-neutral notifier instead authors the
+separate neutral contract discussed under behavior-sensitive choice;
+the projector cannot erase a required result-bearing message merely
+because the visible notification would look the same.
+
+Finance's later queue observation establishes entry knowledge for a new
+execution; no unused role in this short choreography has to infer that
+a missing message means it may terminate.
 
 A role's local return means that role has no remaining work under its contract.
 It is not proof that every other role completed, every message was delivered,

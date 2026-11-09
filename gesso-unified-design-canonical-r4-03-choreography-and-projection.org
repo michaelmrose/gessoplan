@@ -354,9 +354,20 @@ has its explicit mapping. A transport failure after a successful commit does
 not turn that commit into a rejection. An unrelated Expense now being approved
 does not establish that this command approved it.
 
-The notification contains only the declared, disclosure-permitted review
-information. It does not contain a manager's entire observation or private
-threshold. A small inspection view of its contract is:
+This worked review chooses a *result-bearing notifier protocol*: the
+recorded message deliberately discloses the permitted result of the bound
+manager command to the notifier. This is a different disclosure contract from
+the *neutral notifier protocol* in the later behavior-sensitive example.
+The outward notification text can be identical under both manager outcomes,
+but an internal recipient of =:review/result= still learns which result
+was reported. Matching text on screen is not a proof that the notifier
+cannot distinguish the branches.
+
+The message contains only the declared, disclosure-permitted review
+information. It does not contain the manager's private threshold or entire
+observation. The issuer or admitting trusted boundary justifies the command
+outcome before that result is disclosed. A small inspection view of
+this *result-bearing* contract is:
 
 #+begin_src clojure
 {:message/id :expense/review-disposition
@@ -386,7 +397,13 @@ arrival or an optional field arbitrarily choose a continuation.
 Role-local knowledge-flow checks alone are not proof of the
 application-level tagged result's meaning or trusted source.
 
-The admitted review session supplies its correlation identity at entry. Only
+The admitted review session supplies its correlation identity at entry.
+The declared =:review/disposition= discriminator must be checked as
+=:recorded= or =:no-notification=, with the recorded variant's
+=:review/result= bound to its closed approved/awaiting-Finance
+alternative and exact command-result evidence. The variants' schemas,
+correlation and source admission are independent obligations; the
+=:variants= map alone does not prove them. Only
 the recorded variant carries a command outcome. The no-notification variant
 terminates participation without claiming the Expense is absent, the command
 failed, or no review was ever recorded. It does not carry a failed read's
@@ -419,6 +436,7 @@ its own deduplication or repeat policy permits it.
 | A manager approval ceiling applies but is absent from the chosen operation's guarded policy | The operation contract is incomplete; do not count browser routing as enforcement |
 | A retry discloses a permitted recorded successful command outcome | Do not incorporate again; notification replay still follows its *own* deduplication and disclosure rules |
 | A browser fabricates =:recorded= with a plausible Expense id or command id | Trusted-side notifier admission must establish the actual bound outcome or use an authoritative outbox |
+| A result-bearing message discloses =:review/result= to the notifier while a proof calls the notifier route-ignorant because its displayed notice is neutral | Reject the confidentiality claim or use a separately authored neutral message contract with justified coarse outcome evidence |
 | Two result variants can match the same sender/event/channel and payload | Reject ambiguous projection or require a checked discriminator, not arrival-order selection |
 | An accepted model commit is followed by notification delivery failure | Retain delivery/recovery debt if notification is durable; do not retroactively reject the command |
 | The manager chooses an approval path without notifying Finance | Finance's later participation requires its own admitted queue observation and guards, not an absent earlier message |
@@ -438,11 +456,19 @@ Projection produces complementary plans, not separately authored workflows:
 | Expense authority | Admits each actual invocation, authenticates the caller, applies replay or atomic new-incorporation semantics, and discloses the permitted result |
 | Notifier | Receives the declared disposition; performs the notification effect with its own outcome handling or returns without that effect |
 
-The notifier needs the public review result if its message differs by result.
-It does not need the private threshold used to choose the route. Finance's
-later queue observation establishes entry knowledge for a new execution; no
-unused role in this short choreography has to infer that a missing message
-means it may terminate.
+Under this result-bearing contract the notifier acquires the disclosed
+=:review/result= when the recorded variant is admitted, whether or not
+its physical notification text varies with that result. This contract
+cannot be used to prove that the notifier is ignorant of the manager's
+route. It does not require disclosure of the private threshold itself.
+An application requiring a route-neutral notifier instead authors the
+separate neutral contract discussed under behavior-sensitive choice;
+the projector cannot erase a required result-bearing message merely
+because the visible notification would look the same.
+
+Finance's later queue observation establishes entry knowledge for a new
+execution; no unused role in this short choreography has to infer that
+a missing message means it may terminate.
 
 A role's local return means that role has no remaining work under its contract.
 It is not proof that every other role completed, every message was delivered,
@@ -2323,15 +2349,32 @@ Suppose an accepted manager review has one of two recorded results:
 | Awaiting Finance | Notify that a manager review was recorded | Receive review-required, acquire current permitted facts, and offer the Finance action |
 | Approved by manager | The same notification with the same declared payload | Receive not-required and terminate local participation |
 
-In this variant the notifier's message is deliberately neutral: it says that a
-manager review was recorded for this Expense and admitted review session,
-not which operation or result it produced or what the Expense's current status
-is. The neutral payload uses the common session identity; it does not require
-the two branches to create identical command identities. Its effect and result-handling
-contract are the same on both successful branches. The notifier does not need
-the private threshold or the route selector. If the application changes the
-notification text or destination by branch, that difference requires a justified
-input, typically an explicitly communicated permitted outcome.
+This is a *separately authored neutral notifier protocol*, not a
+relabeling of the result-bearing =:expense/review-disposition= message in
+the earlier worked review. Its message says that a manager review was
+recorded for this Expense and admitted session, not which operation,
+result, or current Expense status it produced. The neutral contract
+correlates the common session and disclosed Expense subject; it does
+not transmit =:review/result=, a route-dependent command identity,
+or another route-specific field to the notifier by unnoticed metadata.
+The two branches need not create identical command identities in
+the authoritative model, but those command identities cannot
+implicitly leak through this neutral notification's admitted envelope.
+
+The sender must still establish the coarse proposition *a manager review
+was recorded* through its actual admitted command result. A trusted
+outcome-derived event or a trusted notification boundary that verifies
+the recorded result may establish this proposition without disclosing
+the route-specific outcome to the notifier. An adversarial manager
+browser's assertion of review completion is not equivalent evidence.
+The notifier's effect and result-handling contracts are the same on
+both successful branches. It does not need the private threshold
+or route selector. If the application changes notification text,
+destination, or other relevant observable behavior by branch, that
+difference requires a justified, disclosure-permitted input. A
+neutral payload establishes no unconditional noninterference guarantee
+for timing, occurrence, transport metadata or other observations
+outside its expressly checked disclosure and observation contract.
 
 The two notification paths must also have compatible causal prerequisites.
 Here each notice follows an authoritative result establishing a recorded review
@@ -2476,6 +2519,7 @@ specific theorem and environmental premises that their claims require.
 | Finance waits only for =:review-required=, while the other branch has no message or local terminal path | Reject the claimed total participation or require the authored not-required/disposition path; silence is not knowledge |
 | Finance receives a permitted =:review-required= variant from a different session or with a copied command id | Reject mismatched sender/subject/session/correlation admission despite valid enum and payload shape |
 | A notifier's destination or effect changes by route while its payload remains the same | Require justified discriminator and disclosure rights for the changed observable effect |
+| A supposedly neutral review message hides =:review/result= or route-specific command metadata in its envelope while showing identical notification text | Do not claim notifier route ignorance; remove such fields through an authored neutral contract and qualify every remaining observable under the disclosure property |
 | Two receive alternatives have overlapping optional-field schemas and the runtime picks the first match | Reject ambiguous alternatives at the checked boundary; declaration order is not a semantic discriminator |
 | The manager's command is unresolved and a =:review-unavailable= message is treated as proof of rejection | Preserve unknown-incorporation reconciliation and its owner; unavailable is not uncommitted |
 | A finite structural check finds some terminal path and claims Finance always completes | Keep liveness conditional on required delivery, scheduling and actor-action premises; terminal reachability is insufficient |
@@ -3720,6 +3764,7 @@ realizations. Each case remains a mandatory conformance obligation:
 | Ordinary environment event matches a participant message name | Do not cross the event-class boundary |
 | Two receive alternatives accept the same correlated message with different behavior | Reject ambiguity or require an explicit discriminator/equivalence justification |
 | Role has equivalent local continuations under the supported relation | Omit an unnecessary discriminator without disclosing private data |
+| A result-bearing notifier message contains an authorized =:review/result= but the proof treats it as a neutral message because the displayed notice is identical | Keep the notifier's actual communicated knowledge in the property; reject the unjustified privacy/equivalence claim or admit an independently checked neutral protocol |
 | Role must wait in one branch and return in another | Require a distinguishing path or an explicit conditional-participation contract |
 | Unrelated authoritative read follows a foreign commit | Do not discharge a command-specific causal dependency |
 | Timeout after submission | Preserve command uncertainty; do not infer a rejected commit |
@@ -3803,6 +3848,7 @@ every application author to implement their own formal toolchain.
 |--------------------+------------------------------|
 | An ordinary Clojure/ClojureScript function has a complete admitted operation/effect contract but is opaque to the closed prover | Permit it under the selected qualified assurance profile, retaining the relevant explicit premises rather than claiming a proof of its body |
 | Two remote branches have equivalent authorized local behavior | Project the legal local continuation without requiring an unnecessary discriminator or revealing private global values |
+| An application chooses either a result-bearing or a truly neutral notifier contract for the same manager decision | Admit the chosen protocol with its actual knowledge, authorization, source evidence and disclosure policy; do not force all apps to reveal the branch or to hide it |
 | A declared open extension carries nonsemantic adapter data | Permit the extension under its contract while maintaining semantic payload closure |
 | A trusted operation is retried compatibly after its state has advanced | Return the permitted recorded outcome under current disclosure rules without attempting a second incorporation |
 | A valid projected schedule reorders independent hidden steps | Permit the supported partial order while preserving required causal and observable relations |

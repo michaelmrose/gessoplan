@@ -32,15 +32,32 @@ Suppose an accepted manager review has one of two recorded results:
 | Awaiting Finance | Notify that a manager review was recorded | Receive review-required, acquire current permitted facts, and offer the Finance action |
 | Approved by manager | The same notification with the same declared payload | Receive not-required and terminate local participation |
 
-In this variant the notifier's message is deliberately neutral: it says that a
-manager review was recorded for this Expense and admitted review session,
-not which operation or result it produced or what the Expense's current status
-is. The neutral payload uses the common session identity; it does not require
-the two branches to create identical command identities. Its effect and result-handling
-contract are the same on both successful branches. The notifier does not need
-the private threshold or the route selector. If the application changes the
-notification text or destination by branch, that difference requires a justified
-input, typically an explicitly communicated permitted outcome.
+This is a *separately authored neutral notifier protocol*, not a
+relabeling of the result-bearing =:expense/review-disposition= message in
+the earlier worked review. Its message says that a manager review was
+recorded for this Expense and admitted session, not which operation,
+result, or current Expense status it produced. The neutral contract
+correlates the common session and disclosed Expense subject; it does
+not transmit =:review/result=, a route-dependent command identity,
+or another route-specific field to the notifier by unnoticed metadata.
+The two branches need not create identical command identities in
+the authoritative model, but those command identities cannot
+implicitly leak through this neutral notification's admitted envelope.
+
+The sender must still establish the coarse proposition *a manager review
+was recorded* through its actual admitted command result. A trusted
+outcome-derived event or a trusted notification boundary that verifies
+the recorded result may establish this proposition without disclosing
+the route-specific outcome to the notifier. An adversarial manager
+browser's assertion of review completion is not equivalent evidence.
+The notifier's effect and result-handling contracts are the same on
+both successful branches. It does not need the private threshold
+or route selector. If the application changes notification text,
+destination, or other relevant observable behavior by branch, that
+difference requires a justified, disclosure-permitted input. A
+neutral payload establishes no unconditional noninterference guarantee
+for timing, occurrence, transport metadata or other observations
+outside its expressly checked disclosure and observation contract.
 
 The two notification paths must also have compatible causal prerequisites.
 Here each notice follows an authoritative result establishing a recorded review
@@ -185,6 +202,7 @@ specific theorem and environmental premises that their claims require.
 | Finance waits only for =:review-required=, while the other branch has no message or local terminal path | Reject the claimed total participation or require the authored not-required/disposition path; silence is not knowledge |
 | Finance receives a permitted =:review-required= variant from a different session or with a copied command id | Reject mismatched sender/subject/session/correlation admission despite valid enum and payload shape |
 | A notifier's destination or effect changes by route while its payload remains the same | Require justified discriminator and disclosure rights for the changed observable effect |
+| A supposedly neutral review message hides =:review/result= or route-specific command metadata in its envelope while showing identical notification text | Do not claim notifier route ignorance; remove such fields through an authored neutral contract and qualify every remaining observable under the disclosure property |
 | Two receive alternatives have overlapping optional-field schemas and the runtime picks the first match | Reject ambiguous alternatives at the checked boundary; declaration order is not a semantic discriminator |
 | The manager's command is unresolved and a =:review-unavailable= message is treated as proof of rejection | Preserve unknown-incorporation reconciliation and its owner; unavailable is not uncommitted |
 | A finite structural check finds some terminal path and claims Finance always completes | Keep liveness conditional on required delivery, scheduling and actor-action premises; terminal reachability is insufficient |
