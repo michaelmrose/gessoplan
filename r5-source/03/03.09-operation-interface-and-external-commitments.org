@@ -23,16 +23,26 @@ Depending on the operation, that interface may include:
 It should not include arbitrary implementation details merely because those
 details are easy to serialize.
 
+A supported exported interface must bind each relied-upon commitment to its
+source-owned contract and exact semantic subject, including applicable
+revision or compatibility conditions. It distinguishes derived choreography
+facts from imported public-model rules and from explicit trusted or opaque
+assumptions. A caller must not treat a source name, matching fingerprint,
+structurally valid summary, or an uninspected guard as proof of physical
+implementation or of the original policy. Derived facts may be used only
+within the verifier's actual supported language and property scope.
+
 For Claim, the normalized interface identifies the helper's actual entry
 knowledge, the trusted principal/authority handoff, the public model operation,
-and its result contract. It separates four model outcome categories:
+and its result contract. It separates four *boundary-facing command-resolution
+categories*. Their epistemic status and incorporation implications differ:
 
 | Category | Interface meaning |
 |----------+-------------------|
-| =:committed= | Authoritative evidence of the command's incorporation and its recorded outcome |
-| =:rejected= | A justified command rejection under the operation's contract; not merely failure of one competing attempt |
-| =:already-incorporated= | Compatible repetition with a permitted recorded outcome; no additional incorporation |
-| =:commit-unknown= | The boundary cannot establish the command's disposition from the available evidence |
+| =:committed= | Qualified authoritative evidence that this exact bound command incorporated and has a recorded outcome |
+| =:rejected= | A justified rejection of this command under the operation contract, rather than an inference from missing delivery or another actor's result |
+| =:already-incorporated= | Compatible repetition of the same bound command with a permitted recorded outcome; no new incorporation |
+| =:commit-unknown= | This observer cannot establish the command's disposition from currently admissible evidence; **not** a fourth durable database status |
 
 The payload states the command binding, disclosed disposition, and any scoped
 observation or progression evidence. A successful callback or HTTP response is
@@ -42,9 +52,16 @@ committed and uncommitted. It may arise from indeterminate delivery even when
 the authoritative transaction has a definite result.
 
 =:confirmed= and =:reconciled= may describe protocol events if explicitly defined;
-they are not substitute names for the canonical model outcome taxonomy. The
-presentation mapping to =:accepted=, =:rejected=, and =:unknown= remains an explicit
-checked contract. A recorded result does not imply permission to disclose it.
+they are not substitute names for the canonical command-resolution categories.
+The presentation mapping to =:accepted=, =:rejected=, and =:unknown= remains an
+explicit checked contract. A recorded result does not imply permission to
+disclose it. In particular, compatible =:already-incorporated= resolution
+requires the original command binding, the authorized recorded disposition,
+and current disclosure permission; it must not re-run the business operation
+or be rejected merely because the previously successful operation changed
+the Request's status. =:commit-unknown= requires command-specific
+reconciliation or another declared recovery path, not an arbitrary fresh
+command ID or a fabricated =:rejected= outcome.
 
 The semantic interface does not encode incidental realization details such as:
 
@@ -84,4 +101,42 @@ The preferred rule is:
 Declare external semantic commitments; derive internal control-flow facts from
 the choreography body.
 #+end_quote
+
+For each exported fact, a checked interface should distinguish:
+
+- =:derived=: obtained from the exact admitted choreography and the named
+  structural, knowledge or projection check actually performed;
+- =:imported=: supplied by the specified public-model or authority contract,
+  retaining its source binding and any uninspected predicates;
+- =:runtime-required=: requiring a concrete authenticated principal, current
+  guarded model transition, actual message receipt, resource ownership or
+  qualified authoritative acquisition;
+- =:assumed/open=: a typed external premise or unsupported proof/physical
+  correspondence, still visible to every downstream consumer that relies on
+  it.
+
+These are specification-level evidence classes, not a claim that current
+Gesso already exposes this exact record format. No category grants trust by
+being written into caller-controlled metadata. Where a composition includes
+several operations, each imported guard, invariant premise and read/write
+footprint remains attributable to its original source; possible shared
+state interference is not evidence that transitions commute or execute
+atomically together.
+
+*** Exported-interface counterexamples
+
+| Apparent interface success | Required judgment |
+|----------------------------+-------------------|
+| A role-local verifier proves that a branch selector is definitely available | Preserve that specific knowledge/availability result; it does not prove the opaque selector producer's policy or the authenticated caller |
+| A successful HTTP callback says Claim was accepted | Require command-bound authoritative disposition evidence; callback success is not incorporation proof |
+| A duplicate Claim presents the same command ID but a different principal or arguments | Reject incompatible binding rather than treating it as =:already-incorporated= |
+| A prior successful command is replayed after its Request changed state | Resolve from a compatible recorded command under current disclosure; do not impose new-incorporation guards on historical resolution |
+| A network timeout has no readable command record | Retain =:commit-unknown= or a qualified recovery state; silence does not prove rejection or safety of a new command |
+| Two operation interfaces have compatible types and overlapping read/write sets | Preserve interference and open concurrency assumptions; structural composition is not serializability or noninterference proof |
+| A report repeats a model rule or invariant name but has not inspected its implementation | Retain the original source-owned opaque/physical premise; a summary is not a policy certificate |
+
+The interface must remain suitable for independently checked composition
+without converting unknown provenance, an assumed predicate, or a physical
+deployment gap into a guarantee. Downstream diagnostics should identify
+which specific imported or derived claim cannot be established.
 
