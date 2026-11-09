@@ -19,6 +19,16 @@ completion or failure. It does not run arbitrary application functions while
 canonicalizing a declaration, checking its shape, or computing an artifact
 fingerprint. Callback execution belongs to an explicit realization boundary.
 
+A realization can report completion only for the pending declared effect,
+through the machine's admitted event path and the applicable owner-relative
+execution or resource binding. It cannot directly edit a projected machine,
+select a different continuation, introduce undeclared outputs, or treat a
+previously retired callback as current. The receiver must enforce the
+operation's applicable output, identity, provenance and runtime guard contract;
+a correctly shaped callback map is not that enforcement. An uncertain physical
+effect retains its declared unknown/recovery alternative rather than becoming a
+fabricated failure or a second automatic invocation.
+
 Validating an output and recording its dependency list does not prove that the
 implementation calculated the promised result. Runtime validation, instance
 observations, checked derivations, and asserted contracts retain the evidence
@@ -96,6 +106,10 @@ binding, correlation requirement, event distinction, and outcome needed to run
 the admitted transition. Diagnostic source coordinates and proof derivations
 may live in a sidecar. Stripping a field merely because it was introduced by
 verification is invalid if runtime execution still needs its meaning.
+In particular, a guard on a delayed effect or message completion remains a
+runtime admission obligation even when the proof explaining that guard is
+compiler-only. Conversely, a diagnostic sidecar must not be read by the
+production machine as a source of new permissions, facts, or continuations.
 
 The exact plan identity binds the versioned canonical representation and all
 relevant contract identities. The explanation artifact maps exact emitted
@@ -109,3 +123,23 @@ correctness, provenance, authorization, or host realization. Admission binds the
 generated artifact to the verified subject, selected assurance policy, admitted
 assembly, and concrete runtime contracts needed for the claimed use.
 
+*** Acceptance counterexamples for full-language boundaries
+
+These examples are semantic obligations of the intended construction checker,
+not claims that the current portable verifier handles unrestricted Clojure:
+
+| Apparent shortcut | Required checking or runtime outcome |
+|-------------------+--------------------------------------|
+| A test harness supplies every entry value to every role, and the browser later uses a server-only input | Test-fixture convenience does not justify role-local production knowledge; reject or require an admitted acquisition path |
+| A receive branch omits optional =:approval= but later code reuses a value left under that key by an earlier receive | Require definite binding/presence on this path and the proper observation scope; reject accidental stale knowledge |
+| Two Requests have equal =:status=, and a continuation borrows the first Request's authoritative provenance for the second | Reject unsupported subject/scope substitution even when values and Malli shapes match |
+| A sender adds an optional message field it does not know, although the payload schema accepts that field | Reject the actual transmitted payload at sender admission; optionality is not a knowledge or disclosure exemption |
+| A host callback writes the projected machine's =:state= or jumps to a success continuation without a declared completion | Reject the alternate transition path; realization reports effects, while the machine owns continuation |
+| A late callback from a retired effect instance returns a shape-valid completion | Apply its declared owner-relative admission guard; do not let shape equality or a reused state locator revive ownership |
+| A transport timeout follows an authoritative effect that may already have committed | Preserve indeterminate disposition and reconcile through the original command binding; do not claim rejection or silently repeat incorporation |
+| A loop has an apparent terminal edge but no justified termination or progress assumption | Do not claim liveness; exhausting a sound configured analysis bound leaves an explicit unresolved obligation |
+| A plan-shaped map is paired with a certificate or coordinate map from another exact artifact | Reject the mismatch; format validity and a copied proof sidecar do not establish projection correctness or executable authority |
+
+Successful admission must preserve useful ordinary Clojure effects behind
+declared contracts, while requiring independent evidence for guarantees the
+chosen checker and physical realization do not establish.
