@@ -76,6 +76,11 @@ F1: Request R was unclaimed at valid time T1.
 F2: Request R was claimed by user U at valid time T2.
 #+end_example
 
+These are *semantic descriptions*, not a claim that a physical Request stores
+a =helper-id= field. HumanHelp's actual helper relationship is modeled by
+RequestAssignment. A valid interpretation of F2 must account for that
+relationship and its authorized temporal/observation context.
+
 Both statements can remain true under the model's declared valid-time and
 correction semantics. The historical fact that an observation was made is
 distinct from a claim that its interpretation of the world can never be
@@ -184,17 +189,25 @@ The following cases are distinct:
 
 | Case | Meaning |
 |------+---------|
-| Field absent | The projection does not contain that field, or explicitly establishes its absence under its schema |
+| Field omitted from projection | No value was supplied for the field; its physical presence or absence may be unknown at this scope |
+| Field established absent | A complete, admitted schema/read/guard judgment explicitly establishes absence of the field at its stated subject and basis |
 | Field present with nil | A present value permitted only when the type admits nil |
 | Field present with false | A Boolean value, not absence |
 | Fact unknown | The actor lacks a justified proposition; this is not the proposition's negation |
 | Observation denied | The observation contract withholds disclosure; this need not establish either presence or absence |
 | Resource authoritatively absent | A justified negative result within a declared subject, basis, time, and query scope |
 
-Omission from a partial projection must not be interpreted as known absence.
-Similarly, a defaulting accessor must not collapse absent, nil, and false when
-the operation's guard, frame, or outcome depends on their distinction. The
-schema and acquisition contract determine which omissions have semantic meaning.
+Omission from a partial projection must not be interpreted as known absence;
+only an applicable completed observation or admitted representation contract
+can establish that negative fact. A read that was denied, timed out, incomplete,
+or performed at an inadequate basis does not establish absence by returning no
+object. A complete negative observation is limited to its declared query,
+authority, visibility, time and basis; it is not a global nonexistence claim.
+Likewise, an absent *optional* field in admitted state differs from a missing
+*required* reader or malformed input, which must fail the applicable validation.
+A defaulting accessor must not collapse absent, nil, and false when the
+operation's guard, frame, or outcome depends on their distinction. The schema
+and acquisition contract determine which omissions have semantic meaning.
 
 Portable numeric and value profiles specify ranges, overflow, equality,
 ordering, strings, nominal categories, and serialization. A mathematically
@@ -382,10 +395,20 @@ acquisition implementation. Gesso owns admission and downstream checks.
          (= :ordinary (:employee/risk-band employee)))))
 #+end_src
 
-=Money= uses the declared money profile from Part I. Schema Vars and the
-observation map are declarations, not admission credentials. The public API
-names above illustrate the required contracts rather than freeze a particular
-namespace layout.
+The =Money= reference uses Part I's illustrative nominal USD-cents profile.
+It is not automatically an admitted Part IX scalar merely because a Malli
+schema names it. An actual checked realization must bind the supported
+nominal representation/codec and reader interpretation, or carry a separate
+permitted opaque implementation premise. The =:bindings= field paths above
+are also *schematic semantic-interface constraints*, not direct syntax of
+Part IX's closed =[:read reader-id]= rule AST. If used for a checked-rule
+judgment they require a defined, checked elaboration; otherwise they remain
+explicit contracts with their applicable checking/enforcement premises.
+Unsupported elaboration cannot be reported as successful rule checking.
+
+Schema Vars and the observation map are declarations, not admission
+credentials. The public API names above illustrate the required contracts
+rather than freeze a particular namespace layout.
 
 The admitted observation establishes the facts returned for this preparation
 purpose. The sample eligibility function does not establish that its caller is
@@ -408,8 +431,11 @@ The acquisition/admission boundary must establish all of the following:
 | Realization fidelity | Proof, runtime enforcement, or retained assumptions connecting the acquisition implementation to its contract |
 
 A single compatible read context may be supplied by a model operation or by
-several reads under an admitted consistent-acquisition contract. Separate
-successful reads alone do not establish a coherent combined snapshot. If that
+several reads under an admitted consistent-acquisition contract. In
+particular, reading an Expense from one basis and its Employee from a later
+incompatible basis cannot satisfy the combined relationship merely because
+the records each passed schema validation. Separate successful reads alone
+do not establish a coherent combined snapshot. If that
 premise cannot be established, the boundary rejects the stronger combined claim
 or exposes separately scoped observations for a contract that permits them.
 
