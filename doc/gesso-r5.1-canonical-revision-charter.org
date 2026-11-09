@@ -1,0 +1,408 @@
+#+TITLE: Gesso Canonical Design — R5.1 Revision Charter
+#+SUBTITLE: Standing goals, editorial method, and acceptance standard for the complete Gesso specification
+#+OPTIONS: toc:3 num:nil
+#+STARTUP: nofold
+
+* Executive mandate
+
+The purpose of the R5.1 effort is to produce a /timeless, complete, coherent,
+and technically exact specification of the finished Gesso framework/.
+
+The canonical design is a plan for what Gesso /will be able to do when the
+project is complete/. It is not a progress report, a snapshot of a particular
+Git commit, or documentation limited to features already implemented.
+
+Use the real Gesso implementation, the earlier R4 plan, the R5 candidate, test
+failures, and hard-won development experience to improve the /target design/.
+Do not use the present implementation as an artificial ceiling on that design.
+
+This charter governs the R5.1 /revision process/. The twelve-part canonical
+specification governs the /finished system/. Keep those distinct.
+
+#+begin_quote
+Describe the right finished Gesso; use implementation experience to make that
+description more correct. Never confuse “not yet implemented” with “should not
+be specified.”
+#+end_quote
+
+* Non-negotiable interpretation
+
+** The canonical document describes the finished framework
+
+Use present-tense, normative statements for the intended complete system:
+“Gesso derives...”, “The verifier rejects...”, “Application assembly
+requires...”. This is not a claim that the current source already does so.
+
+The specification may define future language constructs, public APIs,
+intermediate representations, checkers, certificates, runtime adapters,
+recovery mechanisms, and verification guarantees.
+
+An unimplemented capability is /not/ a specification defect. A contradictory,
+undefined, unjustifiably unconditional, unachievable, or improperly evidenced
+claim /is/ a defect and must be corrected.
+
+Do not add repetitive, version-bound sentences such as “the current Gesso
+implementation does not yet support this” throughout the canonical text.
+Put observations about implementation status in separate preservation audits,
+implementation-correspondence notes, issue trackers, or progress reports.
+
+** Future promises and proof claims are different things
+
+The document may /require/ Gesso to establish a theorem or correspondence
+property in the finished system. It must still accurately state the theorem's
+subject, assumptions, trust boundaries, quantifiers, scope, and evidence
+standard.
+
+Distinguish, wherever relevant:
+
+- a specified guarantee of the completed framework;
+- a property of the abstract semantic model;
+- an actually discharged proof obligation;
+- a bounded model-check result;
+- a test or concrete witness;
+- a runtime-enforced condition;
+- a trusted premise or uninspected host-language contract;
+- a property that is unsupported or not yet established.
+
+A future design may prescribe stronger evidence than is currently available.
+But neither the present nor future design may promote one evidence class to
+another without a valid justification. In particular, finite checking does
+not automatically prove an unbounded theorem; shape equality does not prove
+provenance; source acceptance does not prove physical execution; and a passed
+suite does not prove the intended business policy is correct.
+
+** The finished system retains an ambitious developer experience
+
+Application authors express business rules and assemble applications in
+ordinary Clojure and Gesso constructions. They should not be required to write
+TLA+, Quint, Recife, proof DAGs, or manually duplicate information already
+owned by their model, choreography, or views.
+
+Gesso may employ formal-model backends, proof checking, executable reference
+semantics, model-based testing, and runtime evidence internally. Choosing one
+backend is an implementation decision unless the canonical semantics genuinely
+depend on its distinguishing behavior.
+
+The aim is unusually strong /domain-specific/ application checking, not
+omniscient analysis of arbitrary general-purpose computation. Opaque Clojure
+and external effects remain available through declared interfaces whose
+unproved premises, realization boundaries, and enforcement contracts are
+accounted for explicitly.
+
+** Completeness includes the whole application and the whole system
+
+Do not narrow the target to whichever subsystem is presently most mature.
+The complete plan covers, at the appropriate level of rigor:
+
+- domain rules and their independent product-intent acceptance criteria;
+- choreography, knowledge, role projection, and executable transitions;
+- authoritative operations, atomicity, identity, replay, and unknown outcomes;
+- provisional presentation, Live, acquisition, reconciliation, and continuity;
+- browser/server coordination, actual effects, and physical ownership;
+- whole-application assembly, admission, policy closure, and source ownership;
+- HumanHelp as a real production-model proving application;
+- compositional assurance, counterexamples, and coherent proof obligations;
+- correspondence to actual Clojure, XTDB, Biff, HTMX, browser, and other
+  admitted realizations;
+- deployment, release, migration, recovery, and multi-node behavior;
+- a dependency-ordered implementation strategy and defensible completion gates.
+
+Implementation work may be staged or explicitly deferred. An implementation
+estimate that temporarily excludes HumanHelp or multi-node work never removes
+them from the finished-system specification.
+
+* Sources and decision hierarchy
+
+** Distinct roles of R4, R5, R5.1, and current code
+
+| Source | How to use it | What it does not imply |
+|--------+---------------+------------------------|
+| R4 (=main=) | Preservation baseline for normative obligations, counterexamples, examples, and explanations | That the older design is always superior or must be copied verbatim |
+| R5 (=r5=) | Preferred architectural starting point, to be carefully improved | That every R5 example, boundary, or omission is already correct |
+| R5.1 (=r5.1=) | Evolving reviewed candidate and eventual canonical successor | That a completed sectional audit alone establishes whole-plan correctness |
+| Gesso source (=application-assurance= or successor) | Implementation evidence, feasibility lessons, actual semantics, gaps, tests, and adversarial cases | That currently missing implementation forbids a future requirement |
+| HumanHelp and other adopters | Independent product demands, real model ownership, and end-to-end acceptance | That a simplified example or synthetic fixture replaces production evidence |
+
+The specified future behavior has priority over accidental details of current
+code. Conversely, genuine counterexamples uncovered in code, tests, or the
+underlying mathematics may require changing the intended specification.
+
+** Choose the best design, not the union of every sentence
+
+Do not blindly merge R4 and R5. Treat the stronger R5 architecture as the
+starting point, then check whether R4 contributes an essential requirement,
+example, exception, or explanation that R5 lost.
+
+Preserve R5 improvements even when restoring R4 content. Replace obsolete R4
+machinery with an equivalent or stronger requirement when direct restoration
+would contradict the superior design.
+
+If the best resolution differs from /both/ R4 and R5, revise the design and
+record the reason. Earlier decisions may be revisited when later work exposes
+real contradictions or superior alternatives.
+
+This is a substantive design revision, /not/ the strict additive-only R4
+example-enrichment exercise. Deleting, rewriting, reorganizing, or replacing
+inferior material is permitted when it improves the final semantic result.
+
+* What makes a revision worthwhile
+
+Every focused review should ask:
+
+1. Is the intended behavior unambiguous and independently meaningful?
+2. Which component owns each semantic fact or policy, and which components
+   derive or import it? Is anything duplicated as competing authority?
+3. Do the stated inputs, outputs, identities, knowledge paths, permissions,
+   provenance, resources, and failure alternatives actually compose?
+4. Is a guarantee unconditional, or does it depend on authorization, qualified
+   backend behavior, deployment, fairness, a trusted function, or other premises?
+5. Can a hostile actor, stale callback, race, retry, schema change, missing
+   message, unknown commit, or incompatible artifact violate the claim?
+6. Are construction rejection, runtime rejection, uncertainty, and unsupported
+   analysis reported distinctly and truthfully?
+7. Does the section describe the complete intended capability without
+   pretending that currently available implementation evidence is stronger
+   than it is?
+8. Is a useful R4 requirement or worked case missing? If so, where does its
+   semantic obligation belong under the improved architecture?
+9. Is the design actually usable by a Clojure application author without
+   duplicating Gesso-owned declarations or writing proof languages?
+10. What concrete acceptance case would establish that this part of the
+    finished system works, beyond an internally self-consistent example?
+
+Add detail when it prevents an actual misinterpretation, identifies a required
+boundary, provides an instructive counterexample, or establishes a necessary
+acceptance condition. Do not expand merely to make the document longer.
+
+* Small-section revision workflow
+
+** Split at semantic join points
+
+Work on one naturally coherent section at a time. Prefer subsections small
+enough for serious analysis of every claim and example rather than attempting
+a superficial rewrite of a multi-thousand-line part.
+
+Split on existing Org heading boundaries whenever possible; do not split an
+Org block or sever the meaning of a dependency. A typical working section can
+be around 80–160 lines, but coherence matters more than a fixed quota. Larger
+or smaller sections are justified when the underlying concept demands them.
+
+Preserve a lossless reconstruction of the chosen R5 candidate before changing
+its normative text. A source-unit split is itself structural preparation, not
+an assertion that the candidate has passed review.
+
+** One focused revision at a time
+
+The conversational command =next= requests one complete, carefully reviewed
+revision. =nextnext= has the same meaning. An interjected =next= while a
+revision is still underway means continue that same revision to completion,
+not start an overlapping new edit.
+
+One revision should generally:
+
+1. Read the current R5.1 source section and its immediate cross-references.
+2. Read the relevant R4 counterpart, including useful examples that may be
+   located in other parts or under different headings.
+3. Inspect the relevant actual Gesso implementation, contracts, and tests when
+   those would resolve a design question.
+4. Identify improvements, omissions, contradictions, misleading assumptions,
+   open proof obligations, and meaningful negative cases.
+5. Make a focused, full-file revision that preserves the stronger architecture.
+6. Write the corresponding R4 preservation and implementation-context audit.
+7. Rebuild the affected published Org part from the numbered sources.
+8. Validate structural integrity, scope, references, and the committed result.
+9. Commit the bounded change to the working R5.1 branch and report the result.
+
+Spend sufficient attention on the chosen scope; do not sacrifice review depth
+to produce a larger number of superficially completed sections.
+
+** Treat examples as design tests
+
+Use both successful and adversarial examples. Include ordinary developer-facing
+usage, rejected constructions, runtime and transport failures, and clear
+recovery behavior where relevant.
+
+An example of the /future intended API/ is legitimate even before that API
+exists. Mark genuinely schematic notation when doing so prevents confusion
+between illustration, exact proposed interface, and executable implementation.
+Do not delete a useful future API or its guarantees just because there is no
+current Var with that name.
+
+When a proposed interface is meant to be normative, define its intended
+contract precisely enough to implement and test. When exact spelling is an
+unsettled ergonomic choice, preserve the meaning without prematurely freezing
+incidental syntax.
+
+** Record preservation and correspondence separately
+
+Each sectional audit should contain, as applicable:
+
+- the relevant R4 requirements and examples considered;
+- the stronger R5 features retained;
+- normative changes made in R5.1 and why they are improvements;
+- material intentionally superseded rather than silently dropped;
+- what the present implementation and tests actually establish;
+- unresolved implementation, proof, deployment, or application obligations;
+- cross-part issues requiring later reconciliation.
+
+Audits are /working historical records/. They may reference Git commits,
+versions, branch names, missing APIs, test results, and current limitations.
+Such references belong here, not in the timeless normative specification.
+
+Do not invent independent evidence for a guarantee based on a consistency
+check, an illustrative code sample, or agreement between two generated models
+that share the same unchecked assumption.
+
+* Multi-level reconciliation
+
+** Section-level review is necessary but insufficient
+
+A sound section may conflict with another sound section. Treat section audits
+as local progress, not proof that the whole part has accepted semantics.
+
+** Reconcile each complete part
+
+After all numbered sections of a part have been reviewed:
+
+- examine the joins between sections for conflicting identities, obligations,
+  causality, proof assumptions, recovery rules, and term definitions;
+- check that R4's important requirements survive in their best R5.1 form;
+- verify that positive examples and negative tests use consistent contracts;
+- resolve ambiguities, returning to earlier numbered sections as necessary;
+- produce a distinct whole-part acceptance/reconciliation record;
+- run the structural checks on the mechanically published part.
+
+A part may be declared a /reviewed candidate/ with explicit cross-part work
+remaining. That label is not implementation certification or a theorem.
+
+** Reconcile the full twelve-part design
+
+After all part reviews, perform a separate whole-plan examination:
+
+- Verify a single consistent conceptual vocabulary and ownership model.
+- Follow representative complete application paths from business intent
+  through choreography, authority, browser, live acquisition, deployment,
+  and verification.
+- Trace the proof and assumption dependencies across parts without hidden
+  trust upgrades or independent-but-inconsistent duplicate semantics.
+- Check adversarial concurrency, stale ownership, failover, recovery, privacy,
+  and permitted liveness claims against the whole system.
+- Confirm that HumanHelp's product acceptance and the formal assurance goals
+  can both be pursued under the same proposed interfaces.
+- Resolve or explicitly scope every normative contradiction, missing bridge,
+  false claim of impossibility, and incomplete completion criterion.
+- Confirm the implementation roadmap leads to the actual finished-system
+  contract rather than merely the portion already built.
+
+Revisit an earlier accepted part openly when warranted. A previous editorial
+acceptance is not an obstacle to fixing a newly discovered design error.
+
+* Document-integrity and delivery rules
+
+** Canonical structure
+
+The finished design consists of twelve ordered Org parts. Numbered sectional
+source units are an editorial mechanism for reconstructing the published parts,
+not independent competing normative plans.
+
+Maintain one authoritative source for the intended content. An assembled part
+must match its numbered sources byte for byte. Preserve meaningful existing
+=CUSTOM_ID= anchors and cross-part links unless an intentional, checked
+migration replaces them.
+
+Check Org headings, source/example block pairing, link resolution, duplicate
+anchors, complete content, and exact generated assembly after each change.
+Validate examples using appropriate real tooling when an example is claimed to
+be runnable. Schematic examples must not be misrepresented as executable tests.
+
+Run the repository's assembly checker, currently
+=python3 script/assemble_r5.py --check=, or its validated successor when the
+editorial source inventory expands. The checker must not be treated as proof
+of semantic correctness; it checks document construction.
+
+The established filenames retaining =r4= are transitional publication names,
+not a declaration that the R5.1 content has R4 semantics. Rename them only as
+part of a coordinated, checked publication migration.
+
+** Repository and changeset discipline
+
+Keep canonical R4 (=main=) and the original R5 (=r5=) available as comparison
+baselines. Perform R5.1 revisions on the =r5.1= working branch or its explicit
+successor, not by rewriting either baseline branch.
+
+Prefer one focused changeset containing the relevant numbered Org section,
+its preservation audit, and the mechanically reassembled canonical part.
+Include an updated index or cross-part record if the change genuinely needs
+one. Editorial process documents such as /this charter/ are separate from the
+twelve normative parts and do not belong in their assembly.
+
+Write explanatory commit messages. Never claim that a tool, test, proof, or
+branch update succeeded without confirming the resulting state. Deliver
+complete files rather than ambiguous partial patches when full-file workflows
+are expected.
+
+** Handover across conversations
+
+A later conversation should be able to recover the process by reading this
+charter and checking the live repository. Do not rely on the previous model's
+memory or a stale progress count as the source of truth.
+
+A handover needs only:
+
+- this charter and the active branch;
+- the latest committed branch state;
+- the next incomplete source section or pending reconciliation;
+- relevant audit findings and cross-part issues;
+- any actual failed structural check or blocked repository operation.
+
+Do not ask the user to restate this charter's governing principles every time
+work resumes. If the user says =next=, infer the next incomplete revision from
+the repository and established workflow.
+
+* Final acceptance standard for the R5.1 specification
+
+The editorial project is complete only when:
+
+- all twelve parts have been thoroughly reviewed against R4 and the superior
+  R5 architecture, with preservation decisions recorded;
+- every section has received attention proportional to its semantic risk;
+- all whole-part and whole-plan consistency reviews are complete;
+- all necessary target-system interfaces and semantic obligations are
+  specified clearly enough to guide implementation and acceptance;
+- future capabilities and proposed APIs remain specified where worthwhile,
+  independent of how much code already exists;
+- proof claims, trust boundaries, unsupported cases, liveness assumptions,
+  and physical correspondence obligations are precise and non-contradictory;
+- the end-to-end application story, HumanHelp proving requirements, deployment,
+  multi-node design, and completion roadmap are coherent together;
+- no important R4 requirement or explanatory counterexample has been silently
+  lost, and obsolete mechanisms have been deliberately superseded;
+- the assembled Org document and its source fragments pass the defined
+  structural, reference, and publication checks;
+- the final artifact is understandable as a statement of the /finished
+  Gesso/, with implementation-status commentary confined to separate records.
+
+These are /design-document acceptance/ conditions. They do not by themselves
+establish that the finished framework has been implemented or that every
+specified theorem is proved. Those are separate engineering and verification
+completion gates /defined by/ the canonical plan.
+
+* Standing instruction
+
+When revising Gesso's canonical design, assume the following without further
+prompting:
+
+#+begin_quote
+Build the best complete and timeless specification of the finished Gesso.
+Start from the stronger R5 architecture; preserve or improve the genuine R4
+requirements; apply what real implementation work has taught us; and never
+reduce the intended design merely to match what is currently implemented.
+
+Work in small, deeply reviewed semantic units. Check both successful and
+adversarial cases. Keep audit/status evidence separate from normative target
+semantics. Reconcile sections into parts and parts into one coherent system.
+Preserve ambitious but well-defined future guarantees, while qualifying every
+proof, trust, and physical-realization boundary accurately.
+
+One =next= means one carefully completed, validated, committed revision.
+#+end_quote
