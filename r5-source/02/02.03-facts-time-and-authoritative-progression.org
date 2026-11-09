@@ -61,6 +61,18 @@ A basis is scoped to its authority/provider context and relevant database
 incarnation or equivalent identity. Equal raw tokens from different databases,
 tenants where applicable, or reset histories are not automatically comparable.
 
+A provider's **minimum visibility requirement** and the **actual basis of an
+acquired observation** are different: a read may be required to include a
+confirmed effect at or beyond B1 and return an observation from B2. B1 is not
+thereby the exact snapshot used, and B2 does not establish that the Request's
+current value equals its immediate post-commit value. The adapter must expose
+which relation it established—an exact observation coordinate, an admitted
+lower bound, or only a requested minimum—and retain the query/temporal scope.
+A transaction submission, allocated log position, or claimed commit token is
+not by itself evidence that a particular domain command incorporated.
+Part IV owns the concrete commit-to-visibility contract and its backend
+qualification.
+
 An authoritative progression value may advance because unrelated data changed.
 
 Therefore:
@@ -143,12 +155,23 @@ rejection.
 
 *** Progression as provenance
 
-An observed authoritative basis records something approximately like:
+When established by an *admitted authoritative acquisition*, a basis supplies
+provenance evidence approximately of the form:
 
 #+begin_quote
-The representation from which this actor formed its command was justified by an
-authoritative read consistent through this frontier.
+The acquired representation is justified by an authoritative read with the
+stated subject, query/visibility and temporal interpretation at this admitted
+basis or justified lower bound.
 #+end_quote
+
+The actor may subsequently choose that representation for command preparation.
+A browser-carried =:observed-basis= field alone is instead a claim about its
+starting context; it does not establish that the browser actually acquired,
+installed, adopted, or used that representation. A protocol requiring evidence
+of prior observation needs its separately validated issuance/receipt contract
+as described in [[#req-observation-evidence][authoritative observation evidence]].
+The distinction does not prohibit using a client-supplied basis as nonauthorizing
+protocol context for stale-input handling.
 
 It does not mean:
 
@@ -176,8 +199,13 @@ meaning, with any backend assumptions retained.
 
 An explicit comparison distinguishes equivalence, advancement, precedence,
 known incomparability, and unavailable or invalid comparison evidence where the
-contract supports them. Failure to establish an ordering is not proof of
+contract supports them. Equality of opaque bytes is not provider-verified
+equivalence across incompatible authority, incarnation, temporal interpretation,
+or relevant scope. Failure to establish an ordering is not proof of
 incomparability, and incomparable observations need not be individually invalid.
+A comparison does not automatically prove that a read covers a particular
+domain effect or that a selected query was complete; those are additional
+observation and commit-correlation obligations.
 
 Pending acquisition requirements compose as a conjunction of scoped
 obligations. A conservative representation retains an orderless set of distinct
