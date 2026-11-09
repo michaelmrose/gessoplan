@@ -122,7 +122,15 @@ the selected representation version: an unknown opcode, misspelled required
 field, unsupported option, or unresolved contract reference produces a specific
 construction failure. An explicit nonsemantic metadata/extension area may be
 retained, but its contents cannot affect execution or strengthen a claim without
-a declared interpretation. A supported baseline has six node kinds:
+a declared interpretation. The closure guarantee belongs to the *admitted semantic interface* after
+checked elaboration, not to the mere existence of a Clojure map or successful
+low-level structural normalization. A low-level normalizer may retain fields
+it does not interpret. The supported construction profile must distinguish
+meaningful semantic fields from inert, declared metadata and reject unknown
+or misspelled executable fields before claiming a closed contract. Silently
+discarding such a field could weaken an operation without a visible failure.
+
+A supported baseline has six node kinds:
 
 | Global node | Meaning | Required contract |
 |-------------+---------+-------------------|
@@ -204,6 +212,36 @@ output; it does not compute the policy or invent the selector. If the action
 can fail or yield a third alternative, its actual interface and graph must
 expose that path or the admitted outer failure contract must handle it. The
 constructor cannot accept a partial success-only graph as a totality proof.
+
+The displayed map is an illustrative semantic graph, not a verified
+standalone typed program. Its =:review/inputs= entry binding and the
+=:review/path= enum are supplied by external admitted entry/action contracts;
+neither is established merely by the keys in this map. The current portable
+semantic core checks state structure, declared value keys, and branch
+successors; role-local must-analysis can check whether a selector is
+definitely available. Those checks do not by themselves prove that an opaque
+Clojure action always returns one of the two enum alternatives or that its
+implementation respects the intended policy. A checked nominal enum and
+complete cases require a separately admitted type/operation contract and
+correspondence evidence, or an explicit unmatched-value failure. The current
+core rejects nil branch case values: a future profile supporting present nil
+must define that extension rather than confusing nil with absence or false.
+
+*** Vocabulary admission counterexamples
+
+| Apparent input | Required classification |
+|----------------+-------------------------|
+| A local state uses =:output= instead of =:outputs= | Reject an unknown executable field at the checked construction boundary; do not normalize it to an empty output contract |
+| A two-case route action returns =:deferred= | Reject the unmatched selector or use an admitted third case; never silently choose a successor |
+| An =:await= event matches a participant message keyword | Enforce the environment-source boundary; it cannot satisfy projected =:receive= |
+| An open message contains an extra map key | The extension does not automatically become known semantic input or authority |
+| A =:local= action hides a protected write or disclosure | The effect still requires an exposed admitted contract and trusted enforcement |
+| One projected role completes while another still has work | Do not claim that the global outcome occurred or that every role knows it |
+
+These are requirements for selected construction and realization profiles.
+They are not assertions that the current raw graph normalizer, static verifier,
+or browser implementation already proves the whole closed, typed,
+provenance-qualified and physically enforced contract.
 
 The sample spells out input/output sets to show the semantic representation.
 Authoring helpers derive them from inspectable expressions and operation
