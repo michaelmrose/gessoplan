@@ -14,7 +14,12 @@ The business process is continuous in domain meaning, but E1 and E2 need not be
 one persistent protocol execution. E2 must establish its own authenticated
 principal, current model eligibility, required knowledge, and applicable plan.
 The existence of E1's durable result does not carry E1's transient authority or
-resource ownership into E2.
+resource ownership into E2. Its accepted result can establish durable facts
+about the domain and the command that caused them, within the model's
+authorized observation contract. It is not a reusable principal credential,
+an open effect handle, or evidence that the later actor may commit without
+rechecking current business rules. A new protocol execution may nevertheless
+continue the same logical workflow without a suspended E1 machine.
 
 This distinction avoids conflating:
 
@@ -22,6 +27,14 @@ This distinction avoids conflating:
 - protocol execution identity;
 - durable domain identity;
 - workflow/business identity.
+
+An operation's command identity also differs from each physical invocation,
+transport retry, authoritative basis and resource instance used to carry it.
+The assembly must preserve the distinctions relevant to each boundary, even
+when several belong to one domain workflow. A compatible retry can have a new
+transport/request identity while retaining its original semantic command.
+A later deliberate business action has its own command, even when it targets
+the same Expense and uses an equivalent-looking payload.
 
 Where an application truly requires a durable suspended execution, that feature
 must define its own:
@@ -44,12 +57,23 @@ server process. Its three periods of activity have these contracts:
 | Period | Entry knowledge and action | Authoritative obligation | Completion meaning |
 |--------+----------------------------+--------------------------+--------------------|
 | Monday, employee submission | Selected owned Expense and admitted submit intent | Guard current ownership, draft status, and submission policy; record submission and command result atomically | Recorded submission of C1, or explicit rejection/unknown handling |
-| Thursday, manager review | Authorized queue observation, explicit selection, coherent Expense/Policy observation | Guard current manager permission, submitted status, policy relation and selected route; record C2 result with the transition | Recorded manager approval or escalation, not merely an attempted call |
-| Friday, Finance review | Authorized pending-Finance observation and explicit selection | Guard current Finance permission, awaiting-Finance status, and applicable policy; record C3 result with approval | Recorded Finance approval, or explicit rejection/unknown handling |
+| Thursday, manager review | Authorized queue observation, explicit selection, coherent Expense/Policy observation | Guard current manager permission, submitted status, policy relation and selected route; incorporate either manager approval or escalation, with C2 bound to the selected operation | Recorded manager approval *or* recorded awaiting-Finance disposition; rejected and unknown outcomes take their own continuations |
+| Friday, Finance review, if escalated | Authorized pending-Finance observation and explicit selection | Guard current Finance permission, awaiting-Finance status, and applicable policy; record C3 with the Finance decision | Recorded Finance approval, or explicit rejection/unknown handling; no Finance execution is required for the manager-approved branch |
 
 Each row expands to a short choreography with the same explicit model-result
 mapping used earlier. Queue selection is an input event that may cancel or become
-stale. Queue visibility does not authorize bulk approval, and a normal return
+stale. A manager's authorized observation can justify proposing one route, but
+the authoritative model must enforce the selected operation's current manager
+permission, status and policy at incorporation. If the policy, expense status,
+actor or selected route becomes invalid, the operation follows its declared
+rejection or uncertainty semantics; a prior queue read is not a commit-time
+guard.
+
+The manager-approved branch is already a completed business decision for
+this example. The escalation branch makes the Expense eligible for a distinct
+Finance execution later, subject to then-current authorization and state.
+No silent automatic Finance approval or queue-wide action is implied.
+Queue visibility does not authorize bulk approval, and a normal return
 from an invocation is not by itself proof of successful incorporation.
 
 Public model calls expose domain arguments and the bound command identity:
@@ -59,30 +83,61 @@ Public model calls expose domain arguments and the bound command identity:
   trusted-employee-context
   {:expense-id E :command-id C1})
 
-(expense-model/mark-awaiting-finance!
-  trusted-manager-context
-  {:expense-id E :command-id C2})
+;; These are mutually exclusive manager alternatives, not two writes.
+;; The admitted decision chooses one semantic operation before C2 is bound.
+(case admitted-manager-route
+  :approve-as-manager
+  (expense-model/approve-as-manager!
+    trusted-manager-context
+    {:expense-id E :command-id C2})
 
+  :escalate-to-finance
+  (expense-model/mark-awaiting-finance!
+    trusted-manager-context
+    {:expense-id E :command-id C2}))
+
+;; Only an Expense with admitted awaiting-Finance state can enter this route.
 (expense-model/approve-as-finance!
   trusted-finance-context
   {:expense-id E :command-id C3})
 #+end_src
 
-The registered model realization owns its guards, principal interpretation,
-time source, and atomic command protocol. Callers do not pass a mutable list of
+These calls illustrate public operation contracts, not a standalone workflow
+engine or a claim that these exact function Vars already exist. C2 is bound to
+the chosen semantic operation, its canonical arguments, the appropriate
+principal/authority scope and interface version before first submission.
+It cannot be repurposed to try the opposite manager branch after an uncertain
+result; doing so would be incompatible command reuse. The registered model
+realization owns its guards, principal interpretation,
+time source, and atomic command protocol. A policy may be evaluated from a
+coherent authoritative Expense/Policy observation to present the permitted
+choice, but the actual incorporation must protect every mutable dependency
+on which that decision depends. A compatible snapshot, version expectation,
+or atomic predicate/effect design may realize that contract; an unconstrained
+read followed by a stale write may not. The business policy and operation
+meaning are owned by public model interfaces, not duplicated by the UI
+or the projected manager choice. Callers do not pass a mutable list of
 commit guards that can omit ownership or status checks. The trusted context
 comes from the admitted invocation boundary; constructing a map with a familiar
 =:principal= field is not authentication.
 
 If submission time is generated by the server, it follows the operation's time
-contract. A transport retry does not acquire a new semantic command merely
+contract. The model distinguishes a command's effective domain time,
+recording/transaction time, and incidental invocation time where they differ.
+A transport retry does not acquire a new semantic command merely
 because the wall clock advanced. The recorded outcome retains the time actually
 incorporated; compatibility of replay is checked against the intended semantic
 arguments, not a fresh incidental timestamp.
 
-A compatible retry checks command binding and current disclosure permission
-before returning the recorded outcome. It does not require Monday's Expense
-to remain a draft on Thursday. A new command requires the current guards.
+A compatible retry checks command binding, retained-result applicability and
+current disclosure permission before returning the recorded outcome. It does
+not require Monday's Expense to remain a draft on Thursday. The historical
+recorded result does not assert that the Expense is *currently* submitted or
+that an earlier actor's authorization remains current. A new command requires
+the current guards. If command evidence was pruned, restored from another
+authority incarnation, or migrated incompatibly, the operation applies its
+declared retention, identity and unavailable-result policy rather than
+guessing non-incorporation.
 Competing attempts of one command are interpreted against authoritative outcome
 evidence; one failed attempt does not by itself reject the whole command.
 
@@ -91,7 +146,11 @@ and binding to reconcile later. Retiring E1's UI or process is allowed only unde
 the declared resolution or handoff contract; it must not erase the unresolved
 obligation or create a new command to retry the same intent accidentally.
 Current Expense state may have advanced beyond submission and is not by itself
-an answer to whether C1 was incorporated.
+an answer to whether C1 was incorporated. A pending reconciliation obligation
+belongs to an admitted durable owner or recoverable reference after local
+retirement; the UI's disappearance is not command resolution. A later
+compatible retry or authorized command-result lookup must preserve the
+original intent's operation and canonical argument binding.
 
 An illustrative history and identity view is:
 
@@ -120,18 +179,49 @@ An illustrative history and identity view is:
 #+end_src
 
 This is a permitted inspection history, not a requirement to store one growing
-vector or a universal event DAG. The model's actual persistence, retention,
-correction, and command-evidence contracts determine what can be reconstructed.
-Effective and recording time remain distinct as in Part II.
+vector or a universal event DAG. It shows the *escalation branch* of manager
+review; a manager-approved branch records its own approved outcome for C2
+instead of inventing a Thursday escalation or a Friday Finance command.
+The model's actual persistence, retention, correction, and command-evidence
+contracts determine what can be reconstructed. Effective and recording time
+remain distinct as in Part II. A current =:approved= status alone is not
+evidence of which actor or command caused it; history and causal claims require
+the relevant admitted retained records, not inference from status equality.
 
 The business process is continuous because the authoritative Expense model
-retains its meaning. E1, E2, and E3 separately establish their current principal,
-knowledge, permissions, resources, and admitted plan. Historical workflow
-continuity does not transfer a retired execution's capability or resource rights.
+retains its meaning. The displayed escalation-history E1, E2 and E3 separately
+establish their current principal, knowledge, permissions, resources, and
+admitted plan. The business may be resumed under a newer compatible plan
+without pretending that a paused E1 artifact survived unchanged. A new plan
+can change permitted UI affordances or current policy under its declared
+migration/compatibility contracts; it cannot retroactively rewrite C1's
+recorded historical outcome. Historical workflow continuity does not transfer
+a retired execution's capability or resource rights.
 
 A durable workflow facility is an additional opt-in contract if an application
 needs persisted continuations. It must state checkpoint atomicity relative to
 effects, ownership or fencing, replay and deduplication, effect uncertainty,
 schema/plan migration, recovery discovery, and resource reconstruction. Serializing
 an in-memory machine map is not enough to establish those properties.
+
+*** Later-execution and command-history acceptance counterexamples
+
+| Apparent shortcut | Required admission or evidence |
+|-------------------+--------------------------------|
+| A manager opens a pending queue on Thursday and bulk-approves all displayed Expenses | Require declared per-selection intent and current authoritative operation guards; queue visibility is not commit authority |
+| A manager selects =:approve-as-manager= but the runtime invokes =:mark-awaiting-finance= using the same C2 | Reject operation/binding mismatch; C2's immutable semantic intent includes the chosen operation |
+| A manager's policy read once said Finance was unnecessary, but Expense or Policy changes before commit | Enforce the actual current policy/Expense relation at incorporation or reject under the declared guard |
+| The manager-approved Expense is later sent automatically to Finance because the global workflow describes a Friday period | Do not invent E3; Finance applies only to a properly recorded awaiting-Finance branch |
+| Friday's Finance actor reuses Thursday's principal, plan capability or callback owner | Require fresh E3 identity, knowledge and permission; E2's runtime rights have retired |
+| A compatible C1 retry arrives after Thursday's manager decision and fails because Expense is no longer draft | Resolve C1 using its retained compatible command record; replay does not require original new-incorporation guards |
+| An unauthorized caller guesses C1 and demands its stored result | Enforce current disclosure policy; possession of a command id is not permission to learn its outcome |
+| C1 had an unknown outcome; an abandoned Monday browser issues C1-new to repeat the intent | Retain original command reconciliation and stable identity; a new id does not resolve uncertainty |
+| A server retry recalculates a later timestamp and changes the recorded submission outcome | Return the originally incorporated time under the command's time contract; transport retry is not a new event |
+| The current Expense status is =:approved= and a report claims that this proves C2 took the manager-approved branch | Require correlated historical result evidence; Finance C3 may instead have caused approval |
+| A deployment installs plan A14 and claims it retroactively changes the meaning of C1 recorded under A12 | Preserve historical command/contract identity and qualify new runtime plan compatibility separately |
+| Two concurrent C2 attempts select conflicting manager operations for one command id | Reject incompatible reuse or return the single authoritative compatible result; never incorporate two different operations under one bound intent |
+
+These are finished-system acceptance conditions. They do not require one
+universal event log representation, an always-resident workflow machine,
+a particular database engine, or these illustrative operation function names.
 
