@@ -1150,6 +1150,24 @@ dependent validity merely because the name stayed the same. Conversely, a
 transport refactor need not change the semantic contract if its checked
 realization and compatibility obligations remain satisfied.
 
+These identities have different continuity rules. The semantic operation name
+identifies the intended capability; the source-owned contract and its applicable
+version/fingerprint bind the dependencies on which a particular use relies.
+A =CommandId= denotes one bound intention across compatible retries, whereas
+an =ExecutionId= denotes one execution attempt, and a role, principal, actor,
+authority, and host each answer different questions. An executable-plan digest
+identifies exact artifact content, not the model rule it invokes or the
+deployment that actually installed it. The compatibility checker must compare
+the relevant *source contract, admitted realization and required continuation*,
+not merely equality of any one of these names or hashes.
+
+A fingerprint or digest can support exact content comparison only within its
+specified canonicalization and source-binding contract. It does not establish
+semantic correctness, issuer authenticity, model authorization, or physical
+deployment adoption by itself. Keeping a command identifier stable while
+changing its principal, operation, arguments, authority scope or incompatible
+contract is not a compatible replay just because the raw identifier matches.
+
 *** Semantic categories at operation boundaries
 
 Operation APIs must preserve distinctions whose accidental substitution would
@@ -1211,6 +1229,36 @@ it was serialized and reconstructed.  Crossing an adversarial wire boundary
 returns the value to an untrusted representation until the relevant verifier,
 authenticator, decoder, or trusted acquisition path re-establishes the stronger
 semantic category.
+
+Category establishment is scoped to the evidence issuer, subject, operation,
+time/context, and consumer boundary that rely on it. For example, a cooperating
+JVM may hold a checker-issued, identity-bound structural admission handle; a
+copied description or a deserialized lookalike is neither that live handle nor
+proof of a theorem. Even the live structural handle attests only its named
+structural check, not production authorization. Likewise, a shape-valid tagged
+principal returned from an untrusted wire must be authenticated again, and an
+apparently valid authoritative progression witness requires the trusted
+authority's actual ordering judgment. API ergonomics should hide this work
+from ordinary application authors where Gesso can perform it automatically,
+without turning a raw or stale value into a trusted one.
+
+*** Identity and admission counterexamples
+
+| Apparent correspondence | Required treatment |
+|-------------------------+--------------------|
+| Two calls use the same =:request/claim= keyword after the model policy changed | Compare the relied-upon semantic contract and compatibility obligations; a name alone is insufficient |
+| A retry keeps its =CommandId= but changes arguments or the bound principal | Reject incompatible binding; the identifier does not grant permission to incorporate again |
+| An =ExecutionId= matches a command's raw UUID, or a host has the same name as an authority | Keep the categories distinct; neither coincidence changes semantic identity or authority |
+| A browser sends a tagged =Principal= or an =AuthoritativeBasis= looking map | Validate shape separately from trusted authentication or scoped observation acquisition |
+| A serialized copy of a structural checker handle or report carries the expected fingerprint | Do not grant live admission, theorem truth, certificate status, or application permission |
+| Two executable plans share an admitted content digest but one host runs an unverified handler | Exact artifact content is not installed handler/physical execution correspondence |
+| A once-qualified resource or basis witness is reused for another owner, scope, or authority incarnation | Require requalification under the receiving boundary; stale category evidence does not transfer rights |
+
+These cases distinguish structural mismatch, incompatible contract, missing
+trusted origin, stale scope, and unproved physical implementation. The end-state
+authoring API should report the missing establishment step and owning boundary,
+not force developers to fabricate wrapper values or allow an untrusted label
+to satisfy the requirement.
 
 This is primarily an accidental-misuse boundary inside cooperating application
 code.  It does not claim that deliberately hostile trusted host code is unable
