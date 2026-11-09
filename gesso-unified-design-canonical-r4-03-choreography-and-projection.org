@@ -1004,6 +1004,28 @@ The type declaration supplies external semantic commitments that cannot or
 should not be inferred, while analysis derives as much as possible from the
 actual choreography.
 
+An admitted operation type therefore joins several different judgments,
+rather than representing one large schema:
+
+- *value and presence*: input/output shapes, required versus optional
+  values, and the distinction between absence, nil, and a present false;
+- *knowledge and provenance*: which role can justify using each fact at
+  entry and at each use, not merely which keys appear in the global store;
+- *authority and resources*: the bound principal and public model-operation
+  interface, plus the resource and ownership permissions needed for effects;
+- *control and settlement*: permitted semantic results, role-local
+  continuations, and required recovery when an outcome remains uncertain;
+- *compatibility*: which source contract, projection, artifact, and version
+  conditions allow an already-started execution to continue.
+
+The choreography body supplies derivable branches and value flow. The public
+model operation owns its dynamic guard and authoritative effects. An external
+operation type may import the model's exposed contract, but may not fabricate
+proof of source Clojure predicates, transaction-current enforcement, or
+deployed handler correspondence from a matching operation keyword. A checked
+judgment identifies the exact supported language and which obligations were
+proved, runtime-enforced, asserted, or remain open.
+
 For example, the declaration may state:
 
 #+begin_src clojure
@@ -1039,7 +1061,11 @@ optimistic realization. It does not grant claim authority to whoever sends a
 matching role label. Trusted server admission must establish the concrete
 principal, subject, and operation premises. The helper's input knowledge of an
 =ObservedBasisClaim= is knowledge of the claimed token, not evidence that the
-helper acquired the observation it names.
+helper acquired the observation it names. A schema check on that token can
+establish its shape, not its issuer, observation coverage, progression, or
+permission to use it as a trusted basis. If a later boundary needs an acquired
+=:request/card= observation for optimism, a browser-submitted token alone
+cannot satisfy that acquisition premise.
 
 The names =ObservedBasisClaim= and =AuthoritativeBasis= are conceptual semantic
 categories.  They do not require two unrelated physical token formats, nor do
@@ -1052,7 +1078,29 @@ XTDB-specific representation belongs in the XTDB/Live consistency adapter rather
 than being permanently baked into the generic Choreo type vocabulary.
 
 The verifier derives knowledge changes, branch requirements, and continuation
-structure from the choreography body.
+structure from the choreography body. Where a claim depends on an external
+model guard, opaque derivation, registered runtime producer, or physical
+effect, the checker must retain the corresponding obligation rather than
+inventing a derivation from control-flow structure.
+
+*** Operation type admission counterexamples
+
+| Apparent well-typed input | Required classification |
+|---------------------------+-------------------------|
+| The browser supplies a valid UUID-shaped principal or command identifier | Shape is not authenticated principal or admitted stable command binding |
+| The browser supplies a well-formed observed-basis token | An input claim is not a qualified authoritative observation or fresh progression witness |
+| A role branches on a declared fact available only on another role's path | Reject unsupported role-local use, even if the global value schema accepts the fact |
+| A projected outcome is =:accepted= while authoritative incorporation remains =:commit-unknown= | Preserve the unknown command-specific continuation; presentation cannot manufacture commit evidence |
+| A valid operation schema refers to an absent resource or retired DOM owner | A type-shape check does not authorize physical actuation or restore resource rights |
+| A suspended execution resumes against a changed contract with the same operation keyword | Require admitted contract/artifact/version compatibility; same name does not validate continuation |
+| A typed model operation declares a business invariant but its executable guard is opaque or uninspected | Retain an implementation/policy premise; static schema typing does not prove current model correctness |
+
+A report should identify the failing boundary or open premise: malformed
+value, missing role knowledge, unauthenticated provenance, unauthorized
+operation, unsupported continuation, or unqualified physical realization.
+These categories must not collapse into one successful "typed" verdict.
+Finite projection or typed-rule checks may discharge their named properties
+without being promoted into an end-to-end physical certification.
 
 The exact Clojure syntax remains tentative. These semantics are the intended
 contract.
