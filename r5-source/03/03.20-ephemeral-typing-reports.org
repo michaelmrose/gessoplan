@@ -4,7 +4,9 @@ A typing indicator has a different meaning. It reports that an admitted editor
 channel recently sent a typing intention; it does not prove that a human is
 physically typing and need not have a durable database fact to reread.
 
-The wire payload carries intent, not sender identity:
+The wire payload carries intent, not sender identity. An untrusted client
+cannot select the admitted actor, authenticated principal, source instance,
+recipient, or ordering epoch by adding fields to this payload:
 
 #+begin_src clojure
 (def TypingPayload
@@ -31,7 +33,10 @@ The wire payload carries intent, not sender identity:
              :expires-after-receipt-ms 3000}})
 #+end_src
 
-The trusted boundary uses the registered channel and current document policy:
+The trusted boundary uses the registered channel and current document policy.
+The following functions are contract sketches: the complete implementation
+may elaborate them from admitted declarations, without requiring applications
+to write a second, unchecked authentication or schema language:
 
 #+begin_src clojure
 (defn admit-typing-message!
@@ -58,15 +63,33 @@ binding; the payload supplies none of those. The model permission result binds
 that principal and document under the declared authorization timing policy.
 Issuance checks their correspondence and constructs the receiver envelope.
 Recipient routing separately checks each subscription's permission to receive
-this document's indicators. Later revocation follows the explicit subscription
-policy; initial registration is not an indefinite disclosure grant.
+this document's indicators. Source admission and recipient admission are
+distinct: a legitimate editor report is not automatically authorized for
+every peer, document view, or account context. Later revocation follows the
+explicit subscription policy; initial registration is not an indefinite
+disclosure grant. The admitted receiver envelope binds the registered
+sender/actor, document, source instance and applicable ordering evidence.
+These fields are issued or verified by the trusted boundary, not accepted
+as additional assertions from the adversarial wire payload.
 
 The issuer assigns a sequence within the admitted actor-stream instance, or
-uses another admitted ordering mechanism with the same contract. The receiver
-compares sequences only within that instance. Reconnection requires an admitted
-new source binding; a random larger number or unfamiliar epoch cannot replace
-the source merely by arriving. This provides receiver ordering of reports, not
-a proof of when the sender actually typed.
+uses another admitted ordering mechanism with the same contract. The
+sequence is part of the trusted report envelope, not a client-chosen field in
+=TypingPayload=. For the sequence-based realization, the issuer supplies a
+strictly advancing value for accepted reports in one registered stream; the
+receiver compares it only against that stream's admitted high-water mark.
+Delivery remains best-effort and may be reordered; the sequence rule means
+older accepted reports cannot reverse newer display state, not that every
+issued report will be delivered.
+
+Reconnection requires an admitted new source binding and a declared retirement
+or succession rule. Neither a random larger sequence nor an unfamiliar epoch
+may replace the current source merely by arriving. An old stream's delayed
+=:typing? false= or =true= must not change the replacement indicator. Different
+source instances have no implied numeric ordering, even for the same actor;
+their precedence comes from the source/owner admission contract. This
+provides ordering of admitted reports, not proof of when the sender actually
+typed.
 
 The peer maintains one indicator owner for the document, admitted actor, local
 principal context, and source instance. The following table is its semantic
@@ -83,16 +106,31 @@ transition contract:
 
 The sequence high-water mark remains while that registered stream can deliver
 messages, including after a stop or expiry. Otherwise a delayed duplicate could
-resurrect an indicator. Bounds and cleanup follow stream retirement; identities
-from unrelated streams are not numerically ordered.
+resurrect an indicator. A =typing? false= report changes presentation, not the
+fact that a higher-sequence report was accepted. Timer expiry likewise does
+not reset report ordering. Safe reclamation of a stream's ordering state
+requires its admitted retirement/fencing contract to exclude future delivery
+into the retired owner; mere invisibility or elapsed display expiry is not
+such a fence. Bounds and cleanup follow that lifecycle, and identities from
+unrelated streams are not numerically ordered.
 
 The timer uses a local elapsed-time contract. The display claim is three
-seconds after the last accepted report, not three seconds after an unverifiable
-human action. A delayed first delivery can still show a recent-receipt report;
+seconds after the last accepted =typing? true= report, not three seconds after
+an unverifiable human action. The admitted receipt determines the local expiry
+deadline; a =typing? false= report retires the timer rather than scheduling a
+new display deadline. Newer admitted =true= reports replace both the deadline
+and its owning timer instance. A timer callback must pass current owner,
+instance and deadline admission before requesting the hide effect; checking a
+callback's timer id alone is insufficient if its target or subscription was
+replaced. A delayed first delivery can still show a recent-receipt report;
 if the product instead requires bounded age from issuance, it needs additional
 age and clock/delivery premises. A suspended browser rechecks expiry when it
 resumes rather than treating a late timer callback as evidence of continued
-typing. Timer scheduling alone is not a hard wall-clock guarantee.
+typing. Timer scheduling alone is not a hard wall-clock guarantee. If the
+physical shell cannot run at the intended deadline, its eventual completion
+must still be admitted under the current semantic state. Physical timer and
+DOM effects run only from accepted transitions, not inside retriable pure
+state updates or direct callback mutations of projected machine state.
 
 Envelope consumers bind =:document/id= and =:actor/id= to distinct local names,
 such as =document-id= and =actor-id=. Their UUID-shaped representations must not
@@ -113,4 +151,25 @@ durable replay. That differs from required acquisition of durable Request state:
 Projection preserves the selected knowledge and recovery path. It must neither
 replace genuinely ephemeral semantics with a later database query nor require
 direct peer delivery where a declared authoritative rendezvous is sufficient.
+It also must not turn a best-effort presence hint into a guaranteed delivery,
+proof of ongoing human activity, or an authoritative statement of editor
+membership. An indicator is a scoped presentation of an admitted recent report.
+
+*** Ephemeral-report acceptance counterexamples
+
+| Apparent shortcut | Required admission or result |
+|-------------------+------------------------------|
+| A sender adds =:actor/id= and =:principal/id= to the client payload | Reject undeclared fields and derive sender identity from the registered channel, not client bytes |
+| A valid document-scoped typing report is sent to a peer whose document access was revoked | Enforce the recipient subscription's current disclosure policy; legitimate source admission is not universal recipient authorization |
+| A delayed =true= sequence 8 arrives after admitted =false= sequence 9 from the same stream | Ignore the older report without restarting display or expiry |
+| An old stream sends sequence 9999 after reconnection established a new admitted source | Reject the retired source; unrelated stream counters do not establish precedence |
+| A =false= report hides the indicator and its sequence high-water mark is cleared | Retain replay protection while that source can still deliver; delayed earlier =true= must not revive it |
+| An expiry timer from the previous =true= report fires after a newer report replaced its resource instance | Reject the retired callback; it must not hide the replacement indicator |
+| The browser suspends beyond expiry, then handles a delayed callback as proof of fresh typing | Check the local deadline and current owner; no callback establishes continuing human activity |
+| A timer callback updates DOM directly from captured, obsolete document/account state | Require an admitted current-owner transition and physical effect; no direct bypass of semantic ownership |
+| A report is lost and a later Request-like database reread is treated as a replay of that typing intention | Preserve permissible ephemeral loss and expiry; an unrelated current read cannot reconstruct the missing occurrence |
+| A typing report passes the shape validator and is treated as proof that a human is actively typing | Retain only the declared recent admitted intention meaning and its local expiry contract |
+
+These are finished-system acceptance obligations, not claims that any
+particular backend or browser timer already realizes them.
 
