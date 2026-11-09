@@ -470,6 +470,15 @@ Conversely, independently executing local machines do not become semantically
 independent programs.  Their combined traces remain constrained by the global
 description.
 
+The executable global semantics may still run as a reference oracle in a
+checker, simulator, or deterministic test harness. Such a harness may schedule
+several projected roles and compare a supplied execution with the global
+machine. This is not a second production coordinator, nor is one successful
+witness a proof that every admitted distributed schedule refines the global
+specification. Actual production participants must obtain their needed local
+knowledge and satisfy their own message, owner, environment, and authoritative
+operation contracts without consulting a hidden global control state.
+
 
 #+LATEX: \newpage
 
@@ -510,6 +519,18 @@ The authority may be realized through different physical resources at different
 times.  A retry may reach another host.  A fragment may be replaced by a new DOM
 node.  A browser may reconnect.  None of these physical substitutions creates
 a new semantic authority or silently changes the meaning of the operation.
+Neither does their mere occurrence establish that continuation is safe:
+admission must preserve or re-establish the relevant command binding, qualified
+authority/incarnation and basis, role/principal rights, execution or physical
+resource ownership, and permitted artifact/projection correspondence.
+
+A host restart or changed transport attempt cannot manufacture command
+nonincorporation or authorize retry after an unknown outcome. A new DOM
+resource cannot inherit the old resource's pending effect permissions merely
+because its logical target name is equal. A database with the same authority
+label but a different unqualified incarnation cannot be treated as the same
+authoritative history. The exact checks are owner- and operation-relative,
+not a demand to attach every identity to every semantic event.
 
 This end-state design therefore requires every layer that crosses a
 replaceable physical boundary to preserve the logical identities needed by the
@@ -523,6 +544,20 @@ and more durable one:
 A host may realize a role or authority for an execution, but physical hosting
 does not create semantic authority.
 #+end_quote
+
+*** Physical realization correspondence cases
+
+| Proposed realization | Required evidence or prohibited inference |
+|----------------------+--------------------------------------------|
+| A deterministic test harness advances all roles together | Useful bounded witness; it does not require a production lockstep coordinator or prove all schedules |
+| A command is retried through a different HTTP host after a lost response | Preserve command identity and unresolved incorporation; host replacement does not authorize a duplicate write |
+| An HTMX target is replaced before a delayed effect completes | The retired resource loses actuation rights; matching logical target IDs alone do not admit the stale effect |
+| A replacement authority reports the same semantic name with different database lineage | Re-establish qualified authority continuity and admissible observations before relying on the old history |
+| A projected executable plan is repackaged or deployed elsewhere | Check the admitted artifact/assembly compatibility, principal context and actual execution correspondence; equal plan labels do not suffice |
+
+These cases are realization and assurance obligations, not claims that
+physical transport and browser effects have already been proved equivalent to
+the abstract Choreo machine in current Gesso.
 
 #+LATEX: \newpage
 
