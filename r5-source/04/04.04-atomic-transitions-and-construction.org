@@ -1,0 +1,107 @@
+** Atomic authoritative transitions
+:PROPERTIES:
+:CUSTOM_ID: req-atomic-authoritative-transition
+:END:
+
+An authoritative transition establishes the invariant-bearing effects of one
+semantic command at a declared atomic boundary. Preparation may be extensive:
+queries, calculations, validation, composition of model constraints, and
+construction of proposed writes can occur before that boundary. They do not
+become authoritative merely because preparation succeeded.
+
+If preparation itself reserves stock, creates a lease, or persists an intent,
+that change is a separate authoritative transition with its own valid state and
+recovery obligations. It must not be hidden inside something described as a
+pure pre-read.
+
+For each transition, the contract identifies:
+
+1. the authority and semantic state being changed;
+2. the operation, command, canonical arguments, and trusted principal binding;
+3. the conditions that must hold at incorporation;
+4. the permitted state change and what must remain unchanged;
+5. the command-result and durable-work effects included in the same boundary;
+6. the backend mechanism protecting these commitments;
+7. the evidence that distinguishes incorporation, rejection, and uncertainty.
+
+The required protection concerns semantic dependencies, not automatically every
+field read during preparation. An unused display name need not become a commit
+guard. Conversely, absence, uniqueness, aggregate limits, and relationships may
+be semantic dependencies even when no existing document contains the fact to
+guard. Protecting only returned rows cannot establish that no matching row was
+inserted concurrently.
+
+Atomic writes alone are insufficient. A backend can atomically apply writes
+derived from stale or incompatible facts. The qualification must establish that
+the required conditions hold at the operation's declared incorporation point,
+using an appropriate transaction isolation, conditional mutation, transaction
+function, constraint, or equivalent qualified mechanism.
+
+*** Semantic rules become implementation obligations
+:PROPERTIES:
+:CUSTOM_ID: req-authoritative-semantic-obligations
+:END:
+
+Every rule used to justify admission or a safety claim must have an explicit
+path to its authoritative realization. The path identifies the semantic
+predicate, bound values, mutable dependencies, protection mechanism, and
+evidence status. It also identifies the frame: effects outside the declared
+change are forbidden unless separately specified.
+
+For Claim, the obligation set is:
+
+| Semantic obligation | Binding or protection required |
+|---------------------+--------------------------------|
+| The requested Request is the acquired target. | Equality between the command's Request ID and the acquired authoritative identity, in the correct authority scope. |
+| The Request is open and unclaimed. | Both conditions protected at incorporation; open status alone is insufficient. |
+| Membership belongs to this helper and Organization. | Principal, Membership, Request, and Organization associations protected together. |
+| Membership is active. | Current eligibility protected at incorporation under the policy's temporal meaning. |
+| Organization permits the claim. | The relevant policy and any inputs it depends on protected at incorporation. |
+| Assignment is the permitted change. | The helper comes from the trusted principal binding; other Request fields obey the frame. |
+| The command is not incorporated twice. | Atomic command-binding compatibility and uniqueness within the declared command namespace. |
+| Success can be recovered and propagated. | Command result and required durable publication intent share the transition's atomic boundary. |
+
+Evidence may establish some of these obligations by construction, others by a
+checked derivation, others by runtime checks, and others only under accepted
+backend or opaque-code premises. The report must preserve those classifications.
+The word /checked/ must identify what was checked; it must not silently include
+all unexamined behavior beneath that check.
+
+*** Canonical construction and physical submission
+
+The default managed path derives a transition from the admitted operation's
+canonical semantics and bound inputs. It does not ask application code to
+independently maintain three descriptions of the same effect: a business rule,
+a reassuring guard map, and an unconstrained transaction vector.
+
+The derived or checked construction binds at least:
+
+- the operation/interface and semantic-definition identities;
+- the exact admitted implementation and relevant adapter/profile identities;
+- typed argument, principal, authority, and target bindings;
+- acquired input provenance and any required acquisition capabilities;
+- protected predicates, permitted writes, and frame obligations;
+- command-result and durable-work effects;
+- the invocation and physical submission to which resulting evidence belongs.
+
+The execution gate must account for the complete submitted transaction, not just
+a selected domain fragment. Command ledger writes, outbox entries, creates,
+updates, deletes, transaction options, and any effective backend-side hooks must
+be included in the checked effect boundary or covered by an explicit accepted
+premise. An extra write or a weakened guard cannot be ignored because the
+original domain fragment still matches a certificate.
+
+An inspection report is not the executable capability. The runtime must prevent
+ordinary callers from substituting a new transaction, changing a target,
+replacing the executor, or attaching a report from an unrelated successful call.
+The result must be linked to the actual issued invocation, submitted material,
+and qualified backend return path. Structural equality with expected output is
+not evidence of that provenance.
+
+Different construction mechanisms can support different subsets. A proof for
+one scalar document update does not cover nested values, nullable fields,
+inserts, deletes, multi-document transitions, or arbitrary transaction programs
+unless its proposition says so. Those operations remain available through
+broader checked mechanisms or explicitly asserted contracts. They must not be
+quietly forced into the narrow proof's vocabulary.
+

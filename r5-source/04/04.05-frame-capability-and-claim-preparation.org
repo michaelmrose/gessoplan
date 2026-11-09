@@ -1,0 +1,121 @@
+*** Representation and frame fidelity
+
+The mapping between semantic fields and physical storage must be explicit and
+checked for the supported representation. Distinct semantic fields must not
+silently collide on one physical field. Required fields, system metadata, nested
+paths, deletion, and field ownership need declared treatment.
+
+Presence matters. A missing field, a field with =nil=, a field with =false=, and
+an empty collection are not interchangeable unless the model explicitly makes
+them equivalent. A proof that depends on a complete acquired entity cannot use
+a partial projection whose missing =:request/helper= is interpreted as unclaimed.
+
+Whole-document replacement must preserve the declared frame despite concurrent
+changes. Comparing a selected subset of fields and then replacing an entire
+stale document can overwrite unrelated updates. Valid solutions include a
+qualified full-state guard, an appropriately maintained revision guard, or a
+backend update whose semantics preserve untouched fields. The chosen solution
+must actually support the claimed frame.
+
+A revision field is sufficient only under a premise that every relevant writer
+maintains it and that its comparison has the required semantics. An equal
+before/after value does not prove that no intermediate change occurred. History
+or non-repetition properties require stronger evidence than a state predicate;
+ordinary state invariants do not universally require an ABA-prevention mechanism.
+
+*** Capability lifetime and command lifetime
+
+Execution capabilities are scoped to the admitted runtime and operation. Their
+contract states whether they may be used once, reused, transferred to an
+asynchronous worker, or retained beyond a request. One-shot consumption must be
+atomic with respect to competing local users of that capability.
+
+A one-shot capability prevents reuse of that capability instance. It does not
+prevent another request from obtaining a different capability for the same
+semantic command. Durable command deduplication still belongs to the command
+protocol. Similarly, a thread ID, request path, or callback identity does not
+replace the semantic command binding.
+
+Retiring a request-local capability prevents future use according to its
+contract; it does not roll back an already submitted transaction. Transferring
+work to a durable worker requires an admitted transfer and a new appropriate
+capability, not accidental retention of a web request's ambient authority.
+
+*** A complete Claim preparation example
+
+The following pure function illustrates candidate computation. It assumes that
+all four model values have already passed their public schemas and that Request
+includes a present, explicitly nullable helper field. The function neither
+commits nor establishes replay disposition.
+
+#+begin_src clojure
+(defn claim-candidate-decision
+  [command principal request membership organization]
+  (cond
+    (not= (:request-id command) (:request/id request))
+    {:candidate/status :invalid :reason :target-mismatch}
+
+    (not= :open (:request/status request))
+    {:candidate/status :ineligible :reason :request-not-open}
+
+    (some? (:request/helper request))
+    {:candidate/status :ineligible :reason :already-claimed}
+
+    (not= (:principal/id principal) (:membership/user membership))
+    {:candidate/status :ineligible :reason :membership-principal-mismatch}
+
+    (not= (:request/organization request)
+          (:membership/organization membership)
+          (:organization/id organization))
+    {:candidate/status :ineligible :reason :organization-mismatch}
+
+    (not= :active (:membership/status membership))
+    {:candidate/status :ineligible :reason :inactive-membership}
+
+    (not (true? (:organization/claims-enabled? organization)))
+    {:candidate/status :ineligible :reason :claims-disabled}
+
+    :else
+    {:candidate/status :eligible
+     :request-id (:request/id request)
+     :helper-id (:principal/id principal)}))
+#+end_src
+
+This simplified policy is illustrative; a richer Organization predicate has its
+own declared dependencies. Trusted authentication establishes who the principal
+is. It does not by itself establish current Membership or permission.
+
+The managed operation binds this candidate to canonical transition construction.
+The authoritative realization protects the target, eligibility, associations,
+and frame together with the ownership change, command record, and required
+publication intent. A caller never gains authority by returning
+={:candidate/status :eligible}=.
+
+A candidate rejection from a pre-read is not automatically the final command
+outcome. A concurrent attempt might already have incorporated the same command.
+The command protocol below resolves that case before it reports authoritative
+rejection. Conversely, a positive candidate must be revalidated or protected at
+incorporation; it cannot survive arbitrary Membership or policy changes merely
+because preparation succeeded.
+
+| Interleaving | Required result |
+|--------------+-----------------|
+| Membership is deactivated after preparation, before incorporation. | The new Claim cannot incorporate under the old eligibility unless the declared policy expressly permits that temporal meaning. |
+| Request moves to another Organization before incorporation. | The stale association cannot justify the assignment. |
+| Another helper claims first. | At most the operation allowed by the protected current state incorporates. |
+| The same command already succeeded but its response was lost. | A compatible authorized repetition can recover the recorded success even though the Request is now claimed. |
+| This physical attempt aborts while another attempt for the same command commits. | The command is incorporated; this attempt's abort is not command rejection. |
+
+*** API boundaries do not force transaction boundaries
+
+Models may expose composable constraints and effect constructors through public
+interfaces, allowing one coordinator to establish a cross-model invariant in a
+single atomic transition. Combining those components must check shared target
+bindings, incompatible writes, frame overlap, and the conjunction of their
+requirements. Concatenating independently prepared write lists is insufficient.
+
+If the participating authorities cannot share the required atomic boundary, the
+design must name valid intermediate states and a recovery protocol. A sequence
+of individually atomic calls is not an atomic cross-model operation merely
+because it appears in one FX vector or choreography step.
+

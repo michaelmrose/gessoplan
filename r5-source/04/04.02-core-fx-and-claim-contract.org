@@ -1,0 +1,87 @@
+** Core, FX, and choreography
+
+FX realizes the authoritative commitments of a public model operation. It may
+acquire data, compute candidates, construct a protected transition, invoke a
+backend, and translate evidence into a typed outcome. It must not invent a
+second business semantics or a second distributed truth model.
+
+One semantic operation can span a public =core= function, domain predicates, a
+registered transition constructor, an FX pipeline, and a backend adapter. Those
+are implementation components of the operation, not automatically separate
+commands. Their contracts must agree on inputs, authority, permitted effects,
+and outcomes.
+
+Choreography adds coordination obligations: which role calls the operation,
+which participants learn its outcome, what they may provisionally display, and
+how they recover when delivery is uncertain. Those obligations do not authorize
+Choreo to manufacture model outcomes or bypass current model guards.
+
+*** A concrete public Claim contract
+
+For this example, Claim assigns an unclaimed open Request to the authenticated
+helper. The helper must have active Membership in the Request's Organization,
+and current Organization policy must permit the claim. Successful incorporation
+also records the command result and any required durable publication intent.
+
+The public value schema is small:
+
+#+begin_src clojure
+(def ClaimCommand
+  [:map {:closed true}
+   [:request-id uuid?]
+   [:command-id uuid?]])
+
+(def valid-claim-command? (m/validator ClaimCommand))
+
+(defn claim! [trusted-context command]
+  (when-not (valid-claim-command? command)
+    (throw (ex-info "Invalid Claim input"
+                    {:gesso/error :model/invalid-input
+                     :operation :request/claim})))
+  (model-runtime/invoke-admitted!
+   trusted-context :request/claim command))
+#+end_src
+
+Validation is an unconditional boundary check, not an optional assertion that a
+production configuration can disable. The example does not log the entire
+command or trusted context in an error. A concrete application may use a typed
+error return instead of an exception if its public interface declares that
+choice.
+
+=invoke-admitted!= resolves the exact registered operation and its capability
+binding. It does not accept an arbitrary caller-provided guard/write map as an
+equivalent operation. The browser's wire field =:gesso/command-id= may map to
+the public model field =:command-id= through an admitted boundary mapping.
+=:request-id= here denotes the HumanHelp domain Request; transport correlation
+uses =:http-request-id= or =:transport-request-id=.
+
+An inspection view of the contract might be:
+
+#+begin_src clojure
+{:operation :request/claim
+ :interface-version 1
+ :arguments ClaimCommand
+ :principal-source :trusted-runtime-context
+ :command-policy :claim-command-policy-v1
+ :new-incorporation
+ {:requires [:request/argument-target-matches
+             :request/open
+             :request/unclaimed
+             :membership/principal-and-organization-match
+             :membership/active
+             :organization/claim-permitted]
+  :establishes [:request/helper-assigned
+                :command/result-recorded
+                :publication/intent-recorded]}
+ :replay
+ {:requires [:command/binding-compatible
+             :command/current-disclosure-permitted]
+  :effect :return-permitted-recorded-outcome}}
+#+end_src
+
+These keywords name obligations whose definitions and realizations must be
+resolved. A collection of reassuring labels is not a proof. In particular,
+new-incorporation conditions do not apply unchanged to replay: after a
+successful Claim the Request is claimed, but a compatible authorized repetition
+must still be able to recover the recorded success.
+

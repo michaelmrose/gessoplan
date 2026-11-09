@@ -6,7 +6,7 @@ Usage:
     python3 script/assemble_r5.py --write
 
 The twelve published parts retain their established root filenames during
-R5 candidacy. Parts I, II, and III have independently checkable sectional sources.
+R5 candidacy. Parts I–IV have independently checkable sectional sources.
 """
 from __future__ import annotations
 
@@ -43,6 +43,7 @@ SECTIONS_PART_TWO = (
 )
 SECOND_SOURCE_DIR = ROOT / "r5-source" / "02"
 THIRD_SOURCE_DIR = ROOT / "r5-source" / "03"
+FOURTH_SOURCE_DIR = ROOT / "r5-source" / "04"
 SECTIONS_PART_THREE = (
     "03.01-what-a-choreography-is.org",
     "03.02-coordination-vocabulary.org",
@@ -71,9 +72,30 @@ SECTIONS_PART_THREE = (
     "03.25-semantic-acceptance-obligations.org",
 )
 
+SECTIONS_PART_FOUR = (
+    "04.01-model-integration.org",
+    "04.02-core-fx-and-claim-contract.org",
+    "04.03-model-outcomes-and-invocation.org",
+    "04.04-atomic-transitions-and-construction.org",
+    "04.05-frame-capability-and-claim-preparation.org",
+    "04.06-command-identity-and-incorporation.org",
+    "04.07-rejection-retention-and-knowledge.org",
+    "04.08-lost-response-and-reconciliation.org",
+    "04.09-external-systems-and-provider-effects.org",
+    "04.10-fx-value-flow-and-lifecycle.org",
+    "04.11-authoritative-basis-and-xtdb.org",
+    "04.12-scope-aware-progression.org",
+    "04.13-progression-combination-and-backpressure.org",
+    "04.14-propagation-acquisition-and-basis.org",
+    "04.15-advisory-and-adoption-contract.org",
+    "04.16-refresh-coordination-and-humanhelp.org",
+    "04.17-assurance-and-acceptance.org",
+)
+
 FIRST_PART = ROOT / "gesso-unified-design-canonical-r4-01-foundations.org"
 SECOND_PART = ROOT / "gesso-unified-design-canonical-r4-02-semantic-model.org"
 THIRD_PART = ROOT / "gesso-unified-design-canonical-r4-03-choreography-and-projection.org"
+FOURTH_PART = ROOT / "gesso-unified-design-canonical-r4-04-authoritative-operations-and-progression.org"
 OUTPUT = ROOT / "output" / "gesso-plan-v5.org"
 
 
@@ -101,13 +123,21 @@ def part_three() -> str:
     return text
 
 
-def whole_plan(first: str, second: str, third: str) -> str:
+def part_four() -> str:
+    pieces = [(FOURTH_SOURCE_DIR / name).read_bytes() for name in SECTIONS_PART_FOUR]
+    text = b"".join(pieces).decode("utf-8")
+    if text.count("* Part IV — Authoritative operations and progression\n") != 1:
+        raise SystemExit("Expected exactly one Part IV root heading")
+    return text
+
+
+def whole_plan(first: str, second: str, third: str, fourth: str) -> str:
     remaining = [
         (ROOT / f"gesso-unified-design-canonical-r4-{i:02d}-"
          f"{NAMES[i]}.org").read_text(encoding="utf-8")
-        for i in range(4, 13)
+        for i in range(5, 13)
     ]
-    return first + second + third + "".join(remaining)
+    return first + second + third + fourth + "".join(remaining)
 
 
 NAMES = {
@@ -134,9 +164,10 @@ def main() -> None:
     first = part_one()
     second = part_two()
     third = part_three()
+    fourth = part_four()
     if args.check:
         for part, assembled in ((FIRST_PART, first), (SECOND_PART, second),
-                                (THIRD_PART, third)):
+                                (THIRD_PART, third), (FOURTH_PART, fourth)):
             if part.read_bytes() != assembled.encode("utf-8"):
                 raise SystemExit(
                     f"{part.relative_to(ROOT)} differs from its numbered source"
@@ -146,10 +177,12 @@ def main() -> None:
     FIRST_PART.write_bytes(first.encode("utf-8"))
     SECOND_PART.write_bytes(second.encode("utf-8"))
     THIRD_PART.write_bytes(third.encode("utf-8"))
+    FOURTH_PART.write_bytes(fourth.encode("utf-8"))
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
-    OUTPUT.write_text(whole_plan(first, second, third), encoding="utf-8")
+    OUTPUT.write_text(whole_plan(first, second, third, fourth), encoding="utf-8")
     print(f"Updated {FIRST_PART.relative_to(ROOT)}, "
           f"{SECOND_PART.relative_to(ROOT)}, {THIRD_PART.relative_to(ROOT)}, "
+          f"{FOURTH_PART.relative_to(ROOT)}, "
           f"and {OUTPUT.relative_to(ROOT)}")
 
 

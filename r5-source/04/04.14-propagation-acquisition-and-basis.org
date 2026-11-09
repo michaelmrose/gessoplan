@@ -1,0 +1,67 @@
+*** Progression flows through propagation
+
+When an authoritative change creates a required invalidation, the propagation
+path preserves enough information for the resulting reread to include that
+change. The sequence is:
+
+1. Qualified outcome evidence establishes the authoritative change.
+2. The durable change/publication record carries an admitted progression
+   requirement and affected scope information.
+3. Routing delivers an advisory to a relevant participant under its transport
+   and recovery contract.
+4. The participant's acquisition requests a scope and progression sufficient
+   to cover the relevant obligation.
+5. The acquisition boundary admits only evidence that actually establishes the
+   promised coverage and visibility.
+
+The advisory remains advisory: it can establish that an acquisition is needed
+without supplying the new authoritative contents. Preserving progression does
+not require every stage to repeat the complete token; a protected reference to
+the requirement is sufficient when it can be resolved under the contract.
+
+A tokenless advisory needs an alternative qualified fence or acquisition rule
+that prevents a satisfying reread from preceding the triggering change. Merely
+reading something newer than the participant's old display may still miss that
+change. If the transport cannot supply such a rule, the weaker guarantee must
+be explicit.
+
+*** Initial acquisition and subscription races
+
+Initial content for a managed projection participates in the same scope,
+authority, progression, and installation contract as refresh content. Being
+server-rendered does not exempt it. The owner/resource instance and any initial
+basis claim must be established through the admitted bootstrap path.
+
+The relationship between initial read and subscription must avoid an uncovered
+interval when the application promises eventual awareness of changes. Suitable
+strategies include an admitted read/subscription fence, replay from a durable
+cursor, buffered changes across registration, or another qualified recovery
+mechanism. Each strategy states how it handles reconnect and owner replacement.
+
+A periodic authoritative refresh may provide a weaker eventual-awareness
+strategy under explicit scheduling and availability assumptions. It does not
+prove delivery of every invalidation. A router's successful local subscription
+does not by itself prove that no relevant upstream change was lost before its
+interest became visible.
+
+*** Observed basis is not authority to commit
+
+A browser-supplied observed basis can be useful as an untrusted input to
+freshness handling. It does not prove that the browser acquired or adopted the
+corresponding data, and it does not establish current authorization. Stronger
+claims require admitted evidence bound to the relevant observation and actor.
+
+The server must also bound and validate requested consistency behavior. A
+malformed, foreign-incarnation, or unattainable token must not force unbounded
+waiting or silently downgrade to an unconstrained read.
+
+Advancement alone does not invalidate a command. The model checks its actual
+business preconditions. When the operation explicitly requires an expected
+domain version, the server enforces that condition as part of command meaning;
+when it does not, unrelated database advancement is not a reason to reject.
+
+Dependency upgrades must not silently change token interpretation, read
+visibility, temporal defaults, or command/result compatibility. The assembly
+and qualification artifacts bind the relevant provider contract, and persisted
+requirements need an explicit compatibility or migration policy.
+

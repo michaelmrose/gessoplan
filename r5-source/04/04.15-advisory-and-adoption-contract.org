@@ -1,0 +1,58 @@
+** Advisory obligations and adoption
+:PROPERTIES:
+:CUSTOM_ID: req-advisory-discharge
+:END:
+
+An advisory obligation records what a participant must still acquire or adopt
+under the application's declared policy. It is scoped debt, not a Boolean
+global dirty flag. Its meaning includes the required observation, coverage,
+progression, owner/resource lifetime, and completion milestone.
+
+Advisory knowledge and adopted authoritative knowledge remain separate. A
+participant can know that newer relevant authority exists while deliberately
+retaining its current visible board until the user chooses Refresh. A glow or
+toast may represent that debt without adopting new membership.
+
+The obligation representation must distinguish:
+
+- an obligation to acquire admissible evidence;
+- an obligation to acquire and semantically adopt it;
+- any required physical installation that realizes that adoption;
+- retirement or transfer of an obligation under an explicit lifecycle policy.
+
+These distinctions need not create four public APIs or four universal stores.
+They must be explicit wherever a completion claim depends on them.
+
+*** Acquisition, permission, installation, and adoption
+
+The following milestones cannot be collapsed:
+
+| Milestone | Established fact |
+|-----------+------------------|
+| Acquisition completed | An admitted observation has arrived with the required source, scope, and correlation. |
+| Installation permitted | Current owner, resource, scope, progression, and presentation policy allow this proposed installation. |
+| Installation completed | The permitted physical effect actually completed under the realization contract. |
+| Adoption recorded | The semantic state now treats the justified contents or membership as adopted, using the required completion evidence. |
+
+For an acquire-only obligation, the first milestone may suffice. For an
+acquire-and-adopt obligation whose realization includes a DOM update, merely
+returning true from =can-install?= or emitting an HTMX allow-swap decision does
+not suffice.
+
+The final installation-right check and the physical mutation must be serialized
+against competing owner changes and relevant installations, or protected by an
+equivalent mechanism. Checking a right, yielding, and later mutating an arbitrary
+replacement target can install into the wrong resource instance.
+
+The physical completion or failure is correlated to the admitted installation
+effect, owner, target instance, and observation. Adoption and debt discharge use
+that evidence under the current semantic state. A synchronous implementation
+may establish these milestones together; an asynchronous shell needs explicit
+completion/failure handling.
+
+If a physical update can partially apply, the realization must define that case.
+It may require repair, authoritative reacquisition, or a representation-unknown
+state. It cannot report complete installation merely because the effect began.
+Similarly, loss of a completion event requires a reconciliation path if the
+physical representation may already have changed.
+

@@ -1,0 +1,99 @@
+** FX value flow and lifecycle
+
+FX should make value dependencies and effects inspectable while remaining usable
+from ordinary Clojure. Pure calculations consume explicit values and return
+explicit values. Effectful steps declare their inputs, outputs, failure classes,
+and effect boundary. A context is a capability-bearing environment, not a
+hidden bus into which every step writes arbitrary intermediate state.
+
+*** Context and values have different roles
+
+The context may contain admitted database/acquisition capabilities, a trusted
+principal binding, clocks or randomness with declared semantics, tracing, and
+scoped backend interfaces. Intermediate Request data, candidate decisions,
+prepared transitions, and outcomes should normally flow as explicit arguments
+and results.
+
+This permits the system to explain which value justified a step and to detect
+missing or mismatched inputs. It also reduces accidental use of stale ambient
+data. A capability's presence in context does not extend its lifetime or widen
+its authority. Authentication state captured at entry does not freeze mutable
+authorization unless that temporal policy is explicitly part of the contract.
+
+Graph or multistate implementations obey the same rule. They may provide a
+convenient evaluation strategy, but hidden mutable cells must not become an
+untracked second model of operation state. Pure dependency nodes and effectful
+nodes require distinct semantics, including recomputation and retry behavior.
+
+*** Ordering and completion are explicit
+
+An ordered effect description specifies what each step waits for, how values
+flow, and what happens after failure. Merely placing effects in a vector is not
+enough if the interpreter may run them concurrently or treat enqueue as
+completion.
+
+An illustrative descriptor could distinguish:
+
+#+begin_src clojure
+{:fx/type :sequence
+ :steps [:admit-command
+         :resolve-or-prepare
+         :incorporate-authoritative-transition
+         :construct-response]
+ :failure-policy :phase-aware}
+#+end_src
+
+The registered step definitions supply types, branches, capability requirements,
+and completion semantics. The map alone is not an executable operation.
+Independent publication work may proceed separately once durable intent exists;
+it need not delay an otherwise justified commit response unless the public
+contract explicitly promises that stronger acknowledgment.
+
+Exceptions are interpreted by phase and evidence. A failure before submission,
+an ambiguous failure during submission, a post-commit publication failure, and
+a response-rendering failure are different events. A generic catch that turns
+all four into =:rejected= violates the operation contract.
+
+Retryable backend callbacks must not contain unprotected external effects.
+Clock and random values used in semantic decisions need declared sampling and
+retry semantics. Ordinary Clojure functions and macros may implement these
+steps, but any opaque effect footprint remains an explicit contract premise.
+
+*** Post-commit delivery debt
+:PROPERTIES:
+:CUSTOM_ID: req-post-commit-recovery
+:END:
+
+Once a command commits, failure to notify, render, or deliver does not uncommit
+it. Required later work becomes explicit delivery or recovery debt. The
+operation contract identifies what must be durable, who owns it, how it is
+retried, and what counts as completion.
+
+For a durable publication requirement, the domain transition and publication
+intent must share an atomic boundary or an equivalently qualified discovery
+mechanism. A commit followed by an unprotected best-effort publish can leave a
+permanent gap if the process dies between those actions.
+
+The intent binds the authoritative effect, relevant subject/query impact,
+progression requirement, and stable delivery/work identity. It need not capture
+every currently connected subscriber. A durable change log or outbox can feed
+later routing and interest matching. Delivery semantics must state whether
+duplicates are possible and how consumers recognize compatible repetition.
+
+An in-memory list of local interests is not proof that all affected participants
+will learn a change. If publication is conditioned on known interests, the
+design must cover remote interests, subscription races, disconnects, and router
+failover to the extent that its convergence claim includes them. Otherwise that
+claim must be limited explicitly. The particular routing topology belongs to
+the transport design; the no-lost-required-work obligation belongs here.
+
+Publication completion also has a scope: queued, durably recorded, accepted by a
+broker, delivered to a connection, admitted by a participant, and adopted by a
+projection are distinct milestones. The contract names the milestone it can
+observe and retains downstream obligations where required.
+
+Recovery failure may leave debt visible and unresolved. It must not manufacture
+success, discard the command record, or turn the committed domain operation
+into a rejection. If an effect is intentionally best effort, its omission and
+the resulting weaker guarantee must be part of the public contract.
+

@@ -1,0 +1,103 @@
+*** Worked example: Claim committed, response lost
+
+Let =R= be the Request ID. Let =C42= be a scalar command ID; the command value is
+a separate map:
+
+#+begin_src clojure
+(def C42 #uuid "f1bf42ee-7965-4a53-905b-c59038f75e42")
+
+(def claim-command
+  {:request-id R
+   :command-id C42})
+
+;; Wire representation at the admitted browser boundary.
+(def claim-wire-arguments
+  {:request-id R
+   :gesso/command-id C42})
+#+end_src
+
+Alice's original choreography execution is =E1=. A server invocation admits
+=claim-command= under Alice's trusted principal context. Its authoritative
+transition assigns Request R, records C42's compatible binding and successful
+outcome, and records the required publication intent. The response is lost.
+
+| Location | Established fact |
+|----------+------------------|
+| Authoritative model | C42 was incorporated successfully. |
+| Publication worker | Durable work exists; delivery may still be pending. |
+| Browser execution E1 | Delivery became indeterminate; no admitted success evidence arrived. |
+| Browser presentation | The command remains unknown, with the declared reconciliation path available. |
+
+Reading Request R and finding Alice as helper does not attribute that state to
+C42. Another command might have caused the same state; R may also have changed
+again since C42. A command resolver therefore uses retained outcome evidence,
+not pattern matching on the current Request.
+
+The public resolution path is conceptually:
+
+#+begin_src clojure
+(request/resolve-claim!
+ trusted-context
+ {:request-id R :command-id C42})
+#+end_src
+
+This operation resolves the full immutable binding required by the contract,
+including authority scope, operation/interface compatibility, canonical
+arguments, and principal or delegation. It checks current permission to disclose
+the prior outcome. It is not a public wrapper around unrestricted raw database
+lookup.
+
+Resolution results distinguish:
+
+| Resolution classification | Meaning |
+|---------------------------+---------|
+| Resolved incorporation | A compatible retained record justifies the permitted recorded result. |
+| Resolved rejection | Qualified command-closure evidence justifies the permitted rejection. |
+| Not established | This lookup did not establish a definitive disposition; pending incorporation or unavailable retained evidence has not been ruled out. |
+| Unavailable | Acquisition or permitted disclosure could not supply a result. Privacy policy determines how much detail may be returned. |
+| Incompatible | The admitted binding conflicts with the retained binding, when this distinction may be disclosed. |
+
+These are resolver classifications, not additions to the canonical model outcome
+set. The interface declares how each maps to an operation outcome or typed
+invocation error. In particular, not established does not mean rejected.
+
+A compatible invocation of =request/claim!= can alternatively recover the same
+record through its replay branch. It returns =:already-incorporated= and the
+permitted success even though the Request is now claimed. It must not rerun the
+new-incorporation guard first and reject solely on that changed state.
+
+If another physical attempt finds a retained success after its own ambiguous
+submission, that proves command incorporation. It does not necessarily prove
+which physical attempt incorporated it. Reports and tests must preserve this
+distinction when attributing execution evidence.
+
+*** Reconciliation needs an owner, not only a lookup
+
+A read-only resolver is useful but is not an executable recovery strategy by
+itself. An admitted unknown branch identifies who requests reconciliation, how
+the command reference survives local retirement, which evidence sources are
+used, when retries are allowed, and what happens when automatic recovery stops.
+
+The recovery policy may include backoff, bounded automatic attempts, a durable
+queue, user-triggered refresh, or operator handling. Its safety claim must hold
+when progress never occurs. A liveness claim additionally names assumptions
+such as eventual backend availability, retained evidence, scheduling fairness,
+and continued authorization. A timeout budget can end automatic work without
+establishing non-incorporation.
+
+Static preflight need not predict dynamic conditions. It must nevertheless
+require declared handling or recovery paths for conditions that can strand an
+operation, including unknown commit, undisclosable replay, incompatible retained
+interfaces, and unavailable authoritative acquisition.
+
+Retiring E1 revokes E1's installation and settlement rights according to its
+resource policy. It does not cancel C42 or erase its result. A later execution
+E2 may reconcile C42 through an admitted participation path. Late evidence must
+not revive E1 or install into a resource instance now owned by another
+execution.
+
+Cancelling a local request is similarly distinct from an authoritative
+cancellation command. Whether an authoritative operation can be cancelled is a
+model question with its own valid transitions. Once incorporated, an effect may
+require a compensating operation rather than retrospective cancellation.
+

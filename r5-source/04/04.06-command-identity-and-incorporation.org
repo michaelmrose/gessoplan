@@ -1,0 +1,110 @@
+** Command identity and authoritative disposition
+
+A semantic command identifies one intended invocation under a declared command
+policy. It survives physical retry. It is distinct from the operation definition,
+the choreography execution that attempted it, and the transport exchanges that
+carry it.
+
+| Identity | Meaning and lifetime |
+|----------+----------------------|
+| Operation identity | The public semantic operation, such as =:request/claim=. |
+| Operation interface version | The input, result, and behavioral contract being invoked. |
+| Semantic command ID | One bound intent whose disposition can be deduplicated and recovered. |
+| Choreography execution ID | One distributed execution and its protocol-local resources. |
+| Transport request ID | One HTTP exchange or other delivery attempt. |
+| Backend submission-attempt ID | One physical attempt to submit or execute a transaction. |
+| Capability instance ID | One issued execution or acquisition right. |
+| Resource instance ID | One lifecycle instance of a managed resource or installation target. |
+| Principal-context identity | The authenticated context relevant to authority and disclosure. |
+
+Other identities, including deployment and projected-plan compatibility, may be
+needed. They must be named for their purpose; a bare universal =generation=
+coordinate must not stand in for them all.
+
+*** Command binding and canonical inputs
+
+The admitted command boundary supplies or admits a stable =:gesso/command-id=
+before the first possible send. A browser may carry an identifier, but choosing
+its bytes confers no permission. The trusted boundary establishes the binding
+and must preserve it through retransmission and reconciliation.
+
+The command policy defines the namespace in which IDs are unique and the
+immutable binding compared on repetition. That binding normally includes:
+
+- authority/tenant and command namespace;
+- semantic operation and compatible interface identity;
+- canonical semantic arguments and their canonicalization version;
+- the principal or explicitly declared delegated authority responsible for the
+  intent;
+- any domain preconditions that are part of the intent, such as an expected
+  entity version.
+
+Command compatibility is not equality of an arbitrary serialized map. Defaults,
+omitted fields, numeric representation, ordered versus unordered collections,
+and schema evolution require defined canonicalization. If a digest stands in
+for canonical arguments, the contract identifies its algorithm and accepted
+collision premise; a short convenience hash is not automatically an adequate
+binding.
+
+An observed read basis used only as a freshness hint need not be an immutable
+semantic argument. An expected version that the user intentionally conditions
+the command on is an argument. The interface must distinguish the two. Retry
+must not silently turn a conditional command into an unconditional one.
+
+Server-generated timestamps, random identifiers, and other choices also need
+declared semantics. Values defining the user's intent or the identity of a
+created entity must be stabilized or recoverable as the policy requires.
+Transaction-local candidate calculations may be recomputed when permitted, but
+their variation cannot change the command binding or invalidate replay.
+
+*** Command identity is not an idempotency policy
+
+Attaching a UUID does not provide deduplication. An operation must declare its
+incorporation policy, storage boundary, compatible-repetition behavior,
+incompatible-reuse handling, retention horizon, and recovery mechanism.
+
+For Claim, the intended policy is one incorporation for a compatible command
+binding. Repetition after incorporation returns a permitted recorded outcome.
+Distinct command IDs can still conflict on the same Request; command
+deduplication does not replace domain concurrency control.
+
+An operation that intentionally permits repeated independent effects must say
+what constitutes a new semantic command. A new delivery attempt is not, by
+itself, a new intent. If the product supports repeating an action, the admitted
+entry path issues a fresh command for that deliberate action.
+
+The command store need not contain an in-flight row for every implementation.
+Its protocol must nevertheless distinguish evidence of incorporation, evidence
+of terminal rejection or closure when promised, and the absence of a definitive
+result. A transient local registry may assist scheduling; it cannot replace a
+durable record where process failure recovery is promised.
+
+*** Atomic resolve-or-incorporate protocol
+
+The following is a semantic algorithm, not a requirement to implement one giant
+callback in the database:
+
+1. Validate the admitted operation, interface, canonical arguments, authority
+   scope, and trusted principal. Establish which command binding this caller is
+   permitted to invoke or resolve.
+2. If a retained command record is found, check binding compatibility and
+   current permission to disclose the result. Return the permitted recorded
+   disposition without applying the operation again. An incompatible record
+   cannot be overwritten or treated as a new command.
+3. If no definitive record is established, protect command uniqueness together
+   with the conditions for new incorporation. An earlier non-transactional
+   absence check is only a hint.
+4. At the authoritative boundary, either establish the permitted domain
+   transition, command result, and required durable intents together, or do not
+   establish that transition. Conflicting concurrent attempts must not each
+   incorporate the same command.
+5. Interpret the backend result according to its qualified contract. A local
+   return that means submitted or queued must not be translated into committed.
+6. On contention, an abort, or an ambiguous return, resolve whether another
+   attempt established a command disposition. Return only what the admitted
+   evidence supports. If the result remains indeterminate, preserve unknown.
+
+The implementation may use retries internally. Such retries retain the semantic
+command and must not execute unrepeatable external effects inside a callback
+that the backend may rerun.
+

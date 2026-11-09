@@ -1,0 +1,77 @@
+*** Rejection must name its scope
+
+There are three distinct negative facts:
+
+- preparation found a currently ineligible candidate;
+- one physical transaction attempt definitely did not incorporate;
+- the semantic command is authoritatively rejected under its declared policy.
+
+Only the last justifies the model outcome =:rejected= as a definitive command
+settlement. A successful competing attempt can coexist with either of the first
+two facts.
+
+If the operation promises a stable terminal rejection, its mechanism must close
+the command against pending and future compatible incorporation. One solution
+is an atomic terminal rejection record which contends with the incorporation
+record; another is a qualified equivalent closure or fencing protocol. A mere
+lookup that finds no record cannot provide this guarantee while a previously
+submitted attempt could still commit.
+
+A rejected database transaction generally cannot also be assumed to have
+persisted its own rejection record. If closure requires a subsequent
+transaction, that transaction has its own races and possible uncertainty. It
+must resolve against any competing incorporation before the model reports a
+definitive rejected command.
+
+This does not require every backend failure or bad request to create a durable
+terminal record. Interfaces may expose typed invocation failures or unresolved
+attempt diagnostics without claiming terminal command rejection. An operation
+with a different rejection lifetime must make that scope explicit and provide
+a presentation mapping that does not falsely promise finality.
+
+A fresh intentional action after rejection may use a new command ID. Automatic
+retry after an unknown result must not do so merely to escape the unresolved
+record. An unauthorized or malformed invocation cannot close another party's
+otherwise valid command.
+
+*** Retention, upgrades, and expiry
+
+Deduplication guarantees have a declared horizon. Deleting a result while old
+messages can still be accepted may permit reintegration of a previously
+incorporated command. The design must choose a coherent policy: retain the
+necessary record or tombstone, reject commands outside an admitted validity
+window, retire the command namespace with a protected fence, or provide an
+equivalent mechanism.
+
+Result disclosure retention can differ from incorporation-prevention retention.
+A compact tombstone may prevent duplicate effects without retaining sensitive
+response data. In that case the public resolver reports only the information
+the tombstone and disclosure policy justify; it does not fabricate the original
+payload.
+
+Interface upgrades must specify compatibility for retained commands. Changing
+argument canonicalization or the meaning of a policy version cannot silently
+rebind an old ID. A database restore, tenant migration, or authority fork must
+also define which command namespace and records remain valid. Backend position
+numbers alone do not preserve those identities.
+
+*** Command disposition and participant knowledge
+:PROPERTIES:
+:CUSTOM_ID: req-command-participant-uncertainty
+:END:
+
+The command's authoritative disposition and a participant's knowledge are
+different state components. The backend may have committed while the caller
+still knows only that delivery failed. =:commit-unknown= describes this missing
+knowledge; it does not assert a mysterious third kind of database commit.
+
+Unknown must be preserved when the available evidence cannot distinguish
+incorporation from non-incorporation. A timeout, disconnected SSE channel,
+retired browser execution, failed response serialization, or exhausted retry
+budget cannot turn that uncertainty into rejection.
+
+Definitive knowledge is also subject to authority. A runtime may know that a
+record exists while the current participant is not permitted to learn its
+contents. The public interface must represent unavailable disclosure without
+inventing a domain failure or leaking the existence of protected information.
+

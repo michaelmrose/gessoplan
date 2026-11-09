@@ -1,0 +1,121 @@
+** Authoritative basis and XTDB
+
+An authoritative basis describes the database observation context justified by
+the backend adapter. It is not a domain entity version, command ID, execution
+ID, or universal time coordinate. A basis may advance because unrelated data
+changed. Equal entity content at different bases does not make the bases equal,
+and a changed basis does not by itself make a command's business preconditions
+false.
+
+XTDB integration should use XTDB-specific consistency mechanisms where they
+provide useful guarantees. Gesso must describe those mechanisms through a
+qualified adapter contract rather than inventing generic arithmetic on opaque
+tokens or claiming guarantees from a dependency's name alone.
+
+The [[#req-backend-assumption-qualification][backend qualification contract]] of
+Part I applies. A Gesso proof may be conditional on specific XTDB premises. It
+need not prove the whole database implementation, but it must make visible
+exactly which database behavior would invalidate the proof.
+
+*** Backend assumptions are distinct obligations
+
+The adapter/profile identifies the loaded backend version and relevant build,
+configuration, transaction API, query API, value codec, temporal options, and
+Gesso realization. A supported version range requires evidence of compatibility
+under its declared policy; it is not an invitation to ignore version changes.
+
+| Premise | Required meaning |
+|---------+------------------|
+| Atomic publication | The protected domain changes, command record, and required durable intents are established together or not established as that transition. |
+| Dependency protection | The semantic predicates, including cross-document, absent-row, or aggregate conditions where used, hold at the declared incorporation boundary. |
+| Representation and frame | Encodings, field presence, update semantics, and untouched data correspond to the admitted transition. |
+| Command exclusion | Competing compatible attempts cannot each incorporate the same command under the declared namespace and retention policy. |
+| Outcome interpretation | The qualified return or later evidence actually establishes the claimed committed, rejected, or unresolved status. |
+| Read visibility | The read mechanism honors the declared progression and temporal requirement, and its observation evidence reports what was established. |
+| Durability and recovery | Retained command and work evidence survives the failures included in the promise. |
+| Writer coverage | Every writer capable of invalidating a dependent invariant follows the required discipline or is covered by an explicit external premise. |
+
+These premises are not interchangeable. Atomic writes do not prove predicate
+protection. A row count does not prove target or principal binding. A committed
+transaction ID does not prove an exact immediate poststate unless the backend
+contract supplies that relationship. A source-bound local return does not
+prove all remote backend semantics.
+
+The adapter must specify the actual protected mechanism for each supported
+operation class. It must not imply that arbitrary Clojure callbacks execute
+inside every XTDB transaction, or that a particular SQL construction has a
+stronger isolation meaning than its qualified contract establishes.
+
+*** Qualification and conformance evidence
+
+Qualification combines the declared backend contract, implementation binding,
+checked Gesso-side correspondence, and targeted conformance evidence. Useful
+tests include positive cases, deliberately weakened guards, altered targets,
+extra submitted writes, representation edge cases, contention, and lost or
+ambiguous returns.
+
+Finite tests can falsify assumptions or detect incompatibilities; they cannot
+prove that no current or future XTDB behavior violates a premise. Gesso must
+therefore avoid promising that qualification will detect every possible backend
+defect. Its defensible promise is that assumptions are explicit, evidence is
+bound to the actual supported profile, relevant changes invalidate or trigger
+requalification, and observed violations propagate to dependent assurance.
+
+Qualification should target the behavior on which proof depends. A dependency
+version string check is useful configuration evidence, but is not a semantic
+conformance test. Likewise, a passing abstract transition model does not test
+the actual adapter's transaction construction or backend interpretation.
+
+If a required premise is violated or its support becomes unavailable, the
+affected proof claim cannot remain unqualified. Admission policy may stop the
+affected operation, accept a named weaker assurance class, or require operator
+action. It must not silently keep the old certified label. In-flight commands
+whose outcomes are uncertain still require resolution; qualification failure
+does not establish their rejection.
+
+*** Acquired prestate and actual transaction state
+
+An acquired prestate can support preparation and construction checks. It is not
+automatically the backend's internal prestate at the later incorporation point.
+The protection mechanism must establish the needed relationship despite that
+interval.
+
+The design does not universally require the backend to expose an internal
+prestate token. A sufficient qualified guard, isolation contract, or conditional
+transition may establish the required refinement without such a token. Where
+that relationship is only a backend premise, it must remain named as such.
+
+Reading before and after a concurrent transaction also does not necessarily
+produce its exact state pair. Another writer may intervene. A read guaranteed
+to include a commit can legitimately include later effects. That is useful
+visibility evidence, but not an exact immediate poststate witness.
+
+*** Commit evidence, visibility requirements, and observations
+
+Submission acceptance, transaction completion, and query visibility may be
+different backend milestones. The adapter must distinguish them. A log position
+allocated to an aborted or merely submitted transaction must not be presented
+as evidence that the domain command incorporated.
+
+After a confirmed commit, the adapter may issue a progression requirement that
+an authoritative read must satisfy to include the relevant effect. The read
+path must enforce that requirement or return a typed unavailable/unsupported
+result. It must not silently read from an older available snapshot and label it
+current enough.
+
+The actual observation can be later than the minimum requested basis. The
+evidence must distinguish a minimum visibility guarantee from an exact observed
+basis. It must not relabel the requested minimum as the exact snapshot used.
+If the adapter can establish only a lower bound, the observation contract says
+so and permits only conclusions justified by that bound.
+
+Temporal interpretation matters separately. A transaction can be visible in
+system time while a query at a different valid time returns a different domain
+state. Authority/database incarnation, tenant, valid-time selection, system-time
+selection, and relevant authorization context are part of scope compatibility.
+
+A restore, fork, or migration may create an authority/database incarnation in
+which old tokens have no comparable meaning. The adapter must establish an
+explicit migration relation or reject comparison. Equal-looking numbers or
+token bytes from different incarnations are not evidence of continuity.
+

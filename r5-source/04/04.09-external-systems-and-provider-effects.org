@@ -1,0 +1,118 @@
+** External systems and valid intermediate states
+
+One database transaction cannot generally atomically commit a database change
+and an arbitrary external provider effect. The model must represent valid
+intermediate states and durable recovery rather than describing a remote API
+call as if it were part of the database's atomicity guarantee.
+
+The durable-workflow boundary of [[#req-durable-workflow-boundary][Part III]]
+applies: a process-local choreography execution is not automatically a durable
+owner of unfinished business work.
+
+*** Worked example: placing an order with payment authorization
+
+Suppose the business policy permits an Order to become placed once the provider
+has authorized the specified payment. Capture and settlement are separate
+effects unless the operation explicitly includes them. This example must not
+call an authorization receipt proof of a completed charge.
+
+Money is an amount in a declared currency, with a supported precision and
+rounding rule. A bare floating-point number or unqualified decimal is not the
+complete payment argument. The immutable payment intent binds the Order,
+merchant/provider account, operation type, amount, currency, instrument
+reference, and relevant policy/interface versions.
+
+The local public entry operation is conceptually:
+
+#+begin_src clojure
+(order/place-intent!
+ trusted-context
+ {:command-id order-command-id
+  :cart-id cart-id
+  :payment-instrument-ref instrument-ref})
+#+end_src
+
+The authoritative model validates ownership and eligibility of the Cart and
+instrument reference, computes or validates the authoritative price, and
+protects the inputs required by its pricing and inventory policy. It atomically
+creates a valid pending Order, records the command result, and records durable
+payment work. The pending Order is a committed domain state, not an optimistic
+browser fiction.
+
+The Order command's success means that this intent was established. If the UI
+wants to wait for final placement, choreography must distinguish intent
+acceptance from business completion. It must not display a final placed result
+merely because =place-intent!= committed.
+
+*** Provider request identity and evidence
+
+The durable payment intent has its own stable identity. Provider requests use an
+idempotency key derived or allocated under the provider's actual key scope and
+retention rules. The binding includes the merchant/account, provider operation,
+and immutable request meaning. A globally formatted string does not by itself
+establish global uniqueness or deduplication at the provider.
+
+The qualification contract states whether repeated requests with that key are
+deduplicated, how conflicting payloads are handled, how long records remain,
+and how an indeterminate request can be resolved. Provider idempotency is an
+external premise; Gesso cannot manufacture it by storing a local key.
+
+If the provider does not supply a sufficient deduplication or lookup contract,
+the application must use a recovery strategy appropriate to that limitation.
+An unknown effect may require manual reconciliation. Blindly sending a fresh
+key after a timeout can create a second charge or authorization.
+
+Provider evidence must be authenticated or otherwise admitted by a qualified
+adapter and bound to the exact payment intent. Its interpretation checks the
+merchant/account, provider operation, Order or intent reference, key, amount,
+currency, and result status. Receiving an untrusted webhook map with a familiar
+status string is insufficient. Signature verification alone also does not prove
+that the signed event refers to this intent or establishes the required effect.
+
+The adapter must distinguish authorization, capture, decline, pending status,
+and an indeterminate transport result. A provider lookup that finds no record
+does not establish non-occurrence while an earlier request may still be in
+flight, unless the provider contract supplies that stronger guarantee.
+
+*** Incorporating a provider result
+
+A worker resolves or submits the provider operation under the durable intent.
+It then invokes a public model result-incorporation operation with the admitted
+provider evidence. That operation protects the payment intent and current Order
+state, records the accepted receipt, makes the permitted domain transition, and
+updates durable work in the same local atomic boundary.
+
+| Current local state and admitted evidence | Required treatment |
+|------------------------------------------+--------------------|
+| Payment pending; matching authorization succeeds. | Record authorization and advance according to the placement policy. |
+| Payment pending; definitive matching decline. | Record the decline and move to the declared failure or alternative-payment state. |
+| Payment pending; response lost or provider result unresolved. | Keep a truthful pending/unknown condition and retained recovery work. |
+| Matching receipt already incorporated. | Return a compatible recorded result without applying the effect twice. |
+| Receipt conflicts with immutable intent or prior evidence. | Reject or quarantine the evidence through a declared diagnostic/recovery path. |
+| Cancellation requested; a late authorization succeeds. | Record the real external outcome and enter the declared void, compensation, or review path. |
+
+Workers may use leases or fencing to prevent stale local writes. Such mechanisms
+do not retroactively stop a remote call already issued by an old worker. Late
+evidence must still be handled according to the actual external effect and
+current model state.
+
+Cancellation therefore needs explicit states such as cancel requested, void
+pending, refund pending, or review required when those distinctions matter. A
+terminal cancelled label must not cause the system to discard evidence that
+money was authorized or captured. Compensation is a new effect with its own
+identity, uncertainty, and recovery obligations; it is not an atomic undo of
+history.
+
+*** Safety and progress for external work
+
+The system can promise that no Order is reported placed without the required
+admitted authorization evidence, under the provider and backend premises. It
+cannot promise that every payment finishes merely because a worker exists.
+Eventual resolution additionally depends on provider availability, usable
+lookup/idempotency behavior, durable scheduling, and any required human action.
+
+Required work must remain discoverable after process loss. Acknowledging a job
+because an HTTP call was sent, rather than because the contracted work state
+was durably incorporated, can lose the only recovery owner. Queue acknowledgment,
+lease expiry, and model work completion require a declared relationship.
+

@@ -1,0 +1,101 @@
+** Scope-aware progression and authoritative acquisition
+:PROPERTIES:
+:CUSTOM_ID: req-progression-scope
+:END:
+
+A progression requirement asks for an observation of a particular meaning at a
+sufficient authoritative frontier. It is not merely a token. A later Hotel
+observation cannot satisfy a Flight obligation simply because the database
+position appears newer.
+
+An admitted acquisition declaration must make the following information
+mechanically available, directly or through stable references:
+
+- authority, tenant, database incarnation, and qualified provider;
+- entity or query meaning, schema/projection version, and parameters;
+- selection, filters, ordering, pagination, and coverage requirements;
+- principal/visibility context and the policy for current disclosure;
+- valid-time and system-time interpretation;
+- the required progression relation and its evidence source;
+- the acquisition owner and resource-instance correlation;
+- the requested completion milestone: acquisition alone, or acquisition with
+  permitted installation/adoption.
+
+An acquisition result includes evidence of its actual scope and coverage, not
+just the data. A familiar shape, a token supplied by the browser, or a tag saying
+=:authoritative= is not enough to admit it. Admission follows the trusted
+acquisition contract from Part II.
+
+*** Query meaning and completeness
+
+Entity contents and aggregate membership are different scopes. A Request card
+can establish facts about one Request without establishing the complete board.
+A board acquisition must identify its authorized selection, search terms,
+filters, sort order, page/cursor interpretation, and completeness claims.
+
+Changing a server-side search or filter changes the query meaning. Sorting a
+locally adopted set changes presentation order, not knowledge of authoritative
+membership. Neither operation silently grants permission to adopt unrelated
+new rows.
+
+An empty query result establishes absence only within the successfully evaluated
+authorized scope and coverage. A partial response, timeout, inaccessible page,
+or denied query must not become authoritative absence. Privacy policy may limit
+which distinctions can be disclosed, but it cannot make a failed acquisition
+evidence of a domain fact.
+
+One page can satisfy a requirement for that page under a stable query/cursor
+contract. It cannot satisfy a complete-board requirement merely by carrying a
+sufficiently recent token. A set of separately acquired pages establishes a
+complete common snapshot only when the paging contract supplies that stronger
+relationship.
+
+*** Opaque progression and comparison judgments
+
+The progression provider owns token interpretation. Generic Gesso code may
+preserve opaque values and ask the admitted provider for supported relations;
+it must not infer ordering from string comparison, integer-shaped encodings, or
+HTTP arrival order.
+
+Comparison distinguishes at least equivalent, advances, precedes, established
+incomparable, and not established. Invalid or incompatible evidence is also a
+typed failure. Unavailable comparison is not established incomparability, and
+neither is equality.
+
+For some providers, equality is the only available relation without additional
+evidence. Equality of admitted tokens in a compatible context can be useful;
+equality of untrusted bytes is still just equality of bytes. An advancement
+witness must be admitted from a provider capable of establishing that relation
+and bound to its endpoints, scope, incarnation, and relevant contract version.
+Validating the witness map's shape alone does not establish its truth.
+
+*** Worked example: travel observations with different scopes
+
+Consider two requirements for one authorized travel-planning session:
+
+| Requirement | Scope and coverage | Progression requirement |
+|-------------+--------------------+-------------------------|
+| F | Flight 17 availability, specified cabin and fare-class selection, projection v1, session visibility context, declared temporal policy. | Visibility through admitted flight requirement PF20. |
+| H | Hotel 9 availability for check-in D1 and check-out D2, specified room/occupancy selection, projection v1, the same permitted context where applicable. | Visibility through admitted hotel requirement PH24. |
+
+The symbols PF20 and PH24 are illustrative opaque values. Their numeric-looking
+suffixes do not authorize arithmetic. Even if both are realized by one XTDB
+database, scope remains part of the requirement.
+
+Suppose the provider and acquisition boundary establish the following evidence:
+
+| Observation | What it can establish |
+|-------------+-----------------------|
+| Full Flight 17 projection, correct cabin/fare selection, compatible time/context, admitted advancement through PF20. | Satisfies F. |
+| Hotel 9 projection with advancement through PH24. | May satisfy H; it does not satisfy F. |
+| Flight 17 seat count alone at a newer compatible basis. | Satisfies only an appropriately narrow seat-count requirement, not the full F projection. |
+| Hotel 9 for different dates. | Does not satisfy H even if its basis is later. |
+| Correct hotel query, first page only, when H requires complete offered-room coverage. | Does not satisfy H's completeness obligation. |
+| Correct values with an unadmitted basis tag. | No authoritative satisfaction judgment follows from that tag. |
+| Correct selection at incompatible valid time or visibility context. | Requires a declared relation; it is not silently interchangeable with the requested scope. |
+
+F and H may be fulfilled by separate admitted acquisitions. That does not
+establish that the combined travel display is one atomic database snapshot, or
+that either offer remains reservable. Booking eligibility remains a current
+authoritative model obligation at the booking boundary.
+

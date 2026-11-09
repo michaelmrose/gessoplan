@@ -1,0 +1,152 @@
+* Part IV — Authoritative operations and progression
+:PROPERTIES:
+:CUSTOM_ID: part-04-authoritative-operations-and-progression
+:PART_REVISION: 04-20261107
+:END:
+
+This part defines the public model boundary, authoritative construction and
+execution, command disposition, durable propagation, and scoped acquisition of
+authoritative state. It connects the assurance classifications of Part I, the
+identity and evidence model of Part II, and the operation contracts of Part III.
+Browser coordination follows in Part VI; whole-application closure follows in
+Part VII.
+
+The central requirement is that the operation which an application admits, the
+transition which it submits, and the outcome which it reports describe the same
+semantic act. A well-typed declaration alone cannot establish that relationship.
+Neither can a successful HTTP response, a copied certificate, a local callback
+return, or an independently observed database state.
+
+Ordinary full-language Clojure remains available under the
+[[#req-full-language-construction][checked construction contract]]. Gesso proves
+what its admitted semantics and evidence support, identifies what remains an
+assertion or environmental premise, and preserves those distinctions through
+execution. An opaque implementation is not silently treated as proved, and a
+restricted proof mechanism does not define the limits of the application
+language.
+
+The declarations and API names below are illustrative specifications. They do
+not claim that the exact displayed functions are already implemented. Inspection
+maps explain admitted objects; constructing a similar map does not create an
+execution capability or authoritative evidence. Example identifiers denote
+separately bound fixture values unless a literal is supplied.
+
+** Model integration
+:PROPERTIES:
+:CUSTOM_ID: req-model-public-boundary
+:END:
+
+Application models own domain truth. HumanHelp supplies the running examples,
+but Membership, Organization policy, and Request lifecycle rules remain
+HumanHelp semantics rather than special cases in Gesso.
+
+A model may organize its implementation as follows:
+
+| Namespace | Responsibility |
+|-----------+----------------|
+| =request.domain= | Business predicates and pure transitions. |
+| =request.schema= | Public value schemas and private persistence representations. |
+| =request.graph= | Relationships and declared graph/query semantics. |
+| =request.fx= | Acquisition, preparation, and authoritative effect realization. |
+| =request.core= | Narrow public semantic interface. |
+| =request.choreo= | Distributed programs consuming public model interfaces. |
+
+The layout is conventional; the dependency rule is normative. Public =core=
+operations may use their model's internals. Choreography consumes public =core=
+interfaces and does not reach through them into private domain, graph, schema,
+or FX implementation. A model's =core= does not facade its choreography.
+
+For example:
+
+#+begin_src clojure
+(ns net.humanhelp.site.model.request.choreo
+  (:require
+   [gesso.choreo.core :as choreo]
+   [net.humanhelp.site.model.request.core :as request]))
+
+;; The authoritative participant invokes a public model operation.
+;; trusted-context is supplied by that participant's admitted runtime.
+(choreo/at :request-authority
+  (request/claim! trusted-context claim-command))
+#+end_src
+
+This is not permission for the browser to supply =trusted-context=, nor for the
+choreography to call =request.fx= directly.
+
+*** Placement and semantic ownership
+
+The placement test is whether a rule still matters when the model operation is
+called synchronously from one JVM, without a browser or distributed protocol.
+Claim eligibility, current authorization, valid state transitions, command
+deduplication promised by the model, and atomicity normally pass that test.
+Browser optimism, role participation, transport retries, projected execution
+lifetime, and presentation settlement normally belong above the model.
+
+Some information crosses this boundary because it has an independent model
+meaning. A stable command ID can be a public model input because durable replay
+requires it. An expected domain version can be a public precondition. Neither
+requires the model to know a tab's execution ID or HTMX swap policy.
+
+Choreography may consume a public business judgment; it must not reimplement a
+slightly different Claim policy. A view may suppress a button as a convenience,
+but that suppression does not establish permission to commit. Conversely,
+business policy must not exist only inside choreography while =core= remains a
+pass-through to unconstrained writes.
+
+Cross-model calls use public semantic interfaces. When Request depends on
+Membership and Organization, their models expose the necessary facts,
+predicates, and composable authoritative obligations through those interfaces.
+They need not expose private storage paths. A coordinating operation may then
+protect the combined obligations in one transaction.
+
+A workflow spanning peer models should live at the level that owns the workflow.
+An onboarding flow coordinating Invitation, Membership, Organization, and
+external provisioning need not belong to Invitation merely because it starts
+there. Semantic dependency also does not dictate a literal namespace load order.
+Contracts may be represented separately to avoid circular implementation loads.
+
+*** Public interfaces expose commitments, not implementation privilege
+
+A public operation interface must expose enough information for a caller and
+the assembly checker to establish:
+
+- the semantic operation and interface version;
+- input and outcome schemas, including closed semantic discriminants;
+- required authority and the source of the trusted principal binding;
+- semantic preconditions and the point at which they must hold;
+- promised atomic effects and explicitly separate later effects;
+- command binding, replay, disclosure, and uncertainty policies;
+- authoritative observation or progression evidence supplied with outcomes;
+- named assumptions and the assurance status of each claimed guarantee.
+
+It must not make callers depend on private XTDB forms, FX scratch values, or
+helper Vars. A synchronous REPL invocation remains meaningful when supplied an
+admitted context and authorized principal; bypassing HTTP does not bypass the
+model's contract.
+
+Ordinary application code should receive scoped semantic capabilities rather
+than a raw database mutation handle. Clojure namespace privacy, records, and
+nominal wrappers do not sandbox a determined author in the same trusted process.
+The assurance claim therefore states its trusted-code and writer boundaries.
+
+A bypass writer can invalidate assumptions used by later supported operations,
+not merely forfeit assurance for its own invocation. Coverage must account for
+jobs, migrations, imports, administrative tools, other services, and direct
+database access wherever their writes can affect a protected invariant. An
+admission policy may accept a named external-writer premise; it must not report
+that premise as established by observing only Gesso-issued calls.
+
+*** Well-formed rules and appropriate policy are separate judgments
+
+Where semantic types are known, malformed rules must fail admission. Comparing
+a closed status enum as though it were a number cannot become a certified rule.
+For ordinary Clojure predicates outside the analyzable vocabulary, the interface
+records their types, contracts, implementation binding, and asserted meaning.
+Merely invoking such a predicate does not prove its contract.
+
+Neither type checking nor invariant preservation decides whether a business
+policy is desirable. Gesso can establish that the declared Claim policy is
+consistently enforced under stated premises. HumanHelp still chooses that
+policy. The executable semantic core and any later proof kernel/checker have
+different responsibilities, as established in Part I.
+
