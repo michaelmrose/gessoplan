@@ -1985,21 +1985,35 @@ transport decoder, container representation, or proof backend.
 Static reasoning depends on runtime values continuing to satisfy the contracts
 under which the reasoning was performed.
 
-Consequently, runtime checks are not "extra tests" after proof.  They are
-enforcement of proof premises where untrusted or dynamic values enter.
+Consequently, runtime checks are not "extra tests" after proof. They enforce
+the assumptions on which static reasoning depends wherever untrusted or
+dynamic values enter. The admitted checker identifies which premises require
+runtime enforcement; the physical application binds those checks to its actual
+input, effect, acquisition, and continuation paths. A validator invoked in an
+unrelated test, omitted route, or obsolete artifact does not discharge that
+deployed boundary obligation.
 
 Representative boundaries include:
 
 | Runtime input | Required admission before use |
 |---------------+-------------------------------|
 | Browser command bytes | Bound operation lookup, decoding/schema checks, command/caller binding, and trusted invocation contract |
-| External read result | Projection-envelope validation plus acquisition, scope, and provenance checks |
-| FX implementation result | Declared output validation, effect/owner correlation, and the continuation's semantic premises |
-| Settlement payload | Schema, source, command, current owner, and outcome-to-settlement checks |
+| External read result | Projection-envelope validation; authorized acquisition, subject/scope/basis/provenance admission; then only the justified role-local knowledge |
+| FX implementation result | Declared output validation, effect/owner correlation, and admission of the next semantic step under its current guards |
+| Settlement payload | Schema, trusted source, command binding, current owner and disposition-to-settlement checks before the admitted browser transition |
 
-If a runtime premise fails, execution must reject or recover according to the
-declared protocol.  It must not continue on the theory that static verification
-made runtime validation unnecessary.
+A successful shape check is not itself authorization, authoritative
+observation, sender knowledge, current resource ownership, or permission to
+install a browser result. The receiver establishes the separate semantic
+premises applicable to the particular operation, execution and consumer.
+Where an earlier trusted admission is reused, its subject, version, scope,
+lifetime and consuming boundary must still apply. The same rule covers
+cache hits, deferred effects, and cross-deployment requests.
+
+If a runtime premise fails, execution rejects, defers or recovers according
+to the declared protocol without manufacturing a terminal business result.
+It must not continue on the theory that static verification made runtime
+validation unnecessary.
 
 *** Validators should be reusable and diagnostic failure should be rich
 
@@ -2013,12 +2027,17 @@ The failure path should preserve enough information to explain:
 - which operation or transition depended on it;
 - whether failure concerns shape, provenance, authority, or another layer.
 
-A raw Malli explanation may be part of this evidence, but downstream error
-reporting should not force users to reconstruct the semantic context from a
-low-level schema mismatch alone. The diagnostic must respect disclosure
-policy: credentials, private payload fields, and protected model values must
-not leak through an error explanation. Stable semantic identifiers, redacted
-value summaries, and the failed obligation are usually sufficient.
+A raw Malli explanation may contribute to internal diagnostic evidence,
+but downstream error reporting must not force users to reconstruct semantic
+context from a low-level schema mismatch alone. Diagnostic construction,
+exception metadata, persistence, logging, traces, and responses must each
+respect the applicable disclosure boundary: credentials, raw command data,
+private payload fields, and protected model values cannot leak merely because
+validation failed. A low-level exception containing a full rejected value is
+not automatically safe to log or return. Stable semantic identifiers,
+authorized/redacted value summaries, checker/issuer scope, and the failed
+obligation are normally sufficient. Diagnostic denial must not itself be
+misreported as a rejected authoritative operation.
 
 *** Schema changes participate in semantic compatibility
 
@@ -2035,11 +2054,46 @@ Changes such as:
 
 may invalidate dependent operation, rule, or choreography artifacts.
 
-Later proof/certificate work therefore assigns semantic identities to normalized
-interfaces rather than source files. These operational schema requirements do
-not depend on completion of the later certificate machinery. The language/model
-boundary must nevertheless expose those semantic dependencies instead of hiding
-them inside arbitrary host-language code.
+The canonical interfaces therefore have semantic identities independent of
+source filenames. Dependency analysis tracks the effective schema and registry,
+nominal/refinement meanings, closedness and extensions, runtime predicate
+contracts, and the actual consumers that rely upon them. Changes invalidate
+or require new correspondence evidence for affected validators, type judgments,
+operations, projected plans, browser artifacts, application assemblies and
+assurance products. A matching name, digest label, file path, or well-formed
+version tag alone cannot discharge that dependency.
+
+Compatibility is directional and consumer-relative. An old producer accepted
+by a new reader, a new producer consumed by an old reader, continuation of an
+in-flight execution, and reuse of a proof may have different requirements.
+A schema widening or narrowing can affect required fields, accepted variants,
+trusted refinements, disclosure rules, and downstream branch meaning even
+when every observed test value still passes both validators. An admitted
+compatibility relation must identify the source and target interfaces, the
+relevant consuming semantics, and the qualification evidence; otherwise the
+dependent claim is invalidated or remains explicitly unresolved.
+
+These obligations apply independently of when the proof machinery is
+implemented. The language/model boundary exposes semantic dependencies
+rather than hiding them inside unrestricted host-language callbacks.
+
+*** Runtime-premise and compatibility counterexamples
+
+| Apparent success | Required outcome |
+|------------------+------------------|
+| A schema-valid browser command arrives on an unregistered or bypassing route | Reject or report the missing installed boundary; passing the validator elsewhere does not prove application closure |
+| An authorized board read passes its schema but belongs to a previous principal or Request scope | Do not establish current authoritative knowledge or permit installation without matching acquisition, disclosure and owner evidence |
+| An FX completion matches its output schema after its resource instance was retired | Reject the stale completion or apply a declared recovery; valid shape does not revive an execution |
+| A valid-looking settlement reports =:rejected= after the command may already have committed | Preserve unresolved incorporation and reconcile the original binding; a payload enum does not decide database truth |
+| A failure diagnostic includes a protected field in an exception map destined for logs | Redact or withhold at the relevant logging boundary; hiding the field only from the HTTP response is insufficient |
+| A new schema admits an extra enum variant used by a branch in an older executable plan | Check the actual direction and consuming semantics; test-value agreement and the same schema name do not establish continuation compatibility |
+| A predicate implementation changes but the schema identifier and file name remain unchanged | Requalify the predicate contract and affected evidence, or leave compatibility unresolved |
+| A compiled validator and proof sidecar come from different application generations | Reject mismatched dependency applicability; a matching top-level tag is not correspondence |
+| An older writer emits a closed payload accepted by a newer reader, but new business guards changed | Shape compatibility may hold while authorization and operation correspondence still fail; check the distinct obligations |
+
+These cases are part of the finished-system acceptance contract. They do not
+prescribe one implementation of the validator cache, proof backend, or deployment
+migration mechanism.
 
 ** Projection and branch knowledge
 :PROPERTIES:
