@@ -33,6 +33,22 @@ source/implementation correspondence. A raw declaration, an admitted operation,
 an issued executor, and a copyable report can use similar host representations
 without being interchangeable.
 
+ 
+The application definition must also identify the *coverage of its source
+inventory*: which declarations exhaust the selected deployment's known routes,
+workers, scheduled writers, renderer producers, external effects, and extension
+points; which are only sampled or discovered; and which remain unknown. A map
+with no registered writer is not evidence that no relevant physical writer
+exists. If a strong assurance policy depends on complete source or effect
+coverage, incomplete inventory is an open or blocking obligation, not success.
+
+Model semantics, physical route selection, provider selection, rendered
+affordance selection and build/runtime installation are independently authored
+choices. Construction derives facts that have one semantic owner, checks each
+independent choice against that owner, and retains source provenance for
+diagnostics and change invalidation. Matching strings or plausible metadata
+must never convert a physical selection into semantic authority.
+
 A schematic composition might be:
 
 #+begin_src clojure
@@ -62,6 +78,44 @@ replace a clock or storage provider for a scoped test, but must identify that
 substitution and avoid transferring its evidence to an unexamined production
 provider. A hand-built shadow assembly is not production-closure evidence.
 
+ 
+*** Worked Claim source-owner join
+
+The following is schematic application composition. The referenced Vars and
+the precise constructor spelling are illustrative, not claims about the
+current public Gesso API. Each module exports its own actual declarations:
+
+#+begin_src clojure
+(defn claim-application [config]
+  {:domains [request-model/definition organization-model/definition]
+   :flows [request-choreo/definition]
+   :surfaces [request-card/definition]
+   :ingress (request-routes/definitions config)
+   :execution (request-server/operation-bindings config)
+   :acquisitions (request-live/definitions config)
+   :providers (request-server/provider-bindings config)
+   :browser-profile browser/profile
+   :assurance-policy assurance/managed-application-policy})
+#+end_src
+
+For the =:request/claim= slice, construction checks the following distinct
+facts instead of recopying one operation ID into six registries:
+
+| Owner | Required relation and rejected near miss |
+|-------+------------------------------------------|
+| Request model/Choreo | The admitted Claim targets the current Request and RequestAssignment under trusted principal, Membership and Organization guards; a similarly named unchecked handler is not the same transition. |
+| Request-card view | A real eligible control supplies the operation, typed Request argument and required observation/command binding; a disabled or absent control does not satisfy positive product acceptance. |
+| HTTP route | Actual POST method, path template and decoded path Request match the command's Request target; a matching operation name with mismatched target is rejected. |
+| Trusted executor | Installed callable implements the model-owned command and recovery contract; an entry naming a different function does not establish execution correspondence. |
+| Providers | The actual clock and principal have the value shapes required by the executor, including =:biff.fx/now= when that concrete model FX integration is selected; simply listing =:clock= is insufficient. |
+| Browser and Live | The loaded generated plan/physical handlers, authorized reread, progression and subscription/Refresh policy join the same admitted operation; a build-only manifest or missing acquisition does not close the path. |
+
+One command identity persists through permitted delivery uncertainty and retry;
+a later current card observation is not by itself historical incorporation
+evidence. Current authorization, atomic execution and actual DOM installation
+require their own runtime evidence. The Claim illustration cannot stand in
+for separately required Create, Unclaim, Cancel or manager Reassign paths.
+
 *** Checked construction supports opaque application code
 
 An ordinary Clojure function can implement a rule, renderer, projection, candidate
@@ -82,6 +136,15 @@ resolution, and model exploration use their declared budgets. An effectful
 builder cannot be called repeatedly by inspection or diagnostics as though it
 were inert data.
 
+ 
+The boundary between a checked *instance* and a function's general behavior
+is retained in the report. A pure bounded export may be evaluated under its
+admitted inputs; an uncontained effectful callback cannot be probed for
+inspection as though it were data. Exception, timeout, unknown dependency,
+nondeterminism or undeclared side effects produce explicit dispositions rather
+than an empty declaration. Agreement between a callback's own generated
+assumptions and its reported result is not independent evidence.
+
 A canonical admitted construction should derive execution and checking products
 from the same semantic subject wherever possible. An independently supplied
 reference model remains useful, but its relation to the production operation is
@@ -94,6 +157,19 @@ Registries declared closed reject unknown, duplicate, ambiguous, or incompatible
 members before use. Extension points identify how new modules, routes, operations,
 or providers become a newly admitted construction. Dynamically loading a plugin
 must not mutate an admitted registry while retaining old closure evidence.
+
+ 
+Closure is scoped by registration source, deployment profile, effect family and
+inventory boundary. A closed declared route table does not imply an exhaustive
+inventory of background writers. A validated collection of rendered Hiccup
+snapshots does not prove all future conditional responses. Where a stronger
+claim needs that coverage, the system needs independent inventory evidence,
+a real producer/effect-boundary guard, or a truthful weaker disposition.
+
+Adding or replacing a plugin creates a candidate new generation with new
+admission and compatibility decisions. During rolling installation, older
+requests and workers retain their previously admitted generation; loading new
+code cannot silently grant them the new generation's rights.
 
 Unused declarations can be available for composition without being exposed or
 active. They are labeled accordingly. A generated executable or installed writer
@@ -124,6 +200,17 @@ allows private preparation and a final activation gate, while preventing uncheck
 application operations from becoming externally available. A report saying a
 candidate is structurally closed is not a report that its server was activated.
 
+ 
+The activation gate verifies what was actually installed or bound for serving:
+the dispatcher and checked handler, executable and served assets, provider
+and worker registrations, required acquisition paths, and the selected
+deployment's physical applicability premises. A constructed router value alone
+does not establish that the serving host adopted it. An unsuccessful build,
+partial installation or rejected activation must not expose unchecked operations;
+already acquired resources retain identified cleanup, cancellation and
+surviving physical-remnant obligations. Repeated startup must not silently
+duplicate workers or reuse another generation's installation receipt.
+
 The identities used in these phases identify different objects:
 
 - normalized semantic/realization input identity;
@@ -147,6 +234,16 @@ changed opaque implementation can invalidate implementation evidence even when
 its public contract is unchanged. Part V's exact plan and asset distinctions
 apply here.
 
+ 
+Identity comparisons are typed relations. Equal semantic identities may
+coexist with different handler implementations; equal artifact bytes can be
+installed under different execution permissions; distinct deployment instances
+can use one generation. Evidence is reusable only when its *complete*
+dependencies, mechanism and applicability premises remain valid. A digest
+cannot issue a trusted executor, prove artifact provenance, or establish
+physical serving. The normalization contract must detect omitted dependency
+fields and ambiguous encodings, not merely select a digest algorithm.
+
 The final asset digest cannot be an input to the same bytes containing that
 digest without an explicit cycle-breaking construction. Detached receipts and
 content-addressed asset locations provide a straightforward solution.
@@ -157,6 +254,17 @@ An admitted assembly binds the actual implementations, providers, policy,
 qualification profiles, route semantics, rendering contract, and artifact set
 on which its claims depend. A request captures that assembly instance at entry.
 Its later callbacks, rendering, and response completion preserve that reference.
+
+ 
+Capturing a generation never freezes changing principal authority, live
+RequestAssignment state, transaction progression or physical target/resource
+ownership. Those are re-established at the relevant current effects. An
+incompatible deployment may permit an old request to finish only under its
+explicit retirement policy; otherwise its obsolete physical actuation rights
+must be revoked and any surviving durable command resolved through compatible
+recovery. A callback must not splice a new route, plan or provider into an old
+continuation merely because names still match. Subscriptions and background
+workers require corresponding generation and resource lifetimes.
 
 An immutable map containing mutable Vars or registries is not automatically an
 immutable realization. The supported construction captures applicable callable
@@ -177,4 +285,26 @@ a copied map for an issued executor. Object identity alone is not durable proof,
 remote attestation, or a sandbox against hostile code sharing the JVM. Process
 restart reconstructs local admissions from their actual sources and any
 independently checkable durable evidence.
+
+ 
+*** Positive and adversarial construction histories
+
+| History | Expected disposition |
+|---------+----------------------|
+| An eligible Claim has source-owned model, control, POST, issued executor, correct clock, built-and-served browser asset and authorized card acquisition. | Admit the candidate; require separate real installation, execution and product acceptance evidence for stronger claims. |
+| A route and command use the same operation name but select different Request IDs. | Reject the route/command correspondence before a protected effect. |
+| A provider is named =:clock= but the executor never receives the required =:biff.fx/now= value. | Reject the provider binding or block actual execution at the capability gate. |
+| Sampled Hiccup cards are valid, but a conditional render emits an unannotated POST to a protected command route. | A static snapshot is insufficient; the installed response guard must reject the actual rendered request or the stronger claim remains open. |
+| An unlisted background writer can mutate protected RequestAssignment state. | Treat writer coverage as incomplete; do not certify a complete protection argument from a declared subset. |
+| A plugin adds a route or a mutable Var points to a new handler after admission. | Invalidate affected evidence and re-admit a new generation before dependent use. |
+| A delayed callback belongs to a retired generation or superseded browser target. | Prevent stale actuation; retain only separately owned command/recovery obligations. |
+| A fixture constructor passes with test providers but production uses another actual handler. | Preserve fixture-scoped evidence and leave production correspondence open. |
+| A candidate is checked but the serving router never adopts its guarded handler. | Report candidate closure, not deployed enforcement or demonstrated user behavior. |
+| A finite checker exhausts its budget or cannot express the selected obligation. | Report inconclusive/unsupported and apply the admission policy; neither success nor counterexample may be fabricated. |
+
+These are scoped construction requirements, not a demand to prove every
+ordinary Clojure function. Plain Clojure and explicit ordinary HTMX remain
+legitimate while their real effects must respect any application-wide safety
+property being claimed. Later sections define the detailed closure edges,
+serving enforcement, diagnostics and positive acceptance criteria.
 

@@ -2,10 +2,9 @@
 
 **Disposition:** The preferred R5 Part VII was initially split losslessly
 into fifteen natural Org units. That initial source/publication matched
-Git blob `55c0c46f8ccf97b2ed6d61a3a7e1aeeca876f6a7`. Section **07.01**
-has now completed a substantive R4-preservation and Gesso-source
-correspondence review, recorded in `07.01-r4-preservation-audit.md`.
-Sections 07.02–07.15, whole-Part-VII reconciliation, and independent
+Git blob `55c0c46f8ccf97b2ed6d61a3a7e1aeeca876f6a7`. Sections **07.01–07.02** have completed substantive R4-preservation
+and Gesso-source correspondence review, recorded in their numbered audits.
+Sections 07.03–07.15, whole-Part-VII reconciliation, and independent
 candidate acceptance **remain outstanding**. All nine original Part VII
 `CUSTOM_ID` anchors remain unchanged.
 
@@ -47,7 +46,7 @@ no internal `***` section, table, code block, quote or requirement
 anchor was split. The smallest source is 35 original lines and the
 largest 191; those counts describe the **initial split**, not subsequent
 revisions. The current fifteen units reconstruct the
-**110,844-character**, **1,770-line**
+**120,133-character**, **1,900-line**
 Part VII publication exactly, retaining all nine original anchors.
 
 ## Assembly and verification
@@ -104,6 +103,10 @@ Ten paired positive/adverse histories make this acceptance nonvacuous.
 Gesso's canonical Biff/HTML preflight path and its explicit escape
 boundaries are recorded as inspected source evidence.
 
-**Next:** review **07.02 — Application Definition and ApplicationAssembly**,
-including source-owned assembly derivation, exact identity, phase
-ordering, closed registries and the real Gesso construction boundary.
+**07.02 review:** see `07.02-r4-preservation-audit.md`. Source-owned Claim
+composition, independently checked physical choices, scoped inventory closure,
+assembly identity, runtime lifetimes and ten adversarial histories are explicit.
+This is editorial specification, not deployment certification.
+
+**Next:** review **07.03 — Whole-Application Closure Graph and Evidence**,
+including source-bound propositions, evidence scopes and failure dispositions.
