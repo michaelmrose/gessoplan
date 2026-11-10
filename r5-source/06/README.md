@@ -3,8 +3,11 @@
 **Disposition:** Lossless structural preparation of the preferred R5
 Part VI is complete. Fifteen source units 06.01–06.15 reproduce the
 unchanged published Part VI exactly. All original headings, examples,
-internal links and eight `CUSTOM_ID` anchors survive. **No substantive
-Part VI sectional audit or whole-part acceptance has yet occurred.**
+internal links and eight `CUSTOM_ID` anchors survive. Section **06.01 has completed its R4 preservation and Gesso-source
+correspondence review**, recorded in
+`06.01-r4-preservation-audit.md`. Sections 06.02–06.15,
+whole-part reconciliation and independent candidate acceptance
+remain outstanding.
 Parts I–V are accepted reviewed R5.1 candidates. Parts VI–XII and
 the independent full-plan reconciliation remain unfinished.
 
@@ -116,10 +119,18 @@ published Part VI and composed output need no changes
 because their normative contents are unchanged.
 
 The Python assembler was **not executed** in a local Gessoplan
-checkout. The exact concatenation verification was conducted
-via GitHub-fetched content, not a browser, backend, runtime or
-machine-proof check.
+checkout. Initial splitting and the subsequent 06.01 publication
+were checked by GitHub-fetched exact concatenation, not by
+runtime, backend, browser or machine-proof execution.
 
-**Next:** review **06.01 — Browser Refinement and Physical Shell**
-substantively against R4, accepted neighboring contracts,
-actual Gesso browser implementation and relevant tests.
+**06.01 review:** see `06.01-r4-preservation-audit.md`.
+The revised section separates role-local Choreo execution from
+adapter-owned browser coordination within one executable semantics,
+enforces semantic commit-before-physical-effect on reentrant callbacks,
+distinguishes actual event-source admission from copied event fields,
+and adds paired source/physical/adoption counterexamples. The
+`adapter/step` example remains illustrative, not an asserted v1622 API.
+
+**Next:** review **06.02 — Identities and Lifecycle Gating**
+against R4, accepted Parts I–V, the inspected Gesso adapter/shell,
+and the adjacent HTMX physical-effect boundaries.

@@ -41,6 +41,16 @@ including the browser adapter's transition semantics. A separate proof kernel,
 when used, checks evidence about that semantics. The proof kernel does not
 become a second runtime interpretation of browser behavior.
 
+The projected Choreo machine owns the role-local trajectory. The browser
+adapter owns its admitted invocation, asynchronous admission, fragment
+coordination, resource ownership and the conditions under which that machine
+may advance. These are composed responsibilities within *one executable
+semantic interpretation*, not competing copies of the machine. The browser
+shell, HTMX integration, timer callbacks and view components do not keep
+independent semantic answers to which execution is current, whether a
+command committed, whether rollback is legal or whether a presentation
+is authoritatively adopted.
+
 For an admitted plan and normalized event, the adapter computes a next semantic
 state, a selected transition identity, and abstract effect descriptions:
 
@@ -52,8 +62,15 @@ state, a selected transition identity, and abstract effect descriptions:
 ;;     :diagnostics diagnostic-values}
 #+end_src
 
-The exact return representation is an implementation choice. The following
-boundaries are required:
+This is an *illustrative* inspection shape, not a required signature or claim
+about the current adapter API. The exact return representation is an
+implementation choice. A selected-transition reference, if supplied for
+inspection or evidence, must be derived from the actual transition and its
+admitted source, not from a parallel diagnostic simulation or an independently
+chosen branch. Its absence from a runtime API does not excuse missing
+transition/effect correspondence where the application claims that assurance.
+
+The following boundaries are required:
 
 - The transition does not perform HTTP requests, mutate DOM, register listeners,
   read wall-clock time, or invoke an uncontrolled effectful observer.
@@ -69,10 +86,99 @@ boundaries are required:
   Their inputs, results, failure behavior, and premises remain inspectable even
   where the computation itself has not been proved.
 
+The normalized event contract distinguishes the event's *reported fields* from
+its *admitted origin*. Correlation is attached when an admitted physical
+resource is created or registered, and carried through its lifecycle. Merely
+parsing an execution ID, source identifier, command ID or apparent basis from
+client bytes cannot authenticate the event, bind a current owner, establish
+a trusted authoritative observation or authorize a server mutation. The
+supported browser realization identifies the source, schema, owner, resource
+instance and generation admitted for each event class. Execution-private
+callbacks and shared fragment invalidations use different admission contracts:
+a shared invalidation is not rejected merely because it did not originate
+from the currently selected local command.
+
 One logical dispatcher owns semantic state for a runtime instance. Applications
 may have several isolated runtime instances, but two mutable copies must not
 both claim to own the same execution, coordinator, or resource instance. Shared
-resources have an explicit shared owner and protocol.
+resources have an explicit shared owner and protocol. A later event observes
+one committed predecessor transition, not an arbitrary interleaving of two
+partially updated copies. Each accepted event has a linearized semantic
+disposition; physical effects and their callbacks occur after that state
+transition is committed. If a physical effect synchronously calls back into
+the dispatcher, the callback must see the newly committed semantic owner,
+generation and obligations. The interpreter cannot apply an obsolete pending
+effect from the prior transition to a newly owned resource merely because the
+effect was already emitted. Where multiple host tasks can dispatch concurrently,
+the implementation needs an admitted serialization/ordering mechanism; an
+unprotected read/modify/write cycle is not sufficient.
+
+The required relationship is:
+
+#+begin_example
+registered physical source
+  -> normalize and admit source/identity/event
+  -> compute semantic transition and abstract effects
+  -> commit next semantic state / retire obsolete rights
+  -> interpret admitted physical effects through narrow shell or HTMX gate
+  -> report actual completion/failure as a new normalized event
+#+end_example
+
+HTMX remains responsible for ordinary declared requests, parsing, supported
+swaps, OOB handling and settlement. Gesso may gate a lifecycle action *before*
+a protected physical mutation when its invariant requires intervention; it
+must not perform a forbidden mutation first and ask the adapter afterward.
+The exact supported HTMX lifecycle contract, including other physical
+mutation paths, is specified in the following sections, not presumed from
+the mere existence of a =beforeSwap= callback. The shell likewise must not
+reimplement HTMX's native request/swap machinery to create a second,
+unexamined execution path.
+
+An effect request is not evidence of effect completion. Emitting
+=:htmx/allow-swap= does not certify that a target was installed; a successful
+request does not establish a committed Claim; and recording a tentative
+presentation does not establish current RequestAssignment state. The
+appropriate owner must admit actual, correctly scoped physical completion
+before advancing adopted presentation knowledge. Timer cancellation, aborted
+requests and listener cleanup may fail or race. Semantic retirement first
+revokes stale callback rights, while physical cleanup remains a separate,
+possibly incomplete obligation.
+
+Optional diagnostics observe actual selected transitions without choosing
+different outcomes or supplying missing permission. Their resource and
+failure isolation must be established under declared bounds; a throwing or
+unbounded same-process observer is not magically harmless merely because
+its return value is ignored. Mandatory semantic checks and application
+admission are not optional sidecar observers.
+
+The event/physical boundary also has a trust asymmetry. A hostile browser
+can skip the adapter, alter attributes and submit requests directly. Current
+principal, Organization/Membership and RequestAssignment eligibility, as well
+as the actual transaction and disclosure rules, remain with trusted server
+and model authorities. Browser admission protects browser-coordination
+guarantees, not server authorization.
+
+*** Core/shell boundary acceptance histories
+
+The following paired cases require actual semantic dispatch and, where
+physical behavior is claimed, instrumented host effects. An inspection
+map with the expected keys is not a substitute for the relevant event source.
+
+| Eligible history | Adverse or incomplete history | Required result |
+|------------------+-------------------------------+-----------------|
+| An admitted execution installs a timer with its exact owner and generation. Its synchronous completion re-enters dispatch after semantic state was committed. | The callback sees pre-transition ownership or the shell reconstructs identity from today's DOM and resumes a superseded execution. | The admitted callback observes the new committed state; a retired-generation callback is powerless and cannot advance the old machine. |
+| One execution owns its provisional card; a later scoped authoritative installation retires that right. Delayed physical cleanup then finishes. | An old timeout or rollback callback uses its captured card snapshot to overwrite the adopted card. | Semantic ownership prevents obsolete installation independently of successful physical cancellation; remaining cleanup is resource debt. |
+| A subscribed fragment receives an admitted shared invalidation while a different command is locally active. | An adapter silently drops the invalidation because its command ID differs from that execution, or trusts a forged scope in arbitrary client bytes. | The legitimate shared source follows its scoped coordinator contract; private callbacks still require owner/resource-generation admission. |
+| A guarded HTMX request is permitted, followed by an independently observed completed installation and correctly scoped adoption. | A pure allow result, HTTP 200, decoded response, or before-swap event is credited as physical adoption without the required completion witness. | Only the completed, currently admitted physical effect justifies the exact adopted scope; command disposition remains separately sourced. |
+| An optional observer reads a bounded transition record without influencing the selected successor. | A throwing, reentrant, effectful or unbounded diagnostic blocks required physical work or forges a semantic event. | Optional diagnostic authority is denied; failures are isolated under the declared host/resource premises, otherwise the stronger noninterference claim remains unproved. |
+
+These cases establish the acceptance *obligations* for the finished design.
+Section 06.02 defines concrete identity lifetimes; 06.03–06.05 define
+HTMX gates, physical effect correspondence and adoption; 06.06–06.07
+define scoped Live and Refresh coordination; 06.10–06.11 define managed
+effect and event admission details. Part VII must close the *actual*
+assembled and served entrypoints. No single pure test, callback log or
+claimed sidecar identity certifies those separate physical boundaries.
 
 *** Distinct identities serve distinct purposes
 
