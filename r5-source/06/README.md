@@ -3,9 +3,9 @@
 **Disposition:** Lossless structural preparation of the preferred R5
 Part VI is complete. Fifteen source units 06.01–06.15 reproduce the
 unchanged published Part VI exactly. All original headings, examples,
-internal links and eight `CUSTOM_ID` anchors survive. Section **06.01 has completed its R4 preservation and Gesso-source
-correspondence review**, recorded in
-`06.01-r4-preservation-audit.md`. Sections 06.02–06.15,
+internal links and eight `CUSTOM_ID` anchors survive. Sections **06.01–06.02 have completed R4 preservation and
+Gesso-source correspondence reviews**, recorded in their
+matching sectional audits. Sections 06.03–06.15,
 whole-part reconciliation and independent candidate acceptance
 remain outstanding.
 Parts I–V are accepted reviewed R5.1 candidates. Parts VI–XII and
@@ -131,6 +131,15 @@ distinguishes actual event-source admission from copied event fields,
 and adds paired source/physical/adoption counterexamples. The
 `adapter/step` example remains illustrative, not an asserted v1622 API.
 
-**Next:** review **06.02 — Identities and Lifecycle Gating**
-against R4, accepted Parts I–V, the inspected Gesso adapter/shell,
-and the adjacent HTMX physical-effect boundaries.
+**06.02 review:** see `06.02-r4-preservation-audit.md`.
+The revised identity/lifecycle contract defines allocation, ownership,
+source and retirement of distinct command, execution, physical
+attempt, effect, resource and target incarnations. It requires a
+still-current last-actuation permit in reentrant effect batches,
+and an actually effective synchronous veto before protected
+HTMX work. Six positive/adverse histories expose stale effects,
+request-attempt confusion, shared invalidations and suspended pages.
+
+**Next:** review **06.03 — HTMX Transport and Response Safety**
+against R4's host integration rules, the accepted R5.1 browser
+and authority boundaries, and actual supported HTMX behavior.

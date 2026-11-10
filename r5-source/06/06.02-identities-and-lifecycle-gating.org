@@ -1,84 +1,196 @@
 *** Distinct identities serve distinct purposes
 
-The browser preserves identity through every boundary at which a callback or
-effect might otherwise be attributed to the wrong work.
+The browser preserves identity through every boundary at which a callback,
+effect, recovery attempt or physical mutation might otherwise be attributed to
+the wrong work. Identity has a declared allocation authority, namespace,
+incarnation or generation, comparison relation, lifetime, and permissible
+transfer. An equal-looking string, a reusable DOM selector or a compatible
+plan version is not by itself evidence of the same current owner.
 
-| Identity | What it identifies |
-|----------+--------------------|
-| =:runtime-instance/id= | One admitted runtime lifetime in this page or worker context. |
-| =:authority-context/ref= | The relevant authenticated principal, tenant, and authorization-context binding; it is not a browser-issued credential. |
-| =:execution/id= | One local execution of an admitted projected plan. |
-| =:gesso/command-id= | One semantic command with the binding specified by Part IV. |
-| =:resource-instance/id= | One actual incarnation of a timer, listener, transport, subscription, or managed owner. |
-| =:effect-instance/id= | One issued physical effect and its completion protocol. |
-| =:transport-request-id= | One HTTP or other transport attempt; retries may have different transport identities for the same command. |
-| =:target-instance/id= | One admitted physical target incarnation, distinct from a reusable selector or domain entity ID. |
-| =:coordinator/id= | One acquisition coordinator for a declared scope and ownership lifetime. |
-| =:assembly-deployment/id= | A deployment/assembly incarnation where that distinction matters to admission. |
-| =:executable-identity= | The exact executable plan identity defined by Part V. |
+| Identity | Meaning and lifetime |
+|----------+----------------------|
+| =:runtime-instance/id= | One admitted browser runtime lifetime in a page or worker context; a replaced, resumed or concurrently loaded runtime does not inherit physical rights merely because it carries the same logical application ID. |
+| =:authority-context/ref= | Reference to the admitted principal, tenant/Organization and relevant policy context at the specified trust boundary; never a browser-issued credential or permission to reuse stale authorization. |
+| =:execution/id= | One local execution of an admitted role-projected plan; an execution has its own generation and may retire while command reconciliation survives. |
+| =:gesso/command-id= | One semantic command under Part IV's immutable intent, actor/authority, operation, arguments and compatible replay contract; distinct from delivery and local presentation. |
+| =:resource-instance/id= | The concrete incarnation of a timer, listener, subscription, continuity capture, transport handle or managed physical owner, under a declared parent. |
+| =:effect-instance/id= | One issued effect and its completion, cancellation, failure or uncertainty protocol; issuance does not mean the physical result has occurred. |
+| =:transport-request-id= | One attempted HTTP or other transport exchange; a retry of C42 may receive a new attempt identity while retaining the command identity. |
+| =:target-instance/id= | One physical DOM target incarnation and ownership generation, distinct from a reusable selector, logical view slot or domain entity ID. |
+| =:coordinator/id= | One scoped Live acquisition coordinator and its ownership lifetime; its in-flight requests have their own attempt/generation identities. |
+| =:assembly-deployment/id= | The pertinent installed application or deployment incarnation for artifact and continuation admission, not a self-authenticating source stamp. |
+| =:executable-identity= | The exact projected executable identity from Part V, distinct from a semantic-compatibility judgment or a proof certificate. |
 
-This vocabulary does not require one spelling for every host API. It requires
-that the distinctions survive normalization and checking. A bare =generation=
-field is insufficient unless its owning identity and comparison semantics are
-explicitly defined. An ordered resource-incarnation counter is local to its
-owner; it is not an ordering of commands, plans, or database observations.
+This vocabulary does not require every host API to use these exact keys,
+allocate a separate UUID for each row, or expose implementation-only handles
+to applications. Where two identities share an underlying value, the admitted
+contract must establish that they identify the *same physical instance* for
+all operations relying on that alias; equality of their representation alone
+does not establish the claim. Generations belong to a named allocator and
+owner. Counters can be reused only when their full identity also prevents
+an old callback being confused with a new incarnation. A local generation
+never orders different actors' commands, deployments, or opaque XTDB bases.
 
-A HumanHelp domain Request ID remains a domain argument, such as
-={:arguments {:request-id R}}=. Runtime examples use =:transport-request-id=
-for transport correlation. A command can survive several transport attempts and
-local executions. Neither equality of command IDs nor equality of selectors
-makes their private callbacks interchangeable.
+A HumanHelp domain Request =R= remains a model-owned subject, such as
+={:arguments {:request-id R}}=. It is not an HTTP request ID. The
+authoritative actor/Organization/Membership and current
+=RequestAssignment= eligibility are established by trusted server/model
+enforcement, not by a copied =:authority-context/ref=, plan digest or
+=:gesso/command-id= on a browser element. Browser-side admission may
+bind the same semantic intent C42 across H1 and H2, but it does not thereby
+prove either attempt incorporated, that E42 is still current, or that an
+observed card is physically installed.
+
+*** Identity allocation, currentness and retirement
+
+An admitted resource or effect record binds its issuer, semantic owner,
+runtime/plan context, generation, expected source and completion contract
+*before* physical issuance. The shell carries the resulting correlation
+through the physical handle or a registered mapping; later callbacks
+cannot reconstruct authority from today's DOM ancestry, URL, selector or
+"active execution" variable. The runtime checks both the reported identity
+and the admitted origin and still-current record when the event arrives.
+
+Distinct lifecycle subjects retain distinct end conditions:
+
+- C42's command history and unresolved incorporation/attribution survive
+  transport timeout or E42 retirement until Part IV's qualified resolver,
+  retention and terminal-exclusion rules dispose of that obligation.
+- E42's execution and its private timer, transport, rollback and target
+  rights end or transfer through explicit semantic retirement; a new E43
+  does not receive E42's callback rights merely by continuing C42.
+- H1 and H2 are different physical attempts. H1's completion cannot
+  settle H2's pending transport effect, even if both refer to C42.
+  Compatible command replay is determined by the authoritative boundary,
+  not by the browser picking the response it prefers.
+- A logical target may remain =:request-card R= while the actual DOM
+  instance changes from B1 to B2. The old element's listeners, continuity
+  snapshots and deferred mutations cannot act on B2 without newly admitted
+  rights, even if both elements have the same =id= attribute.
+- Shared Live invalidations follow their declared fragment/coordinator
+  ownership rather than an unrelated execution-private identity.
+  Revoking E42 must not accidentally erase a separately retained,
+  legitimately scoped Refresh requirement or subscription obligation.
+- A suspended tab or newly served deployment re-enters compatibility and
+  source-admission checks before resuming old work. Semantic command
+  recovery may be possible while old physical continuations remain
+  irrevocably retired. Sections 06.08–06.09 own the detailed protocol.
+
+Currentness is not solely a structural test on a copied map. A transition
+must establish *who issued* the resource, which runtime and generation
+presently own it, which host source actually emitted the callback, and what
+semantic event is permitted in the current machine state. Invalid or missing
+correlation fails closed for protected actions; an already late, otherwise
+well-formed callback is classified stale/duplicate where the admitted event
+vocabulary allows it. A malformed event, a stale event, an unsupported host
+profile and an unknown authoritative command outcome are not interchangeable
+diagnoses.
 
 *** Commit semantic state before issuing physical work
 
-The shell validates and commits the selected next state before interpreting its
-effects. An immediate completion callback must observe that the effect was
-issued and has an owner. It must never find a resource that exists physically
-but has not yet been registered semantically.
+The shell validates and commits the selected next state before interpreting
+effects. This includes the effect issuance records and retirement of any
+superseded local rights. An immediate completion callback must observe
+the effect's current issuance and owner rather than a physically existing
+resource absent from semantic state.
 
-Committing first is necessary but does not settle reentrancy. An effect handler
-can synchronously trigger another event, retire an execution, or replace a
-target before the remaining effects of the outer transition run. Each protected
-effect therefore checks its own current issuance record and permit at the point
-of actuation. An earlier decision does not grant the whole captured effect batch
-permanent permission to run.
+Committing first does not settle reentrancy. A handler can synchronously
+submit another event, retire E42, replace B1, or begin a newer effect before
+the outer transition's remaining effects run. The interpreter therefore
+checks each protected effect's *current* issuance, owner, generation,
+target and permitted mutation footprint immediately before the last
+controllable physical act. A previously emitted batch is not an
+irrevocable blanket permit. No delayed physical mutation may rely on
+a permit that has ceased to be applicable, even if its later completion
+would be correctly rejected as stale.
+
+The check must distinguish effect kinds. A retired execution may still
+require best-effort cancellation of its own old physical handle, a
+non-mutating diagnostic, or transfer of durable recovery debt. Such
+cleanup is not permission to restore old presentation or cancel a
+successor's identically named resource. When a physical action has
+already partly occurred, the system records actual completed, failed
+and indeterminate outcomes and follows its declared compensation
+contract instead of pretending a pre-action check made it atomic.
 
 A conforming dispatch sequence is:
 
-1. normalize and admit the event against the current semantic state;
-2. calculate and validate the transition without physical side effects;
-3. commit the next state and effect-issuance records;
-4. expose the actual selected transition to isolated diagnostics;
-5. interpret each effect through its declared lifecycle and current-owner gate;
-6. admit resulting completions against the state current when they arrive.
+1. normalize the raw event and admit its actual source, owner and legal state;
+2. compute and validate the next transition without physical side effects;
+3. commit the next state, issuance records, retirement and transfer obligations;
+4. offer an immutable record of the *selected* transition to bounded diagnostics;
+5. interpret each effect subject to its current actuation gate, with no
+   unadmitted transport or DOM action between the check and controlled mutation;
+6. admit actual host completion, partial failure or uncertainty as another event.
 
-Diagnostic recording must not block required effects or throw an exception back
-into semantic control. Implementations can buffer immutable trace records before
-notifying observers. This preserves Part V's diagnostic noninterference
-contract without claiming that instrumentation has no resource cost.
+One logical dispatcher owns semantic state for an admitted runtime. Nested
+dispatch must see the newly committed state; the outer frame cannot overwrite
+changes made by the inner dispatch when it returns. A serialized event queue
+may be used for events that do not need a synchronous host decision. If
+multiple worker or host entrypoints can mutate one semantic state, their
+admission/commit order requires a real linearization mechanism. A mere
+read-then-write or matching timestamp does not supply it.
 
-A shell must not overwrite state changed by a nested dispatch with the outer
-transition's earlier snapshot. It may serialize ordinary normalized events or
-support controlled reentry, provided the resulting order has an explicit
-semantic interpretation. Completion events cannot be silently dropped to make
-that implementation easier.
+Diagnostic observation is not a second semantic dispatcher. Observer failure
+may be isolated through bounded buffering or a suitable failure-isolation
+mechanism, but recording the selected event cannot block a mandatory effect,
+replace a transition, or leak protected observation data. Promises and
+callbacks initiated by supposedly observational code must also obey the
+declared noninterference contract. This does not assert zero diagnostic cost
+or a sandbox for arbitrary same-process code.
 
 *** Synchronous lifecycle decisions need a synchronous gate
 
-Some host hooks require an immediate allow/veto decision before returning. An
-ordinary asynchronous event queue cannot make such a decision after the host
-has already sent the request or performed the mutation.
+Certain supported HTMX/browser hooks require an allow/veto decision before
+returning to the host. The supported integration profile identifies the
+*actual last cancellable boundary* for each protected physical request,
+swap, secondary mutation and follow-on effect. A deferred Promise, event
+queue, later observer or eventual rollback cannot retroactively veto a
+request already sent or a DOM mutation already performed.
 
-The integration contract identifies those hooks and supplies a synchronous
-admission gate. If admission requires unavailable knowledge, the dispatcher is
-in a state that cannot safely decide, or the hook fails, the protected action is
-vetoed or the integration reports an unsupported realization. It must not
-silently default to allow. A later attempt is permitted only through a declared
-retry/reacquisition path, preserving command identity where it repeats the same
-command.
+At such a gate the currently admitted semantic dispatcher computes a
+synchronous decision from the available admitted state, including its
+source/attempt/target generation and required prerequisites. If the source
+is uncorrelated, the applicable permit has expired, required knowledge is
+unavailable, the dispatcher cannot commit safely, or the handler fails,
+the protected operation is prevented before that act or is rejected as an
+unsupported realization. Fail closed is a *physical outcome*, not just
+a logged =:rejected= status while HTMX proceeds. A host profile that cannot
+actually suppress the protected action is not certified by calling
+=preventDefault= at an ineffective point.
 
-Returning synchronously is not evidence that a handler contains no deferred
-work. The handler contract must cover timers, promises, animation callbacks,
-custom-element callbacks, event dispatch, and library-scheduled mutations that
-can occur after the apparent decision.
+The gate may direct a separate, explicit reacquisition or retry flow.
+That flow owns its own attempt identity, checks authority and required
+progression again, and retains C42 only if it is a compatible retry of
+the same still-admitted intent. An unknown result must not be silently
+relabelled rejected or replaced by a fresh Claim intent. A prepared
+=:needs-input= or deferred affordance is not evidence that a previously
+unadmitted physical send was allowed.
 
+Synchronous decision-making does not imply that a handler is free of
+later physical consequences. Timers, Promises, custom-element reactions,
+animation callbacks, extension activity and queued work require their
+own correlation and last-actuation safety. Section 06.03 specifies the
+HTMX response and mutation surface; 06.05 and 06.10–06.11 specify actual
+installation, effects and async admission.
+
+*** Paired identity and lifecycle histories
+
+These cases require independently sourced identity/host evidence, not an
+inspection map fabricated to match the expected fields.
+
+| Eligible history | Adverse history | Required classification or result |
+|------------------+-----------------+----------------------------------|
+| C42 remains one admitted Claim while H1 times out and a permitted H2 retries under the same immutable command binding. | H1's late response is interpreted as H2's transport completion, or timeout is treated as proof C42 was rejected. | Preserve separate H1/H2 effect ownership and command-specific uncertainty; resolve actual incorporation only from qualified Part IV evidence. |
+| E42 issues effect F1 to B1; the shell commits issuance before a synchronous callback re-enters dispatch. | A callback reads pre-commit state, or the outer dispatch overwrites a newer nested state. | One linearized owner history; completion sees the committed predecessor and cannot regress later semantic state. |
+| A newer E43 owns B2 at the same DOM selector after E42 retires; an old queued DOM effect checks current target and stops. | The old effect mutates B2 because its earlier allow decision or matching selector is reused, even though its later callback would be rejected. | Prevent the stale *act* at the last controllable boundary, not merely its completion; preserve any independent cleanup debt. |
+| A supported HTMX before-request gate has an admitted current permit and allows the exact attempted send. | The source is uncorrelated or admission throws, but the handler merely reports a typed error and lets the actual request proceed. | The protected send is physically vetoed or the host profile rejected; report failure without manufacturing an authoritative command outcome. |
+| A scoped Live invalidation arrives during E43 while a private E42 timer also fires late. | The runtime rejects the shared invalidation for not belonging to E43, or permits E42's timer to resume E43. | Admit legitimate shared coordinator work; classify the private stale timer without granting it new execution rights. |
+| A sleeping page re-admits compatible current assets and recovers C42 through a qualified resolver. | It resumes an old effect/target handle solely because a stored plan digest or runtime ID matches. | Separate command recovery from suspended physical continuation; require deployment/source/owner compatibility and a new physical admission. |
+
+The finished framework must support ordinary useful HTTP/HTMX and
+Clojure application paths alongside these gates. Missing mandatory
+correlation rejects the incomplete *managed* path, not all raw HTMX
+or every unrelated ordinary handler. Browser event admission guards
+local realization; trusted server/model policy still guards actual
+RequestAssignment mutations and protected reads.
