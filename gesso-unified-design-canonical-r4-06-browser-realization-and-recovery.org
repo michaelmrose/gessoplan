@@ -2469,124 +2469,301 @@ correspondence and the real browser/transport assumptions.
 :CUSTOM_ID: req-browser-async-admission
 :END:
 
-Every asynchronous entry point normalizes and admits its event before causing a
-semantic transition or protected physical action. This includes network outcomes,
-HTMX callbacks, subscriptions, timers, animation callbacks, promises, worker and
-cross-tab messages, observer callbacks, and delayed continuity restoration.
+Every asynchronous event that can advance browser semantic state or cause a
+protected physical effect passes the declared normalization and owner-relative
+admission boundary. Timers, HTMX callbacks, SSE invalidations, Promise and
+worker completions, cross-tab messages, deferred continuity work, command
+resolver results, browser lifecycle events and delayed DOM effects are all
+subject to this rule. No callback may independently choose which execution
+"probably" owns the event or resume a Choreo machine outside the admitted
+adapter.
 
-The gate is owner-relative. An execution-private completion, a shared subscription
-advisory, and a command-resolution result have different owners and applicability
-conditions. Requiring an execution ID on every event would misrepresent genuinely
-shared work; accepting all events without an execution ID would bypass admission.
+An admitted event is a proposal for one semantic transition. It is not a
+server credential, a trusted domain fact or permission to perform all
+subsequent physical effects. Its *registered origin*, event class, payload,
+owner, current resource incarnation, legality and claimed evidence are
+separately established. A permitted semantic transition may issue physical
+effects; those effects still require current actuation permits under
+06.02, 06.05 and 06.10.
 
-*** Event class comes from the registered source
+The conceptual gate is common across event types, but its requirements
+depend on *owner class*. Requiring E42 on every event rejects genuinely
+shared work; accepting all events without an execution ID allows private
+callbacks to evade retirement. The general rule remains
+[[#req-owner-relative-event-admission][Part II's owner-relative event admission]].
 
-The trusted local adapter registration establishes what kind of event a source
-may deliver and which correlation fields it carries. An arbitrary payload field
-such as =:event/class :command-evidence= cannot choose a more permissive admission
-path.
+*** The event class follows the registered source
 
-Normalization binds the actual source resource to its permitted schema and owner
-class. Payload values are validated within that binding. A worker or another tab
-can provide useful information, but its message is not automatically authoritative
-because it arrived through a browser API. The assembly declares how any claim in
-that message obtains provenance.
+The assembled application's admitted source registration establishes
+which event kinds an actual physical callback may deliver, the allowed
+owner class and scope, the required correlation, accepted schema and
+resource lifetime. Event metadata supplied in the payload does not
+select a more permissive class. An old transport callback cannot
+become current shared command evidence merely by adding
+=:event/class :command-evidence= to its body.
 
-An admission record can include:
+| Registered source class | Admitted owner and purpose |
+|-------------------------+----------------------------|
+| Execution-private | A current execution and issued local/send, timer, transport or provisional effect generation. |
+| Fragment coordinator | A current applied query, managed root and physical HTMX request/target generation for acquisition and installation. |
+| Shared subscription | A current subscription/interest resource and authorized scope, independent of the active local command. |
+| Command recovery | A surviving resolver owner and qualified C42 historical command-result binding, possibly after E42 retirement. |
+| Runtime lifecycle | A registered =online=, =pageshow=, visibility, reconnect or deployment wakeup requesting further checks, not claiming those checks succeeded. |
+| Optional observer | A bounded, nonauthoritative inspection of an actually selected transition/effect, without permission to forge semantic events or decide branches. |
+
+A source registration has a runtime/owner incarnation, physical callback
+identity, permitted event types, schema, effect or resource instance,
+subscription/authority scope and retirement contract. It must be
+established by the actual integration, not reconstructed from today's
+DOM selector, mutable global or client-reported source label.
+
+A registered SSE listener can establish that a message entered through
+a particular local subscription path. It does not by itself prove that
+the message's claimed XTDB basis or RequestAssignment facts were issued
+by the trusted authority. EDN decoding, equality of duplicated wire
+fields and correct DOM listener ancestry are structural/source checks,
+not universal provider provenance. Worker and cross-tab APIs likewise
+identify transport channels without making arbitrary message contents
+authoritative. Server and model policy remains independently enforced
+against hostile browser traffic.
+
+A schematic normalized inspection event could be:
 
 #+begin_src clojure
-{:source-registration/ref registered-source-ref
- :resource-instance/id source-resource-id
- :owner/ref admitted-owner-ref
- :effect-instance/id issued-effect-id
- :event-kind :transport/completed
- :correlation {:transport-request-id T1
-               :gesso/command-id C42}
- :payload decoded-payload}
+{:event :transport/succeeded
+ :source-registration/ref registered-transport-source
+ :runtime-instance/id runtime-instance
+ :owner/ref [:execution E42]
+ :resource-instance/id issued-resource-instance
+ :execution-generation current-generation
+ :effect-instance/id pending-send-effect
+ :transport-request-id H1
+ :gesso/command-id C42
+ :payload decoded-result}
 #+end_src
 
-The registration constrains the record. Constructing the map is not the check.
-A malformed or conflicting payload cannot overwrite the source's bound owner or
-transport instance.
+This is not a claim that the current adapter exposes those exact fields.
+Some identities may be carried in trusted local registrations rather than
+serialized in the event. Constructing a matching map is not admission.
+An actual source/owner binding and the correct semantic evidence must
+exist independently.
 
-*** Admission checks both identity and legal state
+*** Admission checks owner, issued work, legal state and evidence
 
-The gate establishes, as applicable:
+For a declared source class, the gate establishes all relevant conditions:
 
-1. the source registration exists and permits this event kind;
-2. the runtime, owner, and resource instance are current for this path;
-3. correlation agrees with the issued effect, transport attempt, command binding,
-   and target scope;
-4. the event is well-formed and its claimed evidence has the required provenance;
-5. the current plan state admits this completion or settlement;
-6. duplicate/replay policy permits the intended consequence;
-7. any resulting physical action receives a current permit of its own.
+1. The physical callback is associated with a current source registration
+   that permits the claimed event kind, scope and host lifecycle.
+2. Its runtime, owner, resource instance and generation are current for
+   that kind of work; reused labels, selectors and counters do not
+   establish instance identity.
+3. Where relevant, correlation matches a real issued local effect,
+   H1 transport attempt, timer, subscription interest, fragment request
+   or command resolver. A shared invalidation need not name E42.
+4. The payload obeys the source-bound schema; evidence of command outcome,
+   current observation, progression, absence or physical completion has
+   the *required independent provenance*.
+5. The current semantic machine/coordinator/resolver state legally accepts
+   the event. A completion cannot settle an unissued effect; a timeout
+   cannot reverse an already resolved presentation branch.
+6. Duplicate/replay rules apply to the *correct layer* of identity and
+   bind any repeated ID to its source, owner and equivalent payload.
+7. Any subsequent protected transport, disclosure or DOM mutation obtains
+   its own current permit. Event admission does not revive retired
+   physical rights.
 
-A valid identity does not make every event legal in every state. A completion
-cannot settle an effect never issued, and a timeout cannot reverse an already
-resolved branch merely because its execution record still exists.
+A single logical dispatcher commits its selected semantic state before
+interpreting effects. An immediate nested callback therefore sees the
+new owner and effect issuance records; the outer handler cannot overwrite
+the nested successor state on return. Where multiple host tasks can
+dispatch against one owner, their commits require real serialization.
+Event arrival order does not establish authoritative progression or
+server causality.
 
-Disposition and diagnostics distinguish at least:
+| Diagnosis | Meaning and required response |
+|-----------+-------------------------------|
+| Unknown source/correlation | No admitted issued work matches; never guess the newest execution. |
+| Malformed payload | Declared schema or source-bound identity is violated; fail the required physical gate closed. |
+| Stale owner/resource | Old generation/instance has retired; no old callback or physical mutation rights. |
+| Duplicate delivery | Apply the class's admitted idempotence/consumption rule; do not rerun one-shot effects. |
+| Conflicting duplicate | Same ID has incompatible binding/payload; classify and reconcile as a protocol/evidence fault. |
+| Illegal current state | Source is known but its event cannot advance this machine or coordinator state. |
+| Incompatible plan/context | Suspend/retire old private work under the explicit recovery/compatibility contract. |
+| Unestablished authority | Source does not justify claimed command incorporation, current scope, basis, adoption or disclosure. |
+| Physical failure or uncertainty | Preserve partial, failed or unknown effect results; do not fabricate domain rejection. |
 
-| Condition | Meaning and treatment |
-|-----------+-----------------------|
-| Unknown correlation | No applicable issued work is known; do not guess an owner from nearby DOM. |
-| Stale resource/owner | The event belongs to an earlier incarnation or retired scope; suppress its former rights. |
-| Duplicate | The same admitted occurrence/result has already been handled; apply its declared idempotent disposition. |
-| Incompatible | The applicable plan, message, context, or retained-operation contract does not admit interpretation. |
-| Malformed | The event violates its input schema or bound correlation. |
-| Illegal state transition | The source is known but this event cannot legally advance its current state. |
-| Unestablished evidence | The supplied information does not justify the claimed fact or outcome. |
-| External/physical failure | The issued work failed or has an indeterminate result under its contract. |
+These are browser-level classifications, *not* new public-model
+outcomes. In particular, =:committed=, =:rejected=,
+=:already-incorporated= and =:commit-unknown= require admitted
+authoritative operation evidence. Expected stale callbacks may
+produce bounded diagnostics without changing state; conflicting
+current evidence or a broken invariant needs its declared typed
+fault and recovery path, not universal silent ignoring.
 
-These are runtime classifications, not additional domain statuses or substitutes
-for =:committed=, =:rejected=, =:already-incorporated=, and =:commit-unknown=.
-Expected stale/duplicate events can be ignored semantically while still producing
-bounded diagnostics. Conflicting evidence or broken invariants require the
-specified fault/reconciliation path.
+For a synchronous HTMX gate, a typed error is not enough if the
+physical request/swap still proceeds. A rejected protected action
+must be stopped at an actually cancellable supported boundary.
+A generic =afterSwap= callback cannot certify an unexamined OOB,
+extension or successor-target mutation.
 
-*** Worked example: three different owners
+*** An early physical delivery can be consumed before it is legal
 
-E42 submits command C42, then its card presentation retires. A board subscription
-S9 remains active under shared owner B3. Command recovery owner K8 now holds C42's
-unresolved obligation.
+Physical delivery identity is distinct from command identity and
+machine reception readiness. Some protocols consume a delivery ID
+when that source *first observes it*, even if the current projected
+machine cannot yet accept its envelope. If the ID remained unspent,
+the same early message could be replayed once the machine reached
+the appropriate receive state and become incorrectly fresh.
 
-| Incoming event | Required interpretation |
-|----------------+-------------------------|
-| E42's old presentation timeout fires. | Its resource/branch is retired; it cannot reject C42 or restore the card. |
-| E42's delayed provisional DOM callback fires. | Its permit and target rights are stale; no mutation is allowed. |
-| Current subscription S9 emits a relevant board advisory. | B3 may record scoped debt under its subscription contract; E42's retirement is irrelevant. |
-| Retired predecessor subscription S8 emits a callback. | S8 cannot use S9's rights merely because the endpoint and payload look the same. |
-| K8 receives permitted resolver evidence that C42 was incorporated. | It may resolve the command and request an authorized current acquisition; it cannot revive E42. |
-| An old transport callback labels itself shared command evidence. | The label does not change its registered source path; any evidence reuse needs an explicitly admitted handoff. |
+For such a protocol, E42 receives physical message M1 when its
+machine does not accept that envelope. Admission records M1 as
+consumed under its source and execution generation, but does
+not advance the machine. When E42 later becomes ready to receive,
+the same physical M1 is still a duplicate. That consumption is
+a negative capability preventing a later unauthorized replay,
+not proof that an earlier command incorporated or that some
+new trusted resolver result must also be ignored.
 
-This permits useful late knowledge without reopening stale physical authority.
-A new execution E43 repeating the same command C42 also has distinct private
-resources. Equality of command IDs does not make E42's callbacks valid for E43.
+The exact consumption point is defined by event class. A one-shot
+timer may be spent upon firing. A shared advisory may be coalesced
+under qualified scope/coverage, while a trusted historical
+command result can be delivered repeatedly under an immutable
+authenticated resolver contract. The application must not use
+one global "deduplicate by C42" rule across transport attempts,
+physical messages, command readbacks and current observations.
 
-*** Duplicate delivery does not erase evidence distinctions
+An observed-but-unaccepted delivery cannot be resurrected by
+replaying its ID after that machine's state changes. A changed
+runtime/resource incarnation or explicitly justified durable
+replay fence can permit bounded compaction without allowing an
+old callback to masquerade as newly issued work.
 
-A transport delivery identity, a semantic command identity, and an authoritative
-result/effect identity answer different questions. Deduplicating one layer does
-not automatically deduplicate the others.
+*** Independent owners can accept useful late information
 
-When an event/result ID is stable across repetitions, admission also checks the
-binding and permitted payload equivalence. Conflicting payloads under the same
-ID are a protocol/evidence fault, not harmless duplicates. The system cannot
-silently keep whichever result arrived last.
+Suppose E42 submitted HumanHelp Claim C42, but its provisional
+presentation and execution-private resources have retired.
+The current board subscription S9 is owned by coordinator B3.
+Surviving command resolver K8 retains an unresolved C42
+obligation. E43 may later make a separately admitted compatible
+C42 retry with its own H2 attempt.
 
-Known authoritative incorporation is not downgraded to unknown because a later
-transport attempt times out. Conversely, two similar successful-looking payloads
-do not prove incorporation without admissible outcome evidence. The reconciliation
-rules preserve established knowledge within its actual scope and disclosure
-permission.
+| Arriving event | Required treatment |
+|----------------+--------------------|
+| E42's old settlement timeout | Stale private resource; cannot reject C42 or restore an old card. |
+| E42's deferred provisional callback | Expired target/rollback permit; cannot write to B2 even if it finds the same selector. |
+| Current S9 advisory | B3 may record scoped debt under its interest and Refresh policy without an E42 command. |
+| Retired predecessor S8 advisory | Stale resource/interest; matching fragment names cannot grant S9's rights. |
+| K8's qualified C42 resolver response | May establish historical command incorporation/rejection/unknown according to authenticated binding and disclosure; does not resume E42. |
+| Old E42 transport callback relabelled shared | Still from the retired private source; no second-chance shared admission. |
+| H1 callback while E43 owns H2 | H1 cannot settle H2; common C42 does not merge transport-effect generations. |
+| Browser reconnect wakeup | May establish a continuity-gap obligation, not that every missed invalidation was replayed. |
 
-Deduplication and retirement records have a declared retention/compaction policy.
-Unbounded tombstones are not the only solution, but compaction must prevent old
-callbacks from being mistaken for newly issued work. Fresh runtime/resource
-identities, retained fences, and explicit acceptance horizons can provide that
-separation. Reusing an identifier after deleting its history is not sufficient.
+This rule permits *separate qualified late evidence*, not a
+loophole to adopt an obsolete physical continuation. A current
+Request card may install while C42 attribution remains unknown;
+C42 historical incorporation may become known without proving
+the current RequestAssignment helper or card adoption. Part IV
+owns the trusted business result and Parts V/VI own local
+presentation and physical realization.
 
+*** Duplicate, conflicting and missing evidence have different lifetimes
+
+A physical transport delivery, semantic C42 command, trusted
+result, authorized observation and actual target installation
+answer different questions. A duplicate at one layer is not
+automatically a duplicate at the others. If a stable delivery
+or result ID is repeated, the adapter checks the same admitted
+source, operation/argument binding, scope and equivalent payload.
+Conflicting payloads under the same ID require a typed evidence
+or protocol fault; "last message wins" is not progression.
+
+Known historical incorporation does not become unknown because
+a later H2 transport attempt times out. A success-looking HTTP
+response likewise cannot establish incorporation on its own.
+A newer authorized Request/card observation may supersede
+presentation within its qualified scope without retroactively
+rewriting previously valid historical command evidence.
+
+The runtime declares consumed-message, duplicate-result and
+retired-resource retention or compaction. Unbounded tombstones
+are not required, but deleting an old record while permitting
+its callback to collide with a newly allocated incarnation
+is unsafe. Epochs, fresh resource identities, bounded replay
+horizons and qualified provider coverage can establish the
+nonconfusion premise.
+
+Shared invalidations may be duplicated, delayed or reordered.
+The fragment coordinator preserves incomparable obligations
+until an actual provider-covered acquisition or adoption stage
+discharges them. A repeated advisory does not authorize an
+extra one-Refresh read. Conversely stream silence does not
+prove that an interest-registration or router-failover gap
+was covered; the 06.06–06.07 fence/recovery contract still
+applies. Liveness needs stated fairness, availability and
+retention premises; stale-event safety alone does not prove
+eventual convergence.
+
+*** Fault handling, timeout retirement and adversarial scheduling
+
+If a pure semantic step fails before state commitment, the
+runtime must not manufacture effects it never issued or
+restore an old machine and pretend the transition succeeded.
+It retains the last committed state for diagnosis and
+retires the unsafe owner under its fault contract. If an
+effect already started, actual partial physical changes
+and unresolved remote incorporation require independent
+recording, compensation or readback. An entire previously
+issued batch is not blindly rerun after a host exception.
+
+Winning settlement or authoritative supersession revokes
+competing *presentation timeout authority* before slower
+continuity or DOM follow-up. Physical timer cancellation
+may fail; the callback is still stale. A different
+command-resolution deadline may survive under its own
+recovery owner. Cleanup errors remain subordinate to the
+original semantic or host failure.
+
+Tests and sound abstract models explore source/owner
+relations as well as adversarial ordering: response
+versus timeout, early message versus later receive,
+H1 completion versus H2 retry, authoritative
+installation versus provisional rollback, shared
+advisory while no command runs, reconnect versus
+retired subscription, duplicate/conflicting result,
+nested callback before remaining physical effects,
+new principal context versus old source, and
+invalidation during one-Refresh acquisition.
+Checking a handful of particular generation integers
+does not prove the required equivalence classes.
+
+*** Paired asynchronous-admission acceptance histories
+
+Each positive witness must execute an eligible
+admitted source and legal machine path; the nearby
+adverse case must reach the relevant source, owner,
+trust or physical boundary rather than be rejected
+for an unrelated malformed fixture.
+
+| Eligible positive history | Adverse or incomplete history | Required conclusion |
+|---------------------------+-------------------------------+---------------------|
+| E42 receives completion for an actually issued current local effect generation. | The same completion belongs to a retired generation or an effect that was never issued. | Only the current legal issued effect advances. |
+| M1 is observed early, consumed and leaves the projected machine waiting. | The identical M1 is replayed after the receive state becomes ready. | Early physical observation remains consumed; replay does not become fresh. |
+| E42 accepts qualified settlement and revokes its presentation timeout. | A duplicate result ID carries conflicting content or a stale timeout tries to roll back after settlement. | Identical observation is idempotent; conflicting evidence faults; expired timeout is powerless. |
+| K8 resolves C42 and B3/S9 accepts a legitimate scoped board advisory after E42 retires. | E42's old transport relabels itself shared or S8 impersonates S9 by copying the root ID. | Independent current owners are admitted; private-to-shared laundering is denied. |
+| H1's correlated managed HTMX request completes its admitted specific target effect. | Stale H1 callback or unexamined OOB/extension mutation is credited with B2 adoption. | A registered callback is not universal physical completion; target-specific permits remain required. |
+| H2 retries C42 with compatible immutable command binding and receives trusted resolver evidence. | H1 completion settles H2 or H1 timeout fabricates C42 rejection. | Attempt, command and historical evidence are separate. |
+| O1 and O2 arrive on a current shared interest during one granted A1 Refresh. | Duplicates erase incomparable O2 or start an ungranted A2 successor. | Preserve scoped debt and actual acquisition permission. |
+| A lifecycle wakeup detects a subscription gap and follows an admitted recovery policy. | =online= or =sseOpen= is treated as proof of replay/currentness. | Wakeup is advisory; a qualified fence/reacquisition is separate. |
+| An immediate physical callback reenters after semantic state commit and retires a pending effect. | The outer batch acts on its revoked permit or registers a late handle as live. | Recheck current actuation and late-handle lifecycle. |
+| A current authenticated user receives a properly scoped callback. | A cross-tab payload copies source IDs after logout or Organization change and demands disclosure. | Client identifiers never supply current server authorization. |
+
+A fake source map, diagnostic trace or always-disabled
+affordance cannot establish conformance. Part VII must
+check the actual registered handlers/entrypoints; Part
+VIII requires independently positive eligible HumanHelp
+Claim/Reassign and remote one-Refresh behavior. Parts
+IX–X separate finite test/model evidence, proof subject
+and actual browser/backend correspondence.
 ** Authoritative absence
 :PROPERTIES:
 :CUSTOM_ID: req-authoritative-absence
