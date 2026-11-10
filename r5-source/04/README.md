@@ -1,11 +1,11 @@
 # R5.1 sectional source — Part IV, Authoritative Operations and Progression
 
 **Disposition:** lossless structural preparation of the original R5 Part IV,
-with sections 04.01–04.04 now substantively reviewed against R4,
+with sections 04.01–04.05 now substantively reviewed against R4,
 Part VIII's production RequestAssignment meaning, and Gesso's source.
 Their scoped preservation audits are
 `04.01-r4-preservation-audit.md` through
-`04.04-r4-preservation-audit.md`. The other 13 numbered
+`04.05-r4-preservation-audit.md`. The other 12 numbered
 units remain unreviewed candidates. Part IV is not yet accepted. Parts I–III
 are reviewed R5.1 candidates. The twelve-part plan remains a draft.
 
@@ -15,7 +15,7 @@ point. The R4 `main` Part IV has 3,681 newline-split lines and nine
 57 nested requirement headings, and the same nine anchors. Lossless
 splitting does **not** determine whether the shorter R5 material omits
 valuable R4 requirements. Those substantive comparisons began with
-04.01 and continue through 04.05–04.17.
+04.01 and continue through 04.06–04.17.
 
 ## Numbered source inventory
 
@@ -82,18 +82,17 @@ assembles Part I–IV and composes the remaining unreviewed R5
 published parts V–XII into `output/gesso-plan-v5.org`.
 
 The 17 source files reconstruct the published Part IV exactly.
-Sections 04.01–04.04 have since been revised, preserving the
+Sections 04.01–04.05 have since been revised, preserving the
 original root heading and anchors; the published Part IV is
-rebuilt from the four edited units and the thirteen unchanged R5 units. These are
+rebuilt from the five edited units and the twelve unchanged R5 units. These are
 editorial/documentary checks, not runtime or formal proof evidence.
 The local Python assembly command was not run as part of the
 GitHub connector operation; run it in a checkout when available.
 
-**Next:** revise **04.05 — Representation, frame, capability and
-Claim preparation**, comparing R4 `main`, actual Gesso model
-representation/guard behavior, and Part VIII's production
-RequestAssignment structure. Replace the known obsolete
-`:request/helper` example without weakening ordinary Clojure
-authoring, then add a scoped audit and rebuild Part IV.
+**Next:** revise **04.06 — Command identity and authoritative
+incorporation**, checking exact binding, durable replay and
+resolve-or-incorporate against R4 and the current Gesso
+command-resolution implementation. Add its scoped preservation
+audit and rebuild Part IV.
 Subsequent `next` requests continue one bounded revision
 at a time.

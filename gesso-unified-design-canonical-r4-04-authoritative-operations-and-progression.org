@@ -635,7 +635,19 @@ paths, deletion, and field ownership need declared treatment.
 Presence matters. A missing field, a field with =nil=, a field with =false=, and
 an empty collection are not interchangeable unless the model explicitly makes
 them equivalent. A proof that depends on a complete acquired entity cannot use
-a partial projection whose missing =:request/helper= is interpreted as unclaimed.
+a partial projection or unqueried relationship whose absence is
+interpreted as unclaimed. HumanHelp's primary helper relation belongs
+to the public RequestAssignment model, not to a nullable Request
+helper field.
+
+For RequestAssignment, the *absence of an active primary assignment*
+requires a scope-complete, authorized and provenance-qualified query over
+the relevant relationship. An empty page, a missing field, an incomplete
+query, a failed read, and a complete empty result are different. Even a
+complete observed absence does not itself prevent a concurrent
+insertion before incorporation. The selected backend must independently
+protect the primary-absence/uniqueness predicate at the authoritative
+transition under a qualified atomicity and writer-coverage contract.
 
 Whole-document replacement must preserve the declared frame despite concurrent
 changes. Comparing a selected subset of fields and then replacing an entire
@@ -668,55 +680,101 @@ contract; it does not roll back an already submitted transaction. Transferring
 work to a durable worker requires an admitted transfer and a new appropriate
 capability, not accidental retention of a web request's ambient authority.
 
+A copied inspection report, structural admission handle, command record,
+or caller-authored map is not a runtime mutation capability. The issued
+capability must bind its qualified issuer, authorized actor/authority,
+operation, allowed effects, target and resource lifecycle as required by
+the runtime contract. A replacement web node may obtain a newly issued
+capability while preserving the *same semantic command* and current
+model policy; an in-process handle or retired request-local authority
+is not made transferable by serialization.
+
 *** A complete Claim preparation example
 
-The following pure function illustrates candidate computation. It assumes that
-all four model values have already passed their public schemas and that Request
-includes a present, explicitly nullable helper field. The function neither
-commits nor establishes replay disposition.
+The following pure function illustrates *candidate computation* rather
+than a required concrete Gesso API. It assumes that the principal, Request,
+Membership and Organization have passed their public contracts, and a
+public RequestAssignment acquisition supplied the separately validated
+`assignment-observation`. This observation represents a complete, scoped
+collection of active *primary* assignments for the exact Request; it does
+not count collaborator assignments as primary owners. Its query meaning,
+source provenance, disclosure, compatible basis and complete coverage
+must already have been established independently by the model-owned
+acquisition contract.
+
+The illustrative `:observation/*` keys expose these obligations, but
+their presence in arbitrary caller data does not prove them. The
+function neither commits, authorizes a backend write nor resolves
+durable command replay.
 
 #+begin_src clojure
 (defn claim-candidate-decision
-  [command principal request membership organization]
-  (cond
-    (not= (:request-id command) (:request/id request))
-    {:candidate/status :invalid :reason :target-mismatch}
+  [command principal request membership organization assignment-observation]
+  (let [active-primary (:observation/primary-assignments
+                        assignment-observation)]
+    (cond
+      (not= (:request-id command) (:request/id request))
+      {:candidate/status :invalid :reason :target-mismatch}
 
-    (not= :open (:request/status request))
-    {:candidate/status :ineligible :reason :request-not-open}
+      (not (and (= :complete (:observation/coverage assignment-observation))
+                (= (:request/id request)
+                   (:observation/request-id assignment-observation))
+                (vector? active-primary)))
+      {:candidate/status :insufficient-observation
+       :reason :primary-assignment-coverage-unestablished}
 
-    (some? (:request/helper request))
-    {:candidate/status :ineligible :reason :already-claimed}
+      (> (count active-primary) 1)
+      {:candidate/status :invalid-observed-state
+       :reason :multiple-active-primary-assignments}
 
-    (not= (:principal/id principal) (:membership/user membership))
-    {:candidate/status :ineligible :reason :membership-principal-mismatch}
+      (not= :open (:request/status request))
+      {:candidate/status :ineligible :reason :request-not-open}
 
-    (not= (:request/organization request)
-          (:membership/organization membership)
-          (:organization/id organization))
-    {:candidate/status :ineligible :reason :organization-mismatch}
+      (seq active-primary)
+      {:candidate/status :ineligible :reason :already-has-primary-assignment}
 
-    (not= :active (:membership/status membership))
-    {:candidate/status :ineligible :reason :inactive-membership}
+      (not= (:principal/id principal) (:membership/user membership))
+      {:candidate/status :ineligible :reason :membership-principal-mismatch}
 
-    (not (true? (:organization/claims-enabled? organization)))
-    {:candidate/status :ineligible :reason :claims-disabled}
+      (not= (:request/organization request)
+            (:membership/organization membership)
+            (:organization/id organization))
+      {:candidate/status :ineligible :reason :organization-mismatch}
 
-    :else
-    {:candidate/status :eligible
-     :request-id (:request/id request)
-     :helper-id (:principal/id principal)}))
+      (not= :active (:membership/status membership))
+      {:candidate/status :ineligible :reason :inactive-membership}
+
+      (not (true? (:organization/claims-enabled? organization)))
+      {:candidate/status :ineligible :reason :claims-disabled}
+
+      :else
+      {:candidate/status :eligible
+       :request-id (:request/id request)
+       :helper-id (:principal/id principal)})))
 #+end_src
 
-This simplified policy is illustrative; a richer Organization predicate has its
-own declared dependencies. Trusted authentication establishes who the principal
-is. It does not by itself establish current Membership or permission.
+This simplified policy is illustrative; a richer Organization predicate,
+Location relationship or separately permitted manager-selected target-helper
+variant has its own declared dependencies. Trusted authentication establishes
+the actor, not current Membership or permission to select a different helper.
+
+An =:insufficient-observation= result does not claim there is no helper;
+=:invalid-observed-state= identifies inconsistent acquired data, not a
+terminal command rejection. A complete collaborator-only collection is
+not an active-primary assignment. A terminal Request with no primary
+owner is not thereby reopened. Independently acquired model facts
+must also satisfy the coherence relation required by the chosen
+candidate policy; matching IDs alone is not a common snapshot.
 
 The managed operation binds this candidate to canonical transition construction.
 The authoritative realization protects the target, eligibility, associations,
-and frame together with the ownership change, command record, and required
-publication intent. A caller never gains authority by returning
-={:candidate/status :eligible}=.
+absence/uniqueness of the active primary assignment, and full frame together
+with the Request lifecycle change, created primary RequestAssignment, bound
+command outcome and retained work required by this Claim's selected
+durable publication profile. It must protect competing relationship
+insertions, not merely compare the Request revision. A caller gains no
+authority by returning ={:candidate/status :eligible}= or by inventing
+={:observation/coverage :complete}=.
 
 A candidate rejection from a pre-read is not automatically the final command
 outcome. A concurrent attempt might already have incorporated the same command.
@@ -729,7 +787,10 @@ because preparation succeeded.
 |--------------+-----------------|
 | Membership is deactivated after preparation, before incorporation. | The new Claim cannot incorporate under the old eligibility unless the declared policy expressly permits that temporal meaning. |
 | Request moves to another Organization before incorporation. | The stale association cannot justify the assignment. |
-| Another helper claims first. | At most the operation allowed by the protected current state incorporates. |
+| Another helper inserts an active primary RequestAssignment without updating the previously read Request field. | The protected current active-primary predicate prevents two new primary owners; a Request-only version check cannot establish it. |
+| A primary-assignment query returns an empty partial page or was scoped to another Request. | Preserve insufficient acquisition/coverage; an empty page cannot justify an absent relationship. |
+| A collaborator exists but there is no active primary assignment and the Request is open. | The collaborator is not primary ownership; a legitimate candidate remains possible under the declared model policy. |
+| A Request is terminal but has no active primary assignment. | Lifecycle state independently prevents a new ordinary Claim; absence of primary ownership does not reopen terminal business state. |
 | The same command already succeeded but its response was lost. | A compatible authorized repetition can recover the recorded success even though the Request is now claimed. |
 | This physical attempt aborts while another attempt for the same command commits. | The command is incorporated; this attempt's abort is not command rejection. |
 
@@ -745,6 +806,29 @@ If the participating authorities cannot share the required atomic boundary, the
 design must name valid intermediate states and a recovery protocol. A sequence
 of individually atomic calls is not an atomic cross-model operation merely
 because it appears in one FX vector or choreography step.
+
+HumanHelp Claim's Request, RequestAssignment, command result and selected
+durable publication intent share the protected authoritative transition,
+including current Membership/Organization dependencies. The public models
+expose semantic constraints without handing Choreo their private XTDB forms.
+A backend that cannot establish this multi-entity boundary, including the
+absence of competing primary assignments, must disclose the open physical
+premise or reject the stronger claimed correspondence.
+
+*** Representation and capability acceptance cases
+
+| Positive or adverse construction | Required judgment |
+|----------------------------------+-------------------|
+| An authenticated eligible helper has a complete, trusted, scoped empty active-primary observation for an open Request | Candidate may be eligible; actual incorporation still needs protected current absence and the whole bound transaction |
+| An empty assignment page is incomplete or filtered by a different visibility/query scope | Do not claim the negative relationship; return insufficient observation or use the declared recovery |
+| A collaborator exists but is not the active primary owner | Do not reject a valid Claim candidate solely because the collaborator relationship exists |
+| A Request projection lacks a helper field while a current active primary RequestAssignment exists | Public RequestAssignment meaning prevails; missing Request helper data cannot authorize Claim |
+| Membership becomes inactive or another primary assignment is inserted after preparation | Recheck/protect mutable semantic dependencies in the atomic backend; candidate success confers no authority |
+| A full-document replacement preserves checked fields but erases another writer's unrelated edit | Reject frame preservation without qualified full-state/revision/update semantics |
+| An old request-local capability or a copied structural admission map is sent to another host | It grants no new production execution authority; issue appropriate fresh scoped capability while preserving command identity |
+| Concurrent local users attempt to consume the same one-shot capability | At most one use is admitted for that capability instance; durable command deduplication remains separate |
+| A retained work item is processed on another host after its original request capability retired | Admit only via a new authorized worker capability and the original bound work identity; never reuse the retired request authority |
+
 
 ** Command identity and authoritative disposition
 
