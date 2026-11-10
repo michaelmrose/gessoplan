@@ -27,6 +27,79 @@ Read and command errors use the application's explicit non-disclosure policy.
 Tests must not require a reason such as “Request exists in another Organization”
 when the correct response intentionally hides that distinction.
 
+ 
+*** Actual HumanHelp session provenance and authority attestation
+
+The real =/app= route uses
+=net.humanhelp.middleware/wrap-signed-in=;
+that middleware presently recognizes a
+session =:uid= with a UUID or nonblank
+string shape. A well-shaped identifier
+is not itself proof that a cookie was
+issued through the selected verified
+login flow, that the account remains
+active, or that an alternate context
+field is trustworthy. The complete
+authentication claim must cover the
+real session issuer, signed/correctly
+protected cookie, expiry/revocation,
+middleware order, Biff session
+hydration and current production User
+status. Local fixture injection is
+admissible *only* in an explicitly
+qualified development/test profile.
+
+=example.app/current-user= delegates
+to =client-plumbing/current-user-id=
+and then =user.core/require-user= for
+the display-side User projection.
+=client-plumbing/current-user-id=
+currently prefers explicit
+=:current-user/id=, =:user/id=
+and =[:user :xt/id]= context slots
+over the session =[:session :uid]=
+value, and uses that same function
+for connected-client scope identity.
+Those values must be populated only
+by trusted authenticated middleware
+or cross-checked with the signed-in
+session. Source inspection alone
+does *not* establish that every
+route, plug-in or test fixture
+satisfies this provenance condition.
+A disagreement between a trusted
+session and a later injected actor
+slot must fail or be reconciled
+under a declared, authenticated
+impersonation capability; merely
+preferring the first nonnil
+slot cannot grant another User's
+read or connected-client scope.
+
+Gesso's trusted operation role
+may represent Request authority,
+and one physical =:helper=
+browser participant may display
+requestor/helper/manager controls;
+neither changes the *authenticated*
+principal. Production Request,
+Organization, Location and
+Membership APIs determine
+per-Request read, modification
+and selected-target permissions
+from the current subject/actor
+context. The fixed example
+Location and app-wide notification
+scope are not evidence of
+tenant-wide disclosure rights.
+An unauthorized existence test,
+recovery lookup, details read,
+search index or advisory
+recipient must follow the
+same explicit non-disclosure
+contract as the actual Request
+projection.
+
 *** Public HTTP and browser boundaries
 
 The application validates command and acquisition input before use, including
@@ -48,6 +121,76 @@ out-of-band effects. The qualified browser profile states the permitted headers,
 redirects, events, scripts, and swap forms and rejects unsupported behavior before
 its protected effect.
 
+ 
+*** Identity, CSRF, decoding and recipient-safe output as joined gates
+
+The current HumanHelp site middleware
+wires session, CSRF, parameter decoding
+and application routing, while example
+routes apply =wrap-signed-in=.
+The finished source/physical claim
+checks that their *actual installed
+order* covers every managed POST,
+HTMX request, fragment, stream,
+pending OOB drain, command-result
+lookup and reconnect entrypoint
+as applicable. CSRF validation is
+a session-bound mutation defense;
+it cannot authenticate an actor
+named in a JSON/EDN or browser
+command, nor is it equivalent
+to read authorization for an SSE
+stream or target-helper query.
+
+Decode the wire once according to
+the admitted protocol/schema with
+limits on nesting, size, keys,
+operation identity, method/path,
+Request selector, helper/target,
+projection and content. Reject
+undeclared actor/principal fields
+rather than treating them as a
+second identity source. An
+authorized manager's chosen
+target helper is a domain argument,
+not an alternate principal.
+The same authenticated actor must
+own the server command, any
+durable record binding, outcome
+disclosure and permitted direct
+acquisition. Different authorized
+actors may independently receive
+the *same current Request state*
+without obtaining another
+person's historical command record.
+
+Physical OOB payloads and stream
+messages are rendered under
+recipient-specific current
+disclosure rights. An app-wide
+send target does not authorize
+embedding private Request
+contents, other Users' contacts,
+numeric new-Request counts,
+a copied CSRF token or executable
+operation authority. A
+receiver-rendered pending fragment
+also revalidates authenticated
+recipient, current connection/
+client ownership, projection
+generation and target scope
+at its *drain* boundary; a
+client ID or SSE URL parameter
+is only an opaque selector.
+The host must not accept another
+user's stale pending mailbox
+as a source of executable OOB
+markup or identity. An expired,
+logged-out or switched
+participant retires both
+stream and queued presentation
+rights.
+
 ** Live publication, advisory routing, and recovery
 
 Production model incorporation is the source of semantic changes. The example
@@ -60,6 +203,75 @@ Live topics express observation interests. They are not a substitute for the
 transaction's guarded dependency set. Likewise, overlap between topics does not
 prove that two authoritative commands conflict or that all conflicting writers
 have been found.
+
+ 
+*** The production change graph and the missing writers question
+
+The current =request.core= public
+operations produce model
+transaction plans whose semantic
+=:changes= announce Request
+mutation through Gesso model
+transaction/Live mechanics.
+=example.live/compiled-live=
+declares toolbar/list interests
+bound to a fixed production
+Location. It deliberately
+filters =:created= from
+automatic managed-fragment
+invalidation but still admits
+=:updated= for both, which
+conflicts with R5.1's selected
+all-remote-lifecycle
+advisory-only adoption policy
+as documented in 08.06.
+
+Full application interest
+completeness is not proved
+by routing only =:request=
+document changes. Active
+RequestAssignments,
+Organization operational
+status, Location selection,
+Membership eligibility and
+User display/disclosure can
+change which Requests belong
+to an admitted cohort or
+whether an actor may see
+a card or receive a
+notification *without*
+mutating that Request document.
+The source-owned change/interest
+inventory must include every
+relevant production writer
+and derived dependency, or
+make its unsupported
+physical/writer scope explicit.
+An extra notification event
+is not a transaction guard,
+and a version guard is not
+a substitute for a delivered
+notification.
+
+An interest subscription
+records its permission and
+binding to the actual viewer,
+scope, publication generation
+and physical client resource.
+A global `[:app/all]` connected
+scope can be useful for a
+one-Location proving fixture;
+it cannot by itself prove that
+every connected User is
+authorized to learn the
+same future multi-tenant
+Request existence facts.
+Sending a generic
+non-identifying “updates
+available” cue can have a
+different disclosure contract
+from sending which Request,
+helper or Location changed.
 
 *** Durable publication strategy
 
@@ -80,6 +292,99 @@ Refresh must declare that weaker publication recovery policy and test it. Merely
 registering a post-commit callback does not establish recovery after process loss.
 The application must not claim durable delivery if its selected backend/profile
 cannot atomically retain the required intent.
+
+ 
+*** Exactly what must be atomic and what may repeat
+
+The *selected strong deployment
+profile* records the command's
+authoritative incorporation,
+its stable result identity and
+the required publication
+intent in a physically
+qualified atomic transaction.
+A separate outbox/work document
+is not a competing Request
+truth store: it records the
+intent to notify interests,
+not an independently
+mutable Request status. A
+worker may publish the
+same intent more than once
+under at-least-once
+delivery, but may not
+execute another Claim,
+assign a different helper
+or manufacture a new
+command ID while doing so.
+
+Work identity, lease,
+ownership transfer, attempted
+destinations, progress,
+bounded retry, escalation
+and retention are defined
+for crash points both
+before and after advisory
+send/acknowledgment. A
+“sent” flag can be evidence
+of handoff to a transport
+without proving reception,
+participant permission,
+qualified authoritative
+read or DOM adoption.
+A replay may re-deliver
+already observed advisory
+requirements; idempotent
+merge is safe only where
+requirement identity and
+scope genuinely match.
+
+The *current implementation*
+is narrower: =gesso.model.tx=
+passes `:changes` and
+`:emit` to
+=live/transact-and-notify!=
+after preparing a
+guarded Request transaction.
+=example.app/create-request!=
+also performs an explicit
+=send-new-request-advisory-best-effort!=
+after constructing the creator
+response. Neither source
+inspection nor the current
+test fixtures establishes
+an already installed,
+same-transaction durable
+HumanHelp notification
+outbox and recovery worker.
+The source provides useful
+Live publication and
+best-effort connected
+notifications; the final
+atomic intent/persistent
+retry requirement is a
+distinct implementation
+and backend-qualification
+obligation.
+
+Some deployments may
+instead select a declared
+weaker reconciliation
+profile. Its pending
+interest gap, periodic
+or user-requested
+reacquisition, liveness
+conditions and
+availability/reporting
+are explicit. A weaker
+profile cannot claim
+exactly-once deliveries,
+unbounded retention
+or guaranteed prompt
+notification simply
+because periodic reads
+can eventually discover
+current state.
 
 Publication evidence and board adoption evidence remain separate. Successfully
 publishing an advisory does not mean a browser received it; receiving it does not
@@ -102,6 +407,72 @@ the same obligation. Distinct scopes or incompatible requirements are not merged
 by choosing a larger-looking token. When compact representation is unavailable,
 the coordinator uses the declared bounded debt/backpressure strategy and retains
 honest “updates/continuity unknown” state rather than dropping information.
+
+ 
+*** Separating connected-client OOB from authoritative interest
+
+=client-plumbing= supplies
+a user-scoped plus app-wide
+connected-browser adapter
+to =gesso.live.client=.
+Gesso's client mailboxes
+are bounded ephemeral
+presentation queues,
+including disconnected
+client limits/overflow.
+Their wakeups and
+request-for-pending
+operation are distinct
+from the production
+Request interest graph,
+qualified replay cursor,
+actual XTDB read
+and client adoption.
+
+An OOB advisory targeted
+to another browser is
+recipient-sensitive;
+a callback that can
+render on drain from
+receiver context must
+be admitted *again*
+under that context.
+A disconnected client
+with an old opaque
+client ID cannot use
+a later session to
+drain another User's
+pending material, even
+when the original
+SSE listener was
+previously accepted.
+A send attempt, queue
+entry and message
+drained through an
+authenticated HTTP
+route are three
+different observable
+events, none of
+which proves the
+participant installed
+the advisory target.
+
+The HumanHelp product's
+selected 08.06 policy
+routes all remote
+lifecycle changes to
+pending advisory/debt
+rather than automatic
+board rereads. Duplicate
+wakes cannot grant
+additional one-use
+Refresh acquisitions.
+An authorized initial
+or command-recovery
+read has a separate
+provenance; it must not
+be incorrectly counted
+as a user Refresh.
 
 *** Initial loading and reconnection
 
@@ -130,4 +501,176 @@ Stale events from a retired subscription are rejected by its resource-instance
 binding. A shared connection can serve multiple admitted interests, but releasing
 one card/board interest revokes that interest's rights without accidentally
 closing resources still owned by others.
+
+ 
+*** Subscription fences, disconnect races and honest liveness
+
+At the initial =/app= load,
+a source-owned interest
+definition establishes
+which authorized Request
+and dependency changes
+matter. Its first
+authoritative cohort read
+and stream registration
+must close the interval
+during which a relevant
+transaction might commit
+but be known to neither
+baseline nor replay
+delivery. Valid approaches
+include a provider-qualified
+subscribe-before-read
+fence, retained log/cursor
+with replay, or another
+controlled acquisition
+with evidence of
+equivalent coverage.
+
+Gesso's SSE stream,
+client mailbox and
+XTDB basis are
+independent mechanisms:
+a reconnect token
+cannot be assumed
+equivalent to a
+transaction log position.
+A router that learns
+an interest *after*
+processing a change
+cannot infer that no
+missed invalidation
+exists from current
+in-memory subscriptions.
+Multi-node failover
+must re-establish
+interest/coverage
+and re-send or
+reacquire sufficient
+requirements under
+the same single-node
+semantic contract.
+Extra duplicate
+invalidation is harmless
+only when recipients
+deduplicate and every
+read still has its
+proper permission.
+A permanently offline
+browser cannot be
+promised bounded
+visible convergence.
+
+After an observed
+disconnect, mark
+continuity unsettled
+even when no event
+arrives. Reconnect
+may restore stream
+delivery and source-
+qualified advisory
+requirements without
+adopting remote
+Request content.
+Any fresh domain
+reread or full
+board reconstruction
+needs its own declared
+baseline/repair or
+user-Refresh grant
+and must report
+which rights and
+local presentation
+survive. A partial
+authorized read may
+resolve an individual
+command's affected
+card without proving
+complete cohort
+coverage. If none
+of the supported
+repair paths can
+close the gap,
+display a typed
+stale/unknown state
+rather than quietly
+marking the board
+current.
+
+The actual HumanHelp
+`live_test.clj`
+verifies production
+scope, invalidation
+expansion, model
+progression forwarding
+and query delegation.
+It does not establish
+a crash-tested
+durable outbox,
+two-client subscription
+gap closure or
+cross-router repair.
+Those remain
+separate product
+and distributed
+assurance gates.
+
+*** Positive and adversarial trust, publication and recovery histories
+
+The complete proving application
+must pass both eligible
+authentic use and
+controlled hostile/
+fault cases. These
+histories use actual
+selected routes,
+source-owned Request
+model and browser
+subjects; stubs establish
+only their explicitly
+bounded evidence.
+
+| History | Required boundary/result |
+|---------+--------------------------|
+| Alice logs in through the selected production session and loads =/app=. | The session issuer, trusted principal binding, current User and permitted Location read are evidenced, not merely a nonblank =:uid= value. |
+| An anonymous visitor fetches =/app=, Request fragments, stream or pending OOB endpoints. | Deny protected access under the selected session middleware and non-disclosure policy, without issuing new domain authority. |
+| A test supplies a signed-in session for Alice but an untrusted =:current-user/id= for Bob. | Detect incompatible identity provenance or require an explicitly authenticated impersonation contract; do not route Bob's private messages or expose Bob's Request. |
+| Alice changes the =:user/id= or principal in the browser command envelope to Bob. | Trusted session remains Alice; reject forbidden field/binding or ignore it only where the declared protocol permits. |
+| Alice selects another eligible helper for an authorized manager Reassign. | Treat selected helper as policy-checked *target*, never as replacement principal. |
+| Alice has a valid signed-in session but current Membership does not permit R17 details. | Reject/redact the read; previously adopted Request ID or signed handle does not grant continuing disclosure. |
+| Two browsers have separate signed-in sessions for Alice and Bob. | Distinct principal, session, connected-client and command histories remain separated; changing a display label cannot impersonate either. |
+| Bob changes Organization or logs out while an old authenticated fragment read is in flight. | Retire old owner/scope and prevent old response installation or delivery to the newly active principal. |
+| A valid but copied client-ID or pending OOB URL is presented under another principal. | Verify current recipient/client ownership at stream and pending drain; an opaque URL selector is not read permission. |
+| A cross-tenant client is included in the broad =[:app/all]= notification scope. | Do not disclose unauthorized Request existence, identity, contacts or counts merely because delivery targets the app scope. |
+| A forged HTMX lifecycle POST carries syntactically valid Choreo metadata but lacks CSRF/session authentication. | Reject at the actual trusted web boundary before protected model mutation; operation identity alone is not authentication. |
+| A malformed encoded command, incompatible operation path or extra actor field is submitted. | Enforce declared protocol, allowed keys, limits, route/Request correlation and typed rejection without alternative authority. |
+| A signed-in user stores untrusted markup in Request details. | Escape or sanitize per qualified output policy; normal board/details/OOB rendering must not install foreign scripts or executable operation metadata. |
+| A RequestAssignment or Membership change affects permitted board membership without a Request document write. | Source-owned dependency routing or qualified refresh/retirement notices the relevant semantic interest; no false all-writer coverage claim. |
+| Create commits and process crashes before best-effort advisory runs. | Persisted Request stays committed; the strong profile resumes recorded notification work, or the weaker profile reports its reconnection/reconciliation assumption. |
+| Outbox worker sends an advisory then crashes before checkpointing success. | Stable work ID allows at-least-once replay without reexecuting Create/Claim; duplicate advisory cannot grant more Refresh rights. |
+| A durable notification record reports published while the browser is offline. | Do not infer receipt, authorized read, DOM installation or current board from worker handoff. |
+| Multiple equivalent advisories reach Bob and unrelated newer obligations arrive between them. | Coalesce only genuinely matching scope/identity; preserve uncovered obligations and bounded unknown/backpressure state. |
+| Alice's current read authority is revoked before her old pending OOB is drained. | Rerender/refuse under current disclosure and client owner; retained mailboxes are not authority stores. |
+| An SSE connection drops between initial board read and interest registration while another user Creates R. | Catch the gap with qualified fence/replay/reacquisition, or mark continuity unestablished; a silent stream proves nothing. |
+| Bob reconnects after missing one or more remote lifecycle updates. | Restore authorized advisory/coverage without automatically installing remote Request state or consuming a one-use Refresh grant. |
+| A router fails after learning Bob's interest but before a peer sees it. | Recover/replay interest and relevant invalidations or perform a qualified fresh acquisition; never infer completeness from empty replacement-router memory. |
+| A late invalidation from a retired session arrives after switching to another User. | Reject the old owner/generation and prohibit cross-principal presentation/disclosure. |
+| A valid command settles but Bob can see only its newly affected card under an authorized recovery read. | Keep complete-board membership unknown/older; current card evidence does not disclose Alice's historical command record. |
+| The response-flow product decision is still open although all Live tests pass. | Keep full HumanHelp acceptance unresolved independently of structural/transport correctness. |
+
+Gesso's generic client transport
+and HumanHelp's current
+Live/source integration can
+satisfy narrower positive
+checks without claiming
+unbounded eventual-delivery,
+a complete tenant-aware
+interest graph, installed
+durable outbox, or fully
+proven multi-node
+replay. The finished design
+requires those guarantees
+where selected, with
+bounded and explicit
+availability assumptions.
 

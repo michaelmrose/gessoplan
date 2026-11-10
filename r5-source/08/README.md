@@ -7,9 +7,9 @@ published Part VIII and `r5` publication had the **same Git blob**
 No normative wording, operation contract, example, heading, table,
 `CUSTOM_ID` or cross-part link was changed.
 
-**Review status:** **08.01–08.07 have completed substantive R4-preservation
+**Review status:** **08.01–08.08 have completed substantive R4-preservation
 and Gesso/HumanHelp source-correspondence review**, recorded in their
-numbered audits. Sections **08.08–08.15**, whole-Part-VIII reconciliation
+numbered audits. Sections **08.09–08.15**, whole-Part-VIII reconciliation
 and independent Part VIII acceptance remain outstanding. Parts I–VII
 are accepted reviewed R5.1 candidates; Parts VIII–XII and full-plan
 acceptance remain open.
@@ -19,7 +19,7 @@ The **R4 preservation baseline** is `main` Part VIII,
 The preferred **R5 architectural predecessor** had
 **1,468 newline-split lines**, 21 second-level headings and
 **92,955 decoded characters** before substantive revision.
-The current fifteen sources reconstruct the **3,003-line**, **177,218-character** Part VIII publication exactly. Length is not
+The current fifteen sources reconstruct the **3,546-line**, **195,153-character** Part VIII publication exactly. Length is not
 evidence that all R4 obligations survive; each numbered
 review must make its own R4/Gesso/HumanHelp comparison.
 
@@ -197,6 +197,13 @@ accessible state/repair and the deliberately unresolved HumanHelp
 response-flow product decision were reconciled with R4 and code.
 Twenty-four positive/adversarial interaction histories now accompany the spec.
 
-**Next:** Review **08.08 — Authentication, Live, and Recovery**,
-including trusted principal/read authority, connected interest inception,
-publication durability, reconnect gaps and source-backed disclosure.
+**08.08 review:** see `08.08-r4-preservation-audit.md`.
+Actual session provenance, trusted identity versus browser/target/client-ID,
+recipient-specific disclosure and CSRF, Request/assignment/dependency
+interests, transaction-coupled durable intent versus current best-effort
+Live delivery, ephemeral client OOB, initial/read-subscription fencing,
+reconnect/failover and twenty-five trust/publication histories were reviewed.
+
+**Next:** Review **08.09 — Optimistic Presentation and Command Recovery**,
+including rollback rights, resource/target retirement, persistent command
+uncertainty, bounded historical resolution and real browser acceptance.
