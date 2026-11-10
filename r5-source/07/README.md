@@ -5,15 +5,18 @@ into fifteen natural Org units. That initial source/publication matched
 Git blob `55c0c46f8ccf97b2ed6d61a3a7e1aeeca876f6a7`. Sections **07.01–07.15** have completed substantive R4-preservation
 and Gesso-source correspondence review, recorded in their numbered audits.
 Whole-Part-VII reconciliation is **complete as a separate editorial pass**.
-Independent reviewed-candidate acceptance **remains outstanding**. All nine original Part VII
-`CUSTOM_ID` anchors remain unchanged.
+A distinct **independent reviewed-candidate acceptance** is now recorded in
+`PART-VII-cross-section-acceptance.md`. **Part VII is accepted as a reviewed
+R5.1 candidate**, alongside Parts I–VI. This is an editorial design
+judgment, not implementation, formal-proof, HumanHelp-product or whole-plan
+acceptance. All nine original Part VII `CUSTOM_ID` anchors remain unchanged.
 
 R4 (`main`) Part VII, 5,038 newline-split lines, is the preservation
 baseline. R5 (`r5`) Part VII, 1,625 newline-split lines, is the preferred
 architectural starting point. Shorter text alone does not establish
-that all original normative obligations survive: each future numbered
-revision will assess R4, actual Gesso application-assurance source and
-tests, accepted Parts I–VI and the positive HumanHelp obligations.
+that all original normative obligations survive: the fifteen substantive
+section reviews compared R4, Gesso application-assurance source and tests,
+accepted Parts I–VI and the positive HumanHelp obligations.
 
 The historically named canonical publication remains
 `gesso-unified-design-canonical-r4-07-whole-application-construction.org`.
@@ -85,13 +88,14 @@ The **fifteen numbered sectional reviews are complete**. Each compared
 R4 (`main`) and the stronger R5 starting point, inspected relevant
 Gesso source and available tests, preserved normative future goals,
 added a `07.xx-r4-preservation-audit.md`, and rebuilt the publication.
-Whole-Part-VII reconciliation is now recorded in
-`part-07-whole-part-reconciliation.md`. The next distinct task
-is **independent Part VII reviewed-candidate acceptance**.
-Do not mark Part VII accepted merely because this exact split passed.
+Whole-Part-VII reconciliation is recorded in
+`part-07-whole-part-reconciliation.md`. Independent candidate acceptance
+is separately recorded in `PART-VII-cross-section-acceptance.md`.
+The acceptance is based on the joined normative review, not merely the
+lossless split or an unexecuted Gesso test suite.
 
-**Current accepted parts:** I–VI, each a reviewed R5.1 candidate.
-Parts VII–XII and full-plan acceptance remain open.
+**Current accepted parts:** I–VII, each a reviewed R5.1 candidate.
+Parts VIII–XII and full-plan acceptance remain open.
 
 **07.01 review:** see `07.01-r4-preservation-audit.md`.
 The opening scope now preserves R4's three distinct application
@@ -180,6 +184,15 @@ It maps twenty-one R4 second-level sections, their semantic-audit views,
 and clarifies cross-section ownership, outcome/evidence vocabulary,
 qualified effect coverage and separate acceptance requirements.
 
-**Next:** perform **independent Part VII reviewed-candidate acceptance**
-against the whole publication, R4 crosswalk and cross-part interfaces.
-Part VII is **not yet accepted**; Parts I–VI remain accepted candidates.
+**Independent Part VII acceptance:** see `PART-VII-cross-section-acceptance.md`.
+The full reviewed specification is accepted **as a normative R5.1 candidate**,
+with no blocking internal contradiction found after whole-part reconciliation.
+The acceptance record preserves the complete R4 crosswalk, all original
+anchors, exact source/publication reconstruction, cross-part claim boundaries,
+real browser/Live/XTDB assumptions and independent positive product scope.
+Gesso v1622 implementation, deployed application behavior, proof-kernel
+soundness and HumanHelp end-to-end product acceptance remain unproved here.
+
+**Next:** prepare **Part VIII — HumanHelp Proving Application** for
+lossless sectional review of the preferred R5 architecture, followed by
+individual R4/code-informed revisions and separate acceptance gates.
