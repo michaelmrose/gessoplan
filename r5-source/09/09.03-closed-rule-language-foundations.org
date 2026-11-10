@@ -12,6 +12,36 @@ An application may use ordinary functions outside this fragment. The fragment's
 closed syntax exists to make the claims about it precise, not to make unsupported
 application logic impossible.
 
+This bounded *certifiable* fragment is not the only language in which
+application authors may write rules. Gesso can elaborate supported Clojure
+source or accept explicit typed rule data, provided the generated AST binds
+the original source, public types, dependencies, translation semantics and
+applicable preservation evidence. A manually copied predicate with an
+agreeing example result is not original-source correspondence.
+
+R4's broader target includes typed field/relationship access, nominal
+variant predicates, deterministic derivations, explicit capability/role
+facts and exhaustive closed-variant match. These are **extensions**, not
+unacknowledged baseline operators. Each new construct must register closed
+syntax, typing, evaluation, failure, effect/reader footprint, normalization
+and checking obligations. An extension that invokes arbitrary Clojure remains
+an explicit opaque contract; Section 09.04 owns its detailed bridge.
+
+*** Three different rule judgments
+
+| Judgment | Established conclusion | Still unestablished |
+|----------+------------------------+---------------------|
+| Syntax | Supported data AST, exact operators/arity/readers and resource bounds. | Nominal type correctness or policy truth. |
+| Intrinsic type | Strict Boolean result under named types and safe binding refinements. | Available knowledge, current authority or protected transaction state. |
+| Concrete interpretation | Boolean value for one admitted immutable binding environment. | Universal theorem, correct human policy, source-to-physical refinement or permission to commit. |
+
+A separate Choreo-point admissibility judgment requires actual participant
+knowledge, provenance, authority and observation-basis scope (Parts II–III).
+Operation contract and actual XTDB guards (Part IV), finite/inductive
+properties (Part IX), and implementation correspondence (Part X)
+remain separately checkable. A valid rule evaluated to true cannot
+silently discharge any of them.
+
 *** Source shape and baseline operators
 
 A rule declaration has an exact reader set and expression. For example, this is
@@ -34,6 +64,14 @@ example's =:done= is the HumanHelp terminal state; “completed” is display la
 not another persisted variant. Checking this conjunct does not check the complete
 Claim policy.
 
+Real Claim additionally needs trusted actor/target identity, Request
+and assignment state, current Membership/Organization/Location policy,
+guarded absence, command binding and permitted authoritative effect.
+Those may be represented by further source-owned typed rules, public
+model contracts or named opaque dependencies. A theorem about this one
+conjunct must not certify a complete Claim policy or a catalog that
+omits a separately promised HumanHelp operation.
+
 The baseline grammar is:
 
 | Form | Meaning and constraints |
@@ -49,10 +87,55 @@ The baseline grammar is:
 | =[:< a b]=, =[:<= a b]=, =[:> a b]=, =[:>= a b]= | Ordering for the explicitly supported ordered type; the baseline numeric domain is integers. |
 | =[:in item finite-set]= | Membership with compatible element type and enum-domain constraints. |
 
+The initial language permits plain bounded vectors, qualified reader
+identifiers and literals consisting of nil, Boolean, mathematical integer,
+string, keyword or a nonempty finite homogeneous set of such scalars.
+A future empty-set expression must specify its element type; an empty
+untyped literal is not inferred from host collection behavior.
+Expression ASTs admit no host functions, arbitrary object, custom
+comparator, executable metadata, macro invocation or ambient Var.
+External input is decoded by a non-evaluating EDN reader and validated
+before use; in particular no reader-eval or arbitrary tagged constructor
+is admitted by this certified syntax.
+
+The declared grammar checks unary =:literal=, =:read=,
+=:present=, =:not=; binary comparisons, equality,
+=:in= and =:implies=; and two-or-more-operand =:and=
+and =:or=. Its selected version specifies finite node,
+depth, arity, readers, set and literal budgets. Exceeding
+one of them is a typed incomplete/rejected result, not
+a Boolean value or invitation to run unrestricted Clojure.
+Current numeric limit constants in the reference
+implementation are not timeless design requirements.
+
 The reader set equals the actual syntactic footprint. Missing and unused reader
 declarations are rejected in this baseline. A declared read footprint is still
 only a footprint over the semantic source; it does not prove the absence of
 hidden reads in an unrelated opaque implementation.
+
+Reader type declarations have exactly the same keys as syntactic
+readers; no implicit reader acquisition is permitted. A nominal
+enum has a qualified identity and explicit nonempty finite
+domain. A raw keyword resembling a variant is not automatically
+a value of an unrelated nominal enum. Typechecking rejects
+unknown variants, mismatched nominal equality, ordering over
+unordered types, heterogeneous membership and non-Boolean
+connective operands.
+
+Optionality and nullability are independent: absent, present
+nil and present false differ. A read of an optional binding
+requires a path that established presence. A non-null-required
+operator additionally needs a path that established non-nil
+when the field is nullable. Section 09.04 owns the detailed
+refinement, normalization and path-join calculus; this
+section establishes that type checking and interpretation
+share the same reader identity and left-to-right semantics.
+
+A rule's exact syntactic reader footprint does not certify
+that a separate Clojure implementation has no hidden
+database, clock, network, random or authentication
+dependencies. Such dependencies are either source-derived
+and covered, explicitly opaque, or remain open/unsupported.
 
 Baseline value types are Boolean, integer, string, keyword, and named closed enum,
 with independent optional and nullable attributes. Relationships, records, UUIDs,
@@ -64,6 +147,15 @@ The language and its literal/set limits are versioned. Empty sets or broader
 collection expressions require defined typing behavior before admission; they
 are not inferred from host coercion. There is no implicit recursion, arbitrary
 function call, query, clock read, random value, or ambient principal lookup.
+
+A program may be syntactically valid but intrinsically ill typed:
+for example, =[:< [:read :request/status] [:literal 10]]=
+cannot compare RequestStatus enum to an integer. Presence
+and non-nil checks must dominate their dependent reads in
+the specified short-circuit path. A valid rule may still
+be inadmissible where a browser has not learned an
+authoritative Request state or where an operation requires
+a different principal and trust boundary.
 
 *** Evaluation and totality
 
@@ -78,14 +170,93 @@ correctness premise. Input rejection is separate from evaluating a valid rule
 to false. Resource limits may stop checking/evaluation but cannot yield a
 successful truth result.
 
+=:and= evaluates operands left-to-right until false;
+=:or= until true; and =:implies= checks its consequent
+only when the antecedent is true. These are observable
+order and error semantics, not merely Boolean identities.
+A optimizer, normalizer or CLJS lowering must preserve
+guarded-read order unless its stronger rewrite is separately
+proved or qualified.
+
+The interpreter validates the entire binding snapshot:
+all required keys present, no undeclared keys, correctly
+typed values, accepted enum members, nonnullable rules,
+and valid optional readers. A missing required binding
+or nil for a nonnullable field rejects; present false is
+not absent, and present nil cannot be silently interpreted
+as false. It returns a typed observation about one
+provided snapshot, never an assertion that the snapshot
+came from a trustworthy database or authenticated session.
+
 The baseline integer meaning is mathematical integer comparison. It does not
 implicitly certify JVM fixed-width arithmetic or JavaScript Number behavior.
 Portable execution chooses a checked representation/range/codec and rejects
 unrepresentable values, or uses a separately qualified exact representation.
 A JVM/CLJS agreement test over small integers cannot prove all integer behavior.
 
+A portable profile binds representation, codec, valid range and
+rejection at the boundary. Mathematical integer comparison can
+use separately qualified BigInt/exact arithmetic or a proven
+safe-range restriction. JavaScript Number rounding, JVM
+fixed-width overflow, numeric string coercion, and silently
+changing integer into floating point are forbidden when
+the checked rule requires exact integers. String, keyword,
+nominal enum and optional/nullable serialization also
+require explicit correspondence where JVM and CLJS
+representations or coercions differ.
+
 Evaluation to true is a concrete value result. It is neither a universal theorem
 nor authority to commit. The acquisition and transaction boundaries must establish
 where the bindings came from and whether every dependency used by the guard is
 protected at the actual commit.
+
+*** Source coverage, admission and adversarial acceptance
+
+An intrinsically checked syntax/type/interpreter result is
+copyable descriptive evidence, not a certified theorem or
+an admission credential. A normalized rule fingerprint
+names its interpreted subject; neither it nor a proof-status
+label grants authority. Stronger requested profiles must
+establish their own original-source and proof/physical
+correspondence, rather than reclassifying this report.
+
+The acceptance corpus pairs an eligible valid open-state
+Claim conjunct with an incompatible enum/integer ordering,
+unknown variant, omitted/unused reader, wrong enum identity,
+optional access without presence, nullable comparison
+without a non-nil guard, literal set type mismatch,
+unknown input key, absent/nil/false binding, overflowing
+or unrepresentable numeric transport, unsupported host
+form and incomplete resource budget. Each failure
+records the first responsible syntax/type/interpreter
+or trusted acquisition boundary and expected diagnostic.
+
+Independently, a complete Claim certificate that only
+models =:open= must be rejected if the promised policy also
+depends on actor, Membership or assignment guards.
+Deleting Reassign from both the formal language inputs
+and the available HumanHelp implementation also fails
+the independent product capability oracle, even if every
+remaining rule is intrinsically valid.
+
+#+begin_example
+Valid intrinsic rule for R17:
+  status is :open          -> evaluated conjunct true
+
+Wrong rule type:
+  status < 10              -> rejected at intrinsic typing
+
+Wrong distributed placement:
+  browser branches on unobserved authoritative status
+                           -> rejected at Choreo admission
+
+Wrong physical authority:
+  stale helper issues Claim -> current model/XTDB guard rejects
+#+end_example
+
+A reject-everything implementation cannot pass the
+valid positive tests. An unsupported rule is reported
+unsupported or bound to a separately admitted opaque
+contract, never silently executed by host Clojure
+and then labeled a verified rule.
 

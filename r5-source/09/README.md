@@ -9,9 +9,9 @@ proof rules, identifiers, link targets or whitespace were changed.
 The canonical publication is derived output, not a second source
 to edit independently.
 
-**Review status:** **09.01–09.02 substantively reviewed** against R4,
+**Review status:** **09.01–09.03 substantively reviewed** against R4,
 Gesso v1622 and accepted Parts I–VIII, with source decisions recorded in
-the numbered preservation audits. Sections **09.03–09.16** remain for
+the numbered preservation audits. Sections **09.04–09.16** remain for
 substantive review. Whole-part reconciliation and independent Part IX
 candidate acceptance remain outstanding. Parts I–VIII are accepted R5.1 design
 candidates; this is not evidence of a completed runtime/proof system.
@@ -121,7 +121,15 @@ non-discharge, public model-interface ownership, exact versus implementation
 identity, and original-source report/certificate trust boundaries.
 Fourteen positive/adversarial scenarios and current Gesso precursor scopes
 are recorded separately from the timeless normative requirements.
-The published Part IX now has **1,804 lines** and **106,669 characters**.
+The published Part IX now has **1,975 lines** and **115,402 characters**.
 
-**Next:** Review **09.03 — Closed Typed Rule Language** against R4,
-the current Gesso rule parser/typechecker/evaluator, and accepted Part IX.
+**09.03 review:** see `09.03-r4-preservation-audit.md`.
+Preserved the strict data-only AST, exact nominal reader/type footprints,
+Boolean evaluation, optional/null semantics and exact integer meaning.
+Recovered R4's separate intrinsic/distributed judgment, full-Clojure
+user-language boundary, covered source/policy requirements, qualified host
+extensions and 16 positive/adversarial examples. Implementation-specific
+v1219/v1221/v1223 findings remain in the audit rather than normative design.
+
+**Next:** Review **09.04 — Path-Sensitive Refinement, Conservative
+Normalization and Opaque Boundaries** against R4 and Gesso source.
