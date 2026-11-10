@@ -1,7 +1,9 @@
 *** Worked example: Claim committed, response lost
 
-Let =R= be the Request ID. Let =C42= be a scalar command ID; the command value is
-a separate map:
+Let =R= be the Request ID, not an HTTP request ID. Let =C42= be a stable
+semantic command ID, not a choreography execution, transport attempt, or
+database transaction ID. The domain argument and the wire command envelope
+are distinct:
 
 #+begin_src clojure
 (def C42 #uuid "f1bf42ee-7965-4a53-905b-c59038f75e42")
@@ -14,24 +16,49 @@ a separate map:
 (def claim-wire-arguments
   {:request-id R
    :gesso/command-id C42})
+
+;; Alice's authenticated identity is NOT a client-authoritative field.
+;; The public operation admits/binds it from trusted runtime context.
 #+end_src
 
-Alice's original choreography execution is =E1=. A server invocation admits
-=claim-command= under Alice's trusted principal context. Its authoritative
-transition assigns Request R, records C42's compatible binding and successful
-outcome, and records the required publication intent. The response is lost.
+Alice's original choreography execution is =E1=. The original HTTP delivery
+is a distinct transport request =T1=, admitted at a server under Alice's
+trusted principal. The selected Claim contract is the durable work-recorded
+profile from section 04.02. Its one protected authoritative transition
+moves Request R to =:claimed=, creates Alice's *active primary
+RequestAssignment* (with primary uniqueness protected independently of
+command uniqueness), records C42's complete compatible binding and success
+result, and records the required durable publication intent. The transaction
+incorporates. The HTTP response conveying this fact is then lost.
 
-| Location | Established fact |
-|----------+------------------|
-| Authoritative model | C42 was incorporated successfully. |
-| Publication worker | Durable work exists; delivery may still be pending. |
-| Browser execution E1 | Delivery became indeterminate; no admitted success evidence arrived. |
-| Browser presentation | The command remains unknown, with the declared reconciliation path available. |
+The following table uses an omniscient account of the example to distinguish
+what *actually happened* from evidence available to each participant. Alice
+has not yet learned that incorporation succeeded.
 
-Reading Request R and finding Alice as helper does not attribute that state to
-C42. Another command might have caused the same state; R may also have changed
-again since C42. A command resolver therefore uses retained outcome evidence,
-not pattern matching on the current Request.
+| Subject | Established fact or permitted knowledge |
+|---------+-----------------------------------------|
+| Authoritative command record | C42 incorporated under its bound principal, operation/interface, Request and canonical arguments; the recorded historical Claim result exists. |
+| Current domain at the incorporation point | Request R became =:claimed= and its permitted active primary RequestAssignment identified Alice; later legitimate operations may change either state. |
+| Durable publication work | The required work intent was recorded atomically; no notifier receipt, external delivery, browser acquisition or installation follows merely from work recording. |
+| Physical transport T1 | Its response was lost after incorporation; T1's delivery failure did not undo the command. |
+| Original browser execution E1 | It has no admissible success evidence; its command presentation must remain unknown until admitted resolution. |
+| Current browser owner | It may be E1 or a successor with distinct resource-instance rights; no old callback may claim authority over a successor. |
+
+An authorized current projection of Request R together with its active primary
+RequestAssignment may establish that Alice is the currently assigned primary
+helper at the read's actual basis and scope. It does *not* attribute that
+relationship to C42. A different command could have produced the same state,
+or C42 could have committed and then been followed by Unclaim, Take-over or
+Reassign. A Request-only projection is not the source of primary helper truth.
+The command resolver therefore uses retained *bound command-specific* outcome
+evidence, not a pattern match on Request status or RequestAssignment.
+
+Even a correctly disclosed current projection and a command record may be
+read at different bases: their joint use must qualify any claimed temporal
+ordering or causal relation. A stale or incomplete read that finds no command
+record cannot prove non-incorporation. The operation may use one appropriately
+qualified snapshot or a declared consistency/progression relation; mere proximity
+of two reads, or their origin in a shared logical database, is not that relation.
 
 The public resolution path is conceptually:
 
@@ -41,11 +68,21 @@ The public resolution path is conceptually:
  {:request-id R :command-id C42})
 #+end_src
 
-This operation resolves the full immutable binding required by the contract,
-including authority scope, operation/interface compatibility, canonical
-arguments, and principal or delegation. It checks current permission to disclose
-the prior outcome. It is not a public wrapper around unrestricted raw database
-lookup.
+This *schematic public operation*, not a claim that the named Clojure helper
+already exists, resolves the full immutable binding required by the contract,
+including authority/tenant namespace, operation/interface and canonicalization
+compatibility, canonical arguments, principal or declared delegation. It uses
+a qualified authoritative read, checks the current principal's permission to
+request resolution and separately to disclose the historical result. The
+request-supplied C42 bytes and =:request-id= are not credentials. Unauthorized
+callers must not gain an existence oracle through differences in error wording,
+timing-dependent disclosure, or returned binding details.
+
+The resolver's receipt of a retained command record can establish the command's
+incorporation without proving that T1, rather than a concurrent compatible
+submission, caused it. Nor does a command's incorporation authorize the
+current browser owner to install a stale projection. This is not a public
+wrapper around unrestricted raw database lookup.
 
 Resolution results distinguish:
 
@@ -60,6 +97,16 @@ Resolution results distinguish:
 These are resolver classifications, not additions to the canonical model outcome
 set. The interface declares how each maps to an operation outcome or typed
 invocation error. In particular, not established does not mean rejected.
+A stable terminal rejection requires the closure/exclusion evidence of
+04.07, not a failed assertion or lookup that merely found no record.
+The current experimental Gesso command-record constructor persists
+incorporation results; its existence does not imply that durable terminal
+rejection, result-expiry fencing or restoration protocols already exist.
+
+A retained tombstone may establish exclusion of duplicate incorporation
+without retaining a disclosable result. A record missing because of
+unqualified read, expiry, migration or restored-backup gap does not justify
+fabricating the prior outcome or sending a new command under a fresh ID.
 
 A compatible invocation of =request/claim!= can alternatively recover the same
 record through its replay branch. It returns =:already-incorporated= and the
@@ -71,19 +118,65 @@ submission, that proves command incorporation. It does not necessarily prove
 which physical attempt incorporated it. Reports and tests must preserve this
 distinction when attributing execution evidence.
 
+*** C42 recovery and presentation are independently admitted
+
+The browser has two different useful recovery paths. One asks the public
+command resolver about C42 under its current principal and binding. The
+other reacquires a currently authorized Request/RequestAssignment
+projection at an appropriate basis, to repair the displayed card or board.
+The former resolves *historical command attribution* when permitted; the
+latter acquires *current business state*. Neither substitutes for the other
+when both properties are required. Local author feedback may be adopted
+under its admitted command/presentation mapping. Unrelated remote board
+changes remain subject to the application's selective-adoption policy;
+receipt of an advisory cannot force their installation.
+
+| Recovery observation or event | Required interpretation |
+|------------------------------+-------------------------|
+| Authorized C42 readback returns the exact compatible incorporation record | Disclose the historical Claim result to the permitted participant; do not construct/submit another Claim or durable work intent. |
+| Authorized current Request/RequestAssignment read shows Alice still primary | Permit current-state presentation under its basis, resource-owner and adoption rules, without inferring that C42 was the cause. |
+| Current projection shows Bob as primary after a legitimate later Reassign | Keep C42's historical success separate from Bob's current ownership; do not overwrite the current card with Alice's old result. |
+| A scoped read reports no C42 record while an earlier T1 submission remains unresolved | Keep the command disposition unknown; absence does not prove a failed command or authorize a new C43 as its retry. |
+| A server knows the command record exists but Alice's current authority forbids disclosure | Return only the permitted unavailable/indistinguishable result; neither leak the record nor claim business rejection. |
+| A current reconciliation owner receives qualified C42 evidence after E1 retired | May settle surviving command knowledge via its admitted successor mapping; E1 cannot regain callbacks, overlay ownership or DOM installation rights. |
+| A Late T1 response or E1 timeout arrives after replacement execution E2 owns the target | Suppress retired owner effects; do not erase a valid newer installation or falsely reject C42. |
+| Durable notifier work is still pending after C42 resolution | Recover the original work identity through its declared worker; do not mint duplicate work because the browser requested resolution. |
+
+The successor's admission is not automatic merely because it knows C42.
+It must preserve exact operation/binding compatibility, current
+principal/disclosure policy, its own resource instance and presentation
+contract. Reconciliation evidence useful beyond E1 can be *transferred
+as knowledge*, not as E1's retired mutation or installation authority.
+This preserves [[#req-owner-relative-event-admission][owner-relative event admission]].
+
 *** Reconciliation needs an owner, not only a lookup
 
 A read-only resolver is useful but is not an executable recovery strategy by
 itself. An admitted unknown branch identifies who requests reconciliation, how
-the command reference survives local retirement, which evidence sources are
-used, when retries are allowed, and what happens when automatic recovery stops.
+the command reference and immutable binding survive local retirement, how
+a successor proves its current permission and resource ownership, which
+evidence sources are used, when retries are allowed, and what happens when
+automatic recovery stops. A retained C42 reference without a current
+principal, authority, canonical argument binding and compatibility contract
+is insufficient for authorized reconciliation.
 
 The recovery policy may include backoff, bounded automatic attempts, a durable
-queue, user-triggered refresh, or operator handling. Its safety claim must hold
-when progress never occurs. A liveness claim additionally names assumptions
-such as eventual backend availability, retained evidence, scheduling fairness,
-and continued authorization. A timeout budget can end automatic work without
-establishing non-incorporation.
+queue, user-triggered refresh, or operator handling. The safety claim must hold
+when progress never occurs: no duplicate incorporation, invented rejection,
+privacy leak or retired installation follows from an exhausted retry budget.
+A liveness claim additionally names assumptions such as eventual backend
+availability, retained command/exclusion evidence, correct authoritative
+read visibility, scheduling fairness and continued authorization. A timeout
+budget can end automatic work without establishing non-incorporation.
+
+The selected recovery owner must be able to survive the loss of the resource
+whose outcome is unknown when the application promises recovery beyond that
+resource's lifetime. The specific choice—current browser successor, durable
+server worker, operator intervention or another authorized owner—is a plan
+decision. An implementation need not run a permanent poller for every
+command. Whatever owner is chosen must retain or reacquire the required
+identity, backoff/retry state and trust context through a declared mechanism;
+a Clojure callback captured in a now-dead HTTP request is not a durable owner.
 
 Static preflight need not predict dynamic conditions. It must nevertheless
 require declared handling or recovery paths for conditions that can strand an
@@ -100,4 +193,21 @@ Cancelling a local request is similarly distinct from an authoritative
 cancellation command. Whether an authoritative operation can be cancelled is a
 model question with its own valid transitions. Once incorporated, an effect may
 require a compensating operation rather than retrospective cancellation.
+
+*** Lost-response acceptance cases
+
+| Case | Required judgment |
+|------+-------------------|
+| C42 commits the complete Claim transition and durable work while T1's reply disappears | Preserve incorporated authoritative history and pending work; E1 reports unknown until its permitted resolution evidence arrives. |
+| C42 readback is allowed and fully bound while Request R has since been reassigned | Disclose the historical success without falsifying current RequestAssignment or rerunning Claim. |
+| A complete authorized Request/RequestAssignment projection shows Alice currently primary but has no command attribution | Permit current-state display under its adopted basis; do not conclude C42 incorporated solely from visible ownership. |
+| Two compatible physical attempts overlap, one commits and both replies are lost | The retained C42 record can establish command incorporation without proving which attempt won; do not report a failed attempt as terminal command rejection. |
+| The command record lookup is stale, out of retention, incomplete, or made on the wrong tenant | Preserve unknown/unavailable as qualified; do not turn absence into rejection or allow a new command to conceal C42. |
+| A legitimate current owner E2 reconciles C42 after E1 retires | Permit explicitly mapped surviving knowledge, but deny retired E1 all installation and settlement rights. |
+| A stale E1 callback fires after E2 installed a newer current projection | Reject the stale callback's effects without discarding independently valid command-record evidence. |
+| Alice may view Request R but may no longer disclose C42's historical result | Keep the current-state and historical disclosure decisions separate; do not leak command existence or invent a rejection. |
+| C42 is authoritatively resolved while its original durable notification work remains undelivered | Resume only the retained work through its proper worker; command reconciliation does not prove delivery or create replacement work. |
+| A recovery owner's automatic attempts expire while command incorporation remains unproved | Terminate that scheduling attempt honestly with a declared unknown/manual/successor path; neither fabricate certainty nor violate safety. |
+| Several web nodes share the same authority, but one read has not reached the necessary basis | Require qualified acquisition/progression for the command evidence; node placement and Live router delivery do not create different business outcomes. |
+
 
