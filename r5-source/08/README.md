@@ -7,19 +7,21 @@ published Part VIII and `r5` publication had the **same Git blob**
 No normative wording, operation contract, example, heading, table,
 `CUSTOM_ID` or cross-part link was changed.
 
-**Review status:** Initial source partition only. **No substantive
-08.xx R4/Gesso reviews, whole-Part-VIII reconciliation or independent
-Part VIII candidate acceptance have occurred.** Parts I–VII
-are accepted reviewed R5.1 candidates; Parts VIII–XII and the
-full-plan acceptance remain open.
+**Review status:** **08.01 has completed substantive R4 preservation and
+Gesso/HumanHelp source correspondence review**, recorded in
+`08.01-r4-preservation-audit.md`. Sections **08.02–08.15**,
+whole-Part-VIII reconciliation and independent Part VIII acceptance
+remain outstanding. Parts I–VII are accepted reviewed R5.1 candidates;
+Parts VIII–XII and full-plan acceptance remain open.
 
 The **R4 preservation baseline** is `main` Part VIII,
 **5,372 newline-split lines** and 29 second-level headings.
-The preferred **R5 architectural predecessor** has
+The preferred **R5 architectural predecessor** had
 **1,468 newline-split lines**, 21 second-level headings and
-**92,955 decoded characters**. That difference in length is
-not evidence that all R4 obligations survive; subsequent
-sectional reviews must substantively compare both versions.
+**92,955 decoded characters** before substantive revision.
+The current fifteen sources reconstruct the **1,624-line**, **103,128-character** Part VIII publication exactly. Length is not
+evidence that all R4 obligations survive; each numbered
+review must make its own R4/Gesso/HumanHelp comparison.
 
 ## Exact numbered source inventory
 
@@ -149,6 +151,12 @@ proof, backend and multi-node premises of Parts IX–XII.
 - **08.13–08.15:** real structural enforcement, deployment
   and resource evidence, completion gates and final invariant.
 
-**Next:** Review **08.01 — Purpose and Application Assembly**,
-against R4 and actual Gesso/HumanHelp sources; commit
-the first substantive R5.1 revision and its preservation audit.
+**08.01 review:** see `08.01-r4-preservation-audit.md`.
+The active example versus unfinished production UI boundary,
+public-model ownership, partial lifecycle-slice versus complete
+product scope, real Biff/Aleph admission, and twelve positive/
+adversarial assembly histories now have explicit source correspondence.
+
+**Next:** Review **08.02 — Production Model and Operation Boundaries**,
+including real atomic Request/RequestAssignment dependencies, command
+identity, actor-versus-target authority and historical settlement.

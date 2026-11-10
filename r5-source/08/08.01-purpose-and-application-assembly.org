@@ -66,6 +66,48 @@ command outcomes is such a gap. A wrong rule about who may reassign a Request
 is a HumanHelp model defect. Gesso must not acquire HumanHelp business rules to
 make a reference application pass.
 
+ 
+*** The proving UI is the selected real application, not a parallel demo
+
+During this integration milestone, the global =/app= entrypoint actually
+selects =net.humanhelp.example.app= through the application's normal
+routing and startup path. The incomplete =net.humanhelp.site= UI is *not*
+another acceptance implementation and need not be finished to demonstrate
+this reference application. Eventually it may consume the same production
+model and Gesso contracts; its completion is independently scheduled.
+
+The boundary is strict in both directions. Production
+=net.humanhelp.site.model.request.core= and the relevant public
+Organization, Membership and User model APIs own their persistent facts,
+eligibility and guarded transitions. The model-owned
+=net.humanhelp.site.model.request.choreo= coordinates those *public*
+operations and exports semantic browser capabilities. The example
+provides board/query composition, views, routes and user interactions,
+but cannot invent an easier RequestAssignment schema, mutate an
+example-only Request store or implement authorization in a card
+component. A broken production transition is repaired in its
+production owner; replacing it with a sample mutation to make
+Chromium green is an invalid migration.
+
+The physical browser participant =:helper= in the current Request
+choreography is not evidence of actual helper Membership: the same
+signed-in participant can display requestor and manager affordances.
+Its trusted authority role, the authenticated principal, selected
+target helper, physical server host and current model guard remain
+distinct. Example request inputs and generated browser operation
+metadata cannot supply the principal or bypass current Organization
+and Membership checks.
+
+Development fixtures bootstrap genuine production User,
+Organization, Location and relevant Membership/assignment
+relationships through declared model/initialization paths.
+A fixed example Organization or Location used by a selected
+fixture is *not* a substitute for tenant-scoped authorization
+or complete production capability coverage. Tests identify
+their fixture and actor assumptions, and exercise the real
+public production model rather than a mock that merely returns
+a plausible Request card.
+
 ** One application definition and actual installation
 
 HumanHelp has one source-owned application definition. It composes production
@@ -78,6 +120,39 @@ Tests call that constructor with explicit fixture dependencies. They do not
 maintain a second operation registry or a shadow assembly. Product acceptance
 remains independent: its list of required capabilities cannot be generated solely
 from whatever operations happen to remain in the application definition.
+
+ 
+*** Product scope must not be confused with a closed lifecycle slice
+
+The application has multiple overlapping but nonidentical inventories.
+The model-owned operation catalog identifies what the production model
+can execute. The browser-plan registry identifies the lifecycle
+operations currently exposed through one client projection. The
+application's complete protected effect/writer scope includes
+other sources such as Create, initialization and background work.
+The independently selected HumanHelp product profile defines
+what a *complete proving application* must make usable.
+
+A structural checker can validly close a six-operation browser
+lifecycle slice — Claim, Unclaim, mark on the way, Complete, Cancel
+and Reassign — without thereby having checked Request Create,
+authentication, read authorization, search, details, selectable
+response interaction, all model writers or positive end-to-end
+product behavior. The finished application must *compose* its
+distinct Create operation and every other required protected
+capability into appropriate route, trusted model, effect,
+rendering and acceptance evidence. Its report states what was
+included, intentionally separate or still unqualified, never
+advertising a partial fragment as a fully admitted product.
+
+The acceptance oracle is independently selected and includes
+the full required-capabilities contract in 08.03, not merely the
+set of current browser plan keys. Removing manager Reassign from
+a plan may leave a smaller graph that passes its own checks;
+that must still fail the independent product gate. Likewise
+a green lifecycle preflight is not evidence that a real
+Create dialog produces a persistent Request with immediate
+creator-local visibility.
 
 *** Source responsibilities
 
@@ -103,6 +178,28 @@ a renderer to escape admission or be silently replaced after its binding has
 been checked. Reload creates a new candidate assembly and adopts it coherently
 under Part VII.
 
+ 
+Source ownership also distinguishes *public-model* calls from
+private implementation reuse. Cross-model decisions use
+the owning model's =*.core= API and required guarded
+dependencies; the example must not reach into another
+model's =domain=, =fx= or =graph= internals to create a
+more convenient eligibility path. The Request Choreo
+coordinates the same public operations; it cannot
+embed a competing set of Organization or Membership rules.
+
+A concrete route declares which trusted callable it actually
+uses, which semantic operation it exposes, what principal and
+Request selector it receives, and which physical model/
+transaction and authorized acquisition follow. A view
+that displays a semantic capability cannot silently
+downgrade to an anonymous HTMX POST because its optimistic
+basis is missing. A raw writer or alternate Ring route
+outside the plan inventory remains relevant to the
+protected-effect scope; a report of zero declared
+uncovered writers cannot prove that actual writers are
+absent.
+
 *** A concrete construction path
 
 The supported path performs these steps:
@@ -126,6 +223,34 @@ The supported path performs these steps:
 The serving host must actually consume the checked handler. Merely returning
 one from a helper or storing it in a system map does not establish adoption by
 a running server. Tests observe the installed entrypoint and exercise it.
+
+ 
+The example application route selected globally, the canonical
+application constructor, emitted browser artifact, guarded HTML
+output and physical server startup are *joined deployment facts*.
+A build script and a runtime may share a source declaration yet
+load different JavaScript bytes, or a Gesso module may install
+a checked =:biff.ring/handler= while an alternate server captures
+a different callable. Those are distinct failed/unsupported
+evidence claims, not successful application installation.
+
+On Biff 2, all module =:init= functions can run before ordered
+=:start= functions. Mandatory preflight must therefore fence
+protected listener, scheduler, writer and public operation
+effects even when private initialization is allowed. The
+actual Aleph server must consume the admitted handler before
+ordinary service; a later handler/asset/provider replacement
+invalidates the affected evidence. No startup policy may
+pretend a successful check rolls back a mutation that already
+committed or resolves a command whose response disappeared.
+
+Test setup and the running application use the *same*
+construction owner and original production model definitions.
+Controlled defects remove a real required operation,
+route, provider, plan, artifact or acquisition edge and
+must fail the corresponding gate. A test-only duplicate
+assembly remaining green after the production constructor
+breaks is not valid acceptance evidence.
 
 *** Assurance is explicit and useful
 
@@ -156,4 +281,35 @@ invariant.
 The permanent executable semantic core governs admitted transitions. A proof
 checker or later small proof kernel checks a specified class of proof evidence.
 Neither replaces HumanHelp's transaction boundary or current authorization.
+
+ 
+*** Positive and adversarial assembly histories
+
+The following scenarios exercise the same production-backed
+example selected by =/app=. Structural checks, actual
+production enforcement and independent product outcomes
+are reported as different propositions.
+
+| History | Required result and evidence scope |
+|---------+------------------------------------|
+| The selected example creates a Request through the production model; its creator immediately sees the committed Request under a qualified read basis. | Verify the real Create route, trusted requestor, production persistence, progression, visible rendered control and local adoption; passing lifecycle-plan preflight alone is insufficient. |
+| A valid helper uses the actual Claim card and the public production model incorporates the guarded assignment. | Trace model-owned choreography, issued HTTP executor, authenticated principal, guarded commit and authorized acquisition; do not treat a green browser map as a domain write. |
+| The same browser is a requestor on one Request and an authorized manager on another. | Its physical Choreo participant can be shared while the trusted model evaluates distinct current actor and target permissions. |
+| An example Claim handler writes an example-only RequestAssignment or directly imports another model's private FX helper. | Reject semantic/source ownership as unproven or incorrect; the example may not replace production RequestAssignment or authorization meaning. |
+| A fixture supplies a valid Organization ID but no applicable active Membership for the actor. | Current production authority rejects the protected action; fixed fixture values and rendered capabilities cannot grant Membership. |
+| An assembly checker includes all six lifecycle browser plans but omits Create, an actual raw writer or another promised product operation. | Report exact checked lifecycle scope; reject a full product/all-writer claim and fail independent missing-capability acceptance. |
+| A lifecycle operation ID is removed from the real production browser declaration while an independently rebuilt test registry still includes it. | Tests must use the real constructor and expose the omission rather than pass a shadow assembly. |
+| The named route and operation exist but the deployed Aleph handler uses a different callable from the checked system-map slot. | Retain structural evidence but leave production serving/adoption unestablished or contradicted. |
+| A Biff =:init= starts a protected writer/listener before the checked startup's ordered =:start=. | Fence its external effects or fail the protected no-exposure contract; first-in-start is insufficient. |
+| A valid operation commits, then its response renderer fails or network settlement disappears. | Preserve authoritative incorporation and command-specific unknown/recovery debt; never fabricate rollback or new-command permission. |
+| A test injects a correct Claim protocol directly while the actual button never submits. | Treat it as a bounded protocol test, not positive real-control browser/product acceptance. |
+| The source/asset/handler generation changes while a pending card response or command resolver still refers to the prior generation. | Preserve declared retained owner/compatibility and real rights, or explicitly block/reconcile; never silently splice a new executor into old work. |
+
+An eligible Create and Claim scenario must be demonstrated
+in addition to controlled invalid cases. Subsequent 08.xx
+sections own the full Request lifecycle, selective board
+adoption, one-Refresh policy, response-flow choice and
+concurrency matrices; this initial assembly section does
+not redefine their domain policy or pretend those
+end-to-end capabilities are currently certified.
 
