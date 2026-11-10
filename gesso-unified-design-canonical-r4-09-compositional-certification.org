@@ -2818,116 +2818,359 @@ replacement must also be tested to prevent unnecessary false rejection.
 :CUSTOM_ID: req-certificate-composition
 :END:
 
-Composition checks the actual propositions and scoped dependencies the consumer
-requires. Exact semantic identity is the default. A compatible certificate kind
-or matching friendly name is insufficient when the subject, rule semantics,
-nominal types, premises, or relied-upon commitments differ.
+Compositional assurance is a judgment about a *consumer's required
+propositions* and the actual certified interfaces and source dependencies
+that justify them. An upstream artifact is not acceptable merely because
+it has the expected kind, friendly name, cached object identity, valid
+fingerprint, or an unrelated successful proof. The default composition
+rule is exact checked semantic identity; controlled evolution requires
+an independently checked, direction-sensitive compatibility argument.
 
-*** Structural closure and required closure
+Composition must preserve the distinction between an abstract semantic
+contract, evidence that the contract is satisfied, the actual production
+implementation, the installed application assembly, and the particular
+runtime authority or resource instance. It must neither demand complete
+rechecking of unaffected abstract contracts nor reuse an old physical
+correspondence claim after the implementation changes.
 
-A structural DAG checker establishes that the supplied graph has valid nodes,
-matching references, reachable roots, and no unsupported cycles. That result is
-useful but does not establish that the supplied graph includes every dependency
-required by the source claim.
+*** Actual exported commitments and required closure
 
-The artifact-specific constructor therefore derives a required dependency
-manifest from the original normalized subject and requested judgment. Admission
-compares the supplied/resolved evidence with that required closure. For conditional
-induction, the closure includes the catalog, shared initialization, every invariant,
-every declared operation, each required preservation/base judgment, and their
-actual premises. Omitting a difficult operation's edge must fail even when the
-remaining graph is a perfectly valid DAG.
+A certified semantic interface exposes only the claims downstream
+consumers are permitted to rely upon: normalized subject and type
+commitments, operations, outcome and branch contracts, authority/
+knowledge requirements, checked guarantees, scoped open premises
+and any declared relevant implementation correspondence. Private
+implementation fields, diagnostic source spans and unrelated guarantees
+do not silently enter the downstream proof contract.
 
-This completeness is source-relative. A proof about a declared catalog still
-needs an explicit argument or premise that every relevant physical writer and
-initializer is covered. Neither the dependency manifest nor a host-supplied route
-inventory proves its own real-world completeness.
+For each requested downstream claim the constructor derives the
+*required dependency manifest* from its original normalized source,
+operation/Choreo declarations, checked judgment rules and selected
+assurance profile. A graph supplied by an elaborator is candidate
+evidence, not the authority that defines its own required edges.
+Composition checks both:
 
-The constructor derives routine closure mechanically. Where an opaque implementation
-can have dependencies that cannot be discovered, its declared effect/dependency
-contract and implementation-conformance premise remain in the required closure.
-The system does not pretend it statically enumerated those hidden branches.
+- *Structural validity:* every node/reference has a recognized checked
+  category and exact identity; roots and edge kinds match; required
+  proof-justification edges are acyclic, reachable and well formed.
+- *Required source closure:* every needed upstream proposition, producer,
+  type/branch condition, premise, resource policy and operation case
+  occurs in the admitted source-derived manifest, including the edges
+  the elaborator or cache did not volunteer.
 
-*** Acyclic justification, cyclic execution
+A graph can pass the first and fail the second. For conditional
+induction the required closure includes the original operation catalog,
+shared initialization, every declared invariant, every operation,
+every base and preservation case, and their explicit open premises.
+Removing the most difficult =Request/Unclaim= case while leaving a
+self-consistent DAG is a failure of source-derived coverage, not a
+successful proof of the smaller application. A checked proof about a
+*deliberately smaller declared catalog* is legitimate only when
+it names that reduced subject honestly.
 
-Proof justification edges are acyclic. Recursive definitions or invariant arguments
-can live inside an admitted component using a specified induction, guardedness,
-or fixed-point rule; two certificates cannot discharge each other's premises
-through an unsupported cycle.
+This completeness is relative to the checked source universe. A
+declared application catalog does not by itself prove every real
+route, model writer, startup hook, dynamically selected handler,
+background worker or installed browser source was discovered.
+Part VII's assembly closure and the qualified physical writer/
+host evidence in Parts IV, VI and X must supply that independent
+coverage when a stronger installed-product claim depends on it.
+Opaque Clojure bodies contribute declared effect/dependency contracts
+and explicit conformance premises where mechanical discovery stops;
+those premises are not automatically discharged by a valid graph.
 
-Runtime protocols, retry loops, subscriptions, and state-machine cycles are not
-proof-DAG edges. Likewise, an “implements” edge or observed execution sequence
-must not be treated as a proof dependency simply because all are displayed in
-one report. The assurance graph records edge kinds and the projection that forms
-the justification DAG.
+*** Distinct edge kinds and legal cycles
 
-*** Identities that answer different questions
+The assurance structure includes dependency edges that say different
+things: =requires-guarantee=, =uses-premise=, =justifies=,
+=implements=, =realizes=, =installed-with= and observation/correlation
+links. The selected *proof-justification projection* must be a
+well-founded DAG with correct premise/claim dependencies. These
+other edges cannot be silently counted as proof justifications.
 
-| Identity | What it names |
-|----------+---------------|
-| Semantic interface identity | A normalized exported contract under its interpretation/encoding versions. |
-| Claim identity | A proposition about an exact subject, scope, parameters, context, and premises. |
-| Evidence identity | The particular derivation/check result and its checking profile/dependencies. |
-| Implementation binding | The actual callable, generated executor, provider, or build realization about which correspondence is claimed. |
-| Assembly/deployment identity | The coherent installed configuration and selected realization set. |
-| Runtime instance identity | The particular invocation, execution, observation, transport, target, or resource lifetime. |
+Recursive rules, transition systems, subscription loops, retries
+and self-sustaining Choreo protocols can be well formed while their
+runtime graph contains cycles. An induction, fixed-point or
+coinduction step may justify a recursive semantic construction only
+under its admitted inference rule and premises. Two certificates
+whose only grounds are each other's promised conclusions do not
+become valid through ordinary graph cycle detection or by calling
+the cycle a runtime loop.
 
-A source-file hash alone does not bind arbitrary Clojure behavior. Closed-over
-values, Var resolution, libraries, provider configuration, and permitted effects
-may matter. The implementation binding must include or explicitly assume the
-relevant dependency stability. A name such as =request/claim= does not capture a
-replacement function body.
+At a branch join, a dependency on a role-local fact is valid only
+with the exact knowledge and provenance required on all reachable
+incoming paths, or through an explicitly checked conditional/
+disjunctive qualification. A communicated fact, old snapshot,
+opaque policy assertion and current authoritative observation are
+not interchangeable merely because they share a field name.
+Part III's distributed semantics and Part IX's 09.08 judgment
+remain controlling at this use site.
 
-Fingerprints are identity evidence under canonical encoding and digest assumptions.
-They are not truth evidence. The profile states whether equality compares canonical
-terms directly or relies on collision resistance. Diagnostic source spans and
-comments are retained separately from semantic identity unless a claim explicitly
-includes them.
+*** Six identities answering different questions
 
-*** Cache validity and controlled evolution
+| Identity | Subject and allowable reuse |
+|----------+-----------------------------|
+| Semantic interface identity | The normalized exported subject contract under named schema, nominal-type, interpretation and canonical-encoding semantics. |
+| Claim identity | One exact proposition with subject, model/scope, parameters, context and its conditional-premise meaning. |
+| Evidence/check identity | The actual derivation or checker result, proof rules, trusted checker version, profile, dependency closure and remaining premises. |
+| Implementation binding | The specific callable, closure, generated executor, compiler/product, provider adapter or model writer whose conformance is claimed. |
+| Application/installation identity | One coherent source-to-route-to-asset-to-host configuration, with its selected assembly/deployment generation. |
+| Runtime instance identity | A particular command, role execution, actor/session, transport attempt, observation, physical target, lease or resource generation. |
 
-The following reuse distinctions are required:
+These identifiers do not collapse into one digest. Two artifacts can
+export the same abstract semantic interface and have different proof
+evidence. An unchanged interface is not proof that a new implementation
+conforms. The same installed application can serve different command
+instances with different current authorization. A later state snapshot
+is not the same observation or historical incorporation event as an
+earlier command result.
 
-| Change | Reuse consequence |
-|--------+-------------------|
-| Formatting or diagnostic prose changes without semantic change | Contract-level derivations may remain reusable; diagnostics must still point to current source. |
-| Implementation changes while the public contract is unchanged | Contract proofs may remain valid; evidence about the old implementation cannot be copied to the new binding. |
-| Required type, rule, outcome, guard, or assumption changes | Dependent claims are rechecked against the changed interface/premise. |
-| Checker/rule semantics change or a profile is withdrawn | Old admission is not automatically accepted under the new policy. |
-| Provider/configuration changes outside a qualification envelope | Dependent deployment applicability requires requalification or an explicit supported compatibility argument. |
-| One runtime resource retires | That instance loses effect rights; a static semantic certificate does not revive it. |
+Canonical identity is exact only relative to a versioned
+normalization/encoding contract. Unordered maps/sets may normalize to
+one term, while ordered vectors, optional versus missing values,
+nominal identifiers, branch alternatives, closed versus extensible
+variants, and integer semantics preserve their declared distinctions.
+Where a normalization is claimed meaning-preserving, its own
+source-to-term argument is checked or retained as a named premise.
+Textual/diagnostic metadata is separate unless the proposition
+explicitly refers to source location or provenance.
 
-A concrete HumanHelp example is a Claim outcome interface extended or altered
-without updating its choreography. A plan covering only successful acceptance
-and rejection cannot claim total settlement handling when the model interface
-includes =:already-incorporated= and =:commit-unknown=. The operation may be
-well formed; the old dependent mapping fails the required composition judgment.
+A digest is evidence of term identity under its encoding and
+collision-resistance assumptions, not evidence of typing, truth,
+implementation fidelity or currentness. When a claim requires
+collision-free equality rather than assumed hash uniqueness,
+admission compares canonical terms or uses an independently
+qualified equality mechanism. Forged copied identity fields never
+create an issuer-issued handle.
 
-Similarly, changing =:request/status= from a required closed enum to an optional
-value can invalidate a rule's unguarded read. Changing only the Request renderer's
-CSS need not invalidate that rule proof. Adding a variant to a closed enum can
-invalidate exhaustive matching even when the old variants remain.
+Implementation binding requires more than a source filename or
+Var symbol. Captured closure state, late binding/dynamic Var
+resolution, transitive library versions, build configuration,
+provider options, generated bytes and actual selected handler can
+change behavior without changing the public name. Strong
+correspondence must bind the relevant realized dependency
+footprint or retain an explicit, testable stability/conformance
+premise where the host cannot prove that binding.
 
-Compatibility beyond exact identity is permitted only through a checked bridge
-for the consumer's actual required propositions. The bridge preserves closed-world
-assumptions, variance where applicable, premise scopes, and protocol meaning.
-It does not mean “the new interface has more fields, so it must be safe”.
+*** Dependency failure and transitive invalidation
 
-A cache can miss and reconstruct a valid new artifact. That is different from
-accepting a stale dependent. Tests exercise both direct stale composition and
-the production cache path, identifying the first actual enforcing boundary.
+Composition is consumer-relative. If a required upstream guarantee
+is absent, or its semantic identity, premise scope, nominal type,
+model observation, operation variant or trust domain differs, the
+consumer's claim cannot be accepted through the old edge. The
+failure propagates along *dependent* edges that rely upon the
+changed commitment; independently established unrelated claims
+need not be invalidated merely because they share a namespace.
 
-*** Freshness comes from the trusted consumer
+A valid checker result with missing required source nodes is
+insufficient. A complete graph with a changed producer body can
+still support an abstract interface claim while losing production
+realization evidence. A copied original certificate cannot keep
+its old installation or resource rights alive after an
+incompatible reload. Cache presence, prior successful tests or
+an unchanged digest of a downstream file do not establish
+current source closure.
 
-A “current source” argument is meaningful only when the consuming construction
-or installation obtains it from the authoritative application source/configuration.
-An attacker can always supply yesterday's source and yesterday's matching graph;
-checking that pair establishes only yesterday's subject.
+For a concrete HumanHelp evolution, let Organization domain
+O14 export =organization.claiming-enabled?= as a required
+Boolean and let Claim rule C21 depend on it. Suppose O15
+instead exports a closed =organization.claim-policy= enum:
 
-Admission binds one immutable closure or detects changes before use. Reload
-constructs a new candidate and switches coherently under Part VII. A cached
-certificate, new handler, old plan, and mutable route table cannot be mixed on
-the strength of independent earlier checks.
+#+begin_example
+O14: claiming-enabled? : Boolean
+  -> C21: Request Claim rule
+  -> O31: Claim operation
+  -> H12: Claim choreography
+  -> P7: helper projection
+  -> E5: browser executable plan
+
+O15: claim-policy : {open, helpers-only, closed}
+#+end_example
+
+O15 may be a valid new product interface. It is not a valid
+replacement for C21's *old required Boolean field*. The
+composition of cached C21 against O15 must reject with the
+missing or incompatible source commitment and a dependency path,
+regardless of whether cached O31/H12/P7/E5 still have their
+original bytes. On re-elaboration the old Claim rule must fail
+its unresolved field access, rather than accidentally interpreting
+=helpers-only= as unrestricted acceptance.
+
+A repair changes the rule and issues a new semantic identity.
+The repaired rule explicitly checks current Request status,
+Membership and Organization association, trusted authenticated
+principal/role evidence, and the enum branch: =open= permits
+the policy conjunct, =helpers-only= requires the admitted
+helper-role predicate, and =closed= rejects. The enum example
+describes one policy conjunct; it is not a complete production
+Claim authorization proof. Production writer and current-model
+conformance remain distinct premises and actual runtime checks.
+
+This illustrates that *coherent upstream evolution* and *stale
+downstream composition* can coexist. The diagnostic should not
+mislabel O15 as malformed or say that a changed policy field
+necessarily makes every independent application artifact invalid.
+
+*** Checked compatibility instead of optimistic substitution
+
+Exact identity is the default. A proposed compatibility bridge
+is a checked proposition:
+
+#+begin_example
+old dependent D requires interface Iold under premises Pold
+new upstream U exports interface Inew under premises Pnew
+
+bridge establishes, for D's actual use and scope:
+  accepted guarantees(Inew, Pnew) entail required guarantees(Iold, Pold)
+  without weakening required authority, knowledge, closed-world
+  constraints, lifetime or physical implementation bindings
+#+end_example
+
+Compatibility is *directional* and *consumer-specific*, not an
+equivalence relation inferred from field counts or a label like
+“backward compatible.” A compatible upstream for one consumer
+may be incompatible for another; transitive reuse requires a
+checked composition of bridges, not an unchecked assumption
+that each pair looked plausible.
+
+The bridge must account for actual variance of typed inputs/
+outputs, optional/null presence, field removal/renaming,
+closed-enum exhaustiveness, newly possible errors/outcomes,
+previously assumed impossibility, and temporal/authority
+scope. Adding an enum variant can invalidate exhaustive
+matching. Extending an operation from =:committed= and
+=:rejected= to =:already-incorporated= and =:commit-unknown=
+cannot preserve an old total-settlement Choreo that has no
+unknown/recovery branch. Adding a field cannot repair an
+earlier reliance on its absence or a confidentiality promise
+that the new field makes observable.
+
+The bridge must preserve the relied-on *premises*, including
+issuer, principal/tenant, input scope and provider qualification,
+or re-establish them through a separate valid premise-discharge
+judgment (09.11). It may not silently upgrade =:asserted= to
+=:derived=, an abstract model to a physical observation, a
+past authenticated command result to current-state authority,
+or a checked contract to its unverified new implementation.
+Incompatibility is a typed rejection naming the first missing
+judgment. Undecidable opaque equivalence is a separately
+reported premise/unsupported-strong-profile outcome, not a
+silent success.
+
+*** Cache keys, impact analysis and safe reuse
+
+The reuse key is claim-specific: normalized subject, exact
+required interface/dependency identities, proof/checker rules,
+profile, proposition and premise bindings, and any relevant
+implementation, deployment or runtime applicability envelope.
+An implementation may maintain separate abstract-contract,
+proof-evidence, compiled-plan and installed-realization caches.
+One cache's successful hit never promotes an entry into a
+different assurance category.
+
+A change propagates through the typed reverse-dependency
+closure used by affected claims. Precise impact analysis can
+allow an unaffected abstract rule theorem to survive a renderer
+CSS edit while requiring requalification of the browser
+artifact and physical installation claim affected by that
+edit. Conversely, a changed closed enum or a strengthened
+guard can force rechecking every consumer that relies on its
+former meaning, even when the dependent source bytes are
+unchanged. Source spans/diagnostics may need refresh even
+when semantic proof remains reusable.
+
+A cache miss may reconstruct and recertify; this is not a
+failure of soundness. An old handle or successful cached
+report is not authoritative for an altered source, changed
+dependency graph, selected profile or installed executable.
+Tests must exercise both direct composition and the *real
+consumer's cache path*: a unit function that rejects stale
+EDN is insufficient if production loading bypasses it.
+
+| Change | Scope of required response |
+|--------+----------------------------|
+| Formatting/source locations only | Retain eligible semantic claims if canonical meaning is identical; refresh diagnostics/source provenance when relevant. |
+| New irrelevant implementation detail | Abstract proofs may survive; dependent implementation/physical evidence requires its own affected-footprint determination. |
+| Nominal type, required field, outcome, guard or assumption changed | Recheck every relying proposition and dependent judgment, or verify an explicit compatibility bridge. |
+| Checker, kernel, normalization or policy version changed | Revalidate affected evidence under current admitted rules; old success alone is insufficient. |
+| Changed opaque callable, provider/configuration or generated program | Re-establish applicable binding and correspondence or preserve an explicit bounded trusted premise. |
+| Route/asset/host assembly generation replaced | Admit one coherent installation closure; reject mixed old/new certificates and plans. |
+| Individual runtime resource or command instance retires | Remove that instance's effects/grants; static interface identity does not renew it. |
+
+*** Fresh source, coherent deployment and temporal claims
+
+A dependency graph can be internally consistent while entirely
+obsolete. The consumer or responsible assembler must acquire its
+*current* source, dependency generation, policy and selected
+realizations from the trusted application/installation authority,
+not from a caller's mutually matching old source plus old graph.
+A source-issued handle proves only its named checked boundary
+until this currentness and any required installed correspondence
+are separately established.
+
+For reload, construct and check a replacement closure before
+atomic publication of the new admitted assembly identity.
+New routes/handlers, browser plans/assets, model operation
+contracts and authorization policy cannot be mixed with old
+evidence merely because each component passed some check
+at a different time. A failed candidate leaves the previous
+compatible generation under its stated policy or prevents new
+admission; it never creates partially certified service.
+Per-invocation and per-effect authority remain current
+physical/runtime obligations, not consequences of this
+static source composition check.
+
+Runtime continuity and durable command recovery are separate
+from static graph reuse. A known Claim command C42 may retain
+its historical durable outcome binding across a compatible
+reconnect, but neither that command ID nor a reissued plan
+stamp authorizes a new attempt, current readback or retired
+browser lease. Under Parts IV–VI, the applicable historical
+outcome, actor, session and current source/provider/plan
+binding must be checked at the actual trusted boundary.
+
+*** Positive and adversarial acceptance
+
+The final system needs both genuine supported progress and
+targeted rejection. At minimum, the test/report corpus covers:
+
+- a complete original Claim source/induction DAG and successful
+  consumer admission, versus a structurally valid pruned DAG;
+- same-name new Organization policy O15 correctly rejecting stale
+  C21 and all dependent old uses, followed by successful checked
+  C22/new-operation/new-Choreo rebuilding;
+- actual semantic equivalence after formatting or map-order
+  changes being reusable, while an ordered-vector or nominal-
+  type change is not silently equated;
+- an irrelevant renderer style edit preserving rule-level proof
+  reuse but requiring affected browser-asset correspondence;
+- a closed-enum variant addition, missing-branch default,
+  optional-field weakening, or altered operation outcome
+  rejected before total-settlement/knowledge claims;
+- a correctly scoped, checked asymmetric compatibility bridge
+  accepted for one consumer, versus unjustified bridge reuse
+  for another consumer, premise or implementation;
+- injected extra proof node, omitted required edge, forged
+  fingerprint and cycle of mutual proof justification rejected
+  at their actual structural or source-derived boundary;
+- copied proof report/handle and old source+matching old
+  dependency graph rejected as current installed-app evidence;
+- changed callable, provider, route or served asset detected
+  for the corresponding implementation/installation claim;
+- unrelated source change preserving reusable unaffected
+  claims, while transitive changed dependencies are detected
+  through the production cache and assembly path;
+- positive eligible Claim and selective Create/Refresh
+  continuing to satisfy independent product gates, with
+  incorrect tenant/role or second unauthorised Refresh
+  rejected by the real enforcement boundary.
+
+The expected disposition and first responsible checker,
+source-coverage, composition, construction, installation
+or physical gate are recorded before exercising each
+positive/adversarial case. Formal or structural checks are
+not credited with observing actual browser/XTDB behavior
+unless the required authenticated physical evidence exists.
 
 ** Assumption propagation and genuine discharge
 :PROPERTIES:

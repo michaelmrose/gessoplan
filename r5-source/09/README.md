@@ -9,9 +9,9 @@ proof rules, identifiers, link targets or whitespace were changed.
 The canonical publication is derived output, not a second source
 to edit independently.
 
-**Review status:** **09.01–09.09 substantively reviewed** against R4,
+**Review status:** **09.01–09.10 substantively reviewed** against R4,
 Gesso v1622 and accepted Parts I–VIII, with source decisions recorded in
-the numbered preservation audits. Sections **09.10–09.16** remain for
+the numbered preservation audits. Sections **09.11–09.16** remain for
 substantive review. Whole-part reconciliation and independent Part IX
 candidate acceptance remain outstanding. Parts I–VIII are accepted R5.1 design
 candidates; this is not evidence of a completed runtime/proof system.
@@ -181,5 +181,16 @@ consumer-controlled freshness and durable checking. Eighteen paired positive/
 adversarial cases and Gesso v1622 precursor/nonclaim boundaries are in the
 audit. Part IX now has **3476 newline-split lines** and **185969 characters**.
 
-**Next:** Review **09.10 — Dependency Composition and Semantic Identity**
-against R4, Gesso dependency/freshness code and accepted Parts I–VIII.
+**09.10 review:** see `09.10-r4-preservation-audit.md`.
+Reconciled exact consumer-required and source-derived dependency closure,
+proof-versus-runtime edge categories, six semantic/physical identities,
+trusted implementation binding, R4's O14→O15→C21 Claim evolution and C22 repair,
+checked directional compatibility and precise transitive cache/reload freshness.
+Twenty paired positive/adversarial cases and source-limited Gesso v1622
+evidence are recorded separately in the preservation audit.
+The published Part IX now has **3719 newline-split lines**
+and **198410 characters**.
+
+**Next:** Review **09.11 — Assumption Propagation and Genuine Discharge**
+against R4, the 09.09–09.10 admitted dependency interface and current Gesso
+assumption-checking and proof-source correspondence.
