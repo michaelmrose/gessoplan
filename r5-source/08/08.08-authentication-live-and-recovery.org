@@ -1,0 +1,133 @@
+** Authentication, read authority, and context changes
+
+The example uses genuine authenticated sessions. Development persona selection,
+if available, is a declared development authentication facility excluded from
+ordinary deployment or protected by the intended development-only access policy.
+A browser cannot become another user by selecting a User UUID in a command.
+
+Every authoritative read, command invocation, outcome lookup, target-helper
+query, and subscription registration performs its applicable trusted access
+checks. Being the fixed demonstration Location is a selection rule, not read
+authorization. Previously adopted Request IDs and signed/opaque projection
+handles do not exempt a subsequent disclosure from current policy.
+
+Authority context includes principal and the relevant authorization domain and
+profile binding. Mutable Membership and Organization facts still require current
+checks at their actual boundaries; a context identifier does not freeze them as
+valid for an entire page lifetime.
+
+Logout or a switch of principal/Organization retires incompatible board owners,
+command presentation rights, subscriptions, and outstanding installations. An
+old response cannot disclose one user's content into another user's page. The
+command recovery service retains only the independently authorized records needed
+for later recovery; it cannot disclose them to the newly active principal merely
+because the same browser is used.
+
+Read and command errors use the application's explicit non-disclosure policy.
+Tests must not require a reason such as “Request exists in another Organization”
+when the correct response intentionally hides that distinction.
+
+*** Public HTTP and browser boundaries
+
+The application validates command and acquisition input before use, including
+interface versions, allowed fields, limits, domain identifiers, and protocol
+encoding. Authentication, CSRF protection for applicable session-based mutations,
+and safe content rendering remain required host obligations. A valid semantic
+operation ID does not replace those protections.
+
+The selected command wire schema rejects undeclared actor/principal authority
+fields. A legitimate target-helper field is separately declared and policy
+checked. A tampering test must assert that exact typed rejection or the exact
+permitted domain outcome of the declared field; “anything below HTTP 500” is not
+an acceptable oracle.
+
+User-controlled title, details, and location text are escaped through the selected
+rendering contract. Managed HTML must not execute undeclared scripts, install
+foreign operation metadata, or cause a response from one target to issue arbitrary
+out-of-band effects. The qualified browser profile states the permitted headers,
+redirects, events, scripts, and swap forms and rejects unsupported behavior before
+its protected effect.
+
+** Live publication, advisory routing, and recovery
+
+Production model incorporation is the source of semantic changes. The example
+routes them; it does not synthesize an independent success event from a toast or
+HTTP status. Relevant RequestAssignment, Membership, Organization, and other
+dependency changes need appropriate routing even when the Request document itself
+did not change.
+
+Live topics express observation interests. They are not a substitute for the
+transaction's guarded dependency set. Likewise, overlap between topics does not
+prove that two authoritative commands conflict or that all conflicting writers
+have been found.
+
+*** Durable publication strategy
+
+The primary application profile records publication intent atomically with the
+command's authoritative transition and result. A durable worker publishes that
+intent and records its progress under a declared at-least-once policy. Its work
+identity remains stable across retry; receivers tolerate duplicate advisories.
+
+A crash after commit and before publication therefore leaves recoverable work.
+The worker's authority, ownership/lease, restart behavior, retry limits and
+backoff, dead-letter/escalation state, and retention are explicit profile
+contracts. A retryable delivery failure cannot create another domain Claim.
+If the worker is unavailable, the UI can still recover current state through an
+authorized Refresh under the declared liveness assumptions.
+
+A deployment that instead relies on periodic reconciliation or user-initiated
+Refresh must declare that weaker publication recovery policy and test it. Merely
+registering a post-commit callback does not establish recovery after process loss.
+The application must not claim durable delivery if its selected backend/profile
+cannot atomically retain the required intent.
+
+Publication evidence and board adoption evidence remain separate. Successfully
+publishing an advisory does not mean a browser received it; receiving it does not
+mean the browser acquired or installed current authority.
+
+*** Advisory-only streams
+
+The HumanHelp board subscription turns ordinary relevant events into pending
+obligations and product feedback. It does not wire every event directly to the
+adapter's automatic fragment-refresh path. The explicit-grant policy in this
+part must be enforced before a physical acquisition is issued.
+
+Advisory content is minimal and authorized. It may carry an opaque requirement
+or a permitted scope reference. It must not disclose private Request content,
+unauthorized identities, or exact counts merely because it is not used as
+canonical domain content.
+
+Repeated delivery of an obligation is idempotent where the provider establishes
+the same obligation. Distinct scopes or incompatible requirements are not merged
+by choosing a larger-looking token. When compact representation is unavailable,
+the coordinator uses the declared bounded debt/backpressure strategy and retains
+honest “updates/continuity unknown” state rather than dropping information.
+
+*** Initial loading and reconnection
+
+The application establishes a baseline observation and subscription continuity
+through a qualified read/subscription fence, replay cursor, or equivalent declared
+provider strategy. The initial-page acquisition grant permits the baseline
+installation; it is not a standing grant for later remote updates.
+
+If the interval between baseline read and subscription registration is not
+covered, the board must show unestablished continuity and require the declared
+repair. Seeing zero events cannot prove that no event was missed.
+
+After stream loss, server restart, page suspension, or subscription replacement,
+the application marks the gap even when no new event arrives. Reconnection may
+restore authorized subscription delivery or replay advisory requirements. Under
+the selected board policy it does not silently adopt remote domain changes.
+An explicit Refresh can establish current-state coverage for the board; a fresh
+subscription/fence is also needed for the claimed ongoing continuity.
+
+A replayable stream ID and a database progression token are distinct unless the
+provider contract explicitly relates them. A current-state view need not replay
+every intermediate event if qualified current observation suffices. A workflow
+that promises processing every event needs a different durable contract.
+
+Stale events from a retired subscription are rejected by its resource-instance
+binding. A shared connection can serve multiple admitted interests, but releasing
+one card/board interest revokes that interest's rights without accidentally
+closing resources still owned by others.
+

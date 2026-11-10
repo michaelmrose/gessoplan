@@ -1,0 +1,132 @@
+** Search, ordering, visibility, and local state
+
+The ordinary board presenter is a pure function of the adopted permitted
+projection, normalized local options, and the current authenticated-viewer
+projection. Its DOM realization is an admitted effect. Presentation does not
+re-evaluate production write authorization and does not manufacture observations.
+
+Search uses a declared shared normalization contract: trim the input, apply the
+selected case normalization, and perform substring matching against the prepared
+search text. The contract specifies the supported character behavior and is
+checked on both host runtimes where both implement it. Search text comes from
+already disclosed Request title, details, location description, and explicitly
+permitted displayed labels. New private fields cannot become searchable merely
+because they are present in a production document.
+
+The empty search matches the adopted cohort. No match means no visible adopted
+row matches; it does not assert that the database has no matching Request.
+
+*** Ordering is a single explicit key
+
+“Mine” means requested by the authenticated viewer or assigned to that viewer
+as active primary helper. It is a presentation category, not permission to act.
+The prepared projection supplies these facts from the production models. A missing
+viewer ID must not make two absent identifiers compare as “mine”.
+
+When both priority options are enabled, mine-first is the primary grouping and
+unclaimed-first is the secondary grouping. Creation time then uses the selected
+newest/oldest direction, with canonical Request identity as the deterministic tie
+breaker. The UI makes this priority order apparent.
+
+An illustrative key over prepared display rows is:
+
+#+begin_src clojure
+(defn board-sort-key [row options]
+  [(if (and (:mine-first? options) (:viewer-related? row)) 0 1)
+   (if (and (:unclaimed-first? options) (:open-unassigned? row)) 0 1)
+   (case (:created-order options)
+     :oldest (:created-order-key row)
+     :newest (:reverse-created-order-key row))
+   (:canonical-request-order-key row)])
+#+end_src
+
+The temporal order keys are prepared under the declared portable ordering
+contract; the example does not assume arbitrary host timestamps are negatable
+JavaScript numbers. Unknown order options are rejected or normalized through the
+explicit option schema before this function runs. A malformed creation time is
+a projection error, not silently the Unix epoch.
+
+“Unclaimed” is a model-derived open/unassigned category. A terminal Request with
+no active assignment does not become unclaimed. Multiple independent sort passes
+must not accidentally change which option is primary.
+
+*** Defaults, drafts, and updates
+
+The default options are empty search, newest first, mine-first off,
+unclaimed-first off, and terminal visibility off. Search changes apply locally
+as the user types using a bounded scheduled effect; stale callbacks cannot
+restore earlier search text. Options-dialog drafts become applied options only
+when the user confirms, and Cancel leaves applied options unchanged.
+
+Authoritative Refresh preserves the current compatible local options. It does
+not restore options captured when a slow request started. Initial loading,
+explicit scope navigation, and user-requested reset have their own documented
+initialization behavior.
+
+Local state may preserve which Request details are open, focus, caret, scroll
+anchor, and bounded unsubmitted text. It may not preserve old authoritative
+status, helper assignment, removed command capabilities, or obsolete target and
+owner annotations as if those were harmless continuity.
+
+When a card disappears, restoration falls back to an existing safe target such
+as the board heading or the next logical control. A local draft tied to that
+Request must be labelled as no longer attached to an available target or retained
+in its separate permitted draft surface. It cannot cause the old card to be
+resurrected.
+
+** Details, response interaction, and accessible feedback
+
+Opening Request details reveals the permitted information already adopted for
+that card. The default details interaction is local and non-mutating. It does
+not implicitly update the card from the latest database state.
+
+A separate explicitly labelled “Get current details” interaction may acquire a
+new single-Request projection under its own grant. Its implementation must state
+which card/details observations it adopts and how it preserves board membership
+and outstanding board obligations. It is not an unrestricted collection refresh.
+
+Controls must be reachable by keyboard, have meaningful labels, and expose
+pending, accepted, rejected, and unknown states without requiring color alone.
+Updates-available and completion announcements are coalesced so repeated advisory
+delivery does not repeatedly interrupt the user. A failed refresh remains
+retryable; a disabled control explains its relevant availability condition where
+disclosure permits.
+
+Technical identities and proof vocabulary belong in diagnostics, not ordinary
+product instructions. A user should see “We couldn't confirm whether your claim
+succeeded; check again” with a recovery action, rather than a raw progression
+requirement or resource-instance error.
+
+*** Independent response-flow contract
+:PROPERTIES:
+:CUSTOM_ID: decision-humanhelp-response-flow
+:END:
+
+Status: unresolved product contract. “Response flow” is a required capability
+name, but that name alone does not specify a user outcome. It cannot honestly be
+implemented or accepted by choosing whichever existing handler is most convenient.
+
+Before claiming full rich-board completion, HumanHelp must select one explicit
+meaning and record its independent contract. It may mean responding by taking
+responsibility through the lifecycle, contacting a requestor through a permitted
+channel, or another defined interaction. Those alternatives have different
+persistence, privacy, authority, and recovery obligations. This specification
+does not invent a message entity, messaging provider, or contact-disclosure rule.
+
+The selected contract must define:
+
+- the user's intent, eligible actor, Request preconditions, and actual affordance;
+- input and validation, including what information may be disclosed to whom;
+- the visible success result and any durable domain or external effect;
+- the production operation or explicitly non-mutating interaction that realizes it;
+- its relation to Claim, details, and other existing lifecycle capabilities;
+- reload/reacquisition behavior and any relevant duplicate, concurrent, rejected,
+  uncertain, cancelled, or abandoned interaction;
+- an eligible real-browser completion scenario and the applicable negative case.
+
+If the product chooses “respond by claiming”, acceptance must exercise that
+complete labelled user journey and explicitly establish that no separate
+capability is promised. If it chooses a different action, Claim tests cannot
+stand in for it. An unchosen contract is reported as unresolved, not passed,
+not silently dropped, and not counted as a framework failure.
+

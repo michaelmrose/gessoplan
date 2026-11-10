@@ -1,0 +1,97 @@
+** Production model truth and public operation boundaries
+
+A Request belongs to its production Organization and Location. Its helper
+relationship is represented by production RequestAssignment semantics. The UI
+must not replace those facts with a convenient =helper-id= field or infer the
+whole lifecycle from whether one optional field is present.
+
+The canonical Request states for this application are =:open=, =:claimed=,
+=:on-the-way=, =:done=, and =:cancelled=. Display text such as “Completed” may
+label =:done=; it must not introduce a competing persisted =:completed= state.
+Public predicates and prepared projections provide state meaning to presentation.
+
+*** Atomic dependencies, not a sequence of reassuring reads
+
+A lifecycle handler may parse inputs, authenticate, prepare context, and perform
+advisory reads. The public production operation remains responsible for the
+resolve-or-incorporate protocol in [[#req-atomic-authoritative-transition]].
+
+For a new Claim, the protected dependency set includes the targeted Request,
+its Organization/Location association as required by policy, the actor and
+selected helper where distinct, effective Membership, Organization policy,
+relevant assignment facts, and command exclusion. The ownership change,
+assignment changes, command result, and required durable publication intent
+are established at the declared atomic boundary.
+
+The actual set follows the production rule. If eligibility depends on a related
+entity or on the absence of another active assignment, that dependency must be
+protected too. Guarding only the Request document is insufficient. Conversely,
+the example should not invent unrelated dependencies merely to make a diagram
+appear comprehensive.
+
+Separate reads of Request, Membership, and Organization followed by an unguarded
+write leave a race. Rechecking only the rendered card's revision leaves a race.
+A transaction plan must preserve every relevant dependency through the qualified
+submission mechanism, including absence or query dependencies where required.
+
+*** Actor, target helper, and command identity
+
+The authenticated principal comes from the trusted request/runtime context.
+Browser fields, rendered capabilities, certificates, selected personas, and
+knowledge of a UUID do not establish that principal.
+
+A target helper can be a legitimate domain argument. Reassign requires target
+selection; a production Claim variant may permit a manager to claim for another
+eligible helper. That argument does not replace the actor. The model checks the
+actor's authority to select the target and the target's eligibility atomically.
+The basic Claim control in this proving UI means “claim for myself”; any separate
+manager-assisted variant is labelled and tested as such.
+
+Before the first possible send, the admitted command boundary supplies a stable
+=:gesso/command-id= and binds it to the operation/interface, canonical arguments,
+authority domain, and principal. A declared mapping may expose that value as
+=:command-id= at the public model boundary. Retries preserve the binding.
+
+The HumanHelp domain argument =:request-id= denotes a Request. Transport
+correlation uses =:http-request-id= or =:transport-request-id=. Execution,
+resource instance, board owner, assembly/deployment, and command identities stay
+distinct. One generic “generation” field cannot stand in for all of them.
+
+*** Resolve an existing command before applying new-command guards
+
+A compatible repetition checks the retained command record's binding and current
+permission to disclose its outcome. It returns the permitted historical result
+without incorporating again. The fact that the Request is now claimed does not
+justify rejecting a retry of the successful command that claimed it.
+
+A new command must pass the current commit guard. Concurrent compatible attempts
+must not both establish a new incorporation. Incompatible reuse is a typed
+protocol failure. A failed physical attempt is not automatically a definitive
+command rejection when another delivery of that command may still succeed.
+
+Command retention, exclusion after result expiry, recovery across interface
+versions, and disclosure after role changes follow Part IV. The browser may not
+create a new identifier merely to make an unresolved operation appear retryable.
+A command-recovery record and a current Request read answer different questions.
+
+*** Outcome and presentation contracts
+
+| Model evidence | Presentation and recovery obligation |
+|----------------+--------------------------------------|
+| =:committed= with permitted success evidence | Settle the bound operation as =:accepted=; install only the observations the result or a follow-up acquisition justifies. |
+| =:already-incorporated= with a permitted successful recorded outcome | Use the same accepted successor without another mutation or duplicate publication intent. |
+| =:rejected= with authoritative command disposition | Follow the rejection branch and permit the declared scoped reacquisition; preserve any undisclosable details. |
+| =:commit-unknown= | Keep command disposition unknown and invoke the bound reconciliation path. |
+| Malformed input, incompatible reuse, invalid credentials, or disclosure denial | Use its declared typed handling; do not invent a domain rejection or reveal a protected prior result. |
+
+A replayed success is historical. It does not prove that the helper still owns
+the Request after later Unclaim or Reassign. The UI may say that the command
+succeeded while displaying a newer permitted card observation with a different
+current assignment.
+
+A timeout does not mean rollback. A publication failure after a known commit
+does not erase that commit. The server can know =:committed= while a disconnected
+browser knows only =:unknown=. A lost response is resolved with authoritative
+command-specific evidence, not by guessing from a fresh card that another actor
+could have produced.
+

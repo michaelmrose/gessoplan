@@ -1,0 +1,132 @@
+** Board projection and selective adoption
+:PROPERTIES:
+:CUSTOM_ID: req-humanhelp-selective-adoption
+:END:
+
+The board separates authoritative truth from the information this browser has
+adopted. A database change does not automatically change a user's visible board.
+An advisory reports that the view may need attention; it is neither domain
+content nor permission to fetch and install everything currently available.
+
+The selected policy is prompt adoption of the user's own correlated results and
+explicit Refresh for remote changes. Search, sorting, visibility options, and
+ordinary details interaction operate on already adopted information. These
+choices must be represented in application policy, not inferred from incidental
+HTMX route or callback behavior.
+
+*** Scope, cohort, and presentation
+
+A board scope includes Organization, Location, authority context, projection
+contract, temporal interpretation, and any declared collection bounds. Its
+adopted cohort is the set of Request identities admitted into that scope, with
+scoped observations and permitted display projections.
+
+The default proving scope is one authorized Location and includes active and
+terminal Requests within its declared collection bounds. Terminal visibility is
+a presentation option. Reading only active Requests and later making “Show
+terminal” issue a fresh collection query would violate that option's contract.
+
+The profile declares finite response/retention limits. If a complete result
+exceeds those limits, the server must return a typed scope-too-large result or
+use an explicitly declared paging/window contract. Silent truncation cannot
+justify complete membership or authoritative absence. A page covers its stated
+window, not the whole Organization. Moving to another page or Location is a new
+explicit acquisition intent, not a local sort operation.
+
+Local text search and sort options do not change this authoritative collection
+scope. They derive a visible subset and order from the cohort. A future remote
+search feature must be labelled and specified as a different acquisition policy;
+it cannot borrow the “local presentation only” guarantee.
+
+The complete-board acquisition composes Request, assignment, and permitted User
+display projections under the same qualified observation context. Repeated reads
+against an advancing database are not silently treated as one snapshot. If an
+integration deliberately combines observations, it preserves their separate
+provenance and proves only the relationships that their evidence supports.
+Current disclosure checks also remain distinct from the historical observation
+being displayed.
+
+*** State with distinct meanings
+
+An inspection view of the board distinguishes the following records:
+
+| Record | Meaning and owner |
+|--------+-------------------|
+| Board owner and scope | One active coordinator lifetime, authority context, and applied acquisition scope. |
+| Adopted membership | Requests admitted by a complete scoped observation or a permitted selective membership rule. |
+| Adopted observations | Per-card and collection evidence actually installed, with provenance and scope. |
+| Advisory obligations | Information still requiring acquisition/adoption, including unresolved subscription continuity gaps. |
+| Acquisition grant | User or policy permission for particular reads and installations, with scope, budget, and lifetime. |
+| Active cycle | Registered request and installation resources with current ownership. |
+| Local options and drafts | Search, ordering, visibility, expansion, focus, and bounded unsubmitted input. |
+| Provisional overlays | Execution-owned speculative presentation, not authoritative observations. |
+| Command recovery records | Unresolved command bindings and permitted reconciliation references that can outlive a card. |
+
+These are not eight unrelated mutable registries. The executable semantic core
+owns their transitions; physical adapters report observations and completions.
+A presentation cache may store allowed fields, but it is not a second domain
+model or a source of write authority.
+
+A schematic inspection value is:
+
+#+begin_src clojure
+{:board/owner-ref board-owner
+ :board/scope-ref board-scope
+ :board/authority-context-ref authority-context
+ :membership/adopted-ref membership-evidence
+ :cards/adopted-refs card-evidence-by-request
+ :advisory/obligations pending-obligations
+ :acquisition/grant-ref current-grant
+ :acquisition/cycle-ref current-cycle
+ :presentation/options {:search ""
+                        :created-order :newest
+                        :mine-first? false
+                        :unclaimed-first? false
+                        :show-terminal? false}
+ :presentation/result-ref local-result
+ :commands/unresolved-refs unresolved-commands}
+#+end_src
+
+The references name admitted runtime objects or inspection subjects. Constructing
+this map cannot grant admission. In particular, replacing =membership-evidence=
+with a newer card's basis does not make the cohort a newer complete snapshot.
+
+*** A concrete HTMX-compatible realization
+
+The primary realization keeps server-rendered cards and a small browser
+presentation projection. An admitted observation supplies the card content and
+the permitted fields needed for local search, stable sorting, terminal filtering,
+and continuity. Local option changes select, order, or hide those already adopted
+cards without issuing an authoritative collection acquisition.
+
+The browser projection contains only data the viewer may receive. Search indexes
+must not smuggle undisclosed email addresses, phone numbers, or other hidden
+fields into page attributes. Client-side display metadata remains untrusted as
+input to future server operations.
+
+HTMX remains the qualified transport and installation mechanism for authoritative
+updates. The application-specific local presenter uses declared managed effects
+for its own DOM changes; it cannot re-create retired cards, copy old owner
+annotations, or make an obsolete callback current. Stable Request identity is
+separate from the current physical card instance.
+
+A server-rendered local-options alternative is valid only if it renders a
+retained, scope-bound projection without silently acquiring newer domain facts.
+Any retained projection handle needs principal/context binding, expiry, resource
+limits, and current disclosure checks. A browser-supplied list of Request IDs
+neither proves membership nor authorizes reads. The primary browser presenter
+avoids requiring this additional server snapshot service for ordinary options.
+
+*** Mixed observations are explicit
+
+A board may retain its cohort from observation Q17, adopt a local result for S at
+another qualified observation, and keep an older card for R. It must preserve
+those distinctions. There is no scalar board “current revision” that proves all
+these cards and membership were read in one database snapshot.
+
+Collection counts are counts of the specified adopted cohort or visible subset.
+A separately acquired current count needs its own scope and disclosure contract.
+Neither a pending-obligation count nor a progression token is a count of new
+Requests. The default advisory label is “Updates available”, not an invented
+number of unseen Requests.
+
