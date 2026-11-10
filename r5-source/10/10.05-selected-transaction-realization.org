@@ -1,41 +1,388 @@
 *** The selected transaction realization
 
-For operations whose physical transition can be constrained, the selected
-realization has one authoritative submission owner:
+The preferred protected-operation realization is a *source- and
+invocation-bound transaction gateway*: the trusted application derives
+one physical submission from the currently admitted operation,
+checks its supported lowering and protected effects, and permits the
+selected immutable vector to be submitted through exactly one
+invocation-scoped capability. The gateway is a *mechanism* for
+establishing specified aspects of source-to-physical correspondence.
+Its presence is not proof of current model authority, universal
+XTDB transaction semantics, actual command incorporation, complete
+writer mediation, or the existence of an installed production route.
 
-1. Trusted invocation code binds the principal, public operation, canonical
-   arguments, authority scope, and stable command identity.
-2. The admitted operation constructs a typed transaction plan with explicit
-   guard dependencies, write footprint, command-resolution behavior, and
-   required durable publication intent.
-3. The gateway derives or independently checks the complete physical transaction
-   from that plan. Callers cannot append arbitrary operations, swap the backend
-   client, or supply a replacement submission callback through this boundary.
-4. The gateway submits the exact immutable transaction vector and records the
-   actual attempt and provider observation without promoting diagnostic data
-   into a commit witness.
-5. Public outcome resolution uses the provider's qualified outcome contract and
-   authoritative command evidence. Progression and disclosure follow Parts IV
-   and V.
+The canonical operation remains the public model's guarded transition,
+not an independently authored transaction program or a browser
+command-shaped map. The framework may issue a constrained gateway
+for operations that fit the supported physical subset. Other model
+implementations remain legal through explicit opaque contracts and
+the selected assurance profile. They do not inherit the constrained
+gateway's correctness or physical writer claims without evidence.
 
-The checked lowering subset must define insertion, absence guards, updates,
-deletes where allowed, relationship constraints, and every supported value
-encoding it uses. Unsupported physical forms reject from that path. An opaque
-adapter remains possible through an explicit alternative contract; it does not
-silently inherit the constrained gateway's claim.
+*** Transaction authority, issuance and one actual submission
 
-A one-use submission capability belongs to one invocation attempt. Retries may
-acquire fresh attempt capabilities for the same bound command under its replay
-contract. Consumption of one capability is atomic with respect to competing
-local users; it does not replace durable exclusion between separately issued
-capabilities for the same command. Fresh independent requests may execute
-concurrently. Neither one
-process-global one-shot writer nor a single global request lease is the general
-application model. Capacity limits are explicit operational policy, not evidence
-of authority or a semantic requirement to serialize unrelated commands.
+The end-to-end accepted path is a dependency chain, not one
+success-shaped status field:
 
-Asynchronous and deferred execution require an explicit invocation context with
-scope, lifetime, ownership, and retirement. A thread-local binding alone cannot
-justify work scheduled after that binding ends. The same rule applies to jobs,
-subscriptions, maintenance tasks, and response completion callbacks.
+1. *Trusted ingress:* The serving route or explicitly authorized
+   worker binds the authenticated principal or service identity,
+   tenant, admitted operation, canonical arguments, target and
+   stable logical command identity from actual trusted context.
+   Browser-supplied role, model prestate, claimed source/basis
+   or apparent target is only a proposal and must not
+   authenticate those facts.
 
+2. *Source-current assembly:* The selected handler, public
+   operation contract, original-source mandatory obligations,
+   source-issued executable plan, model policy and target-binding
+   interface are compatible at the current trusted consumer.
+   A past certificate, copied route report or matching source
+   name does not establish the handler actually deployed.
+
+3. *Physical plan admission:* The checked lowering chooses a
+   supported bounded operation family and retains exact
+   guard and write dependencies, read/absence/uniqueness
+   requirements, field presence/frame contract, protected
+   document set, expected/current-state provenance,
+   durable command-result write and publication intent
+   when applicable.
+
+4. *Gateway preparation:* The gateway recomputes or
+   independently checks the *entire* canonical immutable
+   transaction vector from the admitted source and rejects
+   additional, reordered, substituted or unsupported
+   physical operations. The caller cannot append raw SQL
+   or XTDB operations, substitute a backend client,
+   redirect the target, or supply its own submit callback
+   inside this claimed constrained path.
+
+5. *One-shot invocation:* The prepared attempt capability
+   is issued for a particular physical invocation and
+   consumed atomically with respect to local competing users
+   before any second submission through that capability.
+   The selected gateway owns the actual call of
+   =xtdb.api/execute-tx= or an equivalent explicitly
+   qualified authoritative backend API; the caller
+   does not execute the vector separately.
+
+6. *Outcome and external observation:* The gateway
+   records what its own call attempted and returned,
+   but hands command settlement to the qualified
+   backend/provider and durable command-resolution
+   contract. The public response distinguishes known
+   rejection, known incorporation, known historical
+   incorporation and unknown incorporation. Any
+   post-submission diagnostic read is separate
+   evidence; it may not manufacture a retry permit,
+   commit conclusion, principal authority or
+   Live/browser settlement.
+
+This path never turns a process-local issuance handle
+into a transferable client credential. Safe persistence
+of a proof or source artifact requires its own
+admitted rechecking procedure. A controlled test
+collector or locally captured transaction receipt
+does not authenticate the submitted node, current
+HTTP server or deployed public model.
+
+*** Restricted lowering has one documented physical meaning
+
+The supported lowering vocabulary is versioned and closed.
+It specifies the exact backend-facing semantics of every
+admitted insertion, asserted existence/absence predicate,
+conditional update, guarded replacement, allowed delete,
+reference/cardinality constraint, typed encoding, null versus
+absence and canonical command-result/outbox operation.
+Unknown forms reject *before submission* from the constrained
+path rather than becoming opaque extra statements appended
+after checking.
+
+When an admitted plan contains several physically atomic
+operations, the gateway checks the exact ordered or
+semantically constrained vector of *all* those operations.
+It must say whether order matters, which expected values
+came from external reads versus internal transaction
+state, how backend conflicts are reported, and how
+write/update/delete semantics preserve the abstract frame.
+No claim about a complete transaction follows from
+matching only one emitted SQL string or only the
+nominal Request table.
+
+The guard footprint and write footprint are distinct.
+For Claim, current Membership, Request, Organization,
+Location and assignment-absence/uniqueness may be
+guard dependencies even when only Request and
+RequestAssignment, canonical command record and
+publication intent are written. A whole-document
+replacement can overwrite an unguarded field. A
+positive-row CAS does not necessarily protect
+a relationship absence predicate. The exact
+lost-field, ABA and revision discipline
+obligations belong to 10.06; the admitted
+gateway must preserve the physical footprint
+needed to implement that later proof.
+
+A *same-node pinned pre-read* can help prepare a
+conditional transaction, but it is not the
+transaction-internal prestate. A backend's
+conditional assertions and atomicity/serializability
+contract must justify the state on which the
+protected transition actually depends. If a
+revision is used to exclude ABA, every relevant
+writer must participate and wraparound,
+delete/recreate and prior-history assumptions
+must be specified. An independent physical
+writer that evades the revision can invalidate
+the guarantee.
+
+*** Logical command identity is not a one-shot attempt capability
+
+A stable logical command such as C42 can have several
+physical delivery or submission attempts, H1, H2,
+and so on. The one-shot gateway prevents duplicate
+submission *through the same invocation capability*.
+It does not prevent two separately issued attempt
+capabilities from incorporating the same logical
+command, nor does it establish that a lost response
+means the command was rejected.
+
+The durable authoritative path therefore requires a
+command binding containing the permitted operation,
+principal, target and canonical arguments; guarded
+exclusion or idempotent replay; an atomic relationship
+between domain incorporation and its canonical command
+result where promised; retention and disclosure rules;
+and an explicit compatible-versus-incompatible replay
+decision. A retry can receive a fresh attempt
+capability *for the same logical command* after
+the chosen command-resolution policy allows it.
+An incompatible binding must be rejected rather than
+relabelled as a valid retry.
+
+The four backend/model outcomes =:committed=,
+=:rejected=, =:already-incorporated= and
+=:commit-unknown= are distinct from HTTP success,
+an XTDB API's returned map, provisional browser
+presentation, and a later matching Request card.
+A post-submit exception may occur after
+incorporation. Unless actual qualified evidence
+rules incorporation out, the result is unknown;
+a second fresh attempt must respect durable
+command exclusion and the possibility that
+H1 already committed.
+
+The durable command-result record, domain write
+and any required outbox/publication-intent record
+need the *specified common authoritative commit
+contract*. If outbox intent is committed atomically
+while external publication is asynchronous,
+the theorem requires durable eventual retry,
+gap/replay/duplicate handling under named
+liveness premises, not falsely asserting
+that SSE notification occurred in the same
+database transaction. Duplicated invalidations
+are permitted when safe, but cannot create
+ungranted collection reads or duplicate
+domain incorporation.
+
+*** Request-local parallelism, resource lifetime and retirement
+
+An application is not required to serialize every
+logical command through one process-global writer
+or a global HTTP request lock. Distinct requests,
+tenants and independent commands may execute
+concurrently when their real model semantics,
+isolation and capacity policies permit it.
+Per-attempt one-shot issuance is compatible with
+parallel requests; durable conflict protection
+for the same Request/command comes from the
+qualified model/backend mechanism, not global
+thread serialization.
+
+A request-local gateway binding records an
+explicit owner, original checked operation,
+source/handler generation, authenticated
+invocation context, permitted target, bounded
+lifetime, and the authoritative submit function.
+The binder permits at most the expected
+single submission through that capability,
+and rejects duplicate or retired use before
+submission. After dispatch it retires the
+specific capability, even on an exception,
+without erasing another request's newly
+issued or current writer.
+
+A thread-local binding alone is insufficient for
+a callback, deferred task, subscription,
+future, async write, response completion or
+worker that executes after its original
+thread/request scope ends. Such execution
+must possess an explicit admissible
+context with source identity, actor/service
+authority, lifetime and transfer rules, and
+must recheck the current state and rights
+at the actual effect boundary. A
+long-lived authorized job is not a
+retained, expired HTTP request capability.
+
+Bounded queues, semaphores and concurrency limits
+control operational capacity. They cannot create
+authorization, prove atomicity, or change the
+logical command state machine. A queue-full
+or admission-timeout result is a distinct
+operational failure from business rejection,
+known transaction nonincorporation, or
+post-submit uncertainty. Once a physical
+attempt has begun, cleanup or cancellation
+cannot retroactively prove it did not
+commit.
+
+Where Biff/Ring routes participate, the actual
+running server must use the *final* checked
+handler rather than an earlier module slot.
+Static route-to-writer declarations,
+process-local registry observations and
+per-request callback issuance are different
+checks. Dynamic route parameters, callbacks,
+jobs and non-HTTP ingress demand real
+source/target/actor binding; an enumerated
+static literal route does not prove every
+possible request target or future handler.
+
+*** Physical observation and provenance hierarchy
+
+The gateway's strongest report is only as strong
+as the trusted physical observation actually
+performed. Maintain these categories separately:
+
+| Observation | Warranted scoped fact | What it does not automatically prove |
+|-------------+----------------------+--------------------------------------|
+| Canonical lowering accepted | Original admitted source/plan has the selected vector and supported protected footprint | The vector was sent to any real backend |
+| Issued process-local one-shot consumed | Registered gateway entered one owned submission path | Backend receipt, commit, external uniqueness or principal authorization |
+| Captured API call and return | Exact local vector and result/exception observed at that call site | Authenticity of caller-selected node, server adoption or backend semantics |
+| Public transaction key/ledger correlation | Identified transaction metadata agrees with a qualified provider view at the inspected basis | Source-specific causality, domain safety, all writers or retry authorization |
+| Pinned domain, command and ledger readback | Those observations agree at the named single basis and projection | That this attempt caused the state, or that no other writer intervened |
+| Installed route/registered callback observation | The chosen checked local handler path invoked the expected registered writer during one request | Every serving process/route/actor uses it, or no direct XTDB bypass exists |
+| Qualified backend transaction proof/contract | A specified atomicity, failure, guard or isolation premise holds for the covered backend version and domain | The actual application supplies correct business guards and complete writer coverage |
+| Independently closed physical writer set and current runtime binding | The specified physical writer paths are constrained within the proven host/threat/coverage scope | Unobserved external writers, later replacement or universal host semantics outside that scope |
+
+A physical observation made *after* incorporation may
+identify a defect but cannot guarantee prevention.
+For a safety claim that requires a pre-effect guard,
+the actual enforcing boundary must reject the invalid
+request *before* the forbidden write. A copied report,
+caller-supplied node or stale process-local handle
+cannot stand in for independently collected
+physical evidence.
+
+An exact TransactionKey and same-basis readback
+may be excellent diagnostic evidence without
+showing that the selected attempt caused the
+final RequestAssignment state. A transaction
+ledger may be corroborative without proving
+business guards or command identity.
+For full production refinement, the claimed
+execution includes actual route adoption,
+principal authentication, transaction-local
+prestate/frame and write causality, relevant
+writer/initializer coverage, command history
+and installed/browser observations where
+the theorem depends on them.
+
+*** HumanHelp Claim and adversarial production acceptance
+
+A representative protected Claim path binds the
+current authenticated helper, Request,
+Membership, Organization and Location through
+the real public models, uses the admitted
+Claim transition and physical RequestAssignment
+one-primary constraint, and writes the
+canonical command result under its stipulated
+atomicity and authority contract.
+The browser does not supply the trusted
+helper ID or authorize a read merely because
+its planned UI was formally admitted.
+
+Acceptance requires a positive eligible Claim
+and genuine concurrent two-helper contention,
+not only a proof of the abstract transition.
+It must also discriminate these nearby cases:
+
+- a source builder changes target or operation
+  after independent binding; no one-shot
+  execution capability may issue;
+- an attacker inserts extra SQL, swaps an XTDB
+  node or supplies a different callback;
+  the constrained gateway rejects that
+  substitution before protected effects;
+- a second local caller invokes an already
+  consumed one-shot; no second submission
+  occurs through that capability;
+- a duplicate physical attempt uses a fresh
+  one-shot for C42; durable command identity
+  and replay policy, not one-shot memory,
+  prevent duplicate incorporation;
+- H1 commits and its response is lost;
+  H2's exception or a subsequent
+  Request snapshot does not manufacture
+  an original rejection or new Claim;
+- a handler is replaced after source checking,
+  or another Biff controller/direct XTDB
+  writer bypasses the selected registry;
+  the unverified scope is reported rather
+  than certified as physically complete;
+- two unrelated requests use independent
+  request-local issuers concurrently;
+  a process-global one-shot must not
+  become an accidental product limitation;
+- a deferred handler continues after
+  its request owner has retired;
+  it must re-authorize and acquire a
+  valid explicit execution context
+  rather than borrow stale thread state;
+- a valid guarded Claim changes
+  RequestAssignment while an
+  unrelated writer changes an
+  unguarded field; the physical
+  frame contract must prevent
+  destructive stale replacement;
+- the real backend cannot supply an
+  authoritative outcome after a
+  post-submit failure; the public
+  result remains unknown and
+  recovery obeys permission,
+  command history and retention;
+- an outbox invalidation is lost
+  or delivered twice across
+  nodes; retry/replay preserves
+  command safety and keeps
+  remote board acquisition
+  user-authorized;
+- a purportedly complete transaction
+  has no genuine command-result
+  or protected absence/uniqueness
+  guard; its narrow source/host
+  check cannot be promoted to
+  end-to-end Claim refinement.
+
+Each case names the selected source, route
+or worker, current principal/tenant,
+logical command, attempt, original and
+mutated transaction/handler, expected
+first enforcing boundary, and
+independently inspected physical
+effects. Unsupported forms or unknown
+observation scopes fail the claimed
+strong admission rather than
+disappearing from the report.
+The valid Claim and independent
+HumanHelp product positives remain
+required alongside adversarial rejection.
+
+The restricted gateway is therefore a
+*preferred enforceable physical seam* for
+supported authoritative operations, not
+a theorem that arbitrary host Clojure,
+every possible XTDB caller, HTTP routing,
+multi-node delivery, or browser effect
+has already been certified.
