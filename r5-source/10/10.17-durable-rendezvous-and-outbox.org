@@ -6,6 +6,28 @@ outbox intent supports advisory publication. Bob's session may receive an
 advisory through another host. That advisory records a possible need to acquire
 new authority; it does not carry permission to adopt protected domain content.
 
+The R4 durable-state contrast remains an illustrative semantic path:
+
+#+begin_example
+Alice browser -> host A -> guarded Request/Claim operation
+                             |
+                durable Request + command result + outbox intent
+                             |
+                  cross-host advisory distribution
+                             |
+Bob browser <- host C <- authorized scoped notification
+    |
+explicit Refresh -> qualified authorized authoritative reread
+    |
+current browser resource -> permitted adoption batch
+#+end_example
+
+A Request and its assignment are the durable rendezvous, not an
+in-memory suspended choreography on A. None of these arrows alone
+proves the next step: an advisory is not permission to read, an
+observed Request state cannot attribute Alice's lost command,
+and an acquisition is not an installed browser view.
+
 Bob's explicit Refresh authorizes a board acquisition under the current
 principal, scope, required progression, and Part VIII policy. Host C reads the
 qualified authoritative projection. The browser admits the response under its
@@ -16,6 +38,39 @@ The durable Request and assignment facts are the rendezvous. Ordinary Claim,
 Reassign, lifecycle updates, and later reads do not require a persistent
 participant-message process or a suspended choreography stack for every user.
 The public model contracts and short choreographies connect those interactions.
+
+*** Source-derived publication and atomic recovery obligations
+
+An admitted authoritative operation declares the eligible semantic
+changes and scopes that require later notification. A primary domain
+change need not depend on which browser interests were known in the
+writer's process at commit time: an ephemeral interest cache is
+not a complete inventory of future subscription/recovery needs.
+The exact protected operation/writer catalog from original source
+must be related to its production effect and publication-intent
+generation; observing one well-behaved writer does not close
+unregistered or external write paths.
+
+Where the selected application promises recovery of required
+post-commit notice, the model effect, durable command outcome where
+applicable and durable outbox intent are incorporated atomically
+under the qualified backend contract, or through an independently
+justified equivalent that cannot lose a required intent after
+commit. An attempted command whose outcome is unknown cannot be
+used to invent a success advisory or automatically resubmit the
+effect. Publication failure after a known commit cannot undo it.
+
+Each durable intent binds an independently issued identity,
+applicable original operation, authorized scope, semantic
+notification purpose, versioned encoding and source-qualified
+progression requirement. Command ID, outbox ID, provider basis,
+domain revision, transport cursor and browser resource are
+distinct. The outbox records the minimum required scope/notice
+material, not a snapshot of private Request/User data that
+bypasses future read authorization. A separately declared
+best-effort notification may omit durable intent only if loss
+is genuinely permitted by its weaker application contract.
+
 
 *** Outbox dispatch and advisory recovery have separate guarantees
 
@@ -29,6 +84,45 @@ commands or inventing progression.
 A durable outbox identifier, command identifier, provider progression requirement,
 and subscriber cursor serve different purposes. One may be related to another
 by checked evidence; they are not the same token.
+
+*** Dispatch ownership and delivery evidence boundaries
+
+The dispatch state machine names pending, claim/lease, attempt,
+accepted-by-distribution, completion, retry and retention. A
+qualifying lease/fencing or comparable concurrency contract
+prevents a stale worker from illegitimately completing a task
+taken over by a surviving worker. Lease clocks and transaction
+assumptions are qualified rather than inferred from process
+health. A dead host cannot strand publication intent solely in
+a process-local callback.
+
+The selected acknowledgment must say whether it is a log append,
+broker acceptance or other durable distribution-boundary event.
+A send timeout after possible acceptance is not proof of failed
+delivery: retry may duplicate the *advisory*. The receiver's
+idempotent/coalescing logic must preserve the strongest required
+scope/progression debt without issuing another domain command.
+A publication attempt, broker acceptance, router forwarding,
+SSE write, browser receipt, current authorized reread and
+completed DOM adoption are different evidence classes.
+
+| Stage | What its observation establishes |
+|-------+----------------------------------|
+| Domain commit | Authoritative state and qualified required intent exist |
+| Dispatcher claim | Worker owns one temporary publication attempt |
+| Distribution acknowledgment | Named broker/log/router boundary accepted notice |
+| Router forwarding | Candidate interested host/session route was selected |
+| SSE/HTTP write | Transport attempted delivery, not browser reception |
+| Browser advisory admission | Potential-change debt was registered |
+| Authoritative acquisition | Current permission and provider basis allow a candidate |
+| Adoption batch | Current owned resource installed the permitted candidate |
+
+Ordinary advisory recovery need not store a persistent per-recipient
+completion record for every send: conservative redelivery is
+permitted under authorized scope, load, progression and retention
+bounds. A claimed at-least-once *browser* delivery guarantee
+would need stronger recipient acknowledgment/replay evidence.
+
 
 The selected delivery contract is at least once to its named distribution
 boundary under dispatcher availability and retry premises. It must state whether
@@ -44,11 +138,91 @@ or equivalent qualified handshake relating initial observation, registered
 interest, and replay/gap evidence. A gap is recorded even if no advisory arrives.
 Reconnect carries the same obligation; silence is not evidence of no change.
 
+*** Registration fences, late interests and router failover
+
+An initial board read followed by registration can miss an
+intervening update. Registering first and then reading is
+sufficient only if effective registration and the observation's
+coverage are related by a qualified fence or equivalent handshake.
+A supported protocol relates the authorized first observation,
+effective interested-recipient registration, retained event
+interval and replay or conservative reacquisition. If provider
+and router use different sequence coordinates, a checked bridge
+must relate them; equal-looking counters/timestamps are not
+evidence of the same frontier.
+
+A change committed just before a new interest was learned must
+not disappear solely because no earlier browser listener existed.
+Likewise a silent dropped notice, late interest update, restarted
+host, expired cursor, changed filter or reconnect either has
+qualified event coverage or produces explicit gap/recovery debt.
+A safe alternative to full replay is conservative authorized
+reacquisition, subject to HumanHelp's explicit Refresh policy
+and the selected user-action/recovery contract. Silence is not
+evidence that the subscriber is current.
+
+Routers may use indexed interests, replicated filter views,
+coarse/fine hierarchies or interleaved ownership. None is required
+by the semantic model. A healthy replacement router with an
+outdated interest view is not evidence of routing completeness.
+The selected contract must identify registration ownership,
+effective propagation, filter/version exchange, failure
+detection, retained publication source, and how undercoverage
+is avoided or recorded. Overdelivery or duplicate descriptive
+invalidations may be cheaper than precise per-recipient
+acknowledgments, but only when scope privacy, bounded fanout
+and progression composition hold. Merely replaying events for
+interests remembered by a failed host cannot recover interests
+the surviving router never learned.
+
+A *change event*, a durable publication intent, an expanded
+Live invalidation, a broker notice and a Choreo participant
+message have different meanings. Invalidations do not carry
+permission to mutate authoritative state, and must not be
+silently upgraded into participant-message receipts or UI
+adoption. The exact direct-message contract belongs to 10.19.
+
+
 Interest filtering is an optimization over authorized scope. It must either
 avoid missed relevant changes under its stated contract or expose conservative
 gap/recovery evidence. Stale interest registration, dropped transport messages,
 retention expiry, or node loss cannot be treated as proof that the user's view
 is current.
+
+*** Recovery guarantees and independent fault oracles
+
+Safety is unconditional relative to the declared trusted
+boundaries: lost, delayed, duplicated or misrouted notices
+cannot authorize a protected read, manufacture an incorporated
+command, erase unknown command status, invent an observed basis
+or silently install remote model changes. Publication and
+subscription progress are conditional on required retention,
+working backend, surviving dispatcher, available distribution
+path and retry fairness. Browser receipt adds connectivity and
+current scope; HumanHelp remote adoption additionally depends
+on explicit permitted Refresh. A partition or revoked
+permission cannot be called a violated unconditional liveness
+promise.
+
+| Positive control | Adversarial control |
+|------------------+---------------------|
+| Atomic Claim commits state, command and outbox intent | Host dies after commit before publication; intent survives |
+| Replacement worker dispatches pending publication | Dead host-local callback was the sole publisher |
+| Broker/log acknowledges at declared boundary | Timeout after possible accept is mislabeled no-delivery |
+| Receiver coalesces repeated scoped notice | Duplicate publication triggers a second Claim |
+| Subscriber registers with qualifying fence/replay | Commit between first read and effective interest is silently missed |
+| Backup router recovers or conservatively detects uncertainty | Healthy router with stale filter drops notice without gap |
+| Expired replay cursor yields recovery debt | Silent reconnect is declared current after retention expiry |
+| Sufficient authorized reread on C clears covered debt | Token echo or lagging read claims a frontier not observed |
+| Explicit Refresh permits one candidate acquisition | Advisory alone auto-adopts protected Request content |
+| Scope-minimal notice reaches authorized destination | Cross-tenant topic or counts leak via routing |
+| Publisher eventually reaches named boundary under fairness | Partition is misreported as unconditional browser delivery |
+| Compatible recorded command is disclosed on retry | Lost HTTP response causes a new domain incorporation |
+
+The future tests use actual independent host, provider and
+transport boundaries with positive controls; in-process source
+inspection alone cannot establish this multi-node contract.
+
 
 Advisories and interest topics can themselves disclose protected information.
 Their payloads and scope references are minimal and authorized; routing membership

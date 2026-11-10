@@ -8,9 +8,9 @@ proof examples, identities, links or Org delimiters were modified.
 `gesso-unified-design-canonical-r4-10-formal-correspondence-and-system-boundaries.org`
 is derived output, not an independent second source.
 
-**Review status:** **10.01–10.16 substantively reviewed** against R4,
+**Review status:** **10.01–10.17 substantively reviewed** against R4,
 accepted Parts I–IX and Gesso v1622, with numbered preservation audits.
-Sections **10.17–10.20** remain for substantive review. Whole-Part-X
+Sections **10.18–10.20** remain for substantive review. Whole-Part-X
 reconciliation and independent editorial acceptance remain outstanding.
 No current Gesso/HumanHelp implementation certificate is implied.
 
@@ -314,5 +314,18 @@ v1622's local Live/command/assurance evidence and nonclaims.
 Published Part X now contains **7264 newline-split lines**
 and **322676 characters**.
 
-**Next:** Review **10.17 — Durable Rendezvous and Outbox**,
-then 10.18–10.20 and whole-Part-X reconciliation.
+**10.17 review:** see `10.17-r4-preservation-audit.md`.
+Preserved R4's durable Request/A-to-C/Refresh sequence and
+invalidation-versus-participant-message semantics within R5's
+separate commit, publication, delivery, acquisition and adoption
+boundaries. Strengthened atomic source-derived intent, dispatcher
+ownership/acks, uncertain send, subscriber registration fences,
+replay/retention gaps, router failover and conservative authorized
+redelivery, with current Gesso v1622 nonclaims. Thirty preservation
+decisions and twelve prospective positive/adversarial controls
+are recorded. Published Part X contains
+**7438 newline-split lines** and
+**332064 characters**.
+
+**Next:** Review **10.18 — HumanHelp Refresh and Two-host Failures**,
+then 10.19–10.20 and whole-Part-X reconciliation.
