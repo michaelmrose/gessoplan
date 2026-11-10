@@ -8,9 +8,9 @@ proof examples, identities, links or Org delimiters were modified.
 `gesso-unified-design-canonical-r4-10-formal-correspondence-and-system-boundaries.org`
 is derived output, not an independent second source.
 
-**Review status:** **10.01–10.03 substantively reviewed** against R4,
+**Review status:** **10.01–10.04 substantively reviewed** against R4,
 accepted Parts I–IX and Gesso v1622, with numbered preservation audits.
-Sections **10.04–10.20** remain for substantive review; whole-Part-X
+Sections **10.05–10.20** remain for substantive review. Whole-Part-X
 reconciliation and independent acceptance remain outstanding.
 No current Gesso/HumanHelp implementation certificate is implied.
 
@@ -135,6 +135,17 @@ correspondence/nonclaims appear in the preservation audit.
 Published Part X now has **2852 newline-split lines** and
 **129876 characters**.
 
-**Next:** Review **10.04 — Formal Proof Strategy and Production Correspondence**
-against R4, revised 10.01–10.03, accepted Parts I–IX and actual
-admission/physical observation and XTDB correspondence machinery.
+**10.04 review:** see `10.04-r4-preservation-audit.md`.
+Restored R4's complete bidirectional formal/source/production traceability,
+worked Request/RequestAssignment Claim correspondence, atomic formal-action
+obligations, counterexample interpretation and safe source-level repair.
+Distinguished admission soundness, positive completeness, physical execution
+refinement and conditional progress, with a nine-mechanism evidence matrix
+and current source/asset/host qualification. Fifteen paired
+positive/adversarial cases and the source-specific Gesso v1622 limits
+are recorded in its audit. Published Part X now has
+**3409 newline-split lines** and **146173 characters**.
+
+**Next:** Review **10.05 — The Selected Transaction Realization** against
+R4, accepted Parts I–IX, completed 10.01–10.04 and actual Gesso
+authoritative submission and one-shot XTDB gateway implementations.
