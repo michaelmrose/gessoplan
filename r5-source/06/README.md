@@ -4,9 +4,9 @@
 losslessly into fifteen numbered Org units. Subsequent substantive
 reviews revise those sources and rebuild the publication by exact
 concatenation. All eight original `CUSTOM_ID` anchors remain stable.
-Sections **06.01–06.03** have completed substantive R4-preservation
+Sections **06.01–06.04** have completed substantive R4-preservation
 and Gesso-source correspondence reviews, recorded in their
-matching audits. Sections 06.04–06.15, whole-part reconciliation,
+matching audits. Sections 06.05–06.15, whole-part reconciliation,
 and independent candidate acceptance remain outstanding.
 Parts I–V are accepted reviewed R5.1 candidates. Parts VI–XII and
 the independent full-plan reconciliation remain unfinished.
@@ -115,14 +115,14 @@ concatenated exactly to the unchanged R5 Part VI baseline:
 **84,711 decoded JavaScript string code units** and
 **1,481 newline-split lines**. Subsequent sectional revisions
 update the canonical Part VI publication from the numbered units.
-After 06.03, the fifteen reviewed/unreviewed units exactly
-reconstruct the **111,309-character**, **1,804-line** Part VI
+After 06.04, the fifteen reviewed/unreviewed units exactly
+reconstruct the **121,773-character**, **1,932-line** Part VI
 publication, with all eight stable anchors and balanced Org
 blocks. The whole-plan output remains a generated artifact,
 not a separate editable normative source.
 
 The Python assembler was **not executed** in a local Gessoplan
-checkout. Initial splitting and subsequent 06.01–06.03
+checkout. Initial splitting and subsequent 06.01–06.04
 publications were checked by exact GitHub-fetched concatenation,
 not by Gesso runtime, backend, Chromium or formal proof execution.
 
@@ -150,6 +150,14 @@ pre-mutation gates, untrusted markup, per-target completion,
 and stable Live root ownership. Six paired positive/adverse
 histories distinguish actual effects from copied response data.
 
-**Next:** review **06.04 — Claim Acquisition and Browser FFI**,
-including the protected Claim/acquisition path and the exact
-semantic/physical interface correspondence.
+**06.04 review:** see `06.04-r4-preservation-audit.md`.
+The revised Claim history binds real RequestAssignment eligibility,
+immutable command C42, physical retries, separate qualified
+historical outcome, protected acquisition and actual card adoption.
+The FFI now distinguishes issued effects from verified host
+completion, stale actuation, partial results and third-party
+effect premises; seven positive/adverse histories exercise the joins.
+
+**Next:** review **06.05 — Scoped Installation and Physical Completion**,
+including exact target/representation permits, postconditions and
+per-scope adoption under real browser callbacks.
