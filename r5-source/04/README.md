@@ -1,11 +1,11 @@
 # R5.1 sectional source — Part IV, Authoritative Operations and Progression
 
 **Disposition:** lossless structural preparation of the original R5 Part IV,
-with sections 04.01–04.08 now substantively reviewed against R4,
+with sections 04.01–04.10 now substantively reviewed against R4,
 Part VIII's production RequestAssignment meaning, and Gesso's source.
 Their scoped preservation audits are
 `04.01-r4-preservation-audit.md` through
-`04.08-r4-preservation-audit.md`. The other 9 numbered
+`04.10-r4-preservation-audit.md`. The other 7 numbered
 units remain unreviewed candidates. Part IV is not yet accepted. Parts I–III
 are reviewed R5.1 candidates. The twelve-part plan remains a draft.
 
@@ -42,6 +42,9 @@ Concatenate these units in order. They reconstruct the published
 | 04.15 | `04.15-advisory-and-adoption-contract.org` | 1415–1472 | 58 |
 | 04.16 | `04.16-refresh-coordination-and-humanhelp.org` | 1473–1585 | 113 |
 | 04.17 | `04.17-assurance-and-acceptance.org` | 1586–1701 | 116 |
+
+The original-line ranges and line counts in the table describe the initial
+lossless R5 split; later reviewed source units may have different lengths.
 
 The groups follow existing Org heading boundaries and never split a
 source, example, quote, or other Org block. Each file begins with an
@@ -82,17 +85,17 @@ assembles Part I–IV and composes the remaining unreviewed R5
 published parts V–XII into `output/gesso-plan-v5.org`.
 
 The 17 source files reconstruct the published Part IV exactly.
-Sections 04.01–04.08 have since been revised, preserving the
+Sections 04.01–04.10 have since been revised, preserving the
 original root heading and anchors; the published Part IV is
-rebuilt from the eight edited units and the nine unchanged R5 units. These are
+rebuilt from the ten edited units and seven unchanged R5 units. These are
 editorial/documentary checks, not runtime or formal proof evidence.
 The local Python assembly command was not run as part of the
 GitHub connector operation; run it in a checkout when available.
 
-**Next:** revise **04.09 — External systems and valid intermediate
-states**, checking external provider identity, valid pending
-state, effect uncertainty and durable recovery against R4,
-current Gesso physical-effect code and Part III. Add its
-scoped preservation audit and rebuild Part IV.
+**Next:** revise **04.11 — Authoritative basis and XTDB**, checking
+backend qualification, actual incorporation and read visibility,
+concurrent-write guards, valid/system time, and explicit backend
+premises against R4 and current Gesso physical correspondence code.
+Add its scoped preservation audit and rebuild Part IV.
 Subsequent `next` requests continue one bounded revision
 at a time.

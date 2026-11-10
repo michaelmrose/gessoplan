@@ -16,14 +16,28 @@ and results.
 
 This permits the system to explain which value justified a step and to detect
 missing or mismatched inputs. It also reduces accidental use of stale ambient
-data. A capability's presence in context does not extend its lifetime or widen
+data. The machine's original invocation argument and its subsequent state
+outputs are distinct value categories. A later step must receive needed
+invocation values explicitly, through a declared retained-value binding or
+other admitted value path; it cannot assume that the ambient context silently
+accumulated them. The same applies to graph or multistate resolvers. A capability's presence in context does not extend its lifetime or widen
 its authority. Authentication state captured at entry does not freeze mutable
 authorization unless that temporal policy is explicitly part of the contract.
+The trusted invocation boundary owns capability provenance: an untrusted input
+map may not overwrite a principal, clock, database handle, or other privileged
+context binding through an incidental map merge. Missing required capability
+bindings known at construction must be rejected before invocation; effective
+runtime authentication, availability, expiry and current policy still require
+their appropriate dynamic checks.
 
 Graph or multistate implementations obey the same rule. They may provide a
 convenient evaluation strategy, but hidden mutable cells must not become an
 untracked second model of operation state. Pure dependency nodes and effectful
 nodes require distinct semantics, including recomputation and retry behavior.
+Passing a client value through a trusted FX step does not upgrade it into an
+authoritative fact. A query result passed to another step does not become
+knowledge of a remote choreography participant until its admitted communication
+or acquisition path actually establishes that knowledge.
 
 *** Ordering and completion are explicit
 
@@ -44,7 +58,13 @@ An illustrative descriptor could distinguish:
 #+end_src
 
 The registered step definitions supply types, branches, capability requirements,
-and completion semantics. The map alone is not an executable operation.
+and completion semantics. The map alone is not an executable operation. In
+particular, an effect's vector-valued argument is not implicitly an ordered
+list of effects. An effect-order edge only orders execution as specified; it
+cannot itself establish transaction atomicity, durable completion, or remote
+receipt. The public operation advertises typed inputs, outcomes, authority,
+pre/postconditions, effect classes and failure semantics without requiring
+Choreo to inspect its private FX state graph.
 Independent publication work may proceed separately once durable intent exists;
 it need not delay an otherwise justified commit response unless the public
 contract explicitly promises that stronger acknowledgment.
@@ -54,9 +74,23 @@ an ambiguous failure during submission, a post-commit publication failure, and
 a response-rendering failure are different events. A generic catch that turns
 all four into =:rejected= violates the operation contract.
 
+| Phase and available evidence | Permitted conclusion |
+|------------------------------+----------------------|
+| Preparation fails before any possible submission. | The attempt did not submit; this alone is not a durable terminal command disposition. |
+| Submission or response is lost without conclusive incorporation evidence. | The command disposition remains unknown pending admitted reconciliation; no blind new-command retry. |
+| Commit is established, but publication or dispatch fails. | Preserve committed domain and command truth, classify the delivery failure, and retain required recovery debt. |
+| Commit is established, but rendering or reply delivery fails. | Preserve the command outcome; the participant may lack settlement knowledge and needs its permitted resolution path. |
+
+A later compatible command replay, a delivery-work retry, and a browser's
+fresh acquisition are different operations. Retrying notification must never
+re-execute the original authoritative mutation merely to make an observer
+current.
+
 Retryable backend callbacks must not contain unprotected external effects.
 Clock and random values used in semantic decisions need declared sampling and
-retry semantics. Ordinary Clojure functions and macros may implement these
+retry semantics. A clock or randomness facility is an ambient capability; its
+particular sampled value is a semantically relevant result whose origin and
+reuse across retries must be explicit. Ordinary Clojure functions and macros may implement these
 steps, but any opaque effect footprint remains an explicit contract premise.
 
 *** Post-commit delivery debt
@@ -87,6 +121,15 @@ failover to the extent that its convergence claim includes them. Otherwise that
 claim must be limited explicitly. The particular routing topology belongs to
 the transport design; the no-lost-required-work obligation belongs here.
 
+In particular, losing the process between authoritative commit and the first
+in-memory publication must be covered whenever automatic notification is
+promised. A durable change log, work intent, qualified reconciling acquisition,
+or another declared mechanism may satisfy the relevant obligation; a live SSE
+connection alone cannot. On subscription inception or reconnect the observer
+must have an admitted way to acquire a sufficiently qualified state or recover
+missed interests. If the only repair is user-initiated Refresh, the convergence
+claim is explicitly conditional on that action.
+
 Publication completion also has a scope: queued, durably recorded, accepted by a
 broker, delivered to a connection, admitted by a participant, and adopted by a
 projection are distinct milestones. The contract names the milestone it can
@@ -97,3 +140,14 @@ success, discard the command record, or turn the committed domain operation
 into a rejection. If an effect is intentionally best effort, its omission and
 the resulting weaker guarantee must be part of the public contract.
 
+*** Paired FX and recovery acceptance cases
+
+| Admitted construction or history | Adverse or unsupported counterpart | Required judgment |
+|-----------------------------------+------------------------------------+-------------------|
+| A generated FX machine receives the invocation input in its first step and passes declared results to later steps. | A later step reads a previous result or the original input from accidental mutable context accumulation. | Admit explicit value flow; reject or expose the untracked dependency. |
+| A trusted context supplies a declared principal and transaction capability. | Client parameters overwrite that capability or the required binding is structurally absent. | Reject privilege shadowing or knowably missing construction inputs; retain runtime authentication premises. |
+| A pure query step returns a typed value with source provenance. | A subsequent step treats that value as current authority or remote participant knowledge without an admitted path. | Preserve provenance and role-local knowledge rather than upgrading a value by transport through FX. |
+| Effect sequencing waits for the declared completion boundary. | A vector-valued argument is executed as a sequence, or enqueue is reported as authoritative completion. | Enforce the registered effect interpreter's actual ordering and completion semantics. |
+| Submission fails before any possible incorporation, or an ambiguous submission is reconciled. | All thrown exceptions are mapped to durable business rejection or trigger blind resubmission. | Distinguish local attempt failure, unknown command disposition and admitted authoritative evidence. |
+| Commit succeeds and a subsequent publication fails; the original command result is retained. | A catch rolls back the reported command truth, retries the domain mutation, or discards necessary propagation. | Classify post-commit delivery debt independently and recover only the appropriate effect. |
+| A disconnected participant returns through qualified acquisition or its declared Refresh path. | A missed SSE notification is assumed to arrive eventually with no retained work, inception coverage or recovery trigger. | Admit precisely the supported eventual-freshness claim; reject unconditional convergence. |
