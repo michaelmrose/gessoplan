@@ -2,9 +2,9 @@
 
 **Disposition:** The preferred R5 Part VII was initially split losslessly
 into fifteen natural Org units. That initial source/publication matched
-Git blob `55c0c46f8ccf97b2ed6d61a3a7e1aeeca876f6a7`. Sections **07.01–07.13** have completed substantive R4-preservation
+Git blob `55c0c46f8ccf97b2ed6d61a3a7e1aeeca876f6a7`. Sections **07.01–07.14** have completed substantive R4-preservation
 and Gesso-source correspondence review, recorded in their numbered audits.
-Sections 07.14–07.15, whole-Part-VII reconciliation, and independent
+Section 07.15, whole-Part-VII reconciliation, and independent
 candidate acceptance **remain outstanding**. All nine original Part VII
 `CUSTOM_ID` anchors remain unchanged.
 
@@ -46,7 +46,7 @@ no internal `***` section, table, code block, quote or requirement
 anchor was split. The smallest source is 35 original lines and the
 largest 191; those counts describe the **initial split**, not subsequent
 revisions. The current fifteen units reconstruct the
-**261,762-character**, **3,886-line**
+**272,903-character**, **4,040-line**
 Part VII publication exactly, retaining all nine original anchors.
 
 ## Assembly and verification
@@ -163,5 +163,10 @@ first-blocker and complete open-obligation diagnostics, R4's concrete
 failure distinctions, safe source-local repair, exact artifact provenance,
 redaction and observer noninterference have eighteen positive/adverse cases.
 
-**Next:** review **07.14 — Acceptance, Qualification, and Change Impact**,
-including actual conformance, changed premises and nonvacuous product gates.
+**07.14 review:** see `07.14-r4-preservation-audit.md`. Separate
+structural/production/product acceptance, actual HumanHelp positive controls,
+XTDB backend qualification, source-bound change impact, seven evidence levels
+and eighteen positive/adversarial histories retain explicit physical premises.
+
+**Next:** review **07.15 — Whole-Application Security and Construction Invariant**,
+including source authority and the final cross-layer requirement.
