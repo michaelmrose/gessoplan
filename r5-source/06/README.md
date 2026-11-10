@@ -7,10 +7,14 @@ concatenation. All eight original `CUSTOM_ID` anchors remain stable.
 All **fifteen numbered sections (06.01–06.15)** have completed
 substantive R4-preservation and Gesso-source correspondence reviews.
 **Whole-Part-VI editorial reconciliation is complete**, recorded in
-`part-06-whole-part-reconciliation.md`. **Independent candidate
-acceptance remains outstanding.** Parts I–V are accepted reviewed
-R5.1 candidates; Part VI is a reconciled but unaccepted candidate,
-and Parts VII–XII and independent full-plan reconciliation remain unfinished.
+`part-06-whole-part-reconciliation.md`. A separate **independent
+reviewed-candidate acceptance** is recorded in
+`PART-VI-cross-section-acceptance.md`.
+**Part VI is accepted as a reviewed R5.1 candidate**, alongside
+Parts I–V. This is an editorial design judgment, not Gesso
+implementation, browser/backend proof, HumanHelp product
+acceptance or approval of the full twelve-part plan.
+Parts VII–XII and independent full-plan reconciliation remain open.
 
 R4 (`main`) Part VI, 3,709 newline-split lines, is the preservation
 baseline; R5 (`r5`) Part VI, 1,481 newline-split lines, is the
@@ -116,10 +120,11 @@ concatenated exactly to the unchanged R5 Part VI baseline:
 **84,711 decoded JavaScript string code units** and
 **1,481 newline-split lines**. Subsequent sectional revisions
 update the canonical Part VI publication from the numbered units.
-After whole-part reconciliation, all fifteen reviewed units exactly
-reconstruct the **279,742-character**, **4,503-line** Part VI
-publication, with all eight stable anchors and balanced Org
-blocks. Independent candidate acceptance remains pending. The whole-plan output remains a generated artifact,
+The fifteen accepted reviewed units exactly reconstruct the
+**279,742-character**, **4,503-line** Part VI publication,
+with all eight stable anchors and balanced Org blocks.
+The independent candidate acceptance is documented separately;
+implementation and full-plan acceptance remain pending. The whole-plan output remains a generated artifact,
 not a separate editable normative source.
 
 The Python assembler was **not executed** in a local Gessoplan
@@ -258,8 +263,15 @@ deployed host correspondence and source/trace assurance.
 It records the example-label, timeless-language and heading
 repairs applied across the numbered sources.
 
-**Next:** perform the **independent Part VI candidate-acceptance review**,
-evaluating the whole reconciled normative document for architectural
-coherence, R4 preservation, accepted Parts I–V joins and the
-finished-framework/positive HumanHelp conformance target.
-Do not mark Part VI accepted before that independent judgment.
+**Independent Part VI candidate acceptance:** see
+`PART-VI-cross-section-acceptance.md`. The joined editorial review
+accepts the reconciled browser-realization specification under
+explicit physical, backend, assurance and product correspondence
+obligations. No numbered Org source or publication text was
+modified by this acceptance decision.
+
+**Next:** prepare the **Part VII — Whole-Application Construction**
+source split at natural Org boundaries from the preferred R5 text,
+preserve the initial publication byte-for-byte, then begin
+individual R4/Gesso-informed revisions. Parts I–VI are accepted
+reviewed candidates; the full twelve-part plan is still a draft.
