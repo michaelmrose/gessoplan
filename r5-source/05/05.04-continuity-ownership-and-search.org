@@ -1,0 +1,79 @@
+** Continuity
+:PROPERTIES:
+:CUSTOM_ID: req-continuity-boundary
+:END:
+
+Continuity preserves browser-local interaction state across representation
+replacement: focus, selection, scroll, open details, and explicitly selected
+local drafts. It does not establish domain facts, authoritative provenance,
+command validity, or agreement.
+
+Ordinary continuity belongs behind the browser-effect boundary. Portable
+choreography observes the effect outcome defined by that boundary, not separate
+focus-restored or layout-finished events. An application can deliberately give a
+browser interaction semantic meaning through an explicit contract; such meaning
+is not inferred merely because continuity captured the interaction.
+
+*** Ownership and physical captures
+
+A continuity capture belongs to an admitted replacement/effect scope and a
+concrete target instance. It need not invent a command execution for an ordinary
+fragment refresh. Its identity distinguishes the logical slot, capture instance,
+owner, and relevant target incarnation. Part II's
+[[#req-resource-instance-identity][resource-instance contract]] applies.
+
+The imperative shell can retain opaque DOM references and capture resources.
+Portable semantic state retains the owner/resource references and lifecycle
+needed to control their use. A DOM node still existing does not prove its owner
+is current. A delayed restore must not consume or overwrite a newer capture.
+
+The default capture registry binds a capture to the restore implementation and
+capture format which produced it. Re-registering a box implementation must not
+reinterpret an older capture under incompatible code. An explicit versioned
+migration may be supported; otherwise incompatible captures are retired. This
+binding does not permit an old implementation to execute after its rights have
+been revoked by the current runtime policy.
+
+Capture/restore hooks are ordinary host code. The framework can validate their
+interfaces, registered identity, declared footprint, and resource use; claims
+about arbitrary hook behavior remain explicit assertions unless established by
+another mechanism. A custom hook must not acquire semantic installation rights
+by calling an internal DOM helper.
+
+*** Continuity does not preserve arbitrary DOM state
+
+A continuity policy selects what may be captured and restored. It must not copy
+an old fragment wholesale or restore authoritative security/context fields such
+as credentials, anti-forgery tokens, operation bindings, principal identifiers,
+or hidden command arguments as if they were harmless input drafts.
+
+Restoration respects the newly admitted rendering. It may reopen a Request
+already present and permitted in the new board, but cannot recreate a removed
+or undisclosable Request. Duplicate or ambiguous element keys require a declared
+failure policy; selecting the first matching node can restore into the wrong
+control.
+
+Local draft preservation also needs a product policy. A draft can be retained as
+local user input without claiming it matches authoritative data. If replacing a
+form would lose important unsaved work, the application can declare a prompt or
+block-before-install policy. That is an explicit interaction requirement,
+separate from ordinary best-effort focus or scroll restoration. It cannot turn
+an already committed model operation into a rejection.
+
+*** Search text and query meaning must remain aligned
+
+A search control's draft text is local input. The applied query and the membership
+of its result set have semantic meaning. Restoring one does not establish the
+other.
+
+If a board observation was acquired for search =cabinet=, restoring the control
+to =cabinet hinge= must not silently label those results as satisfying the latter
+query. The application must retain the distinction between draft and applied
+query, acquire the newly requested scope, or follow another declared transition.
+The same rule applies to server-side sorting, filters, and pagination.
+
+Filtering a locally adopted set may be a legitimate view operation. It does not
+prove complete membership for a new authoritative query. The query contract
+states whether a control is local presentation, an unapplied draft, or the
+selector of authoritative acquisition.
+

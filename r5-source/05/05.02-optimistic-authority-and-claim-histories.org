@@ -1,0 +1,160 @@
+*** Optimism cannot confer authority
+
+An adversarial browser can fabricate provisional values, labels, bindings, and
+purported machine state. The trusted model boundary independently establishes
+principal identity, command binding, and current authorization. It never
+accepts an optimistic assignment or browser authorized flag as permission.
+
+This remains true for a legitimate binding rendered by the server earlier.
+Membership or policy may have changed. Historical issuance or observation
+evidence is not current authorization; an observed-basis claim is not proof the
+caller acquired or adopted the observation.
+
+The model chooses legal authoritative outcomes. Choreography and its admitted
+presentation contract choose provisional and resolution behavior. Views choose
+the visual treatment. These responsibilities must not collapse into a helper
+that changes the DOM and independently decides business policy.
+
+*** Separate command knowledge from presentation progress
+
+A participant tracks several questions:
+
+| Dimension | Examples of established state |
+|-----------+-------------------------------|
+| Command knowledge | Pending resolution, permitted incorporation/replay, authoritative rejection, or unknown. |
+| Acquired evidence | A particular admitted Request observation is available. |
+| Installation progress | Not requested, pending, completed, failed, or indeterminate under its physical-effect contract. |
+| Adopted presentation | A scoped observation or provisional projection owns the current visible representation. |
+| Recovery ownership | This execution or another admitted owner is responsible for remaining work. |
+
+This does not require a separate mutable store for every row. It requires enough
+information to avoid false implications between them. A command can be known
+committed while a fresh card is unavailable. An authoritative card can be
+installed while attribution to the original command remains unknown.
+
+Recording acquired evidence is not recording completed visual adoption. A
+semantic transition may request installation and enter a pending-installation
+state. It cannot discharge acquire-and-adopt obligations until the required
+physical completion has been admitted, as specified in
+[[#req-advisory-discharge][Part IV's adoption contract]].
+
+*** Worked example: HumanHelp Claim
+
+Alice has an admitted Request-card observation for R at basis X17. Its scope
+includes the Request, projection/schema version, authority/database incarnation,
+temporal interpretation, and permitted visibility context. Its domain values
+say the Request is open and has no helper. Preparation offers a Claim affordance
+using public model semantics.
+
+This observation supports the example's provisional presentation. It does not
+prove Membership, policy, or Request state will still permit Claim when the
+server receives it. Part IV's model operation protects those conditions at
+incorporation.
+
+Activation binds C42 to the Claim intent and creates E42 with its own resource
+instances. The admitted entry path records those identities before issuing any
+transport effect. A retry reuses the existing C42 binding rather than allocating
+a replacement intent.
+
+The provisional overlay can show Alice as tentative helper and disable the
+conflicting Claim affordance. It does not replace the retained authoritative
+observation or authorize further domain actions solely from that tentative
+assignment.
+
+| Admitted event or evidence | Command knowledge | Presentation continuation |
+|----------------------------+-------------------+---------------------------|
+| Successful =:committed= result for C42. | Incorporation established. | End or transform the pending overlay; install an admissible result projection if supplied, or acquire the required card. |
+| Successful permitted =:already-incorporated= result. | Prior incorporation established. | Use the accepted successor without incorporating again; the historical result snapshot is not automatically current. |
+| Authoritative =:rejected= result. | Rejection established under the command policy. | End the pending overlay and obtain or retain a justified presentation through the rejection path. |
+| =:commit-unknown= or indeterminate delivery. | Outcome unknown. | Use a truthful unknown/recovery presentation and retain or transfer command-resolution responsibility. |
+| Current Request observation without command attribution. | C42 may remain unknown. | Supersede the provisional card after permitted installation, without inventing attribution. |
+
+Model outcomes map explicitly to presentation settlements =:accepted=,
+=:rejected=, and =:unknown=. Labels such as confirmed, reconciled, and superseded
+may describe how provisional ownership ended. They are not extra model outcomes
+or substitutes for incorporation evidence.
+
+**** Accepted command, card still pending
+
+Suppose the server establishes C42's incorporation but fresh card acquisition
+fails. The browser can know Claim succeeded while lacking an installable current
+card. It must not turn the acquisition failure into rejection or overwrite
+established incorporation with unknown.
+
+Presentation can say the action succeeded and current details await refresh.
+An old observation remains historical or awaiting refresh. Tentative values do
+not become a complete authoritative card merely because the command succeeded.
+
+A result projector may supply an admitted observation with adequate scope and
+progression. It then follows the installation contract: record installation
+pending, issue a scoped effect, and adopt only after actual completion is
+admitted. Focus-restoration failure afterward does not undo that adoption.
+
+**** Rejection with a conflicting current state
+
+Suppose Bob's different command claims R first. Alice's command is authoritatively
+rejected. A subsequent admitted card may show Bob as helper. These are separate
+facts with separate evidence: rejection of C42 and the observed state of R.
+
+The rejection reason comes from permitted model evidence, such as already
+claimed under this simplified policy. Presentation cannot infer that reason
+from the card. A rejected result need not always contain a disclosable card:
+authority may permit the outcome but not fresh details, or only a less detailed
+message.
+
+One aborted physical attempt is insufficient to establish command rejection;
+a competing compatible attempt may have incorporated C42. Part IV's
+[[#req-command-participant-uncertainty][command-disposition contract]] determines
+which evidence is definitive.
+
+**** Timeout and two recovery tasks
+
+A settlement timer establishes a local deadline event, not command rejection.
+Admission checks its resource owner and relevance to the current phase. If
+definitive evidence was already recorded, a late timer cannot replace it with
+unknown.
+
+For an unresolved command, the runtime may retire E42's provisional ownership
+and enter or transfer recovery. Two tasks can remain:
+
+- acquire an authorized current card to recover presentation;
+- resolve C42 through permitted command-result evidence to recover attribution.
+
+The first does not automatically complete the second. A read-only resolver also
+does not supply an executable recovery driver. The contract names the owner,
+triggers, retry policy, evidence source, retention, and behavior when automatic
+progress ends.
+
+Retry exhaustion may stop automatic work while leaving the command unknown.
+The product can provide manual reconciliation or another declared handoff. It
+cannot silently replace C42 with a new command merely to resume a pending UI.
+
+**** Authoritative supersession without attribution
+
+Suppose an authorized observation at X19 shows Alice as helper and is permitted
+to replace the provisional card. After installation completes, that observation
+justifies the display. C42 remains unknown if no command-specific evidence
+establishes its disposition; another cause could have produced the same state.
+
+If C42's success arrives later, it may resolve retained command knowledge
+through the current resolution owner. It cannot revive E42, regress the card
+to an older result snapshot, or repeat Claim. Installation and command-resolution
+rights are distinct.
+
+**** Conditional restoration instead of unconditional rollback
+
+An optimistic snapshot captures a previously justified presentation. It does
+not prove authority still has that state. Restoration is allowed only under the
+current owner, target instance, observation context, and intervening adoption or
+local-edit policy.
+
+The safe default removes the owned provisional overlay and renders from the
+current admitted base where available. If the implementation restores captured
+content, its guard is checked at the physical mutation boundary. An earlier
+Boolean check is insufficient if another installation or owner change can
+intervene.
+
+After X19 is adopted, a late E42 failure cannot reinstall X17. Even before
+supersession, restoring X17's visual shape retains recovery-pending or unknown
+classification. It does not assert that the model rolled back or C42 failed.
+

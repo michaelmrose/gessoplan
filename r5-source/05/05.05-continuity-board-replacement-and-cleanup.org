@@ -1,0 +1,105 @@
+*** Worked example: replacing a HumanHelp board
+
+Bob has applied search =cabinet=, opened Request R17, focused Refresh, and
+scrolled partway down the board. A refresh acquires a complete authorized board
+observation for that same applied query at X31.
+
+An inspection view of a continuity capture is:
+
+#+begin_src clojure
+{:slot :request-board
+ :capture-instance/id I1
+ :owner {:replacement/id O1}
+ :target-instance/id B1
+ :capture-format :board-continuity/v1
+ :local
+ {:focus-key :board/refresh
+  :scroll-anchor {:request-id R17 :offset 12}
+  :open-request-ids #{R17}
+  :search-draft "cabinet"}
+ :context
+ {:applied-query-ref board-query-ref
+  :captured-edit-instance edit-instance-1}}
+#+end_src
+
+The actual resource can be opaque and include implementation-specific physical
+handles. The context prevents a draft restore from misrepresenting the applied
+query or overwriting newer edits. Neither =board-query-ref= nor X31 is admitted
+merely by appearing in this inspection map.
+
+A replacement follows these phases:
+
+| Phase | Required behavior |
+|-------+-------------------|
+| Prepare | Check the observation and proposed target; establish the replacement owner and its effect identity. |
+| Capture | Capture permitted local state under that owner; optional box failures remain local diagnostics. |
+| Install | Recheck current owner, target instance, scope, and progression at the mutation boundary; perform the permitted update. |
+| Admit completion | Record actual installation success, failure, or partial/indeterminate realization under the effect contract. |
+| Restore | Restore only still-applicable local state, checking ownership at every deferred mutation boundary. |
+| Release | Retire the capture and release physical resources without disturbing newer ownership. |
+
+If installation succeeds but Refresh is absent, focus restoration may fail
+while the new board remains adopted. The result distinguishes installation from
+optional continuity:
+
+#+begin_src clojure
+{:installation
+ {:status :completed
+  :effect-id install-effect-1
+  :observation-ref board-observation-X31}
+ :continuity
+ {:status :partial
+  :restored #{:scroll :details}
+  :skipped {:focus :target-no-longer-present}}}
+#+end_src
+
+This inspection result is not a browser-issued credential. The admitted shell
+completion supplies the evidence the semantic owner needs. It must not be
+converted into a generic failed swap which triggers stale rollback.
+
+Now replacement O2 captures I2 while I1 still awaits layout. O2 owns the current
+board instance, and Bob has typed =cabinet hinge=. I1's delayed callback must
+not restore =cabinet=, consume I2, move focus back, or reset O2's scroll state.
+Checking ownership only when scheduling the callback is insufficient; it is
+checked again immediately before the delayed mutation.
+
+Even without O2, a user edit after I1's capture may make restoration stale.
+The policy compares the relevant local edit instance or equivalent ownership
+information before overwriting input or focus. The rule is not that a numerically
+larger capture always wins; it is that only the current permitted owner can
+perform the particular mutation.
+
+Open details are intersected with the newly authorized rendering. A local
+capture can request R17 be open if R17 remains present; it cannot recreate R17
+if the new scope excludes it. A scroll anchor that disappeared uses the declared
+fallback, such as the nearest surviving anchor or a bounded raw offset.
+
+*** Failure and cleanup
+
+Optional capture failure must not prevent an otherwise permitted installation.
+Optional restoration failure must not erase an installation already completed.
+Promises and deferred callbacks need the same failure isolation as synchronous
+hooks; catching only synchronous exceptions does not contain asynchronous
+failure.
+
+If installation itself partially applies, the result must preserve that
+uncertainty and follow the repair contract. Neither the semantic state nor the
+UI may pretend the entire fragment is installed. Continuity success cannot
+compensate for missing installation evidence.
+
+Semantic retirement revokes restoration rights before best-effort physical
+cleanup. Failed cleanup is diagnostic/resource debt, not authority for an old
+callback to act again. Resource release should be idempotent and scoped to the
+resource instance it owns.
+
+A style lock illustrates the requirement. Seeing the same min-height value that
+an old effect once wrote does not necessarily prove it still owns that value;
+a newer effect might have written the same value. Cleanup must use the resource
+ownership contract or a justified equivalent, rather than rely solely on
+same-shaped physical state. It must not undo a newer lock.
+
+Physical resource lifetime may outlast semantic ownership. In that case the
+remaining handle is powerless cleanup debt. Portable Choreo needs only the
+contracted installation/effect outcome; browser diagnostics may report the
+failed optional focus, scroll, or capture operation separately.
+

@@ -1,0 +1,113 @@
+** Executable projection and diagnostic sidecars
+:PROPERTIES:
+:CUSTOM_ID: req-executable-plan-sidecar-boundary
+:END:
+
+Construction emits one canonical =ExecutablePlan= per projected role and
+separate compiler/diagnostic evidence products. The executable plan is the
+semantic runtime payload used by production and tests. A
+=DiagnosticProofSidecar= may explain it but cannot complete or alter its meaning.
+
+A build may use a rich internal representation while checking and projecting.
+The commitment is that production does not execute one machine while verification
+or proof-enabled tests quietly execute a different, richer client machine.
+Compiler transformations still need their stated correspondence; separating the
+sidecar does not eliminate the projection or packaging proof obligation.
+
+*** What belongs in each product
+
+| Product | Contents |
+|---------+----------|
+| ExecutablePlan | Supported local node structure, executable selectors/guards where defined by the format, action/message/event contracts, successors, and runtime interpretation fields. |
+| Admitted runtime state and inputs | Concrete command/execution/resource bindings, established values, observations, outstanding effects, and lifecycle state. |
+| Assembly/implementation binding | Registered action realizations, trusted boundaries, loaded versions, supported host capabilities, and applicable admission policy. |
+| Compiler correspondence data | Mapping from source semantics to actual runtime locators, including generated/synthetic states and continuation relationships. |
+| DiagnosticProofSidecar | Explanations, source locations, checked derivations or references, named premises, and exact executable correspondence. |
+| Packaged artifact manifest | Relationship between the admitted plan set, implementation/runtime closure, and emitted assets. |
+
+These products need not be stored as six separate files. Their meanings and
+trust boundaries must remain distinct. In particular, application execution
+cannot depend on a source span or optional explanation object to discover which
+guard it was supposed to run.
+
+The executable semantic core and browser coordinator do not accept a diagnostic
+sidecar as a transition input. The conceptual interface is:
+
+#+begin_src clojure
+(semantic/step executable-plan admitted-state admitted-event)
+;; Returns the next semantic state, declared abstract effects,
+;; an explicit step classification, and the actual transition locator.
+#+end_src
+
+Guards operate on admitted runtime premises and executable contracts. The proof
+kernel/checker may explain why those guards contribute to a property; it does
+not supply current runtime permission by having accepted a derivation earlier.
+
+*** Exact identities and their domains
+
+The design distinguishes:
+
+| Identity | Question it answers |
+|----------+---------------------|
+| Runtime locator | Which state, transition, or effect in this exact emitted plan was selected? |
+| Source semantic name | Which authored or generated concept does that locator explain? |
+| Normalized semantic dependency identity | Which exact semantic definitions and dependencies a claim or construction uses. |
+| Proof-obligation identity | Which proposition/derivation is being checked or explained? |
+| Exact executable identity | Does this sidecar describe this exact canonical runtime payload and coordinate layout? |
+| Compatibility identity/judgment | May this runtime safely participate or continue under the selected server/assembly contract? |
+| Packaged asset identity | Which actual emitted browser/server asset bytes are loaded? |
+
+Runtime locators need not be stable across compilations. Source names can remain
+useful while behavior changes, so equal names do not preserve proof applicability.
+Two plans can be compatible while having different exact payload identities.
+The same plan payload can also be bound to different opaque implementations;
+applicable assurance therefore includes the relevant implementation/assembly
+closure, not merely the plan digest.
+
+*** Canonical payload identity
+
+The exact identity recipe specifies:
+
+- the object being identified: canonical plan terms, a plan set, or exact asset
+  bytes;
+- encoding and schema versions;
+- type-preserving representation of supported scalars and collections;
+- deterministic map/set ordering without discarding semantic distinctions;
+- unsupported values and their rejection behavior;
+- excluded self-identifying fields, or an external identity envelope;
+- the digest algorithm and its accepted collision premise;
+- interpretation dependencies bound separately when not included in the payload.
+
+A printed EDN map is not automatically a canonical encoding. Nil versus absence,
+keyword versus string, list versus vector where meaningful, numeric forms, and
+map/set order require explicit treatment. Host functions and DOM objects cannot
+be silently printed into a supposedly portable canonical digest.
+
+A convenient design keeps the payload free of its own digest:
+
+#+begin_src clojure
+(def executable-identity
+  (artifact/digest
+   {:algorithm :sha-256
+    :encoding :gesso-plan-canonical-v1
+    :value executable-plan}))
+
+(def plan-manifest-entry
+  {:role :browser
+   :executable-identity executable-identity
+   :plan-format-version 1
+   :runtime-contract-ref runtime-contract-ref
+   :implementation-closure-ref implementation-closure-ref})
+#+end_src
+
+The algorithm and format labels illustrate a declared recipe, not a new trust
+source. If identity is embedded in an envelope, the payload domain excludes that
+self-identifying field. It must not hash an object including the very digest
+being computed.
+
+Hashing canonical plan terms is not hashing the emitted JavaScript bundle.
+Packaging must establish which plan set and runtime/implementation closure the
+actual asset contains. A copied or stale generated stamp cannot substitute for
+that relationship. Exact equality of a stamp supplied by two untrusted locations
+is not construction evidence.
+

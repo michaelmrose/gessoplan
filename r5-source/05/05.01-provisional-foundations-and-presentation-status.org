@@ -1,0 +1,130 @@
+* Part V — Provisional state and executable presentation
+:PROPERTIES:
+:CUSTOM_ID: part-05-provisional-state-and-executable-presentation
+:PART_REVISION: 05-20261107
+:END:
+
+This part defines provisional presentation, local continuity, prepared view
+bindings, portable execution, and the separation of executable plans from
+diagnostic evidence. It uses Part IV's command outcomes, scoped observations,
+and acquisition/installation distinctions. Part VI specifies browser
+coordination and physical realization; Part VII closes the assembled application
+path before a managed affordance is served.
+
+The intended architecture supports the full application language through the
+[[#req-full-language-construction][checked construction contract]]. Declarative
+interfaces and a portable coordination vocabulary make behavior inspectable;
+they do not require every computation or renderer to be expressed in a small
+proof language. Opaque functions retain explicit contracts and premises wherever
+their behavior has not been mechanically established.
+
+Examples use illustrative declaration and API names. They specify intended
+semantics, not a promise that the displayed syntax already exists. Inspection
+maps and tables describe admitted values; copying their fields does not create
+authority, provenance, resource ownership, or execution rights. Generated
+fragments explain one canonical construction, rather than additional plans
+application authors must maintain independently.
+
+** Optimism
+:PROPERTIES:
+:CUSTOM_ID: req-optimistic-projection
+:END:
+
+Optimism is an explicit provisional trajectory associated with a semantic
+command. It permits responsive local presentation while authority determines
+the command's result. It does not predict a future database state with certainty
+and does not grant permission to make that prediction authoritative.
+
+A provisional projection means:
+
+#+begin_quote
+Given these admitted observations and declared local inputs, this is the
+presentation permitted for this command while its authoritative disposition is
+unresolved. Its derivation, owner, affected scope, and resolution policy are
+known. The authoritative model remains free to produce any result allowed by
+the operation contract.
+#+end_quote
+
+The runtime distinguishes at least:
+
+| Category | Meaning |
+|----------+---------|
+| Authoritative observation | An admitted acquisition or operation output establishes specified facts within its scope and evidence contract. |
+| Provisional projection | A declared local derivation associated with a command; it is not evidence of incorporation. |
+| Authoritative absence | A successful admitted observation establishes absence within its complete authorized scope. |
+| Unknown or unavailable | Required evidence has not been established or cannot currently be acquired/disclosed. |
+| Local draft | User input or interaction state which has not become an authoritative assertion. |
+
+A visually identical card can belong to different categories. The runtime
+retains the distinction even when rendering produces similar Hiccup or DOM.
+Representations may be ordinary immutable values or opaque wrappers; the
+requirement is correct admission and use, not one mandatory host-language type.
+
+*** Provisional derivation contract
+
+Each optimistic operation declares:
+
+1. its semantic command binding and entry conditions;
+2. the authoritative observations, local inputs, and explicit assumptions used
+   to derive the provisional value;
+3. affected entity, query-membership, field, and presentation scopes;
+4. the derivation implementation and its input/output types;
+5. owners and resource instances permitted to install, update, or remove it;
+6. its concurrency and dependency policy relative to other local work;
+7. settlement, supersession, timeout, cancellation, retirement, and recovery
+   continuations;
+8. the evidence and physical completion required before claiming adoption.
+
+An optimistic update normally depends on an admitted authoritative observation.
+The contract expresses the actual dependency, rather than demanding an existing
+entity snapshot in every operation. Optimistic creation may depend on an
+admitted collection scope, policy observation, declared draft inputs, and a
+temporary local entity identity. It must not manufacture authoritative
+nonexistence or assume a client-chosen ID is available. The server enforces
+creation conditions.
+
+Purely local drafts need not be mislabeled optimistic domain operations. If the
+application renders under weaker entry knowledge, its declared assumptions
+remain visible and the projection cannot imply guarantees requiring absent
+observations. Missing required knowledge is an admission failure; an assertion
+cannot silently supply that missing binding.
+
+Several observations may justify one projection. Its basis is then a scoped set
+of premises, not necessarily one universal database token. The derivation cannot
+strengthen acquired coverage or turn mixed observations into a common snapshot.
+Part IV's progression and scope contracts apply.
+
+*** Presentation state is not a new domain status
+
+An optimistic Claim can display a pending helper and a Claiming label while the
+last admitted Request still has domain status =:open= and no helper. A pending
+presentation tag must not be inserted into a closed domain enum unless the
+model defines that state.
+
+An inspection view might be:
+
+#+begin_src clojure
+{:projection/type :request/card
+ :projection/status :provisional
+ :gesso/command-id C42
+ :execution/id E42
+ :resource-instance/id card-owner-instance
+ :premises {:observation-ref card-observation-ref}
+ :subject {:request-id R}
+ :presentation
+ {:phase :claim/pending
+  :display-helper-id Alice
+  :label "Claiming..."
+  :busy? true}}
+#+end_src
+
+This does not assert =:request/status :claiming= as authoritative domain data.
+The private representation may be smaller, but the categories remain
+recoverable. A renderer consumes admitted presentation state; it does not
+establish provenance by writing =:projection/status=.
+
+The admitted command boundary supplies or admits C42 before the first possible
+send. Allocation happens once for the intent and is retained through retry.
+E42 names one local execution; =card-owner-instance= names one presentation
+resource. Neither substitutes for the command ID.
+

@@ -1,0 +1,104 @@
+*** A concrete installation segment
+
+The following is an inspection of a generated local segment using the canonical
+node kinds. Entry already supplies an admitted observation reference and an
+admitted installation request. Registered action and event contracts supply
+schema, provenance, current-owner, and failure obligations not repeated in this
+compact payload.
+
+#+begin_src clojure
+{:gesso.choreo/type :gesso.choreo/executable-plan
+ :gesso.choreo/version 1
+ :role :browser
+ :initial 0
+ :states
+ {0 {:op :local
+     :action :presentation/request-installation
+     :requires #{:installation/request}
+     :outputs #{:installation/effect-ref}
+     :next 1}
+  1 {:op :await
+     :events {:presentation/installation-completed 2
+              :presentation/installation-failed 3}
+     :event-contracts
+     {:presentation/installation-completed
+      {:required #{:installation/effect-ref :installation/completion-ref}
+       :optional #{}
+       :open-data? false}
+      :presentation/installation-failed
+      {:required #{:installation/effect-ref :installation/failure-ref}
+       :optional #{}
+       :open-data? false}}}
+  2 {:op :local
+     :action :presentation/adopt-completed
+     :requires #{:installation/request :installation/completion-ref}
+     :outputs #{:presentation/adoption-ref}
+     :next 4}
+  3 {:op :local
+     :action :presentation/retain-and-recover
+     :requires #{:installation/request :installation/failure-ref}
+     :outputs #{:presentation/recovery-owner-ref}
+     :next 5}
+  4 {:op :return :outcome :presentation/ready}
+  5 {:op :return :outcome :presentation/recovery-handed-off}}}
+#+end_src
+
+The representation version is illustrative. A concrete emitted segment must
+satisfy the actual selected schema and its registered interfaces; this excerpt
+is not a second author-maintained implementation.
+
+The request action completes when installation work has been registered and
+issued under the host contract. It does not claim that the DOM changed. The host
+must buffer or otherwise serialize an immediate completion so it cannot be lost
+before the machine reaches its await boundary.
+
+The completed event is admitted only from that issued effect and for the current
+permitted target owner. The completion reference resolves to actual physical
+completion evidence. It does not become authoritative because an environment
+payload calls itself completed. The adopt action consumes that admitted evidence
+and updates the appropriate semantic owner; merely possessing a reference with
+a familiar shape is insufficient.
+
+The failed path preserves the failure's scope, including partial or indeterminate
+installation where applicable, and establishes the declared recovery owner before
+returning. It does not reject an already incorporated command. Owner retirement,
+source loss, or unbounded absence of a completion follows the segment's registered
+interruption/deadline and recovery contract. Assembly must reject a required
+physical effect with no such handling when it can strand this wait.
+
+The fragment does not claim that all browser state belongs to one execution.
+The adopt action communicates with the shared coordinator through its admitted
+interface. That coordinator updates current adoption and advisory debt from its
+latest state, preserving obligations which arrived after installation was
+requested.
+
+*** Claim execution uses independent outcome and installation paths
+
+A complete generated Claim trajectory composes segments like the one above with
+command handling. The following table describes semantic boundaries rather than
+an alternative executable format:
+
+| Boundary | Required successor behavior |
+|----------+-----------------------------|
+| Invocation admitted | Record stable intent and execution ownership; derive permitted provisional presentation; issue declared effects. |
+| Command submitted or delivery attempted | Retain pending/unknown knowledge until evidence establishes more; submission alone is not incorporation. |
+| Accepted command evidence | Record permitted incorporation knowledge independently of whether a current card is available. |
+| Rejected command evidence | Record the authoritative rejection and select its declared presentation/recovery path. |
+| Unknown delivery or local deadline | Preserve unknown unless stronger evidence already exists; retain or transfer recovery ownership. |
+| Observation acquired | Validate scope and progression; propose installation without claiming adoption. |
+| Installation completed | Admit completion under the current owner; update adoption and discharge only covered obligations. |
+| Installation failed | Preserve command knowledge and unresolved presentation debt; follow repair or reacquisition. |
+| Execution retired | Revoke its local rights; preserve or transfer unresolved command/work obligations according to the contract. |
+
+A deadline racing with a participant response requires explicit arbitration
+between the projected machine and its owner-relative adapter. The timeout is
+not smuggled into =:receive= as a forged participant message. The supported
+waiting/interruption mechanism must preserve the declared race semantics; a
+projection backend lacking that mechanism rejects the unsupported construction
+rather than dropping the timeout branch.
+
+Whichever event is admitted first may change local ownership, but it cannot
+change what evidence means. A later success can still resolve a retained command
+through an admitted recovery owner. It cannot restore retired installation
+rights. A late timer cannot erase a known success.
+

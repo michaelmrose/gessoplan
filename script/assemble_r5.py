@@ -6,7 +6,7 @@ Usage:
     python3 script/assemble_r5.py --write
 
 The twelve published parts retain their established root filenames during
-R5 candidacy. Parts I–IV have independently checkable sectional sources.
+R5 candidacy. Parts I–V have independently checkable sectional sources.
 """
 from __future__ import annotations
 
@@ -44,6 +44,7 @@ SECTIONS_PART_TWO = (
 SECOND_SOURCE_DIR = ROOT / "r5-source" / "02"
 THIRD_SOURCE_DIR = ROOT / "r5-source" / "03"
 FOURTH_SOURCE_DIR = ROOT / "r5-source" / "04"
+FIFTH_SOURCE_DIR = ROOT / "r5-source" / "05"
 SECTIONS_PART_THREE = (
     "03.01-what-a-choreography-is.org",
     "03.02-coordination-vocabulary.org",
@@ -92,10 +93,27 @@ SECTIONS_PART_FOUR = (
     "04.17-assurance-and-acceptance.org",
 )
 
+SECTIONS_PART_FIVE = (
+    "05.01-provisional-foundations-and-presentation-status.org",
+    "05.02-optimistic-authority-and-claim-histories.org",
+    "05.03-resolution-concurrency-and-no-downgrade.org",
+    "05.04-continuity-ownership-and-search.org",
+    "05.05-continuity-board-replacement-and-cleanup.org",
+    "05.06-views-binding-and-availability.org",
+    "05.07-view-api-affordances-and-assembly.org",
+    "05.08-clojure-cljs-execution-and-state-ownership.org",
+    "05.09-browser-installation-and-claim-execution.org",
+    "05.10-execution-boundaries-and-deployment.org",
+    "05.11-projection-and-payload-identity.org",
+    "05.12-sidecar-binding-and-noninterference.org",
+    "05.13-sidecar-authority-and-conformance.org",
+)
+
 FIRST_PART = ROOT / "gesso-unified-design-canonical-r4-01-foundations.org"
 SECOND_PART = ROOT / "gesso-unified-design-canonical-r4-02-semantic-model.org"
 THIRD_PART = ROOT / "gesso-unified-design-canonical-r4-03-choreography-and-projection.org"
 FOURTH_PART = ROOT / "gesso-unified-design-canonical-r4-04-authoritative-operations-and-progression.org"
+FIFTH_PART = ROOT / "gesso-unified-design-canonical-r4-05-provisional-state-and-executable-presentation.org"
 OUTPUT = ROOT / "output" / "gesso-plan-v5.org"
 
 
@@ -131,13 +149,21 @@ def part_four() -> str:
     return text
 
 
-def whole_plan(first: str, second: str, third: str, fourth: str) -> str:
+def part_five() -> str:
+    pieces = [(FIFTH_SOURCE_DIR / name).read_bytes() for name in SECTIONS_PART_FIVE]
+    text = b"".join(pieces).decode("utf-8")
+    if text.count("* Part V — Provisional state and executable presentation\n") != 1:
+        raise SystemExit("Expected exactly one Part V root heading")
+    return text
+
+
+def whole_plan(first: str, second: str, third: str, fourth: str, fifth: str) -> str:
     remaining = [
         (ROOT / f"gesso-unified-design-canonical-r4-{i:02d}-"
          f"{NAMES[i]}.org").read_text(encoding="utf-8")
-        for i in range(5, 13)
+        for i in range(6, 13)
     ]
-    return first + second + third + fourth + "".join(remaining)
+    return first + second + third + fourth + fifth + "".join(remaining)
 
 
 NAMES = {
@@ -165,9 +191,11 @@ def main() -> None:
     second = part_two()
     third = part_three()
     fourth = part_four()
+    fifth = part_five()
     if args.check:
         for part, assembled in ((FIRST_PART, first), (SECOND_PART, second),
-                                (THIRD_PART, third), (FOURTH_PART, fourth)):
+                                (THIRD_PART, third), (FOURTH_PART, fourth),
+                                (FIFTH_PART, fifth)):
             if part.read_bytes() != assembled.encode("utf-8"):
                 raise SystemExit(
                     f"{part.relative_to(ROOT)} differs from its numbered source"
@@ -178,11 +206,13 @@ def main() -> None:
     SECOND_PART.write_bytes(second.encode("utf-8"))
     THIRD_PART.write_bytes(third.encode("utf-8"))
     FOURTH_PART.write_bytes(fourth.encode("utf-8"))
+    FIFTH_PART.write_bytes(fifth.encode("utf-8"))
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
-    OUTPUT.write_text(whole_plan(first, second, third, fourth), encoding="utf-8")
+    OUTPUT.write_text(whole_plan(first, second, third, fourth, fifth), encoding="utf-8")
     print(f"Updated {FIRST_PART.relative_to(ROOT)}, "
           f"{SECOND_PART.relative_to(ROOT)}, {THIRD_PART.relative_to(ROOT)}, "
           f"{FOURTH_PART.relative_to(ROOT)}, "
+          f"{FIFTH_PART.relative_to(ROOT)}, "
           f"and {OUTPUT.relative_to(ROOT)}")
 
 

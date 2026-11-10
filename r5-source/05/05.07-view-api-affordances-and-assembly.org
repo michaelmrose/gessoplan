@@ -1,0 +1,102 @@
+*** A small view API
+
+Once preparation succeeds, view code can remain ordinary Hiccup:
+
+#+begin_src clojure
+(defn request-card-view [{:keys [request actions]}]
+  (let [claim (actions/require-prepared! :request/claim (:claim actions))]
+    [:article.request-card
+     [:h3 (:title request)]
+     [:p.status (name (:status request))]
+     (case (actions/availability claim)
+       :available
+       (gesso/action
+        {:binding (actions/binding claim)
+         :presentation {:pending-label "Claiming..."
+                        :class "gesso-action gesso-action--primary"}}
+        "Claim")
+       :unavailable
+       nil
+       :deferred
+       [:span.action-status "Claim is temporarily unavailable."])]))
+#+end_src
+
+This example's Claim preparation contract admits available, unavailable, and
+deferred variants. Its final mutation has no input-collection phase; an
+unexpected needs-input result is a contract mismatch, not an implicit nil.
+Construction failure is raised by preparation/validation before this view can
+serve an incomplete active control.
+
+The renderer derives routes, HTMX attributes, command-wire fields, plan and
+artifact references, correlation, and progression handling from the assembly.
+A view author does not repeat these details in strings. If required metadata is
+missing, the renderer reports the exact missing edge or emits an explicitly
+non-executable unavailable affordance where the declared policy permits it.
+
+Semantic identity is preserved through rendering. Binding, encoding, and
+transport selection may elaborate an operation but cannot silently substitute
+another operation or weaken its required protocol. An opaque encoded binding is
+not necessarily authenticated, and authentication of its bytes would still not
+establish current model authorization.
+
+*** Prepared affordance is not a security capability
+
+The term /prepared affordance/ is preferable for the object consumed by a view.
+If the implementation calls it an operation capability, diagnostics must
+qualify that meaning. It is not an irrevocable or unforgeable authorization
+credential merely because the server prepared it.
+
+A trusted execution capability has a different contract: it permits a scoped
+server action under current admission rules. A view binding cannot supply the
+transaction handle, authenticated principal, or other trusted resource required
+by the model.
+
+Browser-returned observation information is an observed-basis claim unless a
+trusted boundary establishes something stronger. An authenticated receipt can
+prove its issuer's stated historical fact under that receipt contract. It does
+not prove the human saw the card, the browser installed it, or permission still
+holds now.
+
+Gesso constructs or admits stronger semantic values at the boundary with enough
+information. Web developers should not have to hand-assemble proof wrappers to
+render an ordinary button. In-process admission discipline prevents accidental
+misuse; it is not a sandbox against a determined author with arbitrary trusted
+host access.
+
+*** Raw HTMX and presentation freedom
+
+Ordinary HTMX remains a first-class mechanism for interactions deliberately
+outside Choreo's promises. The distinction is explicit: an ordinary affordance
+has its ordinary contract; a managed affordance has a complete managed
+realization or a precise non-executable failure/unavailability state.
+
+An ordinary route still obeys server authentication and model safety. It must
+not occupy a route reserved for a managed operation as a way to bypass its
+protocol. Declaring fewer client guarantees does not authorize direct
+unprotected writes.
+
+Views own text, element choice, semantic CSS, icons, layout, ARIA, pending
+labels, and how provisional or authoritative states look. They must not
+interpret a newer database token as command rejection or choose reconciliation
+policy. They display the decisions made by the admitted model/runtime contract.
+
+Status must be understandable without relying only on color or motion.
+Keyboard activation, form submission, disabled/busy semantics, and duplicate
+activation handling must match the declared entry policy. Disabling a button
+alone is not the framework's command deduplication mechanism.
+
+*** Assembly obligations and diagnostics
+
+An enabled managed control creates obligations for its complete path: operation,
+choreography, projected plan, loaded browser artifact, transport, trusted server
+entry, model realization, outcome mapping, acquisition, and presentation.
+Part VII checks these before serving, including dynamically generated surfaces.
+Its later position in this document does not permit serving incomplete controls
+until a future check runs.
+
+Errors preserve source component, operation, role/subject when disclosable,
+expected binding/plan/capability, and the missing or incompatible edge. Missing
+plans should not collapse into generic malformed HTML errors. Diagnostics must
+also preserve the difference between policy unavailability and implementation
+failure.
+

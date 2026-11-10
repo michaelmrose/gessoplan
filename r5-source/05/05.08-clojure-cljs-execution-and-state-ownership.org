@@ -1,0 +1,83 @@
+** Clojure and ClojureScript execution
+:PROPERTIES:
+:CUSTOM_ID: req-portable-execution
+:END:
+
+The permanent executable semantic core gives projected behavior one meaning
+across supported hosts. Shared =.cljc= definitions are the preferred realization
+where practical. JVM, Node, and Chromium must not carry independently handwritten
+versions of the same state machine merely because their callbacks differ.
+
+This commitment does not make the whole application portable. Database access,
+trusted authentication, arbitrary server code, DOM manipulation, and network
+integration belong to declared host boundaries. Full-language actions remain
+available there. The core interprets their contracts and admitted completions;
+it does not need to understand or emulate all application code.
+
+The executable semantic core is distinct from the later proof kernel/checker.
+The former executes admitted transition meaning. The latter checks derivations
+or other stated judgments about that meaning. Compiler, verifier, and proof
+machinery need not ship to the production browser.
+
+*** One vocabulary from construction through execution
+
+Part III's role-local vocabulary is canonical:
+
+| Node kind | Runtime responsibility |
+|-----------+------------------------|
+| =:local= | Request the declared local action and consume its admitted completion. |
+| =:authoritative= | At the appropriate trusted role, request a public model operation and consume its admitted typed result. |
+| =:branch= | Select a declared successor using an established typed value. |
+| =:send= | Issue a declared participant communication with the required known payload. |
+| =:receive= | Await an admitted participant message matching one unambiguous alternative. |
+| =:await= | Await a declared environment event from its registered source contract. |
+| =:return= | Complete this role's local trajectory with its declared outcome. |
+
+Optimism does not introduce a separately handwritten transition-table language
+with different guard or outcome semantics. Provisional derivation, command
+handling, acquisition, and installation are declared actions/events coordinated
+through the same vocabulary and the browser adapter's explicit ownership
+contract.
+
+A projected =:receive= is not satisfied by an environment event with the same
+keyword. A normalized map cannot select its own trust or ownership class.
+Participant communications, authoritative observations, local action completions,
+and environment events retain their distinct admission paths.
+
+The plan format has closed semantic keys and versioned interpretation. Unknown
+opcodes, unresolved action references, malformed successor locations, overlapping
+receive alternatives, or unsupported event contracts are construction failures.
+An explicit extension area can carry nonsemantic metadata without changing
+execution. Semantic extensions require a registered interpretation and their own
+assurance contract.
+
+*** State ownership and effects
+
+The role-local machine owns its protocol state and established values. The
+shared browser coordinator owns cross-execution target arbitration, obligations,
+and resource lifetimes where required. These are composed responsibilities,
+not competing copies of one machine. Each semantic fact has one declared owner.
+
+The imperative shell owns physical handles: DOM references, timers, transport
+objects, listeners, and opaque continuity captures. It interprets admitted
+effects and reports correlated completions/failures. It does not independently
+choose successors or reinterpret a domain outcome from a status string.
+
+An abstract transition can update semantic intent immediately and request a
+physical effect. The facts it records must match that point in the lifecycle:
+request issued is not request completed; observation acquired is not observation
+installed; installation permitted is not adoption completed.
+
+The runtime allocates fresh effect/resource instances through a declared
+mechanism. Nondeterministic choices such as UUIDs and sampled time enter as
+explicit admitted inputs or action results. A pure transition does not secretly
+consult a global clock or allocate different command IDs when replayed in a
+test. Before a command's first possible send, its stable binding is already
+recorded by the appropriate owner.
+
+Physical effects carry the owner, target/resource instance, operation/command
+correlation where relevant, and typed payload/reference required for admission.
+A callback copies the correlation issued with that physical resource. It must
+not fetch a newly current execution ID and relabel an old callback as belonging
+to the replacement execution.
+

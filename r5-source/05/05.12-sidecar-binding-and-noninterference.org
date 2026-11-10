@@ -1,0 +1,108 @@
+*** Binding sidecars to the actual compilation
+
+Compiler correspondence is generated alongside the executable plan from the
+same admitted semantic subject. It records the actual mapping, including
+synthetic states or compacted continuations, rather than reconstructing it later
+from similar state names.
+
+A sidecar inspection view can be:
+
+#+begin_src clojure
+{:sidecar/version 1
+ :role :browser
+ :executable-identity executable-identity
+ :semantic-subject-ref semantic-subject-ref
+ :checker-result-ref checker-result-ref
+ :implementation-closure-ref implementation-closure-ref
+ :locations
+ {installation-complete-locator
+  {:semantic-id :request-claim/presentation-installed
+   :source-ref source-ref
+   :claims
+   [{:proposition-ref adoption-proposition-ref
+     :mechanism :checked-derivation
+     :evidence-ref derivation-ref
+     :premises [shell-completion-premise
+                current-owner-premise]
+     :coverage-ref coverage-ref}]}}}
+#+end_src
+
+The locator comes from the actual emitted plan mapping. The symbols above denote
+bound values; replacing them with copied identifiers cannot authenticate the
+claims. The sidecar may contain checked and unverified claims with distinct
+status. Its existence does not prove every listed obligation was discharged.
+
+Attaching behavioral correspondence evidence requires the exact semantic and
+executable subject to agree with the artifact being explained. Evidence for
+choreography A cannot be composed with an artifact generated from choreography
+B merely because their operation names or state counts match.
+
+Diagnostic admission first validates the sidecar format and exact executable
+identity. Where tooling labels claims checker-verified, it additionally validates
+provenance, the checker result, applicable premise set, and implementation
+binding. A fabricated sidecar can copy the digest. Exact correspondence and
+trusted claim acceptance are separate checks.
+
+If exact identity mismatches, diagnostics must refuse correspondence for that
+plan. They cannot guess by timestamps, similar names, or near-matching runtime
+coordinates. Ordinary execution may continue if its own admission and
+compatibility remain valid. An unavailable explanation is not an executable
+failure and is not evidence of a safe transition either.
+
+*** Observe the selected transition, not a recomputation
+
+A trace contains the locator selected by the actual semantic step, its admitted
+subject identity, and a bounded description of its result/effects. The observer
+uses that locator to retrieve correspondence. It must not rerun guards or
+transition selection independently to guess what happened.
+
+Recomputation can diverge if callbacks are effectful, registries change, state is
+not identical, or the observer has different inputs. Even when the pure core
+would reproduce the same result, reporting the actual selected locator gives a
+clearer correspondence contract.
+
+Optional diagnostic access is read-only. It does not receive mutable live
+objects or authority-bearing handles it can modify. Redacted immutable trace
+values are preferable to whole contexts, DOM captures, credentials, or unrestricted
+command payloads. Missing or redacted data is reported as such; an explanation
+must not invent an unavailable premise.
+
+*** Diagnostic noninterference
+
+For the same admitted initial state, canonical plan, runtime interpretation,
+and normalized event sequence, adding, removing, corrupting, or replacing a
+sidecar must not change semantic transitions or abstract effects, apart from
+permitted diagnostic output.
+
+#+begin_example
+semantic-trace(run(plan, initial-state, events))
+  = semantic-trace(run-with-diagnostics(plan, initial-state, events))
+#+end_example
+
+This is a conditional noninterference claim over fixed semantic inputs. It does
+not claim instrumentation has no wall-clock, memory, scheduling, or resource
+cost, or that every real browser receives the same event sequence with debugging
+enabled.
+
+Excluding a sidecar parameter is necessary but insufficient. Ambient mutable
+registries, shared callbacks, exception propagation, hidden source lookups, or
+observer decisions fed back into admission can reintroduce a control path.
+Module/API boundaries and implementation contracts must prevent those paths.
+
+Optional diagnostics must not gate required effects or completion delivery. The
+normal path records the actual transition and issues its required work according
+to the semantic contract. A bounded best-effort trace queue can feed observers
+independently; overflow drops diagnostic work under a visible diagnostic policy,
+not semantic work.
+
+Catching an observer exception does not contain a nonterminating or blocking
+observer. In-process custom observers require an explicit bounded/nonblocking
+premise, or execution isolation adequate for the promised containment. The
+framework cannot prove arbitrary observer code harmless just because its return
+value is ignored. Redaction and diagnostic failure reporting must also be
+bounded and contained.
+
+If an audit action is required for the operation's correctness or compliance
+contract, it is a declared semantic effect with its own failure policy. It must
+not hide inside an optional observer whose loss is advertised as irrelevant.
+

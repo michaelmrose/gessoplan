@@ -1,0 +1,111 @@
+** Views and UI annotation
+:PROPERTIES:
+:CUSTOM_ID: req-view-operation-binding
+:END:
+
+Views declare semantic intent and render prepared presentation. They do not
+redefine choreography, duplicate domain authorization policy, or independently
+assemble transport/protocol parameters for a managed operation.
+
+The ordinary path is:
+
+1. a public semantic operation and choreography declare the behavior;
+2. application assembly resolves its plan, transport, acquisition, settlement,
+   server capabilities, and artifact requirements;
+3. preparation binds per-render arguments and admitted observation context;
+4. the view supplies element choice, labels, classes, layout, and accessibility;
+5. the renderer derives a complete managed realization from the admitted binding.
+
+A view may use a prepared binding directly or a concise declaration normalized
+through the same preparation boundary. Multiple convenient authoring forms must
+not create multiple independent meanings of Claim.
+
+*** Binding values versus operation-owned policy
+
+The registered operation owns its choreography, supported realization modes,
+settlement mapping, provisional derivation, recovery policy, required resources,
+and compatibility constraints. Per-render binding supplies only admitted
+variable inputs: subject/arguments, observation references, and target context
+where the operation permits them.
+
+Those binding fields have a closed schema. A view cannot override an operation's
+plan, timeout semantics, principal authority, rollback policy, or result mapping
+by inserting an extra key. Presentation options occupy a distinct checked area;
+unknown semantic keys fail with a precise error.
+
+For example:
+
+#+begin_src clojure
+(defn prepare-request-card [trusted-context admitted-card]
+  (let [card (observation/value admitted-card)
+        claim (actions/prepare
+               trusted-context
+               {:operation request-choreo/claim
+                :arguments {:request-id (:request/id card)}
+                :observations {:request-card admitted-card}})]
+    {:request {:id (:request/id card)
+               :title (:request/title card)
+               :status (:request/status card)}
+     :actions {:claim claim}}))
+#+end_src
+
+This illustrative preparation path verifies that the observation, argument,
+operation, principal context, and target scope agree. It obtains availability
+through public model/application interfaces. The renderer does not rerun a
+second Claim policy in Hiccup.
+
+The prepared affordance need not serialize principal credentials, server
+capabilities, or proof objects. When the browser returns binding data, the server
+re-establishes trusted principal identity and the required semantic bindings.
+Canonical command arguments use the same declared mapping as Part IV; a domain
+Request ID must not be confused with =:http-request-id= or another transport ID.
+
+*** Availability, input collection, and construction defects
+
+Prepared actions distinguish legitimate product states from broken realization:
+
+| Preparation result | Meaning and permitted rendering |
+|--------------------+---------------------------------|
+| Available | A complete admitted entry affordance can be enabled. |
+| Policy unavailable | Current prepared semantics do not offer the operation; hide or disable under the declared disclosure/presentation policy. |
+| Needs input | A declared interaction must collect further user input before final invocation; the offered input-collection entry path itself is complete. |
+| Deferred or dynamically unavailable | A declared prerequisite cannot yet be established; show the contracted pending/unavailable state and recovery path. |
+| Construction failure | Required operation, plan, binding, capability, route, or semantic input is missing or inconsistent; reject the incomplete enabled realization. |
+
+These classifications have closed payload contracts. Missing or =nil= entries
+cannot silently stand for every kind of unavailability. A product may use a
+compact representation internally, but the preparation boundary must establish
+which meaning it has.
+
+A missing Reassign helper ID is not inherently a defect if the action is meant
+to open an admitted helper-selection form. That entry action is fully specified,
+and final Reassign remains unavailable until its required arguments are bound.
+If the application tries to emit the final mutation without a required helper
+ID, that is a construction failure. The declaration determines which case
+applies; the renderer must not guess.
+
+An inspection action set could look like:
+
+#+begin_src clojure
+{:claim
+ {:availability :available
+  :binding-ref claim-binding-ref}
+ :cancel
+ {:availability :unavailable
+  :reason :policy/not-offered}
+ :reassign
+ {:availability :needs-input
+  :entry-binding-ref helper-selection-binding-ref
+  :required-inputs #{:helper-id}}}
+#+end_src
+
+The references resolve to admitted objects. A plain map with these fields is not
+sufficient. Reasons must obey disclosure policy; a disabled button must not leak
+a private Membership or Organization fact.
+
+Preparation validates the complete required action set, including actions that
+will not be rendered. A hidden action cannot conceal a malformed required
+binding. Separately, application acceptance compares the intended capability
+catalog against representative eligible scenarios. Tests derived only from the
+buttons that happened to render cannot detect a missing product action.
+
