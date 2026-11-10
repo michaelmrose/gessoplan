@@ -1956,6 +1956,15 @@ just the data. A familiar shape, a token supplied by the browser, or a tag sayin
 =:authoritative= is not enough to admit it. Admission follows the trusted
 acquisition contract from Part II.
 
+The evidence must relate the *executed* read to its effective query meaning,
+including parameters after trusted validation, authorization/visibility
+conditions, selected projection, actual returned coverage and read basis. A
+declared route, correct result shape, or successful HTTP response is not by
+itself proof that the installed handler ran the declared query or returned a
+complete authorized result. A reused cached/singleflight projection needs its
+own justified provenance, read-scope compatibility and current disclosure
+permission; reuse does not grant a broader scope or a newer frontier.
+
 *** Query meaning and completeness
 
 Entity contents and aggregate membership are different scopes. A Request card
@@ -1978,7 +1987,11 @@ One page can satisfy a requirement for that page under a stable query/cursor
 contract. It cannot satisfy a complete-board requirement merely by carrying a
 sufficiently recent token. A set of separately acquired pages establishes a
 complete common snapshot only when the paging contract supplies that stronger
-relationship.
+relationship. In particular, page windows gathered under different query
+parameters, visibility permissions, cursor generations or incompatible bases
+cannot be combined into a complete result by counting rows. Changing sort
+order may change page membership, even when it does not change the underlying
+authorized relation. A valid empty page is not automatically an empty board.
 
 *** Opaque progression and comparison judgments
 
@@ -1998,6 +2011,14 @@ equality of untrusted bytes is still just equality of bytes. An advancement
 witness must be admitted from a provider capable of establishing that relation
 and bound to its endpoints, scope, incarnation, and relevant contract version.
 Validating the witness map's shape alone does not establish its truth.
+
+An unmet minimum, unavailable provider comparison, incompatible incarnation,
+or unsupported temporal interpretation must not be reported as a satisfactory
+read. The boundary may give a typed unavailable/unsupported verdict or use a
+declared bounded retry/recovery policy; it must not silently drop the required
+frontier, infer a relation from arrival order, or wait forever without a
+contracted resource limit. A proof of progression between token values does
+not itself prove the acquisition's query scope or authorization.
 
 *** Worked example: travel observations with different scopes
 
@@ -2029,6 +2050,39 @@ establish that the combined travel display is one atomic database snapshot, or
 that either offer remains reservable. Booking eligibility remains a current
 authoritative model obligation at the booking boundary.
 
+*** Worked example: HumanHelp board membership versus one Request card
+
+Suppose an authorized board query at admitted basis P17 establishes the
+membership of its particular search/filter selection. A later, correlated
+authoritative operation result or reread at P19 establishes a newer projection
+for Request R, with current lifecycle and authorized active primary
+RequestAssignment. The card may be displayed according to the declared local
+adoption policy while the board still has its P17 membership coverage. The
+actor cannot call this a complete board acquisition through P19; one card
+does not prove inclusion, exclusion, ordering, or absence of all other Requests.
+
+A later P19 full-board acquisition can justify new membership only if the
+actual executed selection, visibility context, temporal interpretation,
+completeness and current admission evidence match that requirement. Even then,
+acquisition is not automatic visible adoption: an advisory Refresh policy may
+require the current owner or user to approve replacing the board. Likewise,
+a successful HTMX response whose target retired or whose swap was denied is
+not evidence that the P19 board was installed. A retained P17 board need not
+become false merely because some other scoped evidence advanced.
+
+*** Paired acquisition and progression acceptance cases
+
+| Admitted observation or construction | Adverse or unsupported counterpart | Required judgment |
+|--------------------------------------+------------------------------------+-------------------|
+| A trusted acquisition executes the admitted query and returns the complete authorized scope at a sufficient basis. | A route capability or structurally valid response is called proof that the installed handler executed that query. | Admit qualified execution/coverage evidence; retain the physical route and query-binding premise otherwise. |
+| A complete Flight 17 seat-map read satisfies its matching Flight requirement. | A newer Hotel 9 read or one newer Flight seat is used to discharge the entire Flight seat map. | Credit only the proven query/coverage scope; preserve the unsatisfied obligation. |
+| A board query returns an admitted complete empty selection. | A denied, failed, partial, unacquired or merely empty page is interpreted as authoritative absence for the complete board. | Establish absence only within the actually successful authorized complete selection. |
+| A page is acquired with a stable query/cursor/basis and its declared page-level coverage. | Pages with changed sort/filter, visibility, snapshot or cursor are concatenated into a claimed complete common board. | Preserve page-scoped evidence; require the stronger coherent completion contract. |
+| A provider establishes a direct, compatible progression witness for the observed read and required basis. | Shape-valid client witness, arrival order, numeric-looking token or unavailable comparison is treated as advancement or established incomparability. | Accept only provider-admitted relations; report unknown/unsupported distinctly. |
+| A read honors the requirement's tenant, principal, temporal scope and minimum basis. | The query falls back to a stale or wrong-time result or silently weakens the requirement on timeout. | Retain an unmet obligation or typed failure, not a false satisfied report. |
+| Cached fragment reuse has a compatible current principal, parameters, scope, basis and disclosure policy. | A shared cached key or singleflight receipt exposes a different principal's result or claims a newer read. | Require source and authorization compatibility; reject unsupported reuse. |
+| An admitted later Request card updates only that card while older board membership remains separately justified. | The later card is used to relabel all board membership current or automatically admit unrelated new rows. | Preserve mixed-scope provenance and the selected adoption policy. |
+| A complete read is permitted and the current owner actually installs it under the declared milestone. | HTTP completion or HTMX swap permission is counted as installed/adopted despite a retired target or cancelled swap. | Credit acquisition and installation/adoption separately according to the actual obligation. |
 *** Requirement satisfaction and safe combination
 :PROPERTIES:
 :CUSTOM_ID: req-progression-combination
