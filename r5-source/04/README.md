@@ -105,13 +105,18 @@ replay, terminal rejection and complete-submission correspondence in
 
 **Whole-part reconciliation, pass 03:** see
 `PART-IV-cross-section-reconciliation-03-durable-work-and-publication.md`.
-Reconciled payment-provider intent/result ownership, postcommit Live
-publication debt, late interest discovery, subscriber bootstrap and
-failure-window recovery in 04.09, 04.10, 04.14 and 04.17. None of
-these passes constitutes whole-part acceptance.
+Reconciled provider-result work, postcommit Live publication,
+late interest discovery, and failure-window recovery.
 
-**Next:** reconcile backend/FX effect qualification and full installed
-writer/worker/route coverage with the downstream acquisition and
-adoption guarantees, including Part III's durable workers and Part
-VIII's HumanHelp policy. Continue one bounded revision per `next`
-without premature whole-part candidate acceptance.
+**Whole-part reconciliation, pass 04:** see
+`PART-IV-cross-section-reconciliation-04-installed-execution-coverage.md`.
+Clarified checked FX plan versus effective submitted transaction,
+active handler and worker bindings, independently evidenced backend
+writer coverage, and invalidation after deployment changes across
+04.04, 04.05, 04.10, 04.11 and 04.17. **None of these passes grants
+whole-Part-IV acceptance.**
+
+**Next:** reconcile scope/progression/actual installation and browser
+adoption end to end with the Part III/Part VIII semantics, then
+complete remaining cross-part and whole-part acceptance obligations
+in separate bounded revisions.

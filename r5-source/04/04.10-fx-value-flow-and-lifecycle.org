@@ -20,7 +20,9 @@ data. The machine's original invocation argument and its subsequent state
 outputs are distinct value categories. A later step must receive needed
 invocation values explicitly, through a declared retained-value binding or
 other admitted value path; it cannot assume that the ambient context silently
-accumulated them. The same applies to graph or multistate resolvers. A capability's presence in context does not extend its lifetime or widen
+accumulated them. The same applies to graph or multistate resolvers.
+
+A capability's presence in context does not extend its lifetime or widen
 its authority. Authentication state captured at entry does not freeze mutable
 authorization unless that temporal policy is explicitly part of the contract.
 The trusted invocation boundary owns capability provenance: an untrusted input
@@ -86,12 +88,24 @@ fresh acquisition are different operations. Retrying notification must never
 re-execute the original authoritative mutation merely to make an observer
 current.
 
+Every submitted effect path—including an exceptional fallback, deferred FX
+continuation and worker retry—must be admitted for the **actual complete**
+transaction and its trusted caller/worker authority. A registered step graph
+does not establish which callbacks or transaction options were used by the
+installed runtime. The selected checker can derive the effect before issuing
+an executor, enforce a final gate immediately before backend submission, or
+admit a qualified opaque implementation premise. It cannot claim full
+transaction correspondence merely because the initial step order is valid.
+Likewise, a worker's legitimate recovery of a publication item authorizes the
+promised delivery effect, not an unrelated replay of the earlier domain write.
+
 Retryable backend callbacks must not contain unprotected external effects.
 Clock and random values used in semantic decisions need declared sampling and
 retry semantics. A clock or randomness facility is an ambient capability; its
 particular sampled value is a semantically relevant result whose origin and
-reuse across retries must be explicit. Ordinary Clojure functions and macros may implement these
-steps, but any opaque effect footprint remains an explicit contract premise.
+reuse across retries must be explicit. Ordinary Clojure functions and macros
+may implement these steps, but any opaque effect footprint remains an explicit
+contract premise.
 
 *** Post-commit delivery debt
 :PROPERTIES:
