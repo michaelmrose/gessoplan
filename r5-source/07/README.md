@@ -2,10 +2,10 @@
 
 **Disposition:** The preferred R5 Part VII was initially split losslessly
 into fifteen natural Org units. That initial source/publication matched
-Git blob `55c0c46f8ccf97b2ed6d61a3a7e1aeeca876f6a7`. Sections **07.01–07.14** have completed substantive R4-preservation
+Git blob `55c0c46f8ccf97b2ed6d61a3a7e1aeeca876f6a7`. Sections **07.01–07.15** have completed substantive R4-preservation
 and Gesso-source correspondence review, recorded in their numbered audits.
-Section 07.15, whole-Part-VII reconciliation, and independent
-candidate acceptance **remain outstanding**. All nine original Part VII
+Whole-Part-VII reconciliation and independent candidate acceptance
+**remain outstanding**. All nine original Part VII
 `CUSTOM_ID` anchors remain unchanged.
 
 R4 (`main`) Part VII, 5,038 newline-split lines, is the preservation
@@ -46,7 +46,7 @@ no internal `***` section, table, code block, quote or requirement
 anchor was split. The smallest source is 35 original lines and the
 largest 191; those counts describe the **initial split**, not subsequent
 revisions. The current fifteen units reconstruct the
-**272,903-character**, **4,040-line**
+**287,524-character**, **4,251-line**
 Part VII publication exactly, retaining all nine original anchors.
 
 ## Assembly and verification
@@ -81,13 +81,13 @@ respective real evidence. Ordinary Clojure and explicit raw HTMX
 remain legitimate under their separate contracts; checked managed
 semantics must never silently downgrade.
 
-Review **one numbered unit per `next`**. For that unit, compare
-R4 (`main`) and the stronger R5 starting point, inspect relevant
-Gesso source and available tests, preserve normative future goals,
-add its `07.xx-r4-preservation-audit.md`, rebuild the publication,
-verify anchors/Org structure/cross-part joins and commit the bounded
-change. After all fifteen units, perform a separate whole-Part-VII
-reconciliation and then independent reviewed-candidate acceptance.
+The **fifteen numbered sectional reviews are complete**. Each compared
+R4 (`main`) and the stronger R5 starting point, inspected relevant
+Gesso source and available tests, preserved normative future goals,
+added a `07.xx-r4-preservation-audit.md`, and rebuilt the publication.
+The next distinct work item is **whole-Part-VII reconciliation** of
+cross-section consistency and complete R4 preservation; only after that
+comes **independent reviewed-candidate acceptance**.
 Do not mark Part VII accepted merely because this exact split passed.
 
 **Current accepted parts:** I–VI, each a reviewed R5.1 candidate.
@@ -168,5 +168,14 @@ structural/production/product acceptance, actual HumanHelp positive controls,
 XTDB backend qualification, source-bound change impact, seven evidence levels
 and eighteen positive/adversarial histories retain explicit physical premises.
 
-**Next:** review **07.15 — Whole-Application Security and Construction Invariant**,
-including source authority and the final cross-layer requirement.
+**07.15 review:** see `07.15-r4-preservation-audit.md`. The final
+whole-application security invariant now preserves R4's trusted
+runtime/model authority boundary, explicit physical-writer threat model,
+nonpromotion of reports/artifacts into permission, command and browser
+recovery, seven cross-layer interpretation conditions, and sixteen
+positive/adversarial histories.
+
+**Next:** perform **whole-Part-VII reconciliation** across 07.01–07.15,
+including the combined R4 preservation inventory, interface consistency,
+conflicting assumptions and scope. Independent Part VII reviewed-candidate
+acceptance follows separately; do not mark Part VII accepted yet.
