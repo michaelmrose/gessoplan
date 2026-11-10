@@ -1,12 +1,13 @@
 # R5.1 sectional source — Part VII, Whole-Application Construction
 
-**Disposition:** Lossless initial editorial split prepared. The preferred R5
-Part VII and the pre-split R5.1 publication are byte-identical (Git blob
-`55c0c46f8ccf97b2ed6d61a3a7e1aeeca876f6a7`). The fifteen numbered
-Org sources below exactly reconstruct the unchanged canonical Part VII.
-All nine original Part VII `CUSTOM_ID` anchors, heading and block content
-remain unchanged. **No substantive R4 preservation review or candidate
-acceptance for Part VII has been performed yet.**
+**Disposition:** The preferred R5 Part VII was initially split losslessly
+into fifteen natural Org units. That initial source/publication matched
+Git blob `55c0c46f8ccf97b2ed6d61a3a7e1aeeca876f6a7`. Section **07.01**
+has now completed a substantive R4-preservation and Gesso-source
+correspondence review, recorded in `07.01-r4-preservation-audit.md`.
+Sections 07.02–07.15, whole-Part-VII reconciliation, and independent
+candidate acceptance **remain outstanding**. All nine original Part VII
+`CUSTOM_ID` anchors remain unchanged.
 
 R4 (`main`) Part VII, 5,038 newline-split lines, is the preservation
 baseline. R5 (`r5`) Part VII, 1,625 newline-split lines, is the preferred
@@ -44,7 +45,10 @@ The first unit includes the Part VII root heading, metadata and the first
 second-level section. Later files begin at a natural `**` heading;
 no internal `***` section, table, code block, quote or requirement
 anchor was split. The smallest source is 35 original lines and the
-largest 191; the initial split introduces no normative edits.
+largest 191; those counts describe the **initial split**, not subsequent
+revisions. The current fifteen units reconstruct the
+**110,844-character**, **1,770-line**
+Part VII publication exactly, retaining all nine original anchors.
 
 ## Assembly and verification
 
@@ -60,8 +64,8 @@ Run `python3 script/assemble_r5.py --write` when normative sources
 change: it rebuilds Parts I–VII and the combined
 `output/gesso-plan-v5.org`, incorporating unchanged Parts VIII–XII.
 Neither operation proves semantic correctness or application runtime
-conformance. The initial split was independently checked using exact
-GitHub-fetched source concatenation against the unchanged publication.
+conformance. The initial split and the 07.01 revised publication were
+independently checked by exact GitHub-fetched source concatenation.
 The local Python assembler and Gesso JVM/Node/Chromium/XTDB tests
 were not run during this repository-editorial step.
 
@@ -90,6 +94,16 @@ Do not mark Part VII accepted merely because this exact split passed.
 **Current accepted parts:** I–VI, each a reviewed R5.1 candidate.
 Parts VII–XII and full-plan acceptance remain open.
 
-**Next:** substantive review of **07.01 — Whole-Application
-Realization and Preflight Closure**, including R4 preservation,
-application claims, effect coverage and the Gesso preflight contract.
+**07.01 review:** see `07.01-r4-preservation-audit.md`.
+The opening scope now preserves R4's three distinct application
+claims; real generated-browser, trusted-route, execution-provider,
+initial-Live and post-commit acquisition closure; and the distinction
+between known structural defects, genuinely dynamic authority,
+unaccounted effect writers and actual installed/served enforcement.
+Ten paired positive/adverse histories make this acceptance nonvacuous.
+Gesso's canonical Biff/HTML preflight path and its explicit escape
+boundaries are recorded as inspected source evidence.
+
+**Next:** review **07.02 — Application Definition and ApplicationAssembly**,
+including source-owned assembly derivation, exact identity, phase
+ordering, closed registries and the real Gesso construction boundary.
