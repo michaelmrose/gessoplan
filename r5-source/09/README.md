@@ -1,19 +1,24 @@
 # R5.1 sectional source — Part IX, Compositional Certification
 
-**Disposition:** Initial **lossless split complete**. The preferred `r5`
-Part IX and the `r5.1` publication are identical at the beginning of
-this work (Git blob `664f55a081af84b1da502ffa019ccdeb4b58f355`). The sixteen files below
-reconstruct the historically named canonical publication
-`gesso-unified-design-canonical-r4-09-compositional-certification.org` byte-for-byte. No normative text, headings, examples,
-proof rules, identifiers, link targets or whitespace were changed.
-The canonical publication is derived output, not a second source
+**Disposition:** **ACCEPTED as the R5.1 reviewed normative design candidate**,
+after sixteen substantive section reviews, whole-part reconciliation and a
+separate editorial acceptance decision. The initial lossless split was
+byte-identical to the preferred `r5` Part IX (original blob
+`664f55a081af84b1da502ffa019ccdeb4b58f355`); that initial split
+did not change normative text, headings, examples, identifiers or whitespace.
+Subsequent source reviews deliberately improved the finished-system design.
+The sixteen editable files still reconstruct the canonical publication
+`gesso-unified-design-canonical-r4-09-compositional-certification.org`
+byte-for-byte. The publication is derived output, never a second source
 to edit independently.
 
 **Review status:** **09.01–09.16 substantively reviewed** against R4,
 Gesso v1622 and accepted Parts I–VIII, with individual source decisions
-recorded in all sixteen numbered preservation audits. **Whole-Part-IX reconciliation complete;
-independent editorial acceptance still pending.** Parts I–VIII are accepted
-R5.1 design candidates; this is not evidence of a completed runtime/proof system.
+recorded in all sixteen numbered preservation audits.
+**Whole-Part-IX reconciliation and independent editorial candidate
+acceptance complete.** Parts I–IX are accepted R5.1 design candidates;
+this is not evidence of a completed Gesso runtime/proof system or
+the independently accepted HumanHelp product.
 
 **R4 preservation baseline:** `main` Part IX,
 5201 lines, 15 second-level topics.
@@ -264,7 +269,19 @@ changing their semantic obligations. Publication, anchors, block pairing
 and cross-part links require readback validation of the committed tree.
 The reconciliation is *not* a new formal or runtime test result.
 
-**Next:** Perform **independent Part IX reviewed-candidate acceptance**
-against all sixteen revised sections, the preservation audits, whole-part
-reconciliation and Parts I–VIII; repair any blocking contradiction before
-acceptance. Parts X–XII and final whole-plan reconciliation remain open.
+**Independent Part IX reviewed-candidate acceptance:** see
+`PART-IX-cross-section-acceptance.md`. The separate editorial challenge
+accepted Part IX as a coherent timeless normative design target, with
+source-derived proof completeness, genuine scoped assumption discharge,
+non-forgeable admitted categories, actual source-to-host correspondence,
+real HumanHelp Claim and independent product acceptance all retained
+as separately testable requirements. Current Gesso implementation,
+production physical/refinement proof, HumanHelp product completeness,
+external checker meta-soundness and distributed failure guarantees are
+*not* accepted by this editorial decision.
+
+**Next:** Begin **Part X — Formal Correspondence and System Boundaries**
+with a lossless natural sectional split of its preferred `r5` publication
+into a new `r5-source/10` source set, preserving exact output, stable
+anchors, links and Org structure before substantive R4/Gesso comparison.
+Parts X–XII and final twelve-part reconciliation/acceptance remain open.
