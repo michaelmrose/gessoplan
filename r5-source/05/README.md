@@ -4,10 +4,12 @@
 Part V is complete. All thirteen sections 05.01–05.13 have received
 substantive R4-preservation and Gesso-correspondence reviews, recorded
 in their respective `05.xx-r4-preservation-audit.md` files.
-Whole-Part-V reconciliation and independent acceptance are now next.
+Whole-Part-V reconciliation is recorded in
+`05-whole-part-reconciliation.md`. Independent candidate
+acceptance remains the next separate decision.
 The thirteen source units reconstruct
-`gesso-unified-design-canonical-r4-05-provisional-state-and-executable-presentation.org` byte for byte. **Whole-Part-V reconciliation
-and acceptance remain outstanding.** Parts I–IV remain reviewed R5.1
+`gesso-unified-design-canonical-r4-05-provisional-state-and-executable-presentation.org` byte for byte. **Whole-Part-V reconciliation is recorded; independent
+candidate acceptance remains outstanding.** Parts I–IV remain reviewed R5.1
 candidates. The twelve-part plan remains a draft.
 
 R4 `main` is the preservation baseline; R5 `r5` is the preferred
@@ -179,9 +181,15 @@ runtime/assembly/product assurance claims independent, and strengthens
 the existing conformance inventory with a real eligible HumanHelp
 positive-path matrix, non-vacuity controls and evidence/disposition scope.
 
-**Next:** perform one bounded **whole-Part-V reconciliation** across
-05.01–05.13, R4 preserved requirements, Parts I–IV and VI–X,
-and the published Part V joins. Record any repairs and remaining
-acceptance evidence explicitly before an independent Part V
-candidate-acceptance decision. No sectional audit itself certifies
-the whole part or Gesso runtime.
+**Whole-Part-V reconciliation:** see `05-whole-part-reconciliation.md`.
+The reconciled part now has a cross-section evidence/owner ledger,
+an explicit RequestAssignment Claim premise, scoped adopted-board
+progression, and a positive complete-cohort/one-Refresh history.
+The audit records R4 preservation by topic and remaining distinct
+implementation, assurance and product obligations.
+
+**Next:** make an **independent Part V candidate-acceptance decision**
+based on the thirteen sectional audits, whole-part reconciliation,
+published text, actual joins and any remaining material design gaps.
+An accepted timeless plan remains distinct from certification of
+the current Gesso/HumanHelp implementations.
