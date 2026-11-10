@@ -1066,21 +1066,46 @@ Once preparation succeeds, view code can remain ordinary Hiccup:
        [:span.action-status "Claim is temporarily unavailable."])]))
 #+end_src
 
-This example's Claim preparation contract admits available, unavailable, and
-deferred variants. Its final mutation has no input-collection phase; an
-unexpected needs-input result is a contract mismatch, not an implicit nil.
-Construction failure is raised by preparation/validation before this view can
-serve an incomplete active control.
+This example's Claim preparation contract admits available, policy-unavailable
+(as =:unavailable= in this illustrative view API), and deferred variants. A
+deferred result has a declared prerequisite and recovery path; it is not a
+missing plan disguised as a temporary UI state. The final Claim mutation has
+no input-collection phase; an unexpected needs-input result is a typed contract
+mismatch, not an implicit nil or enabled empty form. By contrast, an explicitly
+authored Reassign *entry* may have a complete helper-selection flow even while
+its final mutation still needs an eligible selected target. Construction
+failure is raised by preparation/validation before this view can serve an
+incomplete active control. A hidden required action remains subject to
+the declared preparation and application-acceptance checks.
 
 The renderer derives routes, HTMX attributes, command-wire fields, plan and
 artifact references, correlation, and progression handling from the assembly.
 A view author does not repeat these details in strings. If required metadata is
-missing, the renderer reports the exact missing edge or emits an explicitly
-non-executable unavailable affordance where the declared policy permits it.
+missing, the renderer reports the exact missing edge and rejects incomplete
+managed construction. An explicitly non-executable unavailable affordance
+is permitted only when the *declared semantic policy* selected that
+availability outcome with a complete non-executable rendering contract.
+It is not a catch-all fallback for missing plan, route, artifact, command
+binding, or browser runtime. The failing path cannot emit an otherwise
+active physical request.
 
 Semantic identity is preserved through rendering. Binding, encoding, and
 transport selection may elaborate an operation but cannot silently substitute
-another operation or weaken its required protocol. An opaque encoded binding is
+another operation or weaken its required protocol. A valid pre-serialization
+Hiccup annotation records the author's intended semantic identity, but cannot
+by itself prove that the *physical* browser request matches it. The checked
+surface must join the actual method, concrete route, target/submitter behavior,
+plan, artifact and required transport to the assembled operation. Additional
+= hx-get=, =hx-put=, native form submission, form overrides, or conflicting
+string/keyword render attributes may create a second or ambiguous request
+even when a canonical button's semantic metadata remains intact. The
+complete inspected physical request coordinates must be compatible with the
+declared mode; one marked request does not exempt sibling or alternate
+requests.
+
+The framework may retain in-process Hiccup metadata for pre-serialization
+inspection; that metadata does not automatically survive HTML serialization
+or authenticate anything returned by the browser. An opaque encoded binding is
 not necessarily authenticated, and authentication of its bytes would still not
 establish current model authorization.
 
@@ -1106,7 +1131,11 @@ Gesso constructs or admits stronger semantic values at the boundary with enough
 information. Web developers should not have to hand-assemble proof wrappers to
 render an ordinary button. In-process admission discipline prevents accidental
 misuse; it is not a sandbox against a determined author with arbitrary trusted
-host access.
+host access. A received operation identifier, observed-basis claim, plan
+fingerprint, command identifier or encoded client value is input under its
+declared trust contract, not an execution credential. Trusted server-side
+operation resolution, authenticated principal, current domain guards and
+qualified command-outcome disclosure remain independent obligations.
 
 *** Raw HTMX and presentation freedom
 
@@ -1117,8 +1146,15 @@ realization or a precise non-executable failure/unavailability state.
 
 An ordinary route still obeys server authentication and model safety. It must
 not occupy a route reserved for a managed operation as a way to bypass its
-protocol. Declaring fewer client guarantees does not authorize direct
-unprotected writes.
+protocol. This prohibition concerns the *physical* method and route, including
+a native form's actual action and submitter override, not only the presence
+of =:choreo/op= metadata. A view may intentionally use raw HTMX on a separate,
+legitimate route, or an explicitly admitted non-optimistic realization of
+an operation when its own contract is complete; it may not use either path
+to bypass an operation's required protected server-side model semantics.
+Declaring fewer client guarantees does not authorize direct unprotected
+writes. A malformed managed request must not silently become raw HTMX
+because its metadata was lost during a render or swap.
 
 Views own text, element choice, semantic CSS, icons, layout, ARIA, pending
 labels, and how provisional or authoritative states look. They must not
@@ -1127,23 +1163,63 @@ policy. They display the decisions made by the admitted model/runtime contract.
 
 Status must be understandable without relying only on color or motion.
 Keyboard activation, form submission, disabled/busy semantics, and duplicate
-activation handling must match the declared entry policy. Disabling a button
-alone is not the framework's command deduplication mechanism.
+activation handling must match the declared entry policy. Loading and
+provisional treatment must not be falsely announced as authoritative
+incorporation or adopted current state. An available action and a complete
+input-collection entry must remain operable using the declared keyboard,
+focus and accessible-status path; a policy-hidden, deferred or failed
+construction must not retain an accidental active native/HTMX submit path.
+Disabling a button alone is not the framework's command deduplication
+mechanism, nor does an =aria-disabled= or =aria-busy= marker provide server
+authentication, an actual pending-command lock or transaction-current
+permission.
 
 *** Assembly obligations and diagnostics
 
 An enabled managed control creates obligations for its complete path: operation,
 choreography, projected plan, loaded browser artifact, transport, trusted server
 entry, model realization, outcome mapping, acquisition, and presentation.
-Part VII checks these before serving, including dynamically generated surfaces.
-Its later position in this document does not permit serving incomplete controls
-until a future check runs.
+Part VII checks these *before each relevant surface is served*, including
+dynamically generated surfaces. Its later position in this document does
+not permit serving incomplete controls until a future check runs.
+
+Actual dynamically rendered Hiccup is checked against the admitted
+ApplicationAssembly at the serialization boundary, so a newly eligible branch
+cannot bypass preflight merely because it was absent from a sample snapshot.
+The result is scoped to that actual rendering and the trusted serving path
+that invokes the guard. It does not enumerate all possible Clojure branches,
+prove that every deployed server entry used that wrapper, or validate arbitrary
+pre-serialized HTML without an appropriate enforcement boundary. Subsequent
+asset, route, deployment or binding changes require fresh applicable
+admission; a prior successful check is not permanent authority.
 
 Errors preserve source component, operation, role/subject when disclosable,
-expected binding/plan/capability, and the missing or incompatible edge. Missing
-plans should not collapse into generic malformed HTML errors. Diagnostics must
-also preserve the difference between policy unavailability and implementation
-failure.
+expected binding/plan/capability, and the missing or incompatible edge, with
+physical request method and route where relevant. Missing plans should not
+collapse into generic malformed HTML errors. Diagnostics must preserve the
+difference between policy unavailability, input collection, deferral, and
+implementation failure. Public-facing errors disclose only permitted reasons;
+private repair reports may carry the fuller source and correspondence context.
+
+*** Paired rendered-affordance and no-downgrade cases
+
+The following cases distinguish a checked, useful view from a Hiccup-shaped
+certificate that has not yet been connected to an actual physical operation.
+
+| Eligible positive history | Adverse or incomplete history | Required evidence |
+|---------------------------+-------------------------------+-------------------|
+| A prepared Claim binding renders a single managed button whose actual POST path, plan, artifact and trusted entry all match the assembled Claim operation. | The same annotated button also emits an alternative =hx-get= or an overriding native submitter action into another route. | Validate *each* physical request coordinate, not merely the existence of canonical metadata on the node; reject any unadmitted extra or alternate request. |
+| An ordinary HTMX interaction uses its declared non-Choreo route, while a separate managed Claim uses its exact registered semantic route. | A raw =hx-post= or native form submits to a managed Claim route without an admitted =:choreo/op= operation, or the managed metadata disappears during rendering. | Preserve raw HTMX as a valid option, but fail closed on the assembled semantic route collision and missing managed identity. |
+| A prepared manager Reassign entry opens its complete input-collection form and, after selecting a distinct eligible helper, prepares the final guarded Reassign. | A hidden final Reassign lacks target input, but rendering silently replaces it with ordinary HTMX or counts a permanently disabled selector as feature completion. | Treat complete =:needs-input= entry and complete final mutation separately; reject construction failure and independently test eligible positive product behavior. |
+| An accessible Claim button displays provisional pending status while C42's incorporation or canonical installation remains unestablished. | A green button, busy marker, or local success animation is used as proof of command confirmation, current authority, or server-side deduplication. | Display only admitted provisional knowledge, and require separate command and physical evidence for stronger claims. |
+| A dynamically rendered, user-specific Claim branch is checked under the current assembled application before its Hiccup is serialized. | A snapshot-only scan is treated as exhaustive, or another deployed raw/pre-serialized HTML path bypasses the actual guard. | State exactly which rendered occurrence and served path were checked; require full deployed entrypoint coverage for broader certification rather than inventing it. |
+
+A successful positive case must exercise the intended browser and trusted
+server entry under the actual operation contract. A negative test must
+reach the physical collision, altered request, malformed construction,
+or missing-admission boundary it claims to test, not merely be rejected
+earlier by unrelated fixture data.
+
 
 ** Clojure and ClojureScript execution
 :PROPERTIES:

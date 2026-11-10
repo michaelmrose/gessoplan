@@ -1,9 +1,9 @@
 # R5.1 sectional source — Part V, Provisional State and Executable Presentation
 
 **Disposition:** lossless structural preparation of preferred R5
-Part V is complete. Sections 05.01–05.06 have received substantive
+Part V is complete. Sections 05.01–05.07 have received substantive
 R4-preservation and Gesso-correspondence reviews, recorded in their
-respective `05.xx-r4-preservation-audit.md` files. 05.07–05.13
+respective `05.xx-r4-preservation-audit.md` files. 05.08–05.13
 remain unreviewed.
 The thirteen source units reconstruct
 `gesso-unified-design-canonical-r4-05-provisional-state-and-executable-presentation.org` byte for byte. **Whole-Part-V reconciliation
@@ -126,7 +126,15 @@ It requires a real eligible HumanHelp manager-directed Reassign path and
 independent product-capability coverage, rather than accepting hidden
 or incomplete actions as successful implementations.
 
-**Next:** audit and revise `05.07-view-api-affordances-and-assembly.org`
-against R4, accepted Parts I–IV, reviewed 05.01–05.06, and Gesso's
-current Hiccup/HTMX/runtime assembly boundaries. One `next`
+**05.07 review:** see `05.07-r4-preservation-audit.md`.
+The view contract now checks physical requests, not only retained Hiccup
+semantic metadata; preserves explicit raw HTMX; isolates accessible
+presentation from command authority; and limits dynamic preflight to
+the actually covered rendering and serving path. Five paired
+positive/adverse cases expose route collisions, submitter overrides,
+Reassign entry versus final mutation, and deployment-coverage gaps.
+
+**Next:** audit and revise `05.08-clojure-cljs-execution-and-state-ownership.org`
+against R4, accepted Parts I–IV, reviewed 05.01–05.07, and Gesso's
+portable adapter, browser shell and correspondence tests. One `next`
 remains one bounded revision.
