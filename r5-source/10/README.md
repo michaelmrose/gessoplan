@@ -12,7 +12,7 @@ is derived output, not an independent second source.
 accepted Parts I–IX and Gesso v1622, with numbered preservation audits.
 All twenty numbered sectional audits are complete. The Part X whole-part
 R4/R5.1 reconciliation is recorded in `PART-X-cross-section-reconciliation.md`;
-separate editorial acceptance remains outstanding.
+separate editorial acceptance is recorded in `PART-X-cross-section-acceptance.md`.
 No current Gesso/HumanHelp implementation certificate is implied.
 
 **R4 preservation baseline:** `main` Part X, to be compared during each
@@ -383,5 +383,21 @@ published Part X now contain the same additional 10.20 paragraph.
 Published Part X contains **8021 newline-split lines**
 and **364684 characters** after this amendment.
 
-**Next:** Conduct the **separate Part X independent editorial acceptance gate**.
-Parts XI–XII and full twelve-part R5.1 acceptance remain open.
+**Part X independent editorial acceptance:** see `PART-X-cross-section-acceptance.md`.
+A distinct source-based review of the R4 contract and revised Part X
+challenged thirteen high-risk semantic-to-production joins, nine
+loss-prone R4 preservation themes, the accepted Parts I–IX, and
+release/implementation distinctions in Parts XI–XII. All were accepted
+as explicitly conditional *future-system design obligations*, not
+as assertions of completed proof, installed Gesso/HumanHelp or
+tested distributed behavior. The accepted Part X publication remains
+**8,021 newline-split lines / 364,684 characters**, its twenty
+sources reconstruct the publication, all six original Org IDs
+remain and the twelve-part link audit has 87 unique anchors,
+84 uses and no unresolved links. The separate response-flow
+product decision and all implementation evidence gaps remain open.
+
+**Next:** Begin **Part XI — Release and Completion**, by losslessly
+splitting the preferred R5 publication into natural reviewable R5.1
+sources before one-section-at-a-time R4/code-informed revisions.
+Part XII and final full-plan acceptance remain open.
