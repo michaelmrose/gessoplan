@@ -1847,6 +1847,62 @@ because they are present in a production document.
 The empty search matches the adopted cohort. No match means no visible adopted
 row matches; it does not assert that the database has no matching Request.
 
+ 
+*** The adopted-cohort search contract and its current realization
+
+The search index is an *already authorized projection*, not a
+second Request model and not a backdoor query. For each current
+viewer the index may contain only approved display/search
+fields from the admitted Request, RequestAssignment and
+User projections. Whether a field is drawn visibly or only
+used to decide matches does not change its disclosure
+classification: a match against an otherwise undisclosed
+email or phone can reveal that information. Identity,
+scope and current authorization changes revoke the
+applicable retained search projection, not just visible
+card markup.
+
+A selected portable normalizer fixes whitespace trimming,
+case folding and Unicode/locale behavior on every host
+that implements the transformation. A ClojureScript
+search and Clojure server renderer must produce the same
+membership and order for the same qualified rows and
+options; JS and JVM case conversion are not assumed
+universally identical for all possible Unicode inputs
+without a tested contract. Typed unsupported characters
+or normalization differences must be reported/handled
+by that contract rather than silently expanding a match.
+
+The current =example.board/search-match?= uses
+trim/lowercase and substring search over Request ID,
+status, title, details, location detail and display
+User name/email/phone. =visible-rows= filters and
+sorts production-backed data. This is useful
+existing presentation functionality. But the
+current =example.views/search-control= performs
+debounced =GET= against the example search route;
+=example.app/search-requests= renders the list
+from =example.live/request-list-query=, whose
+=board/board-data= recomputes production-backed
+rows. Under the selected 08.04/08.06 policy,
+that *fresh collection read* may silently adopt
+remote work that was still advisory-only.
+The finished system must transform the admitted
+cohort locally or through a correctly retained,
+owner/principal/scope-bound server projection.
+HTMX server rendering itself is not disallowed.
+
+Each search edit has a presentation generation.
+If an earlier server response or scheduled
+client effect arrives after a later edit,
+it cannot restore the old search or install
+an older filtered result. An empty result
+means "no matches among the adopted permitted
+Requests"; when membership is incomplete or
+its continuity unknown, the message makes
+that limit clear rather than claiming
+that no matching Request exists in XTDB.
+
 *** Ordering is a single explicit key
 
 “Mine” means requested by the authenticated viewer or assigned to that viewer
@@ -1877,9 +1933,59 @@ JavaScript numbers. Unknown order options are rejected or normalized through the
 explicit option schema before this function runs. A malformed creation time is
 a projection error, not silently the Unix epoch.
 
+ 
+The current Clojure presenter derives an epoch
+millisecond value only for a Java =Instant=;
+=instant-epoch-milli= returns =0= for a
+malformed/missing temporal value, and
+=created-sort-value= negates a valid epoch
+for newest-first. This is a bounded
+implementation detail of the current JVM
+board, **not** a portable browser sort
+contract or compliant malformed-data
+diagnostic. The finished projection
+validates the declared source timestamp,
+constructs comparable portable newest/
+oldest keys without overflow or host
+representation assumptions, and preserves
+the Request-ID tie breaker. Zero is a
+legitimate date coordinate in some
+representations, not a safe error sentinel.
+
 “Unclaimed” is a model-derived open/unassigned category. A terminal Request with
 no active assignment does not become unclaimed. Multiple independent sort passes
 must not accidentally change which option is primary.
+
+ 
+The current =example.board/row-sort-key=
+conditionally constructs a lexicographic
+vector of mine-first, unclaimed-first,
+creation key and Request ID; this is
+a sound source-level direction.
+The product must still test *both*
+priority flags together, exact ties,
+missing authenticated viewer,
+and valid terminal/open assignment
+distinctions. An absent viewer must
+never match an absent requestor or
+assignment ID. For ordinary board
+sorting, "mine" is a production-backed
+viewer relationship; it does not
+authorize Claim, Reassign, details
+or protected reads. "Unclaimed"
+requires the model's actual open/
+unassigned meaning, not simply
+the absence of an active helper
+on a terminal Request.
+
+Order of transformations is declared:
+authorized adopted cohort, terminal
+visibility, local search, primary/
+secondary sort groups, temporal key,
+canonical identity. A filter does
+not mutate adopted cohort membership;
+a changed order does not grant
+new authoritative read permission.
 
 *** Defaults, drafts, and updates
 
@@ -1894,6 +2000,53 @@ not restore options captured when a slow request started. Initial loading,
 explicit scope navigation, and user-requested reset have their own documented
 initialization behavior.
 
+ 
+*** Form and asynchronous presentation ownership
+
+The options dialog has a *draft* distinct
+from the applied values. Done commits
+the whole compatible normalized draft
+as one local presentation action; Cancel,
+Escape and dismissal must not leak partial
+option changes. The selection remains
+visible, keyboard-operable and
+persistently reflected in the controls
+after permitted rerenders. Unknown sort
+variants can normalize to documented
+defaults only when the accepted option
+schema allows that; a hostile
+authorization, Request or progression
+field submitted with the form is not
+a presentation option.
+
+Current =example.views/board-options-form=
+renders newest/oldest, mine-first,
+unclaimed-first and terminal controls
+through a server-side HTMX POST,
+and preserves search via =hx-include=
+of the stable form. Its Done action
+is real. These are valuable UI
+building blocks, but a round-trip
+that computes fresh board state does
+not automatically meet the selected
+local-only adoption or draft/Cancel
+behavior under concurrent updates.
+The source-level =board_test.clj=
+exercises isolated filter/sort cases,
+not every browser interaction.
+
+Typing search is a bounded, cancelable
+presentation effect (the current
+example declares a 250 ms HTMX
+keyup/search trigger). Late callbacks
+from old form/card resource instances
+are excluded by the current owner.
+Refreshing after a search begins
+must reapply the *current* search
+to newly and legitimately adopted
+board facts, not overwrite it
+with the request's captured text.
+
 Local state may preserve which Request details are open, focus, caret, scroll
 anchor, and bounded unsubmitted text. It may not preserve old authoritative
 status, helper assignment, removed command capabilities, or obsolete target and
@@ -1904,6 +2057,45 @@ as the board heading or the next logical control. A local draft tied to that
 Request must be labelled as no longer attached to an available target or retained
 in its separate permitted draft surface. It cannot cause the old card to be
 resurrected.
+
+ 
+*** Continuity is physical restoration, not authority
+
+The current =example.live/request-list-client-continuity=
+requests Gesso scroll anchoring, focus/
+caret and single-open native
+=<details>= restoration using stable
+card/accordion keys. The Request card
+really renders a Gesso accordion over
+production Request IDs and displays
+model-owned details. This establishes
+a meaningful implementation of the
+continuity *configuration*, not
+evidence that every real HTMX swap
+correctly restores selected details,
+focus and scroll. The real browser
+acceptance suite must exercise a
+same-Request replacement and an
+actual retirement/removal, observing
+the physical DOM result.
+
+Restoration is admitted only when the
+same authorized Request and compatible
+new card/fragment owner survive.
+A terminal filter may hide a card
+without deleting its admitted cohort
+membership; a Location change, loss
+of read authority or authoritative
+absence may retire the card entirely.
+In that case details and old action
+bindings are not restored, and focus
+moves to a safe existing control.
+Captured scroll or selected text
+cannot bring hidden protected
+content back into the DOM. An open
+accordion alone is not permission
+for a fresh model read or for a
+provisional command to continue.
 
 ** Details, response interaction, and accessible feedback
 
@@ -1916,6 +2108,41 @@ new single-Request projection under its own grant. Its implementation must state
 which card/details observations it adopts and how it preserves board membership
 and outstanding board obligations. It is not an unrestricted collection refresh.
 
+ 
+*** Details projection, disclosure and scoped current reads
+
+The default details panel uses the
+authorized Request projection already
+owned by the card; opening or closing
+it does not call =request.core=,
+advance the cohort, change status,
+or make a domain submission.
+It does not implicitly disclose
+email/phone or private Location data
+that the signed-in viewer was not
+allowed to receive. Any separately
+labeled "Get current details" affordance
+requires a trusted, current
+single-Request acquisition grant,
+read-time authorization and
+progression/owner checks. It may
+supersede that Request's details
+observation while leaving unrelated
+board membership and pending remote
+advisories untouched.
+
+An inaccessible Request need not
+reveal whether it was deleted,
+moved or made private. The
+application follows the selected
+non-disclosing failure branch
+unless the viewer has permission
+to distinguish those states.
+A previously expanded card remains
+subject to current disclosure and
+resource retirement when a
+new response is served.
+
 Controls must be reachable by keyboard, have meaningful labels, and expose
 pending, accepted, rejected, and unknown states without requiring color alone.
 Updates-available and completion announcements are coalesced so repeated advisory
@@ -1927,6 +2154,39 @@ Technical identities and proof vocabulary belong in diagnostics, not ordinary
 product instructions. A user should see “We couldn't confirm whether your claim
 succeeded; check again” with a recovery action, rather than a raw progression
 requirement or resource-instance error.
+
+ 
+Accessibility acceptance includes
+native form/dialog focus order,
+keyboard opening/closing of
+=<details>=, visible focus,
+discernible search/order labels,
+logical focus fallback on removed
+cards, state text and permitted
+announcements for advisory,
+pending, accepted, rejected and
+unknown outcomes. Screen-reader
+notifications are coalesced or
+limited by the selected accessibility
+policy; repeated SSE wakes
+must not become repeated disruptive
+announcements. The ordinary user
+gets a next action, not a theorem,
+command ID or internal XTDB basis.
+A timed or disconnected response
+retains a visible retry/recovery
+action rather than a spinner
+that can never settle.
+
+The current source renders labeled
+search and options controls and
+native semantic accordion elements.
+The presence of aria labels,
+Gesso field components or a
+continuity declaration is
+bounded code evidence, not a
+completed keyboard/screen-reader
+browser acceptance result.
 
 *** Independent response-flow contract
 :PROPERTIES:
@@ -1944,6 +2204,51 @@ channel, or another defined interaction. Those alternatives have different
 persistence, privacy, authority, and recovery obligations. This specification
 does not invent a message entity, messaging provider, or contact-disclosure rule.
 
+ 
+*** The product decision and assurance boundary
+
+The response flow must be selected
+by an independent HumanHelp product
+decision, with a versioned acceptance
+profile and a designated model/UI
+owner. This section does not infer
+a requirement to create messages,
+send email/SMS, reveal contact
+information or acquire a new
+Request domain role merely from
+the name "response flow". In
+particular, an existing =Claim=
+button does *not* automatically
+resolve this decision. The product
+may select "respond by claiming"
+only if its independently authored
+user-intent and outcome contract
+explicitly says that this is the
+full promised response experience.
+
+The selected flow's permission,
+storage and external-effect
+assumptions must be checked against
+production =request.core= and
+the relevant public Organization,
+Membership and User contracts.
+If it is non-mutating, an
+authorized read or local
+disclosed interaction may
+satisfy it under a separately
+testable observable outcome.
+If it mutates Request or
+emits external communication,
+it needs actual source-owned
+semantic identity, guarded
+model or qualified external
+effect, durable/uncertain
+outcome semantics and
+valid real-browser execution.
+The example cannot introduce
+a parallel response store just
+to satisfy this milestone.
+
 The selected contract must define:
 
 - the user's intent, eligible actor, Request preconditions, and actual affordance;
@@ -1960,6 +2265,98 @@ complete labelled user journey and explicitly establish that no separate
 capability is promised. If it chooses a different action, Claim tests cannot
 stand in for it. An unchosen contract is reported as unresolved, not passed,
 not silently dropped, and not counted as a framework failure.
+
+ 
+*** Independent product acceptance for the selected response
+
+Before accepting the full HumanHelp
+rich-board milestone, record the
+selected response-flow option,
+eligible actor, observable user
+intent, source/model owner,
+specific control and permitted
+outputs, whether and what changes,
+recovery/deduplication and
+privacy/disclosure assumptions.
+Then execute at least one
+eligible real-browser response
+with fresh authorized
+observation of the declared
+outcome, plus an ineligible/
+concurrent/uncertain path
+appropriate to the selected
+flow. If selected behavior
+contains a communication
+effect, its recipient and
+delivery evidence must be
+explicit; a toast is not a
+delivered message.
+
+An unresolved product decision
+is *not* a Gesso type failure
+or a license to remove the
+independent requirement. It
+is a named HumanHelp product
+acceptance blocker. The
+application's other
+capabilities can receive
+their narrower individual
+passing evidence, while
+the complete product profile
+remains unaccepted until
+selection and real outcome
+verification.
+ 
+*** Positive and adversarial interaction histories
+
+The following cases exercise real
+production-backed adopted rows
+and the physical board, not a
+test-only copied array presented
+as the entire product. Source
+unit evidence and real browser
+evidence remain separate.
+
+| History | Required result |
+|---------+-----------------|
+| The viewer types a trimmed, mixed-case search that matches an adopted Request title. | Filter the admitted cohort with the selected normalization, without a new domain mutation or unauthorized collection acquisition. |
+| Alice remotely Creates R, Bob has not pressed Refresh, and Bob types R's exact title. | Do not reveal R through search; retain the remote advisory even if the database knows R. |
+| The current server search route performs a fresh Request collection query. | Count it as a new acquisition under the explicit-grant policy, not an innocent transformation of retained adopted data. |
+| A search term matches a private User email not disclosed to Bob. | Never reveal the match via result inclusion, DOM index, error detail or debug presentation. |
+| Search text changes from 'hel' to 'help' while the first HTMX request is still running. | Discard the earlier response on arrival; current text and its compatible result win. |
+| Empty search on a complete admitted cohort. | Show the whole permitted current cohort subject to terminal visibility and selected order. |
+| Empty search on an incomplete/unknown cohort. | Do not claim no Requests exist or counts are globally authoritative. |
+| Newest, then oldest are selected over Requests with distinct valid creation timestamps. | Display the exact inverse temporal ordering with deterministic Request-ID ties. |
+| Both mine-first and unclaimed-first are enabled. | Mine is the primary category, unclaimed secondary, then selected time and identity; verify actual rendered order. |
+| A viewer ID is missing while requestor/assignment IDs are absent. | Do not classify absent identifiers as 'mine' or derive authorization from sorting. |
+| A terminal Request has no active primary assignment. | Do not classify it as open/unclaimed; hiding or showing it is presentation only. |
+| A creation timestamp is missing or invalid. | Report a source/projection error; never silently treat the Request as epoch zero. |
+| The user changes options in the dialog and presses Cancel or Escape. | Applied search/order/terminal options remain unchanged; drafts do not leak into the board. |
+| The user confirms a valid draft while another remote advisory remains pending. | Apply options locally without acquiring remote state or clearing advisory obligations. |
+| The current Refresh completes after the user has typed another search term. | Reapply the latest compatible local search to the newly admitted projection; no old input restoration. |
+| A details accordion is open when a same-Request valid fragment replacement occurs. | Preserve compatible selected/open state, focus and scroll under the actual surviving owner. |
+| A Request disappears from the allowed scope while its details were expanded. | Retire old card and effects, choose safe focus fallback; do not resurrect protected details. |
+| The user opens details of a currently adopted Request. | Reveal only existing permitted projection, without fetching new Request state or changing domain truth. |
+| The user explicitly selects 'Get current details' for an older card. | Authorize and adopt a scoped read of that Request only, preserving unrelated board membership and advisory debt. |
+| Repeated duplicate advisories arrive while the page is focused. | Provide bounded, accessible updates without repeated disruptive announcements or an auto-refresh. |
+| An unresolved Claim response yields unknown outcome. | Show comprehensible next action and the appropriate command-specific recovery, not an indefinite generic spinner. |
+| HumanHelp has not selected the response-flow contract but Claim happens to work. | Report response-flow product acceptance as unresolved; do not infer that Claim is the selected response journey. |
+| The product explicitly selects 'respond by claiming' and documents the complete user experience. | Exercise its actual labeled real-browser journey, committed model state, rejection and recovery under that independent oracle. |
+| The product instead selects a separate authorized contact interaction. | Require its selected privacy, effect/delivery and observed-outcome evidence; an existing Claim test cannot substitute. |
+
+The rich-board gate requires
+positive and adversarial
+interaction coverage, not
+a permanently hidden controls
+panel or a test that checks
+only the selected option
+labels. Section 08.08 owns
+authentication, read authority
+and Live reconnect; section
+08.09 owns command-specific
+optimistic recovery. Parts VI
+and VII own physical continuity
+and managed output.
 
 ** Authentication, read authority, and context changes
 

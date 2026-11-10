@@ -7,9 +7,9 @@ published Part VIII and `r5` publication had the **same Git blob**
 No normative wording, operation contract, example, heading, table,
 `CUSTOM_ID` or cross-part link was changed.
 
-**Review status:** **08.01–08.06 have completed substantive R4-preservation
+**Review status:** **08.01–08.07 have completed substantive R4-preservation
 and Gesso/HumanHelp source-correspondence review**, recorded in their
-numbered audits. Sections **08.07–08.15**, whole-Part-VIII reconciliation
+numbered audits. Sections **08.08–08.15**, whole-Part-VIII reconciliation
 and independent Part VIII acceptance remain outstanding. Parts I–VII
 are accepted reviewed R5.1 candidates; Parts VIII–XII and full-plan
 acceptance remain open.
@@ -19,7 +19,7 @@ The **R4 preservation baseline** is `main` Part VIII,
 The preferred **R5 architectural predecessor** had
 **1,468 newline-split lines**, 21 second-level headings and
 **92,955 decoded characters** before substantive revision.
-The current fifteen sources reconstruct the **2,606-line**, **161,088-character** Part VIII publication exactly. Length is not
+The current fifteen sources reconstruct the **3,003-line**, **177,218-character** Part VIII publication exactly. Length is not
 evidence that all R4 obligations survive; each numbered
 review must make its own R4/Gesso/HumanHelp comparison.
 
@@ -189,6 +189,14 @@ invalidation remains a gap. One-use Refresh grants, staged OOB installation,
 opaque provider progression, ephemeral notification limits and twenty-two
 positive/adversarial histories are now qualified against source.
 
-**Next:** Review **08.07 — Search, Details, and Response Interaction**,
-including local presentation and portable ordering, keyboard/continuity,
-current disclosure and the unresolved response-flow decision.
+**08.07 review:** see `08.07-r4-preservation-audit.md`.
+Source-owned adopted-cohort search and disclosure, current Clojure HTTP
+requery gap, deterministic portable sort and invalid-timestamp handling,
+real options/draft ownership, Gesso details/focus/scroll continuity,
+accessible state/repair and the deliberately unresolved HumanHelp
+response-flow product decision were reconciled with R4 and code.
+Twenty-four positive/adversarial interaction histories now accompany the spec.
+
+**Next:** Review **08.08 — Authentication, Live, and Recovery**,
+including trusted principal/read authority, connected interest inception,
+publication durability, reconnect gaps and source-backed disclosure.
