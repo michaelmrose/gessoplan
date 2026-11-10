@@ -1,9 +1,9 @@
 # R5.1 sectional source — Part V, Provisional State and Executable Presentation
 
 **Disposition:** lossless structural preparation of preferred R5
-Part V is complete. Sections 05.01–05.10 have received substantive
+Part V is complete. Sections 05.01–05.11 have received substantive
 R4-preservation and Gesso-correspondence reviews, recorded in their
-respective `05.xx-r4-preservation-audit.md` files. 05.11–05.13
+respective `05.xx-r4-preservation-audit.md` files. 05.12–05.13
 remain unreviewed.
 The thirteen source units reconstruct
 `gesso-unified-design-canonical-r4-05-provisional-state-and-executable-presentation.org` byte for byte. **Whole-Part-V reconciliation
@@ -157,7 +157,15 @@ and installation obligations across incompatible-plan retirement.
 Five paired positive/adverse histories qualify compatibility and
 exact packaged deployment evidence.
 
-**Next:** audit and revise `05.11-projection-and-payload-identity.org`
-against R4, accepted Parts I–IV, reviewed 05.01–05.10, and Gesso's
-actual projection, emitted plan/asset and identity correspondence.
-One `next` remains one bounded revision.
+**05.11 review:** see `05.11-r4-preservation-audit.md`.
+The reviewed artifact contract now separates exact per-role and plan-set
+payload identity from source semantic/proof identity, host implementation,
+continuation compatibility and the actually built/served bundle. It states
+injective canonical encoding and role-inventory obligations, and adds five
+positive/adverse cases covering ambiguous encodings, global outcomes,
+fabricated sidecars, stale host bindings and substituted deployed assets.
+
+**Next:** audit and revise `05.12-sidecar-binding-and-noninterference.org`
+against R4, reviewed 05.01–05.11, Gesso's artifact compiler and
+runtime observer implementation, and Parts IX–X proof/diagnostic
+admission boundaries. One `next` remains one bounded revision.

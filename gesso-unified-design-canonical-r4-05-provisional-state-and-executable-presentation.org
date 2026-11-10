@@ -1753,7 +1753,15 @@ A build may use a rich internal representation while checking and projecting.
 The commitment is that production does not execute one machine while verification
 or proof-enabled tests quietly execute a different, richer client machine.
 Compiler transformations still need their stated correspondence; separating the
-sidecar does not eliminate the projection or packaging proof obligation.
+sidecar does not eliminate the projection or packaging proof obligation. The
+build must distinguish an executable plan's *exact bytes/terms* from the
+verified global choreography and its observable outcomes. Multiple distinct
+global subjects may produce identical projected local plans, even for every
+role, while differing in a source-level terminal proposition or other
+unprojected semantic condition. Thus exact plan equality cannot by itself
+authenticate a claimed global theorem, the exact authored source, or a
+complete refinement. Source-specific structural and behavioral correspondence
+are separately checked against the actual admitted global subject.
 
 *** What belongs in each product
 
@@ -1770,6 +1778,15 @@ These products need not be stored as six separate files. Their meanings and
 trust boundaries must remain distinct. In particular, application execution
 cannot depend on a source span or optional explanation object to discover which
 guard it was supposed to run.
+
+One assembled application may contain several roles and independent
+operations, each with its own exact executable identity. The compiled
+plan-set identity and manifest must bind the complete intended *role-to-plan*
+inventory, including role absence/presence and relevant assembly generation.
+An exact match for one browser role cannot certify that a changed server
+role, missing supported operation, or replaced implementation is consistent.
+The plan set is an explicit construction subject, not the application's
+entire behavioral/physical certification.
 
 The executable semantic core and browser coordinator do not accept a diagnostic
 sidecar as a transition input. The conceptual interface is:
@@ -1805,6 +1822,17 @@ The same plan payload can also be bound to different opaque implementations;
 applicable assurance therefore includes the relevant implementation/assembly
 closure, not merely the plan digest.
 
+A named semantic subject, the normalized transitive dependency identity
+described in Part I, a verified source-to-executable correspondence judgment,
+and an executable content digest answer different questions. A proof for one
+global terminal outcome cannot be transferred to a globally different subject
+whose projected executable happens to be the same. Neither can a proof tied
+to an old opaque host-action contract be transferred to a changed implementation
+under the same plan bytes. Runtime locators remain coordinates *of that exact
+emitted plan*. Diagnostic correlation obtains them from the selected transition
+and actual compiler mapping, not from a second execution of a reference
+machine or a nearest-name lookup.
+
 *** Canonical payload identity
 
 The exact identity recipe specifies:
@@ -1817,12 +1845,37 @@ The exact identity recipe specifies:
 - unsupported values and their rejection behavior;
 - excluded self-identifying fields, or an external identity envelope;
 - the digest algorithm and its accepted collision premise;
-- interpretation dependencies bound separately when not included in the payload.
+- interpretation dependencies bound separately when not included in the payload;
+- an explicit domain tag distinguishing a single plan from a role-keyed plan
+  set, a semantic subject, a proof obligation, or packaged asset bytes;
+- injectivity of the supported canonical value encoding up to its declared
+  equivalence relation, including unambiguous type tags, lengths and boundaries;
+- the exact role inventory and ordering-independent role bindings for a plan set;
+- the trusted source of the bytes or terms actually digested, not a caller's
+  assertion that some independently recomputed object was the shipped one.
 
 A printed EDN map is not automatically a canonical encoding. Nil versus absence,
 keyword versus string, list versus vector where meaningful, numeric forms, and
 map/set order require explicit treatment. Host functions and DOM objects cannot
-be silently printed into a supposedly portable canonical digest.
+be silently printed into a supposedly portable canonical digest. The
+canonicalizer must define which scalar classes, Unicode/byte encodings and
+numeric forms belong to the supported domain, and must reject the remainder
+rather than fall back to host-specific =pr-str= output. Distinct admitted
+values must not collide merely because their printable forms, default
+stringification, comparison keys or container iteration order coincide.
+Map keys and set members must have deterministic, unambiguous encodings,
+including when a host compares dissimilar keys or scalars differently.
+The required portable digest should be reproducible on its specified
+platforms from the same canonical value domain; a current JVM-only
+hash implementation is not automatically a complete cross-host codec.
+
+An identity may intentionally ignore metadata that is *not* executable,
+such as source coordinates. Such exclusion must be declared in the identity
+domain and must not discard a guard, event schema, runtime successor,
+semantic interpretation dependency or any other field that affects the
+actual execution. Equal digests mean equality of the explicitly
+identified canonical subject only, subject to the algorithm's collision
+premise; they do not mean semantic equivalence of arbitrary programs.
 
 A convenient design keeps the payload free of its own digest:
 
@@ -1848,9 +1901,41 @@ being computed.
 
 Hashing canonical plan terms is not hashing the emitted JavaScript bundle.
 Packaging must establish which plan set and runtime/implementation closure the
-actual asset contains. A copied or stale generated stamp cannot substitute for
-that relationship. Exact equality of a stamp supplied by two untrusted locations
-is not construction evidence.
+actual asset contains. This requires a checkable relationship from the exact
+admitted plan/role set and current host-action contracts to the built output,
+the emitted asset bytes, and the asset actually served/loaded at the admitted
+entrypoint. Advanced compilation, bundling, stale caches, service-worker
+delivery, alternate script entrypoints, or swapped deployment files may
+invalidate that relationship without changing the original source plan digest.
+Where that physical provenance is unavailable, the correct status is
+unestablished correspondence, not a retroactive change to the executable's
+semantic identity.
+
+A copied or stale generated stamp cannot substitute for that relationship.
+Exact equality of a stamp supplied by two untrusted locations is not
+construction evidence. An exact executable match is a necessary condition
+for sidecar coordinate correlation, not sufficient proof of the sidecar's
+authorship, checker result, assumptions, or installed application correctness.
+A diagnostic sidecar mismatch disables that explanation; it must not disable
+an otherwise independently admitted executable runtime or authorize a
+best-effort locator match.
+
+*** Paired artifact-identity and assembly witnesses
+
+The following cases distinguish legitimate reuse, exact-match diagnostics
+and genuinely applicable proof/deployment evidence.
+
+| Eligible positive case | Adverse or insufficient case | Required result |
+|------------------------+------------------------------+-----------------|
+| Two projections differ only in map insertion order or excluded nonsemantic source-location metadata, and the declared canonical recipe yields equal executable identities. | Meaningful event schema, successor, scalar type or semantic dependency changes but the encoder silently drops it or converts it to an ambiguous printed form. | Stable digests for precisely declared equivalence; distinct executable subjects remain distinct, or unsupported representations fail closed. |
+| A compiler emits an exact role-keyed set and independently binds its verified source semantics and structural correspondence. | The browser plan is unchanged but the server role or global terminal result changes; a browser-role digest alone is used to preserve the old global proof. | Check all intended roles and source/semantic dependency subjects; plan equality does not authenticate global semantic or terminal correspondence. |
+| A diagnostic sidecar names an actual runtime locator of the exact emitted plan and has separately checked issuer, proof claim and premises. | A stale or fabricated sidecar copies the right plan digest but asserts a different theorem, a former coordinate or an unverified proof result. | Match exact payload for coordinate lookup, then separately validate provenance and claim; fail diagnostic attachment closed without changing execution. |
+| Compatible plan versions permit a newly admitted runtime to recover command and presentation obligations while using fresh physical resources. | A plan has a different exact digest but is declared compatible, or the same digest is used to resume an incompatible host/assembly binding. | Compatibility and continuation are independent judgments; different exact identities are not automatically incompatible, and equal digests do not grant continuation. |
+| The manifest binds the emitted browser plan/roles, current handlers and the exact deployed bundle served at the checked route. | A copied build stamp agrees while bundling substituted a stale script, an alternate entrypoint or a changed opaque handler. | Preserve the identity-to-packaging-to-serving chain; do not treat matching untrusted stamps as installed-application certification. |
+
+These are required finished-system positive and adversarial witnesses. A
+digest comparison alone is neither a model proof nor confirmation that
+the installed browser executed the matching plan.
 
 *** Binding sidecars to the actual compilation
 
