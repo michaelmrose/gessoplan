@@ -8,9 +8,9 @@ proof examples, identities, links or Org delimiters were modified.
 `gesso-unified-design-canonical-r4-10-formal-correspondence-and-system-boundaries.org`
 is derived output, not an independent second source.
 
-**Review status:** **10.01–10.13 substantively reviewed** against R4,
+**Review status:** **10.01–10.14 substantively reviewed** against R4,
 accepted Parts I–IX and Gesso v1622, with numbered preservation audits.
-Sections **10.14–10.20** remain for substantive review. Whole-Part-X
+Sections **10.15–10.20** remain for substantive review. Whole-Part-X
 reconciliation and independent editorial acceptance remain outstanding.
 No current Gesso/HumanHelp implementation certificate is implied.
 
@@ -268,5 +268,20 @@ actual limited evidence and nonclaims, and eighteen paired controls.
 Published Part X now contains **6635 newline-split lines**
 and **289048 characters**.
 
-**Next:** Review **10.14 — Enforced Qualification and Runtime Trust**,
-then 10.15–10.20 and whole-Part-X reconciliation.
+**10.14 review:** see `10.14-r4-preservation-audit.md`.
+Preserved R4's concrete same-digest/stale-Membership Clojure example,
+forged-certificate counterexample, cycle/shared-bug/opaque premise
+constraints and optional proof-sidecar noninterference within R5's
+stronger selected-backend qualification and production runtime
+authorization model. Made claim-specific strict admission, pre-effect
+failure enforcement, incident/replay uncertainty, installed
+handler/asset compatibility, proof issuance and sidecar independence
+falsifiable without confusing process-local reports with deployment.
+Twenty-six R4/R5 preservation decisions and eighteen paired
+acceptance controls are recorded against actual Gesso v1622 code
+boundaries and explicit nonclaims. Published Part X now contains
+**6813 newline-split lines** and
+**299095 characters**.
+
+**Next:** Review **10.15 — Validation and Physical Failure Windows**,
+then 10.16–10.20 and whole-Part-X reconciliation.

@@ -12,6 +12,42 @@ admission and exposes the failure. It may preserve safe reads or unaffected
 operations where their premises still hold. It must not silently downgrade the
 same requested claim to “tested.”
 
+**** Qualification state, claim scope, and the first enforcing gate
+
+The selected application assurance profile identifies the *required*
+backend, original-source, runtime and installed-artifact premises for
+each operation and each exported guarantee. Qualification is not a
+permanent attribute of a dependency name: it is evidence applicable to
+a versioned backend, selected lowering, operation and installed assembly
+under explicitly scoped conditions.
+
+At build, startup and the actual protected execution boundary, the
+affected claim is classified from current evidence and current known
+premises. A required qualification that is unavailable, unsupported,
+stale, inconclusive or known to be contradicted cannot be substituted
+with a test receipt, copied success flag, historical certificate or a
+weaker profile while continuing to claim the same guarantee. A strict
+profile must reject admission or a *new* dependent physical effect
+before the boundary it claims to protect. Unaffected operations or
+safe disclosures may remain available only when their own dependency
+closures and authorizations are satisfied. The decision explains the
+first failed premise and permitted recovery path without disclosing
+protected model state.
+
+The precise gate is part of the proof obligation: a startup report
+that is no longer current at request time, a check after an irreversible
+write, or a handler wrapper that is bypassed does not show prevention
+by the real enforcing path. Relevant configuration, handler, backend
+qualification, installed plan or credential changes require the
+corresponding revalidation and coherent replacement/retirement of
+dependent issued execution capabilities. Source fingerprints and
+version stamps detect changes within their declared scope; they do not
+discover unobserved external mutations or authenticate the live host.
+A deliberate lower-assurance application mode may be offered as a
+different requested profile with its own explicit claims and owner
+consent. It is never a silent fallback from mandatory certification.
+
+
 An operational incident may require reconciliation of already submitted commands.
 Stopping new submissions does not undo past commits or turn in-flight outcomes
 into rejections. Command evidence and admitted recovery paths remain available
@@ -25,6 +61,39 @@ The browser is permitted to send arbitrary bytes. It may forge command-looking
 maps, DOM, headers, semantic IDs, certificate-looking objects, roles, principal
 fields, basis tokens, and resource references. Server authority still comes
 from trusted context and current public model policy.
+
+**** An untrusted request cannot carry authority across boundaries
+
+For Claim, the browser may submit a believable command ID, existing
+Request ID, old principal ID, a cached permit, a current-looking
+progression token, and a well-formed proof report. Each remains
+untrusted request data. The actual server derives the current
+authenticated principal from its trusted session boundary; resolves
+the named operation and target through admitted registry and model
+paths; validates semantic argument and command identity bindings;
+and protects dynamic eligibility dependencies in the *actual*
+authoritative incorporation boundary, not only a preparatory read.
+
+Historical command resolution is a separate branch: a compatible
+recorded command may yield a permitted result only after current
+disclosure authorization. Revocation after an already incorporated
+effect does not erase history, but neither does historic success
+authorize another incorporation or another principal's disclosure.
+An inaccessible, absent or ambiguous historical record may leave
+the effect unknown. A copied old permit, a browser-supplied principal,
+or a changed request handler cannot transform that uncertainty into
+authority.
+
+The threat model records which runtime code, modules and database
+credentials are trusted. Neither compiled JavaScript, HTML attributes,
+client validation, a stamped plan, nor a certificate-like map is
+authority over protected server writes or reads. Public interfaces
+must reject same-shaped self-declared “certificates”; persisted
+evidence is inert until independently checked and admitted for the
+current source, premise, issuer and assembly. A matching checked
+route/affordance only proves its bounded construction relation, not
+that every direct entrypoint and privileged writer is mediated.
+
 
 Trusted registries resolve operations; protected reads, command lookups, and
 subscriptions are authorized at their actual boundaries. Artifact signing may
@@ -58,6 +127,35 @@ invalidate every interface theorem. Exact artifact identity, semantic interface
 compatibility, and assembly applicability are checked separately according to
 Parts VII and IX.
 
+**** A stale-but-byte-equal example from R4
+
+The following is an illustrative *pure Clojure data comparison*, not
+an artifact validator, cryptographic check, trusted certificate API or
+current Gesso function:
+
+#+begin_src clojure
+(let [cached {:artifact/id "sha256:91b..."
+              :membership :semantic/membership-M18
+              :assembly :assembly/H42}
+      current {:artifact/id "sha256:91b..."
+               :membership :semantic/membership-M19
+               :assembly :assembly/H43}]
+  [(= (:artifact/id cached) (:artifact/id current))
+   (= (select-keys cached [:membership :assembly])
+      (select-keys current [:membership :assembly]))])
+;; => [true false]
+#+end_src
+
+Even if the bytes were independently verified and the old browser
+asset genuinely still matched, its proof about M18 cannot simply
+serve a changed M19-dependent claim in assembly H43. The checked
+semantic dependency closure and the current installed assembly are
+separate obligations. Conversely, a newly emitted asset may preserve
+a semantically compatible interface without requiring every
+unaffected abstract theorem to be proved again. Both directions
+require a *checked* compatibility decision, not string equality.
+
+
 The browser build receipt binds canonical manifest input, trusted compiler
 identity, emitted plan registry, and actual output bytes. Startup verifies the
 asset that will be served. A manifest string embedded by an arbitrary emitter
@@ -77,6 +175,39 @@ An operation cannot prove its own implementation by declaring its desired
 postcondition. A certificate cannot count itself as its dependency. Recursive
 semantics require an explicit sound fixed-point or induction rule, not a cycle
 of mutually approving reports.
+
+**** Issuer discipline, forged reports, and proof-dependency cycles
+
+A map such as the following is a counterexample to unsound public
+admission, not a valid certificate:
+
+#+begin_src clojure
+{:semantic-id :example/request-claim
+ :valid? true}
+#+end_src
+
+A public checked operation must not be issuable merely by matching
+these field names. Issuance checks the original admitted source,
+independent mandatory obligations and declared proof derivation
+through the relevant checker under its stated trust assumptions.
+An opaque process-local handle can enforce ordinary cooperating-code
+identity and lifetime boundaries, but is not a signature, JVM sandbox,
+durable revocation service, or protection against privileged runtime
+tampering. A copied serialized report, retained weak-reference key,
+or restored printed handle does not reissue authority. A durable
+package is imported as inert input and rechecked for its claimed
+source, type, version, premises and admissibility before use.
+
+Dependency graphs must have source-complete required obligations and
+an acyclic *justification* relation. A certificate cannot be its own
+evidence, and two certificates cannot discharge each other by a
+cycle of asserted equivalences. Legitimate recursion requires a
+separately checked fixed-point or induction rule with its soundness
+premise made explicit. A proof of projection cannot assume precisely
+the projection-preservation judgment it is supposed to establish.
+A theorem under open source/authorization/backend premises remains
+conditional even when the internal derivation is perfectly valid.
+
 
 Source-rechecking, independent negative examples, mutation tests, independently
 implemented checks, external formalization, and actual-boundary integration
@@ -107,6 +238,53 @@ Required admission checks are different: they determine whether construction or
 execution is permitted under the selected profile. Their failure may prevent
 admission. Runtime authorization and currentness checks likewise enforce real
 premises. Noninterference does not require bypassing either kind of gate.
+
+**** Observable noninterference and enforceable failure semantics
+
+For identical admitted source, accepted inputs and environmental
+event history, switching optional diagnostic/proof-tree/trace
+sidecars on or off must preserve semantic transitions, emitted
+authoritative commands, execution identity, and the resulting
+authoritative outcome. Diagnostic code may record redacted
+observations but cannot inject an extra transition, alter a guard,
+modify an effect payload, perform an additional submission, or
+reinterpret an already-started transaction's uncertainty as
+rejection. If an observer fails *after* an effect might have been
+submitted, the authoritative status may remain unknown to that
+observer; neither an automatic retry nor a false rejection follows.
+
+An intentionally required admission checker is not an optional
+sidecar. Its failure must block the relevant protected action at
+the specified pre-effect gate. Likewise, a current authorization
+or read/disclosure check is a real execution premise, not mere
+diagnostic metadata. Optional reports may fail independently
+without claiming that required checks were skipped or that
+authoritative work was undone.
+
+**** Paired enforcement, forgery, and noninterference controls
+
+The finished system must make each relevant boundary independently
+challengeable, with its real positive case and forbidden alternative:
+
+| Admitted positive case | Adversarial case and required boundary |
+|------------------------+----------------------------------------|
+| Qualified selected XTDB backend admits eligible guarded Claim | Changed/failed mandatory backend premise blocks new dependent Claim before its write |
+| Current authorized principal uses an admitted operation | Forged principal, role, token, command binding or certificate map grants no server authority |
+| Compatible historical command is disclosed by current policy | Revoked disclosure or changed argument cannot leak record or cause re-incorporation |
+| Original source and valid issued proof are freshly checked | Copied report or same-shaped map cannot mint an issued value |
+| Acyclic source-complete proof dependencies justify a conclusion | Self-reference, mutually circular certificates and omitted required premise reject |
+| Versioned artifact is verified against the serving bytes and current closure | Same digest claim with changed semantic dependency/assembly cannot reuse stale authority |
+| A fresh checked handler is actually installed and invoked | Retained old handler, raw route or direct writer is not silently certified by the checked route |
+| Rechecked semantic fingerprints preserve valid compatible changes | Relevant rule/premise mutation invalidates; irrelevant formatting alone need not cause proof churn |
+| Optional diagnostic sidecar reports one underlying operation | Disabled, throwing or reordered diagnostic cannot create a second write or change settlement |
+| Required audit/publication is part of the operation contract | Treating it as droppable optional telemetry fails the operation-specific gate |
+
+Positive controls establish nonvacuous permitted work, not merely
+successful rejection. These are prospective verification contracts;
+runtime/XTDB/browser tests in Part X 10.15 must reach the claimed
+physical boundary with independent effect observations and preserve
+unsupported, timeout and unknown classifications distinctly.
+
 
 If durable audit or publication is required for the operation's semantics, it is
 an explicit operation obligation with a failure contract, not an optional
