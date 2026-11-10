@@ -28,53 +28,19 @@ Tests must not require a reason such as “Request exists in another Organizatio
 when the correct response intentionally hides that distinction.
 
  
-*** Actual HumanHelp session provenance and authority attestation
+*** Trusted session provenance and actor consistency
 
-The real =/app= route uses
-=net.humanhelp.middleware/wrap-signed-in=;
-that middleware presently recognizes a
-session =:uid= with a UUID or nonblank
-string shape. A well-shaped identifier
-is not itself proof that a cookie was
-issued through the selected verified
-login flow, that the account remains
-active, or that an alternate context
-field is trustworthy. The complete
-authentication claim must cover the
-real session issuer, signed/correctly
-protected cookie, expiry/revocation,
-middleware order, Biff session
-hydration and current production User
-status. Local fixture injection is
-admissible *only* in an explicitly
-qualified development/test profile.
-
-=example.app/current-user= delegates
-to =client-plumbing/current-user-id=
-and then =user.core/require-user= for
-the display-side User projection.
-=client-plumbing/current-user-id=
-currently prefers explicit
-=:current-user/id=, =:user/id=
-and =[:user :xt/id]= context slots
-over the session =[:session :uid]=
-value, and uses that same function
-for connected-client scope identity.
-Those values must be populated only
-by trusted authenticated middleware
-or cross-checked with the signed-in
-session. Source inspection alone
-does *not* establish that every
-route, plug-in or test fixture
-satisfies this provenance condition.
-A disagreement between a trusted
-session and a later injected actor
-slot must fail or be reconciled
-under a declared, authenticated
-impersonation capability; merely
-preferring the first nonnil
-slot cannot grant another User's
-read or connected-client scope.
+Authenticated principal evidence includes the configured login
+issuer, protected cookie, expiry/revocation, middleware order
+and current production User. All request-context actor slots
+and connected-client recipient identities derive from trusted
+middleware or are cross-checked against the session. Conflicting
+slots must fail unless a separate authenticated impersonation
+capability was explicitly admitted. Development persona fixtures
+are restricted to their declared test profile. UUID shape,
+first nonnil context value and a browser role name are never
+authentication proofs. Current middleware and slot precedence
+remain documented in the 08.08 audit.
 
 Gesso's trusted operation role
 may represent Request authority,
@@ -207,24 +173,12 @@ have been found.
  
 *** The production change graph and the missing writers question
 
-The current =request.core= public
-operations produce model
-transaction plans whose semantic
-=:changes= announce Request
-mutation through Gesso model
-transaction/Live mechanics.
-=example.live/compiled-live=
-declares toolbar/list interests
-bound to a fixed production
-Location. It deliberately
-filters =:created= from
-automatic managed-fragment
-invalidation but still admits
-=:updated= for both, which
-conflicts with R5.1's selected
-all-remote-lifecycle
-advisory-only adoption policy
-as documented in 08.06.
+Production Request transitions issue source-owned semantic change
+intent under the selected publication profile. Managed Live
+invalidation cannot convert a remote lifecycle advisory into an
+ungranted current-collection reread. Relevant RequestAssignment,
+Organization, Location, Membership and user-display/disclosure
+dependencies belong in the source-owned interest/writer graph.
 
 Full application interest
 completeness is not proved
@@ -339,33 +293,10 @@ merge is safe only where
 requirement identity and
 scope genuinely match.
 
-The *current implementation*
-is narrower: =gesso.model.tx=
-passes `:changes` and
-`:emit` to
-=live/transact-and-notify!=
-after preparing a
-guarded Request transaction.
-=example.app/create-request!=
-also performs an explicit
-=send-new-request-advisory-best-effort!=
-after constructing the creator
-response. Neither source
-inspection nor the current
-test fixtures establishes
-an already installed,
-same-transaction durable
-HumanHelp notification
-outbox and recovery worker.
-The source provides useful
-Live publication and
-best-effort connected
-notifications; the final
-atomic intent/persistent
-retry requirement is a
-distinct implementation
-and backend-qualification
-obligation.
+The strong publication profile requires real transaction-coupled
+intent and qualified recovery, not merely a postcommit callback.
+Present Gesso model-notify and HumanHelp best-effort Create
+fanout behavior is separately recorded in the 08.08 audit.
 
 Some deployments may
 instead select a declared

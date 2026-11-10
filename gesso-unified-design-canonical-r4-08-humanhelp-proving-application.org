@@ -1,7 +1,7 @@
 * Part VIII — HumanHelp proving application
 :PROPERTIES:
 :CUSTOM_ID: part-08-humanhelp-proving-application
-:PART_REVISION: 08-20261108
+:PART_REVISION: 08-20261110
 :END:
 
 This part specifies a complete proving application for the contracts in Parts
@@ -22,6 +22,19 @@ In particular, a plain map containing an operation, evidence reference, or
 successful verdict is not an issued executor, admitted observation, or permit.
 
 ** Purpose, scope, and independent claims
+
+The fifteen reviewed units specify one application, not fifteen
+independent implementations. 08.01–08.03 own its production semantics,
+application identity and independently required user capabilities;
+08.04–08.07 own adopted board knowledge, local Create, remote
+advisory/one-use Refresh and user interaction; 08.08–08.10 join
+authenticated authority, Live, command recovery, concrete routes,
+assets and host lifecycle; 08.11–08.14 own assurance/test oracles,
+structural enforcement, connected evidence and resource limits;
+08.15 owns joint acceptance. Parts IV–VI own generic command,
+progression and physical-effect semantics, and Part VII generic
+application assembly. None of these overlapping views creates a
+second Request machine or operation registry.
 
 The immediate application is the HumanHelp example UI, backed by the production
 =net.humanhelp.site.model.*= models. The eventual production UI may consume the
@@ -311,7 +324,7 @@ sections own the full Request lifecycle, selective board
 adoption, one-Refresh policy, response-flow choice and
 concurrency matrices; this initial assembly section does
 not redefine their domain policy or pretend those
-end-to-end capabilities are currently certified.
+end-to-end capabilities have passed independent acceptance.
 
 ** Production model truth and public operation boundaries
 
@@ -728,16 +741,12 @@ it to an anonymous POST. A terminal removal follows authoritative
 membership/absence semantics, not a speculative view-side decision.
 
 A present target-helper selector is necessary but not sufficient for
-Reassign. The example currently composes production-backed target
-Users in =example.board= and renders a real Reassign dropdown and
-prebound operation-specific target actions in =request_card.core=.
-This is better evidence than a permanently unavailable placeholder;
-the authoritative model must nevertheless recheck the actor's exact
-supervisor/administrator role, the selected target's current eligible
-helper/skill status, and the Request's active assignment at commit.
-The menu exposes only permitted User projections, clearly identifies
-the chosen target and required confirmation action, and cannot
-grant manager permission by showing the option.
+Reassign. Target candidates are permitted User projections with an
+explicit target choice and confirmation. Trusted model authority must
+separately recheck the current actor's manager role, the target's
+Membership/helper/skill eligibility and the protected Request's
+current assignment at commit. A dropdown or physical =:helper=
+browser role does not grant model permission.
 
 The canonical real Chromium scenario may exercise Claim, Unclaim,
 Claim again, Mark on the way, Complete, owner Cancel and manager
@@ -1094,24 +1103,12 @@ fields into page attributes. Client-side display metadata remains untrusted as
 input to future server operations.
 
  
-The searchable projection and hidden
-metadata contain only fields the viewer
-may actually receive. The current
-HumanHelp =board/searchable-row-text=
-can compose Request fields plus
-display User names, emails and phones.
-Each included field therefore requires
-an applicable disclosure policy; this
-is a *qualification requirement*, not
-a demonstrated data leak. A search
-index that silently matches a hidden
-email or phone is itself a disclosure
-surface even if no card displays
-that field. Revoked access must
-redact/retire forbidden retained
-content under its security contract,
-not wait indefinitely for a
-user-initiated Refresh.
+Search metadata is itself a disclosure surface. A match on an
+undisclosed email, phone or other restricted identifier can reveal
+private information even if it is never printed on a card. Indexes
+therefore include only permitted display/search fields and are
+retired or redacted when current access is lost. The current
+source's index contents are documented in the preservation audit.
 
 HTMX remains the qualified transport and installation mechanism for authoritative
 updates. The application-specific local presenter uses declared managed effects
@@ -1127,58 +1124,17 @@ neither proves membership nor authorizes reads. The primary browser presenter
 avoids requiring this additional server snapshot service for ordinary options.
 
  
-*** A current source-level gap: server search requeries authority
+*** Search and options preserve admitted membership
 
-The current HumanHelp example already has a
-meaningful production-backed board. In
-=example.board=, =request-rows-for-location=
-uses public Organization/Request/User
-interfaces and includes terminal rows;
-=visible-rows= deterministically searches,
-filters and orders supplied rows.
-The current =example.views/search-control=
-uses an HTMX =GET= search route, and
-=example.app/search-requests= and
-=apply-board-options= rerender Gesso
-fragments. Those fragments call
-=board/board-data=, which invokes
-=request-rows-for-location= again.
-
-That is real implementation of server-side
-filter/sort, **not** yet proof of
-the stronger selected R5.1 adoption
-contract. A newer remote Request may
-be admitted implicitly by a search or
-options response that queried current
-database state even though the user
-never granted a board Refresh. The
-finished plan must fix the admitted
-cohort relationship; it must not
-declare a fresh read to be harmless
-merely because it is read-only.
-
-Either of two implementations is valid:
-
-- A browser-local presenter sorts/searches
-  a previously authorized and admitted
-  collection projection without querying
-  new collection membership.
-- A server presenter transforms a
-  retained, owner/principal/scope-bound
-  collection snapshot, with expiry,
-  retention bounds, current disclosure
-  checks and exact generation binding.
-  When retention is unavailable, it
-  reports typed unavailability or
-  requests a **separately authorized**
-  acquisition; it does not silently
-  fall back to the latest database.
-
-The issue is *what the user has adopted*,
-not whether rendering occurs in Clojure
-or ClojureScript. Keeping HTML and HTMX
-as the primary UI is entirely compatible
-with this future contract.
+The chosen realization may present an admitted browser projection or
+a retained, owner/principal/scope-bound server snapshot. A GET that
+requeries current collection membership is an authoritative acquisition,
+not a harmless local search. It must have a separately authorized grant;
+it cannot silently adopt remote Requests or discharge advisory debt.
+If retained data cannot be used, the renderer reports unavailable or
+offers explicit acquisition, never an unqualified latest-database
+fallback. This is a cohort-adoption rule, not a prohibition on Clojure
+or HTMX rendering. The existing requery path is analyzed in the audit.
 
 *** Mixed observations are explicit
 
@@ -1321,15 +1277,11 @@ discard S's admitted cohort membership, and rendering a second success
 must not erase an earlier unresolved command's recovery reference.
 
 The result area is a normative finished-product design choice.
-The present example renders a success toast and replaces the
-toolbar/list; it does not yet demonstrate a separately owned
-“Your new Request” surface that remains visible when a current
-search filter excludes the new Request. The positive acceptance
-test must type the excluding search *before* creating S, then
-verify S's committed result and visible confirmation *before*
-any filter reset. A dialog closing or a “Request created”
-toast alone does not prove that the filtered-out Request
-is visible as a usable authoritative result.
+When the applied search excludes S, the confirmed creator-local S
+remains independently visible and actionable without resetting
+options or admitting unrelated remote R. Acceptance establishes
+the excluding filter *before* Create and verifies authoritative
+incorporation and a usable visible result, not merely a toast.
 
 If creation succeeds outside the current cohort's declared bounds, the result
 area can still show the permitted result under its own scope. It must label the
@@ -1354,15 +1306,10 @@ a visible toast or a current postcommit card does not
 by itself prove the historical outcome for original
 command C19.
 
-The creator response and remote notification are separate
-postcommit responsibilities. The current source intentionally
-constructs the creator's response before calling
-=send-new-request-advisory-best-effort!=, excludes the
-authenticated creator from the other-client broadcast,
-and logs advisory fanout failure without changing
-committed authority into an HTTP rejection. This is a
-valuable concrete prevention of false retries *when
-response construction succeeds*.
+The creator response and other-client notification are distinct
+postcommit responsibilities. Correlated creator settlement may
+succeed independently of advisory delivery. An advisory failure
+does not reverse a committed Request or authorize blind retry.
 
 There are additional histories to qualify. If Request
 incorporation succeeds but creator-response rendering
@@ -1376,8 +1323,8 @@ fails after response construction, the creator's success
 need not be revoked, but the other participants'
 notification/reconnect obligations must have a declared
 durable or otherwise honestly weaker recovery policy.
-The existing best-effort log is not evidence of universal
-eventual remote delivery.
+A best-effort error log does not establish durable or unconditional
+remote delivery.
 
 An application with reliable postcommit delivery
 records the necessary publication intent and
@@ -1455,20 +1402,12 @@ whose resulting toolbar/list quietly imports remote Requests that
 the user had not chosen to adopt. A committed basis P19 can justify
 the creator's S read while membership for unrelated R remains Q17.
 
-The current HumanHelp example takes a meaningful but **different**
-path: =example.app/create-request!= calls production
-=request.core/create=, composes its committed progression,
-then =create-request-success-response= recomputes
-=board-fragments= and returns toolbar/list OOB replacements
-through =views/create-request-success=. This demonstrates
-production-backed read-your-writes and a visible successful
-Create response in selected HTTP integration tests. It
-does **not** independently establish selective *single-member*
-adoption: the fresh whole-board query can include an unrelated
-remote R. The target design must introduce admitted selective
-membership or a separately authorized full-board grant,
-rather than labelling the existing response as complete
-compliance.
+The creator's accepted operation permits a scoped affected-Request
+result; it does not authorize a whole-board reread that imports
+unrelated remote R. A full-board result is permitted only under
+its own admitted query and adoption grant. The view must preserve
+prior adopted members and outstanding remote debt. The present
+whole-board OOB source behavior remains documented in the audit.
 
 A board fragment and toolbar may need different membership/count
 evidence. A newer card for S does not make the toolbar's total,
@@ -1553,24 +1492,15 @@ offline browser; the enforceable guarantee is current checks at subsequent
 trusted disclosures and mutations, plus the declared supported-client behavior.
 
  
-*** R4's open lifecycle policy is now an explicit R5.1 decision
+*** Remote lifecycle remains advisory-only
 
-R4 settled remote Create as advisory-only but deliberately left
-remote *lifecycle* adoption open. R5.1 selects a stricter HumanHelp
-product policy: remote Claim, Unclaim, On-the-way, Complete, Cancel
-and Reassign are also advisory until a user's explicit Refresh.
-The choice is a normative end-state requirement, not a statement
-that existing Live invalidation already satisfies it.
-
-The present =example.live/compiled-live= excludes =:created=
-from managed toolbar/list invalidation but still routes =:updated=
-changes into both managed fragments. Gesso can then cause
-automatic authoritative rereads and replacement. Thus the
-current implementation does **not** establish the final
-advisory-only policy for remote lifecycle updates.
-HumanHelp must change the application routing/adoption
-contract while preserving semantic change publication
-for local command resolution and permitted recovery.
+The selected end-state rule requires explicit Refresh for both
+remote Create and remote lifecycle changes, even to already-visible
+Requests. Managed Live invalidations must not bypass this
+user-grant policy through automatic collection rereads. Local
+affected-Request recovery and trusted revocation are separate.
+The history of R4's choice and the current routing mismatch
+are recorded in the 08.06 preservation audit.
 
 A remote change to an already visible T must not reveal
 its new helper, terminal status or Request content through
@@ -1608,7 +1538,7 @@ pending indicator alone never creates that intent. The UI reports whether it is
 refreshing, waiting for another explicit action, or unable to refresh.
 
  
-*** Refresh permission and current implementation scope
+*** Refresh permission and issued read scope
 
 A single user gesture creates a bounded grant with an
 authenticated principal, current Location/collection scope,
@@ -1627,16 +1557,10 @@ Expired, incompatible or cancelled grants preserve
 unresolved advisory debt and allow an explicitly
 admitted retry.
 
-The current =example.views/refresh-form= renders an HTMX
-POST with =hx-include= of board-state form inputs.
-=example.app/refresh-requests!= calls the production-backed
-=board-fragments= and returns toolbar/list OOB updates.
-That establishes a concrete, user-triggered board query,
-but the inspected route does not show a one-use grant,
-captured requirement ledger, admitted response owner
-or completed physical installation certificate.
-A refresh button plus HTTP 200 is not sufficient evidence
-of the stronger R5.1 protocol.
+A rendered Refresh control and successful HTTP/OOB response do not
+alone establish a one-use grant, captured requirement ledger,
+correct response owner or qualified physical adoption. Each
+stage needs its own source and observable acceptance evidence.
 
 A deployment may choose a bounded automatic repair/drain policy instead, but that
 is an explicit product-policy change with its own budgets, expiry, and acceptance
@@ -1693,14 +1617,10 @@ If one component needs a separately scoped
 acquisition, the result is labelled *partial*
 rather than falsely presenting a common snapshot.
 
-The current =example.live/request-toolbar-query=
-sets =:pending-open-count 0= and =:stale? false=.
-Those are presentation defaults, not evidence
-that a later advisory was covered or that OOB
-installation completed. Replacing the advisory
-surface with non-stale markup cannot itself
-consume a read grant or discharge a semantic
-Refresh obligation.
+Toolbar =:pending-open-count= and =:stale?= are presentation
+fields, not semantic coverage evidence. Replacing advisory
+markup cannot discharge incomplete, later or uninstalled
+Refresh obligations or create a new query grant.
 
 *** Race rules
 
@@ -1848,7 +1768,7 @@ The empty search matches the adopted cohort. No match means no visible adopted
 row matches; it does not assert that the database has no matching Request.
 
  
-*** The adopted-cohort search contract and its current realization
+*** The adopted-cohort search and disclosure contract
 
 The search index is an *already authorized projection*, not a
 second Request model and not a backdoor query. For each current
@@ -1873,24 +1793,11 @@ without a tested contract. Typed unsupported characters
 or normalization differences must be reported/handled
 by that contract rather than silently expanding a match.
 
-The current =example.board/search-match?= uses
-trim/lowercase and substring search over Request ID,
-status, title, details, location detail and display
-User name/email/phone. =visible-rows= filters and
-sorts production-backed data. This is useful
-existing presentation functionality. But the
-current =example.views/search-control= performs
-debounced =GET= against the example search route;
-=example.app/search-requests= renders the list
-from =example.live/request-list-query=, whose
-=board/board-data= recomputes production-backed
-rows. Under the selected 08.04/08.06 policy,
-that *fresh collection read* may silently adopt
-remote work that was still advisory-only.
-The finished system must transform the admitted
-cohort locally or through a correctly retained,
-owner/principal/scope-bound server projection.
-HTMX server rendering itself is not disallowed.
+Search and option changes transform the viewer's currently adopted,
+authorized cohort rather than silently making a newest-database
+collection query. Server-rendered HTML/HTMX remains valid when it
+operates on a retained qualified cohort. This invariant needs
+real-browser acceptance, including outstanding remote advisory.
 
 Each search edit has a presentation generation.
 If an earlier server response or scheduled
@@ -1934,49 +1841,22 @@ explicit option schema before this function runs. A malformed creation time is
 a projection error, not silently the Unix epoch.
 
  
-The current Clojure presenter derives an epoch
-millisecond value only for a Java =Instant=;
-=instant-epoch-milli= returns =0= for a
-malformed/missing temporal value, and
-=created-sort-value= negates a valid epoch
-for newest-first. This is a bounded
-implementation detail of the current JVM
-board, **not** a portable browser sort
-contract or compliant malformed-data
-diagnostic. The finished projection
-validates the declared source timestamp,
-constructs comparable portable newest/
-oldest keys without overflow or host
-representation assumptions, and preserves
-the Request-ID tie breaker. Zero is a
-legitimate date coordinate in some
-representations, not a safe error sentinel.
+Malformed or absent timestamps are typed projection errors, not
+valid epoch-zero values. Temporal sort keys must be portable across
+selected hosts with deterministic identity tie breakers and no
+unqualified overflow or representation assumptions. The JVM
+algorithm currently inspected belongs in the section audit.
 
 “Unclaimed” is a model-derived open/unassigned category. A terminal Request with
 no active assignment does not become unclaimed. Multiple independent sort passes
 must not accidentally change which option is primary.
 
  
-The current =example.board/row-sort-key=
-conditionally constructs a lexicographic
-vector of mine-first, unclaimed-first,
-creation key and Request ID; this is
-a sound source-level direction.
-The product must still test *both*
-priority flags together, exact ties,
-missing authenticated viewer,
-and valid terminal/open assignment
-distinctions. An absent viewer must
-never match an absent requestor or
-assignment ID. For ordinary board
-sorting, "mine" is a production-backed
-viewer relationship; it does not
-authorize Claim, Reassign, details
-or protected reads. "Unclaimed"
-requires the model's actual open/
-unassigned meaning, not simply
-the absence of an active helper
-on a terminal Request.
+Sorting acceptance covers simultaneous priority flags, ties,
+missing authenticated viewer and the distinction between
+open/unassigned and terminal Requests. Missing viewer IDs must
+not compare as "mine"; a viewer-related grouping is never
+business authorization for Claim or protected disclosure.
 
 Order of transformations is declared:
 authorized adopted cohort, terminal
@@ -2061,23 +1941,10 @@ resurrected.
  
 *** Continuity is physical restoration, not authority
 
-The current =example.live/request-list-client-continuity=
-requests Gesso scroll anchoring, focus/
-caret and single-open native
-=<details>= restoration using stable
-card/accordion keys. The Request card
-really renders a Gesso accordion over
-production Request IDs and displays
-model-owned details. This establishes
-a meaningful implementation of the
-continuity *configuration*, not
-evidence that every real HTMX swap
-correctly restores selected details,
-focus and scroll. The real browser
-acceptance suite must exercise a
-same-Request replacement and an
-actual retirement/removal, observing
-the physical DOM result.
+Real-browser continuity tests must observe physical scroll,
+focus/caret and native =<details>= restoration for valid
+same-Request replacement and safe retirement. Declaring a
+key or listener is not proof of completed restoration.
 
 Restoration is admitted only when the
 same authorized Request and compatible
@@ -2178,15 +2045,11 @@ retains a visible retry/recovery
 action rather than a spinner
 that can never settle.
 
-The current source renders labeled
-search and options controls and
-native semantic accordion elements.
-The presence of aria labels,
-Gesso field components or a
-continuity declaration is
-bounded code evidence, not a
-completed keyboard/screen-reader
-browser acceptance result.
+Real-browser accessibility tests exercise labels, keyboard
+interaction, dialogs, accordion state, focus fallback and
+announced pending/unknown/repair outcomes. ARIA attributes
+or a declared continuity contract alone cannot establish
+that a real browser or assistive interface behaves correctly.
 
 *** Independent response-flow contract
 :PROPERTIES:
@@ -2388,53 +2251,19 @@ Tests must not require a reason such as “Request exists in another Organizatio
 when the correct response intentionally hides that distinction.
 
  
-*** Actual HumanHelp session provenance and authority attestation
+*** Trusted session provenance and actor consistency
 
-The real =/app= route uses
-=net.humanhelp.middleware/wrap-signed-in=;
-that middleware presently recognizes a
-session =:uid= with a UUID or nonblank
-string shape. A well-shaped identifier
-is not itself proof that a cookie was
-issued through the selected verified
-login flow, that the account remains
-active, or that an alternate context
-field is trustworthy. The complete
-authentication claim must cover the
-real session issuer, signed/correctly
-protected cookie, expiry/revocation,
-middleware order, Biff session
-hydration and current production User
-status. Local fixture injection is
-admissible *only* in an explicitly
-qualified development/test profile.
-
-=example.app/current-user= delegates
-to =client-plumbing/current-user-id=
-and then =user.core/require-user= for
-the display-side User projection.
-=client-plumbing/current-user-id=
-currently prefers explicit
-=:current-user/id=, =:user/id=
-and =[:user :xt/id]= context slots
-over the session =[:session :uid]=
-value, and uses that same function
-for connected-client scope identity.
-Those values must be populated only
-by trusted authenticated middleware
-or cross-checked with the signed-in
-session. Source inspection alone
-does *not* establish that every
-route, plug-in or test fixture
-satisfies this provenance condition.
-A disagreement between a trusted
-session and a later injected actor
-slot must fail or be reconciled
-under a declared, authenticated
-impersonation capability; merely
-preferring the first nonnil
-slot cannot grant another User's
-read or connected-client scope.
+Authenticated principal evidence includes the configured login
+issuer, protected cookie, expiry/revocation, middleware order
+and current production User. All request-context actor slots
+and connected-client recipient identities derive from trusted
+middleware or are cross-checked against the session. Conflicting
+slots must fail unless a separate authenticated impersonation
+capability was explicitly admitted. Development persona fixtures
+are restricted to their declared test profile. UUID shape,
+first nonnil context value and a browser role name are never
+authentication proofs. Current middleware and slot precedence
+remain documented in the 08.08 audit.
 
 Gesso's trusted operation role
 may represent Request authority,
@@ -2567,24 +2396,12 @@ have been found.
  
 *** The production change graph and the missing writers question
 
-The current =request.core= public
-operations produce model
-transaction plans whose semantic
-=:changes= announce Request
-mutation through Gesso model
-transaction/Live mechanics.
-=example.live/compiled-live=
-declares toolbar/list interests
-bound to a fixed production
-Location. It deliberately
-filters =:created= from
-automatic managed-fragment
-invalidation but still admits
-=:updated= for both, which
-conflicts with R5.1's selected
-all-remote-lifecycle
-advisory-only adoption policy
-as documented in 08.06.
+Production Request transitions issue source-owned semantic change
+intent under the selected publication profile. Managed Live
+invalidation cannot convert a remote lifecycle advisory into an
+ungranted current-collection reread. Relevant RequestAssignment,
+Organization, Location, Membership and user-display/disclosure
+dependencies belong in the source-owned interest/writer graph.
 
 Full application interest
 completeness is not proved
@@ -2699,33 +2516,10 @@ merge is safe only where
 requirement identity and
 scope genuinely match.
 
-The *current implementation*
-is narrower: =gesso.model.tx=
-passes `:changes` and
-`:emit` to
-=live/transact-and-notify!=
-after preparing a
-guarded Request transaction.
-=example.app/create-request!=
-also performs an explicit
-=send-new-request-advisory-best-effort!=
-after constructing the creator
-response. Neither source
-inspection nor the current
-test fixtures establishes
-an already installed,
-same-transaction durable
-HumanHelp notification
-outbox and recovery worker.
-The source provides useful
-Live publication and
-best-effort connected
-notifications; the final
-atomic intent/persistent
-retry requirement is a
-distinct implementation
-and backend-qualification
-obligation.
+The strong publication profile requires real transaction-coupled
+intent and qualified recovery, not merely a postcommit callback.
+Present Gesso model-notify and HumanHelp best-effort Create
+fanout behavior is separately recorded in the 08.08 audit.
 
 Some deployments may
 instead select a declared
@@ -3901,8 +3695,7 @@ production Request models and the actual Gesso/HTMX/Biff/XTDB realization.
 The test architecture is a collection of independently meaningful
 judgments, not one green build, a second hand-authored application, or an
 unqualified claim that a rendered page proves a database invariant. The
-accepted requirements describe the finished Gesso/HumanHelp system even
-where existing test suites provide only a narrower precursor.
+accepted requirements describe the finished Gesso/HumanHelp system without treating a narrower implemented test subset as complete evidence.
 
 *** Independent test layers and evidence owners
 
@@ -4554,9 +4347,8 @@ complete product still requires the real
 HumanHelp Chromium lifecycle and two-client
 board/Refresh behavior of 08.12. Section
 08.14 joins connected evidence and operational
-limits; this section specifies enforcement,
-not a claim that the currently inspected
-sources have already passed every test.
+limits; this section specifies enforcement; independent acceptance must
+establish whether the selected build actually passed the tests.
 ** Connected evidence and operational limits
 
 HumanHelp is useful as evidence for Gesso only when its real

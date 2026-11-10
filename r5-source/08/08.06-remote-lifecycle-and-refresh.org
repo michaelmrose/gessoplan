@@ -32,24 +32,15 @@ offline browser; the enforceable guarantee is current checks at subsequent
 trusted disclosures and mutations, plus the declared supported-client behavior.
 
  
-*** R4's open lifecycle policy is now an explicit R5.1 decision
+*** Remote lifecycle remains advisory-only
 
-R4 settled remote Create as advisory-only but deliberately left
-remote *lifecycle* adoption open. R5.1 selects a stricter HumanHelp
-product policy: remote Claim, Unclaim, On-the-way, Complete, Cancel
-and Reassign are also advisory until a user's explicit Refresh.
-The choice is a normative end-state requirement, not a statement
-that existing Live invalidation already satisfies it.
-
-The present =example.live/compiled-live= excludes =:created=
-from managed toolbar/list invalidation but still routes =:updated=
-changes into both managed fragments. Gesso can then cause
-automatic authoritative rereads and replacement. Thus the
-current implementation does **not** establish the final
-advisory-only policy for remote lifecycle updates.
-HumanHelp must change the application routing/adoption
-contract while preserving semantic change publication
-for local command resolution and permitted recovery.
+The selected end-state rule requires explicit Refresh for both
+remote Create and remote lifecycle changes, even to already-visible
+Requests. Managed Live invalidations must not bypass this
+user-grant policy through automatic collection rereads. Local
+affected-Request recovery and trusted revocation are separate.
+The history of R4's choice and the current routing mismatch
+are recorded in the 08.06 preservation audit.
 
 A remote change to an already visible T must not reveal
 its new helper, terminal status or Request content through
@@ -87,7 +78,7 @@ pending indicator alone never creates that intent. The UI reports whether it is
 refreshing, waiting for another explicit action, or unable to refresh.
 
  
-*** Refresh permission and current implementation scope
+*** Refresh permission and issued read scope
 
 A single user gesture creates a bounded grant with an
 authenticated principal, current Location/collection scope,
@@ -106,16 +97,10 @@ Expired, incompatible or cancelled grants preserve
 unresolved advisory debt and allow an explicitly
 admitted retry.
 
-The current =example.views/refresh-form= renders an HTMX
-POST with =hx-include= of board-state form inputs.
-=example.app/refresh-requests!= calls the production-backed
-=board-fragments= and returns toolbar/list OOB updates.
-That establishes a concrete, user-triggered board query,
-but the inspected route does not show a one-use grant,
-captured requirement ledger, admitted response owner
-or completed physical installation certificate.
-A refresh button plus HTTP 200 is not sufficient evidence
-of the stronger R5.1 protocol.
+A rendered Refresh control and successful HTTP/OOB response do not
+alone establish a one-use grant, captured requirement ledger,
+correct response owner or qualified physical adoption. Each
+stage needs its own source and observable acceptance evidence.
 
 A deployment may choose a bounded automatic repair/drain policy instead, but that
 is an explicit product-policy change with its own budgets, expiry, and acceptance
@@ -172,14 +157,10 @@ If one component needs a separately scoped
 acquisition, the result is labelled *partial*
 rather than falsely presenting a common snapshot.
 
-The current =example.live/request-toolbar-query=
-sets =:pending-open-count 0= and =:stale? false=.
-Those are presentation defaults, not evidence
-that a later advisory was covered or that OOB
-installation completed. Replacing the advisory
-surface with non-stale markup cannot itself
-consume a read grant or discharge a semantic
-Refresh obligation.
+Toolbar =:pending-open-count= and =:stale?= are presentation
+fields, not semantic coverage evidence. Replacing advisory
+markup cannot discharge incomplete, later or uninstalled
+Refresh obligations or create a new query grant.
 
 *** Race rules
 

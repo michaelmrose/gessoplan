@@ -190,24 +190,12 @@ fields into page attributes. Client-side display metadata remains untrusted as
 input to future server operations.
 
  
-The searchable projection and hidden
-metadata contain only fields the viewer
-may actually receive. The current
-HumanHelp =board/searchable-row-text=
-can compose Request fields plus
-display User names, emails and phones.
-Each included field therefore requires
-an applicable disclosure policy; this
-is a *qualification requirement*, not
-a demonstrated data leak. A search
-index that silently matches a hidden
-email or phone is itself a disclosure
-surface even if no card displays
-that field. Revoked access must
-redact/retire forbidden retained
-content under its security contract,
-not wait indefinitely for a
-user-initiated Refresh.
+Search metadata is itself a disclosure surface. A match on an
+undisclosed email, phone or other restricted identifier can reveal
+private information even if it is never printed on a card. Indexes
+therefore include only permitted display/search fields and are
+retired or redacted when current access is lost. The current
+source's index contents are documented in the preservation audit.
 
 HTMX remains the qualified transport and installation mechanism for authoritative
 updates. The application-specific local presenter uses declared managed effects
@@ -223,58 +211,17 @@ neither proves membership nor authorizes reads. The primary browser presenter
 avoids requiring this additional server snapshot service for ordinary options.
 
  
-*** A current source-level gap: server search requeries authority
+*** Search and options preserve admitted membership
 
-The current HumanHelp example already has a
-meaningful production-backed board. In
-=example.board=, =request-rows-for-location=
-uses public Organization/Request/User
-interfaces and includes terminal rows;
-=visible-rows= deterministically searches,
-filters and orders supplied rows.
-The current =example.views/search-control=
-uses an HTMX =GET= search route, and
-=example.app/search-requests= and
-=apply-board-options= rerender Gesso
-fragments. Those fragments call
-=board/board-data=, which invokes
-=request-rows-for-location= again.
-
-That is real implementation of server-side
-filter/sort, **not** yet proof of
-the stronger selected R5.1 adoption
-contract. A newer remote Request may
-be admitted implicitly by a search or
-options response that queried current
-database state even though the user
-never granted a board Refresh. The
-finished plan must fix the admitted
-cohort relationship; it must not
-declare a fresh read to be harmless
-merely because it is read-only.
-
-Either of two implementations is valid:
-
-- A browser-local presenter sorts/searches
-  a previously authorized and admitted
-  collection projection without querying
-  new collection membership.
-- A server presenter transforms a
-  retained, owner/principal/scope-bound
-  collection snapshot, with expiry,
-  retention bounds, current disclosure
-  checks and exact generation binding.
-  When retention is unavailable, it
-  reports typed unavailability or
-  requests a **separately authorized**
-  acquisition; it does not silently
-  fall back to the latest database.
-
-The issue is *what the user has adopted*,
-not whether rendering occurs in Clojure
-or ClojureScript. Keeping HTML and HTMX
-as the primary UI is entirely compatible
-with this future contract.
+The chosen realization may present an admitted browser projection or
+a retained, owner/principal/scope-bound server snapshot. A GET that
+requeries current collection membership is an authoritative acquisition,
+not a harmless local search. It must have a separately authorized grant;
+it cannot silently adopt remote Requests or discharge advisory debt.
+If retained data cannot be used, the renderer reports unavailable or
+offers explicit acquisition, never an unqualified latest-database
+fallback. This is a cohort-adoption rule, not a prohibition on Clojure
+or HTMX rendering. The existing requery path is analyzed in the audit.
 
 *** Mixed observations are explicit
 

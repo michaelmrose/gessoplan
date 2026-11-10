@@ -9,8 +9,9 @@ No normative wording, operation contract, example, heading, table,
 
 **Review status:** **08.01–08.15 have completed substantive R4-preservation
 and Gesso/HumanHelp source-correspondence review**, recorded in their
-numbered audits. All fifteen numbered sectional reviews are complete; whole-Part-VIII
-reconciliation and independent Part VIII acceptance remain outstanding. Parts I–VII
+numbered audits. All fifteen numbered sectional reviews and **whole-Part-VIII editorial
+reconciliation** are complete. Independent Part VIII candidate acceptance
+remains outstanding. Parts I–VII
 are accepted reviewed R5.1 candidates; Parts VIII–XII and full-plan
 acceptance remain open.
 
@@ -19,7 +20,7 @@ The **R4 preservation baseline** is `main` Part VIII,
 The preferred **R5 architectural predecessor** had
 **1,468 newline-split lines**, 21 second-level headings and
 **92,955 decoded characters** before substantive revision.
-The current fifteen sources reconstruct the **5,335-line**, **290,437-character** Part VIII publication exactly. Length is not
+The current fifteen sources reconstruct the **5,127-line**, **284,772-character** Part VIII publication exactly. Length is not
 evidence that all R4 obligations survive; each numbered
 review must make its own R4/Gesso/HumanHelp comparison.
 
@@ -254,7 +255,11 @@ claims, independent user acceptance, precise safety/progress evidence and the
 final HumanHelp proving-application invariant. Open cross-section issues
 are recorded in the audit for whole-Part-VIII reconciliation.
 
-**Next:** Perform **whole-Part-VIII reconciliation** across all fifteen
-sectional sources and their audits, including normative-status leakage,
-source/target consistency, cross-part references and full acceptance gates.
-Independent Part VIII candidate acceptance remains a distinct later decision.
+**Whole-Part-VIII reconciliation:** see `part-08-whole-part-reconciliation.md`.
+The joined review mapped all 29 major R4 topics, resolved source-status
+leakage into the existing audits, preserved the selected remote advisory-only
+policy and still-open response-flow contract, and checked Part VIII anchors,
+Org structure and twelve-part links. This is not implementation certification.
+
+**Next:** independent whole-Part-VIII reviewed-candidate acceptance or
+specific corrective revision; Parts IX–XII remain outstanding.
