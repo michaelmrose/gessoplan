@@ -1044,6 +1044,25 @@ record; another is a qualified equivalent closure or fencing protocol. A mere
 lookup that finds no record cannot provide this guarantee while a previously
 submitted attempt could still commit.
 
+Such closure needs a *linearization or exclusion contract*: the operation must
+identify the authoritative command namespace/binding, the physical mechanism
+by which an incorporation and a terminal rejection mutually exclude each
+other, and the point at which the participant can justifiably learn closure.
+A rejection fence that blocks only later entries at one web node does not
+exclude an older pending submission at another node. Nor does an absent
+record read at basis B necessarily exclude an already submitted transaction
+that becomes visible at a later basis. If a model instead promises a weaker
+*attempt-local* or *observed-at-basis* denial, it must use a distinct typed
+outcome/diagnostic and not pretend to have closed the semantic command.
+
+A permanently denied invocation may be invalid before any authoritative
+submission—for example, an untrusted caller with no permission to originate
+the command. That denial does not give the caller the authority to create
+a durable terminal rejection for another principal's otherwise valid command.
+A policy can intentionally settle a command as rejected, but the retained
+binding and exclusion mechanism must establish that stronger fact under the
+policy's specified lifetime.
+
 A rejected database transaction generally cannot also be assumed to have
 persisted its own rejection record. If closure requires a subsequent
 transaction, that transaction has its own races and possible uncertainty. It
@@ -1055,6 +1074,15 @@ terminal record. Interfaces may expose typed invocation failures or unresolved
 attempt diagnostics without claiming terminal command rejection. An operation
 with a different rejection lifetime must make that scope explicit and provide
 a presentation mapping that does not falsely promise finality.
+
+In particular, the rejection of a transaction because its RequestAssignment
+or Membership guard failed is evidence about *that attempted submission*.
+It need not be a retained command result. Another compatible attempt may
+have incorporated the command, or the application may legitimately allow
+a later new invocation under a different command ID after conditions change.
+A confirmed failed attempt must not manufacture a terminal rejected
+command row in the transaction that aborted, and an unknown return must
+not be reclassified as an explicit assertion failure by the caller.
 
 A fresh intentional action after rejection may use a new command ID. Automatic
 retry after an unknown result must not do so merely to escape the unresolved
@@ -1076,11 +1104,41 @@ response data. In that case the public resolver reports only the information
 the tombstone and disclosure policy justify; it does not fabricate the original
 payload.
 
+The retention policy must cover *delayed already-submitted attempts* as well
+as new incoming retries. Expiring a result and deleting its prevention key
+does not make an in-flight callback, durable queue entry, offline browser
+command, or paused old worker harmless. To reuse or retire the namespace
+safely, the authority needs an enforceable validity window, epoch/fence,
+retained exclusion record, or an equivalently justified policy preventing
+an old attempt from incorporating after its original evidence expires.
+A wall-clock TTL checked only by a web handler is not sufficient if the
+authoritative backend can still accept an older prepared transaction.
+
+At expiry, the API must distinguish *cannot disclose the previous outcome*,
+*cannot establish the previous disposition*, and *the old identity is
+authoritatively barred from incorporation*. The latter may be known even
+when the former outcome payload has been erased. When the command is still
+unknown and old attempts are not safely excluded, a new ID is a new
+semantic operation, not an innocuous retry or proof that the old operation
+failed. Data-minimizing result erasure and durable duplicate prevention
+must be reconciled without silently weakening either promise.
+
 Interface upgrades must specify compatibility for retained commands. Changing
 argument canonicalization or the meaning of a policy version cannot silently
 rebind an old ID. A database restore, tenant migration, or authority fork must
 also define which command namespace and records remain valid. Backend position
 numbers alone do not preserve those identities.
+
+A migration must preserve or explicitly retire the authoritative command
+exclusion *and* the meaning of its bound operation, principal, authority
+scope, canonicalization version, and result-disclosure rule. Merely copying
+the latest domain Request and RequestAssignment documents does not copy
+historical command disposition or outstanding publication work. A restored
+database missing newer command records cannot advertise those commands
+as safely absent unless its deployment/recovery protocol separately
+fences the previously accepted attempts. An incompatible new
+implementation may refuse a continuation, but it must not revive or
+duplicate an old effect by calling the retained command a fresh one.
 
 *** Command disposition and participant knowledge
 :PROPERTIES:
@@ -1101,6 +1159,43 @@ Definitive knowledge is also subject to authority. A runtime may know that a
 record exists while the current participant is not permitted to learn its
 contents. The public interface must represent unavailable disclosure without
 inventing a domain failure or leaking the existence of protected information.
+
+The authoritative domain state, bound command disposition, and participant
+knowledge/disclosure are separate coordinates. An allowed current-state
+read may repair a Request card without proving which command produced it.
+A permitted command record may prove historical Claim success after later
+Reassign without proving who is primary *now*. A nondisclosable command
+record remains an authoritative fact while the public participant receives
+only its permitted unavailable response. A browser's retired execution
+can neither reinterpret that unavailable result as rejected nor regain
+rights to settle the old presentation target.
+
+Knowledge must cite its evidence subject and scope: command binding and
+namespace, authority and trusted read source, observation basis/coverage,
+winning attempt if attribution is claimed, retention or closure policy,
+and current disclosure entitlement. A response does not acquire a
+stronger judgment because it moved through several HTTP nodes,
+reconciliation callbacks or Live messages. Different hosts can have
+different knowledge while sharing one logical authority; they may not
+apply different business semantics for the command.
+
+*** Rejection, retention, and knowledge acceptance cases
+
+| Construction | Required judgment |
+|--------------+-------------------|
+| A terminal rejection transaction and a compatible incorporation contend under one admitted command exclusion/closure mechanism | At most the permitted terminal disposition wins; an authorized participant may report rejection only with qualified closure evidence |
+| A preparation check finds Membership inactive, with no authoritative command attempt and no retained rejection | Report only the permitted typed precheck/invocation failure; it is not a durable semantic rejection of a command another eligible actor may execute |
+| One XTDB assertion fails, but another compatible physical attempt records the bound Claim | Preserve this attempt's non-incorporation and the semantic command's recorded success separately |
+| An explicit rejection record is written in a second transaction after the first transaction aborted | Require conflict/closure resolution against any competing incorporation; the aborted transaction itself did not write that record |
+| A command result payload is erased but an admitted tombstone/fence still prevents the old ID from incorporating | Permit only a disclosure-limited, truthful resolution; neither fabricate the erased result nor allow a duplicate domain effect |
+| A delayed offline or queued retry arrives after deletion of its record and before any enforceable expiry fence | Reject the claimed deduplication guarantee; record expiry alone cannot make the old attempt safe to execute |
+| An authenticated, deliberately new command is admitted after an expired prior window that safely bars the old command | Permit the new intent under current domain policy; do not mistake the new command for reconciliation of the old |
+| A database backup is restored without a command record for an already executed Claim while old attempts may still arrive | Do not infer authoritative non-incorporation from the restored absence; require restored exclusion, epoch fencing or declared reconciliation/recovery |
+| An operation/interface upgrade changes canonical argument meaning while an old command remains unresolved | Enforce explicit compatibility or an unsupported/unknown recovery branch; do not silently reinterpret the old command |
+| A caller may read the current Request but lacks permission to see the historical command record | Permit authorized current-state presentation only; do not reveal command existence/result or falsely reject the semantic command |
+| A later web node has a stale negative lookup but another node has a qualified retained incorporation result | Treat read scope as an evidence difference, not different business outcomes; require qualified acquisition before claiming a definitive disposition |
+| A retired browser execution receives late, valid command-specific success evidence | Preserve the reusable authorized knowledge through a current admission path but never revive the retired execution or install its stale target |
+
 
 *** Worked example: Claim committed, response lost
 
