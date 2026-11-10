@@ -8,9 +8,9 @@ proof examples, identities, links or Org delimiters were modified.
 `gesso-unified-design-canonical-r4-10-formal-correspondence-and-system-boundaries.org`
 is derived output, not an independent second source.
 
-**Review status:** **10.01–10.08 substantively reviewed** against R4,
+**Review status:** **10.01–10.09 substantively reviewed** against R4,
 accepted Parts I–IX and Gesso v1622, with numbered preservation audits.
-Sections **10.09–10.20** remain for substantive review. Whole-Part-X
+Sections **10.10–10.20** remain for substantive review. Whole-Part-X
 reconciliation and independent editorial acceptance remain outstanding.
 No current Gesso/HumanHelp implementation certificate is implied.
 
@@ -199,6 +199,19 @@ nonclaims are recorded in the audit.
 Published Part X now contains **4954 newline-split lines**
 and **204820 characters**.
 
-**Next:** Review **10.09 — Formal Obligations at Production Boundaries**
-against R4, accepted Parts I–IX, revised 10.01–10.08 and actual
-source-to-formal counterexample/production binding evidence.
+**10.09 review:** see `10.09-r4-preservation-audit.md`.
+Preserved R4 and preferred R5 original-source/production reverse traceability,
+generated formal models as derived artifacts, the defective pre-read Claim
+counterexample, and the owner-approved source/translation repair loop.
+Made all correctness-relevant formal assumptions into independently qualified
+production obligations, with first enforcing boundaries, precise
+physical/refinement evidence and nonclaims, bounded versus actual failure
+classification, privacy-aware source-linked diagnostics, and real
+positive/adversarial acceptance. Twenty preservation decisions and sixteen
+paired acceptance controls, with Gesso v1622 source-limited evidence,
+appear in the audit. Published Part X now contains
+**5326 newline-split lines** and **224816 characters**.
+
+**Next:** Review **10.10 — External Formalization Has a Concrete First Target**
+against R4, accepted Parts I–IX, completed 10.01–10.09 and Gesso's
+actual small proof kernel, source rechecking and finite independent audits.
