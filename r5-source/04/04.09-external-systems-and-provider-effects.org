@@ -39,6 +39,13 @@ creates a valid pending Order, records the command result, and records durable
 payment work. The pending Order is a committed domain state, not an optimistic
 browser fiction.
 
+For this workflow, invoking the payment provider is a separately admitted
+physical effect *after* the immutable intent and durable work have committed.
+A callback that the local transaction mechanism may re-evaluate or retry must
+not make that external call. Neither a queued job nor a submitted HTTP request
+is provider acceptance, and the durable work's owner must survive its original
+worker, process, and browser execution.
+
 The Order command's success means that this intent was established. If the UI
 wants to wait for final placement, choreography must distinguish intent
 acceptance from business completion. It must not display a final placed result
@@ -74,6 +81,12 @@ and an indeterminate transport result. A provider lookup that finds no record
 does not establish non-occurrence while an earlier request may still be in
 flight, unless the provider contract supplies that stronger guarantee.
 
+If provider deduplication records may expire while local work is unresolved,
+reusing the original key does not retain an expired deduplication guarantee.
+Automatic submission must stop or follow an independently qualified safe
+recovery protocol; allocating a fresh key cannot silently discharge the old
+unknown effect.
+
 *** Incorporating a provider result
 
 A worker resolves or submits the provider operation under the durable intent.
@@ -90,6 +103,32 @@ updates durable work in the same local atomic boundary.
 | Matching receipt already incorporated. | Return a compatible recorded result without applying the effect twice. |
 | Receipt conflicts with immutable intent or prior evidence. | Reject or quarantine the evidence through a declared diagnostic/recovery path. |
 | Cancellation requested; a late authorization succeeds. | Record the real external outcome and enter the declared void, compensation, or review path. |
+
+*** Worked failure window: provider succeeded, local outcome unrecorded
+
+In the preceding example, the following sequence is a permitted physical
+history, not an atomic Order-placement transition:
+
+1. The Order, bound payment intent, semantic command outcome, and payment-work
+   obligation commit together. The Order is still =:payment-pending=.
+2. A worker sends the admitted authorization request under the retained
+   provider key. The provider authorizes the money, but the worker dies before
+   the local result-incorporation operation commits; its HTTP reply may also
+   disappear.
+3. A successor recovers the same durable work and *first* reconciles the
+   original provider intent by a qualified lookup or other admitted evidence.
+   Verified authorization permits the guarded local incorporation; an
+   inconclusive lookup leaves the intent unresolved, with its recovery owner
+   intact. A different key is not an innocent retry.
+4. A duplicate webhook or another worker's late result may race with this
+   incorporation. Guarded, receipt-bound local transitions must prevent a
+   second incompatible authoritative effect; they do not independently prove
+   that the provider executed only one remote effect.
+
+This history differs from a payment that never reached the provider and from
+one whose local authorization receipt was already incorporated. The model and
+its diagnostic result must not collapse the three cases merely because all
+three can appear as a pending Order to a particular browser.
 
 Workers may use leases or fencing to prevent stale local writes. Such mechanisms
 do not retroactively stop a remote call already issued by an old worker. Late
@@ -115,4 +154,16 @@ Required work must remain discoverable after process loss. Acknowledging a job
 because an HTTP call was sent, rather than because the contracted work state
 was durably incorporated, can lose the only recovery owner. Queue acknowledgment,
 lease expiry, and model work completion require a declared relationship.
+ 
+*** Paired external-effect acceptance obligations
 
+| Admitted scenario | Adverse or unsupported counterpart | Required judgment |
+|-------------------+------------------------------------+-------------------|
+| The local pending intent and required work commit before the provider call. | A locally retryable transaction callback charges the provider, or the worker starts without durable intent. | Admit the durable boundary; reject the unsafe effect placement or retain a precisely named, unsupported premise. |
+| A matching qualified provider authorization is incorporated under current Order guards. | An unsigned or mismatched webhook, wrong amount/currency, wrong merchant, or conflicting receipt claims success. | Admit the bound evidence; reject or quarantine the incompatible evidence without advancing the Order. |
+| The provider authorized before the worker crashed; a retained-key lookup supplies conclusive evidence. | A lost response is treated as decline or automatically retried with a fresh provider key. | Reconcile the original intent; never manufacture rejection or a second authorization. |
+| Compatible provider retries fall within its established key scope and retention contract. | Retention expires or deduplication/lookup semantics are unknown. | Use only qualified deduplication; otherwise retain unknown and the declared safe recovery or human-review path. |
+| Duplicate compatible provider callbacks race to incorporate one result. | Conflicting, reordered, or late receipts target changed Order state. | Protect local incorporation and retain the real external history; local idempotence cannot imply remote exactly-once execution. |
+| Cancellation and late provider success follow declared void/compensation policy. | Cancellation erases a real authorization or treats compensation as transaction rollback. | Admit the appropriate new transition and outstanding work; reject false historical erasure. |
+| Durable work is discoverable after worker or node loss. | Queue acknowledgment precedes durable settlement and removes the only recovery owner. | Preserve replayable work or an equivalently qualified discovery guarantee. |
+| Resolution is conditional on provider availability and admitted reconciliation. | The system asserts unconditional eventual completion with no provider or human-progress premise. | State the liveness assumptions; unsupported completion is not a successful check. |
