@@ -9,9 +9,9 @@ proof rules, identifiers, link targets or whitespace were changed.
 The canonical publication is derived output, not a second source
 to edit independently.
 
-**Review status:** **09.01–09.03 substantively reviewed** against R4,
+**Review status:** **09.01–09.04 substantively reviewed** against R4,
 Gesso v1622 and accepted Parts I–VIII, with source decisions recorded in
-the numbered preservation audits. Sections **09.04–09.16** remain for
+the numbered preservation audits. Sections **09.05–09.16** remain for
 substantive review. Whole-part reconciliation and independent Part IX
 candidate acceptance remain outstanding. Parts I–VIII are accepted R5.1 design
 candidates; this is not evidence of a completed runtime/proof system.
@@ -121,7 +121,7 @@ non-discharge, public model-interface ownership, exact versus implementation
 identity, and original-source report/certificate trust boundaries.
 Fourteen positive/adversarial scenarios and current Gesso precursor scopes
 are recorded separately from the timeless normative requirements.
-The published Part IX now has **1,975 lines** and **115,402 characters**.
+The published Part IX now has **2,255 lines** and **126,588 characters**.
 
 **09.03 review:** see `09.03-r4-preservation-audit.md`.
 Preserved the strict data-only AST, exact nominal reader/type footprints,
@@ -131,5 +131,13 @@ user-language boundary, covered source/policy requirements, qualified host
 extensions and 16 positive/adversarial examples. Implementation-specific
 v1219/v1221/v1223 findings remain in the audit rather than normative design.
 
-**Next:** Review **09.04 — Path-Sensitive Refinement, Conservative
-Normalization and Opaque Boundaries** against R4 and Gesso source.
+**09.04 review:** see `09.04-r4-preservation-audit.md`.
+Reconciled R4's same-observation branch refinements and safe joins,
+normalization correctness/identity limits, trusted opaque execution and
+protected current-policy provenance, detected versus uninspected
+semantic-policy escapes, and explicit relational extension judgments.
+Eighteen paired acceptance challenges and Gesso v1622 implementation
+boundaries are recorded in the source-preservation audit.
+
+**Next:** Review **09.05 — Executable Judgment Contracts and
+Proof-Kernel Foundations**, including the first closed proof rules.
