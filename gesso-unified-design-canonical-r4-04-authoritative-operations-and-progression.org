@@ -520,19 +520,47 @@ For Claim, the obligation set is:
 | Semantic obligation | Binding or protection required |
 |---------------------+--------------------------------|
 | The requested Request is the acquired target. | Equality between the command's Request ID and the acquired authoritative identity, in the correct authority scope. |
-| The Request is open and unclaimed. | Both conditions protected at incorporation; open status alone is insufficient. |
+| The Request is open and has no active primary RequestAssignment. | Protect the current lifecycle state and the absence of an active primary assignment for this Request in the correct Organization/authority scope; a nullable Request helper projection is not that relationship. |
 | Membership belongs to this helper and Organization. | Principal, Membership, Request, and Organization associations protected together. |
 | Membership is active. | Current eligibility protected at incorporation under the policy's temporal meaning. |
 | Organization permits the claim. | The relevant policy and any inputs it depends on protected at incorporation. |
-| Assignment is the permitted change. | The helper comes from the trusted principal binding; other Request fields obey the frame. |
+| Request state and primary assignment are the permitted domain change. | The helper is derived from the trusted principal binding; the transaction makes the Request =:claimed= and establishes exactly the model-permitted active primary RequestAssignment, preserving relationship history, collaborator distinctions and every affected document's frame. |
 | The command is not incorporated twice. | Atomic command-binding compatibility and uniqueness within the declared command namespace. |
-| Success can be recovered and propagated. | Command result and required durable publication intent share the transition's atomic boundary. |
+| Success can be recovered and propagated. | The compatible command result and the work intent required by this Claim example's selected durable work-recorded profile share the authoritative boundary with the Request and RequestAssignment effects; neither response delivery nor external notification is thereby established. |
 
 Evidence may establish some of these obligations by construction, others by a
 checked derivation, others by runtime checks, and others only under accepted
 backend or opaque-code premises. The report must preserve those classifications.
 The word /checked/ must identify what was checked; it must not silently include
 all unexamined behavior beneath that check.
+
+The correspondence is *bidirectional*. Every correctness-relevant source-owned
+semantic rule has a traceable protection, construction, derivation or explicitly
+accepted premise in the effective authoritative operation. Conversely, an FX,
+model, backend or installed callback whose condition changes whether the
+command is admitted, which domain effect is written, who may cause it, or what
+protected result is disclosed must correspond to a declared rule or named
+opaque/physical premise. An incidental query optimization, retry, logging
+branch or diagnostic does not become business policy merely by existing.
+An unreported extra policy guard that silently rejects valid declared business
+operations is as much a correspondence problem as a missing required guard.
+Gesso may impose a separate *declared* platform safety/admission policy;
+it must not claim the narrower implementation is the complete realization
+of a more permissive business contract without identifying that policy.
+
+The active-primary absence and uniqueness rules deserve explicit care.
+Checking a Request projection, an empty previously read assignment collection
+or a single row's version does not necessarily prevent another writer from
+inserting a primary assignment before incorporation. The actual backend
+mechanism must protect the *predicate over the relevant set*, with its
+qualified isolation, uniqueness/constraint, transaction assertion or other
+justified serialization contract. A reference-model search result or
+syntactically correct =ASSERT= is not, by itself, proof of that physical
+concurrency property. If the selected backend, writer inventory or
+precondition-coverage profile cannot establish it, retain the missing
+correspondence or supported-premise obligation rather than certifying
+primary uniqueness. A valid operation under a stronger backend/profile
+is not rejected merely because a narrower proof mechanism cannot analyze it.
 
 *** Canonical construction and physical submission
 
@@ -558,6 +586,17 @@ be included in the checked effect boundary or covered by an explicit accepted
 premise. An extra write or a weakened guard cannot be ignored because the
 original domain fragment still matches a certificate.
 
+For the chosen durable Claim contract, the Request lifecycle change, new
+primary RequestAssignment, binding-compatible command outcome, and retained
+publication work must form *one protected authoritative effect*. A later
+notification send is independently owned work, not a fifth in-transaction
+provider delivery. Neither the number of public model interfaces used nor
+the number of FX callbacks determines the number of transactions. An adapter
+must expose enough of its effective guard/read and mutation footprint for
+its selected assurance profile to judge the whole operation. An uninspected
+transaction hook or extra writer is an explicit open premise or a rejection
+under a closed coverage policy, not evidence silently erased from the frame.
+
 An inspection report is not the executable capability. The runtime must prevent
 ordinary callers from substituting a new transaction, changing a target,
 replacing the executor, or attaching a report from an unrelated successful call.
@@ -572,6 +611,20 @@ unless its proposition says so. Those operations remain available through
 broader checked mechanisms or explicitly asserted contracts. They must not be
 quietly forced into the narrow proof's vocabulary.
 
+
+*** Atomic-construction acceptance and counterexamples
+
+| Construction | Required semantic and evidence judgment |
+|--------------+-----------------------------------------|
+| An authorized Claim closes the current Request, Membership, Organization and active-primary predicates in a qualified atomic backend transition; it writes Request, RequestAssignment, command result and the required durable intent | Admit the operation under its declared enforcement and provider premises; distinguish actual atomic incorporation from later message delivery |
+| A helper has a collaborator assignment but no active primary assignment, and the public model permits Claim | Admit the eligible primary assignment; collaborator presence cannot be converted into the absence or presence of the single primary owner by convenience-field logic |
+| A candidate observes no active primary assignment, but another command inserts one before this Claim's unprotected write | Reject the claim of atomic uniqueness; require protection against the competing insertion, not merely a version check on the unchanged Request |
+| Membership is revoked after a candidate read and before the actual transaction; the implementation submits only the prepared Request update | Reject the claimed current-eligibility enforcement; retain separately qualified stability only if the public contract explicitly permits it |
+| An FX callback silently adds an otherwise legitimate-looking Organization eligibility condition absent from the declared product rule | Reject full declared-operation correspondence or expose the independent restriction as an authored rule/explicit admission policy; do not label the public business rule ill-typed merely because the implementation is stricter |
+| A statement writes the Request and primary assignment, but the durable-work record promised by this selected profile is written only in a later unprotected effect | Reject the claimed work-recorded atomic boundary; a successful first commit does not establish durable publication intent |
+| The effective submitted transaction contains an unapproved write or omits a required command/result guard, while a domain-only fragment still matches the checker | Reject the closed frame/guard coverage claim; a copied proof report or matching fragment cannot credential the full submission |
+| The selected physical adapter cannot establish isolation for the absence/uniqueness predicate, although the abstract operation is otherwise valid | Report the unsupported or open *physical correspondence* claim; do not infer a semantic contradiction or promote a finite reference-model witness to database proof |
+| A pure Clojure constructor with an admitted typed/effect interface produces the correct multi-document plan but its body is outside the selected proof fragment | Permit conditional admission where the profile accepts its explicit opaque premise; do not require the user to rewrite valid Clojure in a second specification language |
 *** Representation and frame fidelity
 
 The mapping between semantic fields and physical storage must be explicit and
