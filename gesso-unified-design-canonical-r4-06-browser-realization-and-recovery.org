@@ -2769,113 +2769,349 @@ and actual browser/backend correspondence.
 :CUSTOM_ID: req-authoritative-absence
 :END:
 
-An authoritative observation can establish that a particular entity or membership
-is absent within a specified authorized scope. That is a positive evidence claim
-about absence, not the lack of a successful response.
+An authorized observation may establish that a domain entity is absent
+under a qualified entity lookup, or that a previously displayed entity
+does not belong to a *particular covered projection*. These are positive
+authoritative statements with specified provenance and scope. They are
+not consequences of an empty HTML element, a missing response, local
+filtering, a timeout, a missing DOM target or a rejected read.
 
-The browser distinguishes:
+The browser treats the following as distinct knowledge and physical
+states, even when they produce similar-looking empty presentation:
 
-- an entity absent under a qualified entity lookup;
-- an entity excluded from a particular query or collection membership;
-- a field absent under the projection's field contract;
-- information unavailable, undisclosable, or not covered by the observation;
-- a missing physical DOM target.
+| Observation or realization state | What it actually establishes |
+|----------------------------------+------------------------------|
+| Present | An admitted authoritative value or membership under its declared actor, query, field and temporal scope. |
+| Authoritatively absent | A qualified negative entity or membership fact under an admitted coverage and progression contract. |
+| Not yet acquired | No applicable source observation has established the requested presence or absence. |
+| Acquisition failed or indeterminate | The attempted read did not establish the requested fact; earlier justified knowledge and outstanding recovery remain separately qualified. |
+| Not disclosed or no longer authorized | The participant may not currently learn or retain protected content; the policy may deliberately hide the existence of an entity. |
+| Physically not displayed | The actual current DOM/host does not show the entity, possibly because of filtering, retirement or failed rendering; no model absence follows. |
 
-These conditions need different continuations. A network error is not absence.
-A permission denial need not disclose whether the entity exists. A card not found
-in the DOM does not establish anything about the authoritative model.
+An authoritative absence may therefore be installed and adopted just
+as an authoritative presence may. The *evidence* that the entity is
+excluded and the *physical completion* of removing its representation
+are separate propositions. Adoption of negative knowledge is not a
+browser-only tombstone that will forever override future authorized
+presence. It remains subject to the same source, projection,
+progression, local continuity and ownership contracts as presence.
 
-*** Absence requires the appropriate coverage evidence
+*** Absence requires actual covered authority, not an omitted row
 
-For absence inferred from omission, the observation must establish the closed
-coverage needed for that inference. A paginated page, partial response, filtered
-subset, or redacted projection cannot silently claim complete collection absence.
-The membership question must also be within the query universe actually covered.
+The admitted source identifies the principal and Organization/tenant
+disclosure context, applied query identity, server-side predicate and
+arguments, entity or membership subject, projection/field coverage,
+temporal and consistency interpretation, relevant authoritative
+basis/progression, and the meaning of its negative result. A complete
+membership observation can justify the omission of a member only
+within the universe whose membership it actually closes.
 
-An explicit authoritative membership-exclusion result can provide narrower
-sufficient evidence without reading a whole board. Its contract binds the entity,
-query, context, progression, and exclusion meaning. The requirement is evidence
-for the claimed absence, not a mandatory full-collection transport format.
+A successful empty list is not automatically a complete query. A
+paginated page, truncated or top-N result, projection missing the
+membership field, filtered subset, cached partial response, redacted
+record, tenant-limited view, or speculative client-side search result
+does not certify exclusion from a larger universe. Even a complete
+*authorized* query says nothing about entities that policy deliberately
+does not disclose. A failed or denied read must not be converted into
+"no Request exists" or expose protected existence through an
+overprecise error.
 
-The runtime preserves absence with its scope and admitted evidence just as it
-preserves presence. It can represent this through a complete observation,
-scoped exclusion record, or checked compact summary. It need not create a permanent
-tombstone for every entity that could theoretically be missing.
+An explicit trusted exclusion response may justify a narrower negative
+membership fact without loading every card. It must bind the exact
+entity, applied query/predicate and authorized context, provider
+coverage/temporal semantics, and the exclusion reason it claims.
+For example, "R17 is not in Bob's open-Requests board" need not
+establish whether R17 still exists, was completed, was reassigned,
+became inaccessible or was deleted. When the reason itself would
+reveal protected state, only the permitted nondisclosing proposition
+can be returned.
 
-*** Worked example: Request R17 leaves an open-request board
+The provider's negative fact is admitted through a real acquisition
+or qualified persisted observation. A client-written
+=:provenance :authoritative= tag, a matching plan digest or a
+structurally valid basis token cannot certify its truth. The generic
+browser may preserve an opaque source/evidence reference and
+scope; the trusted consistency/model boundary owns the provider
+proof or expressly named premise. Absence need not allocate a
+permanent tombstone for every theoretically missing entity: a
+complete cohort observation or checked compact exclusion summary
+can represent justified negatives within its declared retention.
 
-Alice's applied board query selects open Requests in Organization O. An earlier
-admitted observation includes R17. Another operation changes R17 so it no longer
-matches that query. A current acquisition can establish different facts:
+The membership scope is distinct from the domain entity's existence
+and from its fields. A Request can be excluded from an "open for
+helper" board while remaining accessible in an authorized completed
+Requests projection. An omitted optional field may reflect a
+projection contract rather than a declaration that its domain
+value is absent. These forms of negative knowledge have different
+queries and cannot silently substitute for each other.
 
-| Observation | What the browser may conclude |
-|-------------+-------------------------------|
-| Complete admitted membership observation for the same query, with sufficient progression, excludes R17. | R17 is absent from this board membership at the observation's declared basis. |
-| Admitted explicit exclusion for R17 under this query and context. | The covered membership is absent, without asserting complete board contents. |
-| A different page of a paginated result omits R17. | No exclusion follows unless the paging/coverage contract establishes it. |
-| A card lookup shows R17 in another domain state. | Board removal requires the admitted predicate/coverage relationship, not a guessed filter rule. |
-| The user loses permission to view this board. | Apply the display-revocation policy; do not assert that R17 was deleted. |
-| The request fails or returns incompatible data. | Preserve unavailable/unknown and the required recovery debt. |
+*** Worked example: R17 leaves Bob's open-Requests board
 
-A permitted removal is an installation effect. Its permit binds the affected
-membership/target scope, current owner, and actual target instances. The runtime
-records adopted absence only after the declared removal postcondition is
-established.
+Bob has an admitted and physically adopted open-Requests board
+observation B100 for applied query Qopen, Organization O and his
+current authority context K. It includes Request R17. A subsequent
+trusted operation changes R17's state so that it no longer matches
+the predicate for Qopen. Depending on authorization, R17 might still
+be present under an independently queried completed-Requests
+projection Qdone; R17's absence from Qopen alone does not establish
+its deletion or a different helper's Membership.
 
-If the target is already physically absent, an admitted no-op completion may be
-valid when the removal contract can establish the required postcondition for the
-same current owned scope. A generic target-not-found error cannot supply that
-proof. A missing or replaced board root may instead require owner reconstruction
-or full reacquisition.
+The next authorized acquisition is evaluated against these
+possibilities:
 
-The adopted absence is qualified by the observation's basis. It does not claim
-that no concurrent future operation can reintroduce R17 into the board. Later
-relevant changes follow the same advisory/acquisition contract as later presence
-changes.
+| Candidate evidence | Valid conclusion about R17 |
+|--------------------+----------------------------|
+| An admitted complete Qopen membership observation B105 under K, with qualified progression and R17 excluded. | R17 is absent from *Qopen membership* at B105's stated provider interpretation. |
+| An admitted explicit R17 exclusion witness for Qopen/K with the necessary coverage and temporal meaning. | R17 is excluded from that membership without claiming all other board members were acquired. |
+| R17 omitted from page two, while Qopen covers multiple pages and no complete membership/exclusion witness exists. | No negative membership fact for R17 follows. |
+| An admitted Qdone observation contains R17 as completed. | R17 is present in Qdone; Qopen exclusion still requires a qualified Qopen/predicate judgment. |
+| Bob's permitted board changes from Qopen to Qdone or he toggles a local =show-terminal?= view option. | Distinguish a new applied server query from client presentation over an already justified cohort; neither action invents authoritative absence. |
+| The server denies R17 disclosure after Bob's Membership changes. | Apply the required privacy/display revocation; do not assert that R17 was deleted or absent for all readers. |
+| Qopen acquisition fails, is cancelled, or produces incompatible/indeterminate content. | Preserve the qualified previously adopted evidence where policy permits, plus stale/recovery debt; no newly proven absence. |
 
-*** Provisional presence does not override authoritative coverage
+For the eligible complete B105 case the semantic path is:
 
-Suppose execution E99 provisionally displays new Request R30 while creation
-command C99 remains unresolved. A board acquisition omits R30. Several questions
-remain distinct:
+#+begin_example
+qualified source establishes R17 excluded from Qopen at B105
+        |
+confirm K/Qopen coverage and provider progression
+        |
+prepare current membership outcome :absent for R17
+        |
+issue current scoped removal/installation permit
+        |
+check exact board owner, target incarnation and representation
+        |
+perform permitted physical removal or checked no-op
+        |
+admit real matching physical postcondition
+        |
+record adopted absence for the covered membership
+#+end_example
 
-1. Does the observation establish exclusion from the relevant query, with the
-   required coverage and temporal/progression meaning?
-2. Does that evidence and the presentation policy authorize removing or replacing
-   this provisional overlay now?
-3. Does any evidence establish the authoritative disposition of C99?
+A prepared negative result is not yet physically adopted. The
+permit binds the current runtime/assembly, actual Qopen coordinator,
+B105 source and covered membership, current board/card instances,
+target representation, mutation footprint and effect generation.
+A stale prior request or an OOB/extension mutation cannot bypass
+the permit by targeting the same HTML =id= attribute. If a
+multi-target update removes a card but fails to install a new
+count or status control, its actual per-target outcomes and
+repair obligations remain distinct.
 
-An observation taken before a still-pending command incorporates may correctly
-omit R30 while C99 remains unknown and may later commit. Even a sufficiently
-current board observation need not establish attribution to, or rejection of,
-C99. The application must not turn absence into a fabricated rejected command.
+The physical postcondition must establish that the *current
+owned representation* for R17's Qopen membership no longer
+appears or grants obsolete managed actions. A generic "target
+not found" may indicate an unmounted board, wrong owner,
+selector mismatch or an already-correct current target. A
+no-op removal can count as completed only if the qualified
+host contract verifies the intended absence under the
+current scope and owner. A generic =afterSwap= event does
+not by itself establish that predicate.
 
-The presentation policy can retain a labeled pending overlay, remove it under a
-declared supersession rule, or present it outside the authoritative membership
-view. Its choice states the evidence/horizon it requires and keeps provisional
-content visibly distinct from adopted authoritative membership.
+Once a qualified absence is adopted, it retires obsolete
+provisional/continuity restoration rights for the
+corresponding presentation scope. A late stale callback
+must not recreate the removed card from an old capture.
+A current authorized later presence can legitimately
+restore R17 to Qopen through its *new* qualified
+observation and physical install. Absence does not
+represent an irreversible global tombstone.
 
-If the overlay is removed, its stale rollback/continuity rights expire. The
-command's surviving recovery obligation remains with its declared owner. Removing
-one scoped presentation is not permission to retire all resources associated
-with C99 or to discard its recovery record.
+The local filter distinction is especially important:
+Bob may hide an already acquired terminal Request
+through =show-terminal?= or text-search without
+starting a new read. Hiding the item is a local
+presentation choice, not new authoritative
+membership evidence. Re-showing it needs retained
+still-justified authorized content and current
+presentation ownership. If intervening authority
+has excluded it or revoked its disclosure, the
+local filter cannot resurrect stale markup or
+grant a new subscription/operation binding.
 
-*** Absence participates in progression and convergence
+*** Provisional presence and negative authority remain separate
 
-An absence observation can satisfy an obligation only within its admitted scope
-and required discharge stage. Entity deletion, query exclusion, authorization
-loss, and a partial projection are not interchangeable.
+Suppose E99 provisionally inserts Request R30 into a
+local creator view while Create command C99 is
+unresolved. A complete board acquisition omits
+R30. The system must answer three *different*
+questions before changing presentation:
 
-A later compatible presence observation can legitimately replace earlier absence
-when the provider's progression and model contracts permit it. The runtime must
-not make absence an irreversible browser tombstone. It must prevent a stale
-presence callback from resurrecting a removed card under revoked ownership.
+1. Does an admitted source actually establish
+   R30's exclusion from this exact applied
+   query, actor/context and coverage horizon?
+2. Does that negative evidence, its qualified
+   progression and the selected presentation
+   policy permit superseding E99's provisional
+   presence in the current physical target?
+3. Does a separately qualified command-result
+   source establish whether C99 incorporated,
+   was rejected, or remains =:commit-unknown=?
 
-Display revocation has a separate reason and postcondition when current policy
-requires clearing sensitive content. It may remove presentation without claiming
-that authoritative domain absence was established. Its future acquisitions and
-reconciliation paths still enforce current authorization.
+The acquisition may have occurred before C99's
+possibly pending transaction incorporated, or
+under a different query/actor scope. In that
+case R30's omission is not automatically
+rejection or proof of nonexistence. Even
+sufficiently progressed *current board*
+absence does not by itself establish C99's
+historical attribution. A subsequent C99
+incorporation, if still possible under the
+model's temporal/deduplication contract,
+requires its separately authorized
+reconciliation and potential later read.
 
+The application may keep a visibly labeled
+pending overlay outside adopted membership,
+remove the provisional card upon an admitted
+negative-authority supersession, or use a
+declared conflict-resolution/reacquisition
+strategy. It must state the scope, owner,
+command-outcome and temporal premises for
+that choice; it cannot silently make an
+unresolved Create a rejected command, or
+misrepresent the overlay as an adopted
+current Request.
+
+If stronger authorized absence supersedes
+E99's provisional representation, revoke
+the old DOM/rollback/timer ownership before
+physical cleanup. The C99 resolver
+obligation survives under its proper owner
+where promised. Removing an obsolete card
+does not justify cancelling all C99 history,
+repeating an unknown command with a fresh
+identity, or treating a missing physical
+target as a successful server operation.
+
+A manager's later Reassign and the affected
+RequestAssignment facts illustrate the same
+distinction: a helper's card may no longer
+belong in one projection while its
+historical Claim was genuinely incorporated.
+Entity/query membership, current assignment
+and historical command disposition remain
+separate trusted questions.
+
+*** Absence participates in qualified progression and adoption
+
+Presence and absence are both qualified
+observation outcomes. The runtime compares
+them using the source provider's declared
+scope/coverage and progression relation,
+not the lexical/numeric order of basis
+labels, SSE arrival sequence or browser
+request generation. Two distinct opaque
+bases are not ordered merely because
+one was fetched later.
+
+For the *same* applicable membership scope,
+a later provider-proved exclusion may
+supersede an earlier present card; a
+subsequent provider-proved presence may
+supersede that absence. When basis values
+are incomparable, the coordinator retains
+the competing obligations or invokes
+the declared read/merge/conflict policy.
+A complete board membership from R
+can coexist with an independently newer
+creator-local card S only if the
+qualified scope-aware merge preserves
+both provenances and does not assert
+a single atomic backend snapshot.
+
+A scoped negative fact may satisfy an
+advisory requirement only if its source
+establishes the required query,
+authority context, coverage, progression
+and discharge stage. Acquisition of a
+negative result does not clear
+adoption-stage debt before the actual
+current DOM removal/no-op postcondition
+has been admitted. Failing to install
+a negative membership result preserves
+repair debt without falsifying the
+underlying acquired fact.
+
+Absence from an open-Requests board
+does not discharge a complete-query
+requirement for a different Organization,
+a partial page or a card-specific
+historical command resolution.
+One explicit user Refresh continues
+to obey its original read budget:
+discovering an omission cannot
+silently authorize another fetch
+to "check whether it was really
+deleted." If more evidence is
+necessary, obtain a new permitted
+read or enter an honest blocked/
+unknown/reconciliation state.
+
+Security and privacy revocation is
+a different actuation contract.
+A current principal losing access
+may require immediate removal or
+quarantine of protected presentation
+even without evidence that the entity
+is absent from the model. That
+revocation does not permit a
+new protected read and must not
+reveal nondisclosable existence.
+No browser-side cleanup can erase
+data an adversarial client already
+recorded; the trusted server
+continues to enforce authorization
+at every read, stream and write.
+
+The initial baseline/subscription
+and multi-node router gaps from
+06.06–06.07 apply equally to
+negative knowledge. Missing
+invalidations must not leave a
+newly excluded Request
+permanently displayed under a
+guarantee of current-state
+convergence; the promised
+replay/fence/reacquisition and
+user-action assumptions must
+actually support the claim.
+
+*** Paired authoritative-absence acceptance histories
+
+The finished design requires real eligible
+trusted sources, complete coverage or qualified
+exclusion and actual host completion. Negative
+fixtures must reach the relevant absence,
+scope or physical boundary rather than
+pass solely by producing an empty element.
+
+| Eligible positive history | Adverse or incomplete history | Required conclusion |
+|---------------------------+-------------------------------+---------------------|
+| Complete authorized Qopen B105 excludes previously present R17 and is provider-proved compatible with the installed membership. | R17 is merely omitted from one page of a paginated query or from a redacted subset. | Admit negative membership only under sufficient covered Qopen evidence; partial omission is unknown. |
+| Trusted explicit R17/Qopen exclusion witness has narrower sufficient coverage. | Browser bytes copy =:provenance :authoritative= and a plausible basis without a qualified source. | The real narrow witness may establish exclusion; copied tags do not. |
+| R17 is absent from Qopen while a qualified Qdone projection still contains it. | The browser infers global deletion or historical Claim failure from Qopen exclusion. | Preserve projection-relative membership, domain existence and command attribution as different facts. |
+| A current authorized removal permit operates on the matching Qopen card and checks its physical postcondition. | A generic =afterSwap= or missing CSS selector is credited as proof the current card disappeared. | Only a qualified completed removal or valid current-target no-op establishes adopted absence. |
+| New qualified B105 exclusion retires R17's old provisional/rollback rights; later provider-proved presence may reintroduce it. | A stale timer reinserts an old card, or an irreversible tombstone blocks new authoritative presence. | Prevent obsolete restoration while permitting later justified presence. |
+| C99 Create remains unknown and R30 is omitted from a board read that predates possible incorporation. | Omission is declared terminal C99 rejection or permission for blind duplicate Create. | Distinguish temporal exclusion, provisional presentation and historical command result. |
+| Bob hides a retained authorized R17 under a local text/sort/terminal filter and restores it while membership still justifies the content. | Local re-showing overrides a newer authoritative exclusion, query change or disclosure revocation. | Local visibility choices create no new server truth or stale presentation rights. |
+| A complete authorized removal of one card and matching count update both physically finish under their distinct permits. | Card removal finishes, count/OOB update fails, yet the whole board is marked adopted. | Preserve per-target completion and repair debt; no imaginary atomic installation. |
+| An acquired negative result satisfies O1 but installation fails and one-Refresh grant is exhausted. | The coordinator clears adoption-stage O1 or starts an ungranted second acquisition. | Keep acquired evidence, outstanding physical adoption debt and exact read budget separate. |
+| Access is revoked and the honest client clears protected presentation under a current privacy policy. | The client displays "R17 deleted" or attempts a protected read without permission. | Revocation is not domain absence; enforce nondisclosure and trusted server authorization. |
+
+These cases are specification obligations,
+not claims that current Gesso v1622 already
+implements all absence semantics or
+physically verified multi-target removal.
+Part VII must inspect actual model,
+writer, renderer and browser entrypoints;
+Part VIII requires nonvacuous HumanHelp
+Claim/Reassign/Done, creator-local
+presentation and remote one-Refresh
+behavior; Parts IX–X distinguish
+finite tests, trusted model premises
+and real physical host refinement.
 ** Failure, liveness, and convergence
 
 Safety, progress, and recovery are separate claims. The runtime must remain

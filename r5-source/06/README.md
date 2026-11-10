@@ -4,9 +4,9 @@
 losslessly into fifteen numbered Org units. Subsequent substantive
 reviews revise those sources and rebuild the publication by exact
 concatenation. All eight original `CUSTOM_ID` anchors remain stable.
-Sections **06.01–06.11** have completed substantive R4-preservation
+Sections **06.01–06.12** have completed substantive R4-preservation
 and Gesso-source correspondence reviews, recorded in their
-matching audits. Sections 06.12–06.15, whole-part reconciliation,
+matching audits. Sections 06.13–06.15, whole-part reconciliation,
 and independent candidate acceptance remain outstanding.
 Parts I–V are accepted reviewed R5.1 candidates. Parts VI–XII and
 the independent full-plan reconciliation remain unfinished.
@@ -115,14 +115,14 @@ concatenated exactly to the unchanged R5 Part VI baseline:
 **84,711 decoded JavaScript string code units** and
 **1,481 newline-split lines**. Subsequent sectional revisions
 update the canonical Part VI publication from the numbered units.
-After 06.11, the fifteen reviewed/unreviewed units exactly
-reconstruct the **208,180-character**, **3,165-line** Part VI
+After 06.12, the fifteen reviewed/unreviewed units exactly
+reconstruct the **220,490-character**, **3,401-line** Part VI
 publication, with all eight stable anchors and balanced Org
 blocks. The whole-plan output remains a generated artifact,
 not a separate editable normative source.
 
 The Python assembler was **not executed** in a local Gessoplan
-checkout. Initial splitting and subsequent 06.01–06.11
+checkout. Initial splitting and subsequent 06.01–06.12
 publications were checked by exact GitHub-fetched concatenation,
 not by Gesso runtime, backend, Chromium or formal proof execution.
 
@@ -213,6 +213,15 @@ physical message remains consumed even if initially out of phase;
 retired private callbacks cannot relabel themselves shared.
 Ten paired positive/adverse histories cover these boundaries.
 
-**Next:** review **06.12 — Authoritative Absence and Progression**,
-including complete membership coverage, permitted physical absence
-installation, evidence and qualified provider progression.
+**06.12 review:** see `06.12-r4-preservation-audit.md`.
+The revised R17 open-board example distinguishes real complete
+membership exclusion from partial omission, disclosure denial and
+local filtering. It requires a current physical removal/no-op
+postcondition, preserves unknown C99 command attribution, and
+permits later qualified presence without irreversible tombstones.
+Ten paired positive/adverse histories test negative evidence,
+target ownership, progression, one Refresh and privacy.
+
+**Next:** review **06.13 — Failure, Liveness, and Boundedness**,
+including safety and fairness premises, retained uncertainty,
+convergence under quiescence and independent resource budgets.
