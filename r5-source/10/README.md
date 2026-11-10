@@ -8,11 +8,11 @@ proof examples, identities, links or Org delimiters were modified.
 `gesso-unified-design-canonical-r4-10-formal-correspondence-and-system-boundaries.org`
 is derived output, not an independent second source.
 
-**Review status:** **10.01–10.02 substantively reviewed** against R4,
+**Review status:** **10.01–10.03 substantively reviewed** against R4,
 accepted Parts I–IX and Gesso v1622, with numbered preservation audits.
-Sections **10.03–10.20** remain for substantive review. Whole-Part-X
+Sections **10.04–10.20** remain for substantive review; whole-Part-X
 reconciliation and independent acceptance remain outstanding.
-This editorial review does not certify current Gesso or HumanHelp.
+No current Gesso/HumanHelp implementation certificate is implied.
 
 **R4 preservation baseline:** `main` Part X, to be compared during each
 substantive review.
@@ -122,6 +122,19 @@ implementation evidence/nonclaims are recorded in its audit.
 Published Part X now has **2342 newline-split lines** and
 **112631 characters**.
 
-**Next:** Review **10.03 — Framework Theorem Contracts** against R4,
-accepted Parts I–IX, completed 10.01–10.02 and actual Gesso
-proof-kernel, guarded-transition and source/physical correspondence tests.
+**10.03 review:** see `10.03-r4-preservation-audit.md`.
+Restored all ten R4 framework theorem families within the R5 theorem
+structure. Distinguished a single checked derivation, general kernel
+soundness, the concrete Clojure checker, typed-atom interpretation,
+source-complete conditional induction and separate deployed refinement.
+Preserved precise premise discharge, knowledge/provenance/non-escalation,
+global/local/plan/browser refinement, conservative progression, stale
+certification, physical trust limits and safety versus progress.
+Eighteen paired positive/adversarial controls and Gesso v1622 code
+correspondence/nonclaims appear in the preservation audit.
+Published Part X now has **2852 newline-split lines** and
+**129876 characters**.
+
+**Next:** Review **10.04 — Formal Proof Strategy and Production Correspondence**
+against R4, revised 10.01–10.03, accepted Parts I–IX and actual
+admission/physical observation and XTDB correspondence machinery.
