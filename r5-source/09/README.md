@@ -9,9 +9,9 @@ proof rules, identifiers, link targets or whitespace were changed.
 The canonical publication is derived output, not a second source
 to edit independently.
 
-**Review status:** **09.01–09.12 substantively reviewed** against R4,
+**Review status:** **09.01–09.13 substantively reviewed** against R4,
 Gesso v1622 and accepted Parts I–VIII, with source decisions recorded in
-the numbered preservation audits. Sections **09.13–09.16** remain for
+the numbered preservation audits. Sections **09.14–09.16** remain for
 substantive review. Whole-part reconciliation and independent Part IX
 candidate acceptance remain outstanding. Parts I–VIII are accepted R5.1 design
 candidates; this is not evidence of a completed runtime/proof system.
@@ -211,6 +211,18 @@ Twenty positive/adversarial cases and Gesso v1622 diagnostics/nonclaims
 remain separately attributed in the preservation audit. Published Part IX:
 **4345 newline-split lines**, **224460 characters**.
 
-**Next:** Review **09.13 — HumanHelp Compositional Certification Pilot**
-against R4, accepted Part VIII proving-app requirements, and actual
-source/physical evidence limits from reviewed 09.01–09.12.
+**09.13 review:** see `09.13-r4-preservation-audit.md`.
+Restored R4's full HumanHelp Claim proof/application DAG, real public
+RequestAssignment/actor/Organization/Location semantics, source-derived
+operation and writer obligations, stable C42 replay, exact backend outcomes,
+real browser-originated Claim and adopted-target evidence. Preserved the
+three independent semantic, production and positive product conclusions;
+Part VIII's fourteen gates and unselected response interaction remain open
+until their distinct acceptance criteria are met. Twenty-two paired
+positive/adversarial obligations and Gesso v1622 nonclaims are recorded in
+the audit. Published Part IX: **4659 newline-split lines**,
+**243083 characters**.
+
+**Next:** Review **09.14 — Profiles, Diagnostics, and Policy Review**
+against R4, completed 09.01–09.13 claim/evidence categories, and actual
+Gesso policy/preflight diagnostics and semantic-policy escape coverage.
