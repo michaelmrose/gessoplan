@@ -45,26 +45,65 @@ compact payload.
 
 The representation version is illustrative. A concrete emitted segment must
 satisfy the actual selected schema and its registered interfaces; this excerpt
-is not a second author-maintained implementation.
+is not a second author-maintained implementation. The source-level
+=:presentation/installation-completed= and =:presentation/installation-failed=
+names describe *distinct admitted source outcomes*, not two strings the
+browser may choose by examining a response code. The failure-reference
+contract includes failed, partially completed and indeterminate realization
+with an explicit affected-target/coverage classification where supported.
+If the host cannot determine what physically installed, it must retain that
+uncertainty rather than constructing a false completed or wholly failed event.
+An absent callback is neither event; interruption, deadline and owner-loss
+paths belong to the registered wait/recovery contract.
 
 The request action completes when installation work has been registered and
 issued under the host contract. It does not claim that the DOM changed. The host
 must buffer or otherwise serialize an immediate completion so it cannot be lost
 before the machine reaches its await boundary.
 
-The completed event is admitted only from that issued effect and for the current
-permitted target owner. The completion reference resolves to actual physical
-completion evidence. It does not become authoritative because an environment
-payload calls itself completed. The adopt action consumes that admitted evidence
-and updates the appropriate semantic owner; merely possessing a reference with
-a familiar shape is insufficient.
+Registration binds an effect instance, source observation, target incarnation,
+current owner, method of realization and completion/failure contract *before*
+the physical action can complete. An HTMX before-swap allowance, HTTP success,
+request-finished event, or provisional DOM render establishes neither the
+required physical replacement nor canonical adoption. If installation consists
+of multiple independent targets, completion is a scoped per-target fact rather
+than an unconditional whole-board success. A promised all-or-nothing
+installation requires an actual physical mechanism or an admitted compensation
+and recovery policy.
 
-The failed path preserves the failure's scope, including partial or indeterminate
-installation where applicable, and establishes the declared recovery owner before
-returning. It does not reject an already incorporated command. Owner retirement,
-source loss, or unbounded absence of a completion follows the segment's registered
-interruption/deadline and recovery contract. Assembly must reject a required
-physical effect with no such handling when it can strand this wait.
+The completed event is admitted only from that issued effect, the declared
+host completion source and the current permitted target owner. The completion
+reference resolves to actual physical completion evidence with the matching
+effect instance, target incarnation, observation scope and installed footprint.
+It does not become authoritative because an environment payload calls itself
+completed, nor can a late callback claim the generation of a successor.
+
+The adopt action consumes admitted completion and rechecks the shared
+coordinator's *current* owner, scope, source observation, independently newer
+adopted facts, and obligations accumulated since installation was requested.
+Merely possessing a reference with a familiar shape is insufficient. A
+qualified installation may discharge precisely covered obligations; it does
+not erase later Live invalidations, a pending granted Refresh, a newer
+creator-local card/membership, or unrelated targets. If the source was
+valid but the completion owner was superseded, the old callback cannot
+promote or overwrite a newer installation.
+
+The failed path preserves the failure's scope, including partial or
+indeterminate installation where applicable, and establishes the declared
+recovery owner before returning. It does not reject an already incorporated
+command. Already installed targets, remaining unsafe/intermediate DOM,
+unfulfilled acquire-and-adopt obligations and local continuity cleanup need
+their own typed physical evidence and repair disposition. A recovery handoff
+cannot inherit retired callbacks, timers, target grants or role-local
+knowledge merely because it inherits the pending requirement.
+
+Owner retirement, source loss, or unbounded absence of a completion follows
+the segment's registered interruption/deadline and recovery contract. Assembly
+must reject a required physical effect with no such handling when it can
+strand this wait. An implementation-specific synchronous effect interpreter
+does not make asynchronous host completion impossible: the projected machine
+suspends at its declared =:await= and receives qualified completion through
+the adapter/host boundary.
 
 The fragment does not claim that all browser state belongs to one execution.
 The adopt action communicates with the shared coordinator through its admitted
@@ -82,9 +121,9 @@ an alternative executable format:
 |----------+-----------------------------|
 | Invocation admitted | Record stable intent and execution ownership; derive permitted provisional presentation; issue declared effects. |
 | Command submitted or delivery attempted | Retain pending/unknown knowledge until evidence establishes more; submission alone is not incorporation. |
-| Accepted command evidence | Record permitted incorporation knowledge independently of whether a current card is available. |
-| Rejected command evidence | Record the authoritative rejection and select its declared presentation/recovery path. |
-| Unknown delivery or local deadline | Preserve unknown unless stronger evidence already exists; retain or transfer recovery ownership. |
+| Accepted command evidence | Record qualified historical incorporation knowledge independently of whether a current card is available or installed; the status is not a claim about the current RequestAssignment. |
+| Rejected command evidence | Record terminal command rejection only under the qualified, binding-scoped exclusion/disclosure contract; one failed physical attempt is insufficient. |
+| Unknown delivery or local deadline | Preserve unresolved command attribution unless stronger qualified evidence already exists; retain or transfer command and presentation recovery independently. |
 | Observation acquired | Validate scope and progression; propose installation without claiming adoption. |
 | Installation completed | Admit completion under the current owner; update adoption and discharge only covered obligations. |
 | Installation failed | Preserve command knowledge and unresolved presentation debt; follow repair or reacquisition. |
@@ -95,10 +134,39 @@ between the projected machine and its owner-relative adapter. The timeout is
 not smuggled into =:receive= as a forged participant message. The supported
 waiting/interruption mechanism must preserve the declared race semantics; a
 projection backend lacking that mechanism rejects the unsupported construction
-rather than dropping the timeout branch.
+rather than dropping the timeout branch. Both events retain the generation
+and physical resource correlation issued with their original owners;
+the losing callback is stale for that execution and cannot resume its
+terminal branch. If a late source-qualified outcome establishes historical
+C42 success, a separately admitted recovery owner may incorporate that
+knowledge without resurrecting the old E42 machine or target grant.
 
 Whichever event is admitted first may change local ownership, but it cannot
 change what evidence means. A later success can still resolve a retained command
 through an admitted recovery owner. It cannot restore retired installation
-rights. A late timer cannot erase a known success.
+rights. A late timer cannot erase a known success. Nor can a successful C42
+replay force Alice's historical Claim back into a card now reflecting Bob as
+primary helper after a later authorized Reassign. The qualified current
+Request/RequestAssignment observation and installed source decide current
+presentation; C42's retained result decides only its attributable history.
+
+*** Paired installation and Claim execution witnesses
+
+These cases exercise real runtime boundaries. A caller-supplied map containing
+=:installation/completion-ref= is not itself an admitted physical completion,
+and a green callback report is not independent product acceptance.
+
+| Eligible positive execution | Adverse or ambiguous execution | Required result |
+|-----------------------------+--------------------------------+-----------------|
+| A qualified scoped card is requested, its matching after-swap physical completion arrives for the current owner, and the coordinator adopts only the installed coverage. | The before-swap permission or HTTP 200 is treated as completed adoption, or a callback from a retired request claims the new request generation. | Separate allowance, actual host completion and qualified adoption; stale callbacks cannot advance the newer frontier. |
+| Installation is registered before the host completes synchronously; the queued completion is delivered at the matching =:await=. | Completion fires before the waiter is armed and is lost, or a duplicate completion advances twice. | Preserve once-correlated admission and deterministic duplicate handling across the registration-to-await race. |
+| A current Request card installs while a newer board invalidation or separate creator-local card was registered after the request began. | The stale broad installation clears the newer requirement or overwrites a newer locally adopted card. | Re-read current coordinator obligations and protected footprint at adoption; preserve unsettled work and independently newer facts. |
+| One of two installation targets completes and the other is indeterminate; the recovery owner receives exactly the remaining repair work. | An all-or-nothing installed label is issued or the command is marked rejected because DOM work partly failed. | Report partial/unknown physical effects, retain per-target coverage and command knowledge separately. |
+| C42's server-qualified historical Claim outcome is incorporated under current disclosure while a later Reassign has installed Bob as helper. | A late E42 timeout erases success, or C42 replay reinstalls Alice's obsolete presentation. | Retained command outcome and independently qualified current RequestAssignment remain distinct. |
+| A timer and a participant message race at one suspended execution; the first admitted event settles the local branch. | The timeout is forged as a participant message, or the losing old-owner callback resumes a retired machine. | Preserve distinct source classes, current resource generations and the declared recovery continuation. |
+
+These positive cases are independent of reject-all safety checks: installation,
+Claim, recovery and user-visible current presentation must be reachable under
+eligible premises, and failures must be observed at the actual stated host,
+semantic or trusted command boundary.
 

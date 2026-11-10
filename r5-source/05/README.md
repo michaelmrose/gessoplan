@@ -1,9 +1,9 @@
 # R5.1 sectional source — Part V, Provisional State and Executable Presentation
 
 **Disposition:** lossless structural preparation of preferred R5
-Part V is complete. Sections 05.01–05.08 have received substantive
+Part V is complete. Sections 05.01–05.09 have received substantive
 R4-preservation and Gesso-correspondence reviews, recorded in their
-respective `05.xx-r4-preservation-audit.md` files. 05.09–05.13
+respective `05.xx-r4-preservation-audit.md` files. 05.10–05.13
 remain unreviewed.
 The thirteen source units reconstruct
 `gesso-unified-design-canonical-r4-05-provisional-state-and-executable-presentation.org` byte for byte. **Whole-Part-V reconciliation
@@ -141,7 +141,15 @@ preserve immediate effect completion and retired owner correlation, and
 require typed total behavior over supported events without treating
 cross-host parity tests as full runtime or deployment proofs.
 
-**Next:** audit and revise `05.09-browser-installation-and-claim-execution.org`
-against R4, accepted Parts I–IV, reviewed 05.01–05.08, and Gesso's
-actual effect/installation and Claim settlement realization.
+**05.09 review:** see `05.09-r4-preservation-audit.md`.
+The installation segment now separates effect issuance, actual host
+completion and qualified scoped adoption; rechecks later invalidations
+and newer local cards at adoption; handles partial/indeterminate results,
+timed-out owners and historical Claim results without conflating them.
+Six paired positive/adverse cases preserve real physical and command
+correspondence obligations.
+
+**Next:** audit and revise `05.10-execution-boundaries-and-deployment.org`
+against R4, accepted Parts I–IV, reviewed 05.01–05.09, and the current
+portable schema, browser-host and deployment compatibility boundaries.
 One `next` remains one bounded revision.
