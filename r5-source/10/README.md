@@ -8,11 +8,11 @@ proof examples, identities, links or Org delimiters were modified.
 `gesso-unified-design-canonical-r4-10-formal-correspondence-and-system-boundaries.org`
 is derived output, not an independent second source.
 
-**Review status:** **10.01 substantively reviewed** against R4, accepted
-Parts I–IX and Gesso v1622, with decisions in its preservation audit.
-Sections **10.02–10.20** remain for substantive review. Whole-Part-X
+**Review status:** **10.01–10.02 substantively reviewed** against R4,
+accepted Parts I–IX and Gesso v1622, with numbered preservation audits.
+Sections **10.03–10.20** remain for substantive review. Whole-Part-X
 reconciliation and independent acceptance remain outstanding.
-This editorial review is not a certification of current Gesso or HumanHelp.
+This editorial review does not certify current Gesso or HumanHelp.
 
 **R4 preservation baseline:** `main` Part X, to be compared during each
 substantive review.
@@ -110,5 +110,18 @@ positive/adversarial verification cases and Gesso v1622 evidence limitations
 are recorded in the audit. Published Part X now contains
 **1720 newline-split lines** and **98586 characters**.
 
-**Next:** Review **10.02 — System-wide Assurance Targets** against R4,
-accepted Parts I–IX, revised 10.01 and corresponding Gesso code/assurance tests.
+**10.02 review:** see `10.02-r4-preservation-audit.md`.
+Restored R4's full eleven-family system-wide targets within the preferred
+R5 source/production matrix, with scoped semantic and physical obligations,
+real role/knowledge observations, typed and portable value boundaries,
+transaction-local writer guards, conservative progression, browser effect-
+time admission and resource ownership, exact generated/loaded assets,
+dynamic application/capability closure and explicitly conditional liveness.
+Twenty paired positive/adversarial acceptance scenarios and v1622
+implementation evidence/nonclaims are recorded in its audit.
+Published Part X now has **2342 newline-split lines** and
+**112631 characters**.
+
+**Next:** Review **10.03 — Framework Theorem Contracts** against R4,
+accepted Parts I–IX, completed 10.01–10.02 and actual Gesso
+proof-kernel, guarded-transition and source/physical correspondence tests.
