@@ -110,13 +110,17 @@ late interest discovery, and failure-window recovery.
 
 **Whole-part reconciliation, pass 04:** see
 `PART-IV-cross-section-reconciliation-04-installed-execution-coverage.md`.
-Clarified checked FX plan versus effective submitted transaction,
-active handler and worker bindings, independently evidenced backend
-writer coverage, and invalidation after deployment changes across
-04.04, 04.05, 04.10, 04.11 and 04.17. **None of these passes grants
-whole-Part-IV acceptance.**
+Clarified checked FX and XTDB submissions, handler/worker binding,
+writer coverage and installed-deployment invalidation.
 
-**Next:** reconcile scope/progression/actual installation and browser
-adoption end to end with the Part III/Part VIII semantics, then
-complete remaining cross-part and whole-part acceptance obligations
+**Whole-part reconciliation, pass 05:** see
+`PART-IV-cross-section-reconciliation-05-observation-adoption-lineage.md`.
+Closed the acquisition-to-physical-installation gap for complete board
+reads interleaved with independently newer local Request evidence in
+04.12, 04.13, 04.15, 04.16 and 04.17. **Neither sectional completion nor
+these five passes constitutes whole-Part-IV acceptance.**
+
+**Next:** reconcile principal/authority, role-local knowledge and
+resource-lifetime trust boundaries with Parts II, III and HumanHelp
+Part VIII. Then complete independent cross-part acceptance checks
 in separate bounded revisions.
