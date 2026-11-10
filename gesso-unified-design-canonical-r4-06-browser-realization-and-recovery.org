@@ -378,79 +378,184 @@ local realization; trusted server/model policy still guards actual
 RequestAssignment mutations and protected reads.
 *** HTMX remains the declarative transport and swap owner
 
-For a declared HTMX integration, HTMX owns the actual request lifecycle and the
-supported native swap behavior. Gesso binds those actions to an admitted plan,
-checks their semantic permission, and accounts for their consequences. The
-integration must not quietly create a second request or a second swap while
-reporting that the original HTMX action was controlled.
+For a declared HTMX integration, HTMX owns its supported ordinary request,
+response-processing, swap, out-of-band (OOB) and settle lifecycles. Gesso
+binds protected actions to admitted semantic plans, applies narrow allow/veto
+and correlation gates where necessary, and accounts for their actual effects.
+It does not reimplement HTMX's ordinary transport and DOM behavior or secretly
+issue a second physical request/swap while pretending the HTMX action was
+the one controlled. Explicit unmanaged HTMX remains legitimate under its
+own server-enforced policy; weaker transport behavior is never a silent
+fallback from a failed managed operation.
 
-A supported browser profile names:
+The supported *browser integration profile* identifies an actual running
+combination, not merely a dependency name. It includes:
 
-- the actual loaded HTMX version, configuration, extensions, and relevant
-  browser/runtime assumptions;
-- which lifecycle hooks control request construction, final send admission,
-  response interpretation, mutation, and completion;
-- which hook decisions are synchronous, cancellable, and effective before the
-  protected action;
-- all permitted response-driven effects and their control points;
-- how physical request objects, target instances, and deferred work preserve
-  adapter-issued correlation;
-- what counts as successful completion, partial completion, cancellation,
-  target loss, or an unsupported path;
-- the conformance evidence and remaining assumptions for this profile.
+- the installed HTMX and extension versions, configuration, response handling,
+  custom swap strategies, history/navigation behavior and loaded application
+  assets, with the applicable browser/host assumptions;
+- the permitted request modes, form/submitter overrides, targets, swaps,
+  response statuses, headers, OOB fragments, scripting and extension paths;
+- documented lifecycle events and the *actual last controllable boundary*
+  for each request send, response-driven action, target mutation and
+  deferred effect, including which decisions are synchronous and cancellable;
+- adapter-issued attempt, source, owner, request generation and physical
+  target-incarnation correlation carried by supported host events;
+- permitted action and target footprint, effect ordering/partial results,
+  and the evidence required to establish real completion, failure,
+  cancellation or an indeterminate physical result;
+- positive and adverse conformance tests for that exact profile, with
+  version-compatibility, escape and unsupported-mode dispositions.
 
-A matching library name or version string is not enough if configuration or an
-extension introduces an unaccounted mutation path. A profile may admit a useful
-extension after specifying and qualifying that path. It need not prohibit
-extensibility in principle.
+A matching library version string does not prove an extension, alternate
+startup path or runtime configuration obeys the same gates. A custom HTMX
+extension is not required in principle. If a particular supported behavior
+cannot be safely realized through the ordinary documented hooks, the
+framework may provide a separately specified wrapper/extension/alternate
+realization with its own host correspondence evidence, or reject that
+combination. It may not claim protection from a hook that cannot veto the
+relevant physical action. Changing an external HTMX event name should
+not change Gesso's underlying Choreo/browser semantic requirements.
 
-For every protected host behavior, the profile answers four questions:
+The integration must account for the request's effective method, URL,
+form/submitter parameters, headers, target, swap and entry binding,
+rather than trusting only a generated annotation or its initial DOM
+shape. An application may render a valid managed affordance and later
+replace it, inherit unexpected attributes or use an alternate submitter;
+the *actual admitted physical request* must still correspond to the
+protected operation and trusted route. Neither client-side checking
+nor a copied execution/command ID supplies server authorization.
 
-| Question | Required answer |
-|----------+-----------------|
-| Where can it be prevented? | A hook or wrapper that controls the action before its relevant effect. |
-| What exactly is permitted? | The action, target instances, representation, and mutation footprint bound to the permit. |
-| What can happen later? | Deferred callbacks, secondary targets, history effects, and other follow-on work. |
-| What proves completion? | A correlated event or checked postcondition for the actual issued action. |
+For every managed response or host action, the profile answers:
 
-Calling a generic =preventDefault= in an arbitrary callback is not a universal
-answer. If the selected profile cannot control a required mutation before it
-occurs, the assembly must choose a different supported realization or reject
-that combination. Observing the bad mutation afterward is a diagnostic, not
-prevention.
+| Boundary | Required qualification |
+|----------+------------------------|
+| Before physical send | Which actual request, owner, correlation, binding and synchronous gate permit this irreversible attempt? |
+| Before response-driven effects | Which result bytes and metadata are admissible, which secondary behaviors may run, and what happens if they cannot be contained? |
+| Before each protected mutation | Which target incarnation, scope, permitted representation and still-current physical actuation right cover it, including deferred or reentrant work? |
+| After the physical act | What actually completed, for which target/effect instance, and what remains failed, partial, indeterminate or unobserved? |
+| Across replacement/recovery | How are old element owners, pending events, subscriptions, continuity and fragment coordinator obligations retired or reconstructed without silently losing debt? |
+
+The request gate and mutation gates are not interchangeable. A successful
+=:htmx/before-request= decision permits at most the corresponding attempt;
+it cannot authorize arbitrary response headers or later targets. A
+=:htmx/before-swap= decision is not evidence that every OOB, script, history
+or extension effect has already been controlled. A callback named
+=:htmx/after-swap= is an observation whose correlation and actual completed
+scope must still be checked; it cannot establish a command's incorporation
+or a whole-board adoption by its name alone.
+
+For a supported cancellable lifecycle hook, a failing normalization,
+missing source identity, expired permit or throwing semantic gate must
+physically prevent the protected action. An asynchronous decision returned
+after the request or mutation starts does not provide the required veto.
+No application can claim a stronger browser safety invariant when an
+unexamined response path can mutate that same protected state outside
+its admitted footprint.
 
 *** Response data, response effects, and content safety
 
-A response can carry a command result, an authoritative observation, rendered
-content, or instructions affecting additional browser state. Each has its own
-admission requirements. Permitting one does not admit the others.
+A response may convey a command-specific historical result, an
+authoritative observation, replacement HTML, response headers,
+OOB fragments, browser events, navigation/history instructions or
+active content. These are different *subjects of admission*.
+Authorizing one does not authorize the others. A browser-visible
+HTTP status or response body is neither a trusted business-rule
+decision nor evidence that the user's display was installed.
 
-In particular, a command-response route configured with =hx-swap="none"= must
-not rely on that attribute alone as proof that the response has no effects. Its
-profile explicitly handles or excludes secondary-target swaps, response-triggered
-events, navigation/retargeting behavior, history changes, script execution, and
-extension-specific actions. Whether a particular mechanism exists and how it is
-controlled is a property of the qualified profile.
+For HTMX 2's ordinary =hx-swap="none"= behavior, suppressing the main
+target insertion does *not* imply a response without browser effects:
+OOB content and applicable response headers can still be processed.
+A managed command-response endpoint using that mode must explicitly
+admit, isolate or exclude such effects. For example, a response that
+reports C42's result may still carry an OOB replacement of a Request
+card or a response-triggered event; neither gets permission from the
+mere fact that C42's command outcome was admitted. A registered
+side effect must have its own owner, disclosure scope, target and
+completion contract. A malformed or unauthorized additional effect
+is rejected or quarantined *before* its protected mutation. A
+typed error recorded after unintended DOM replacement is too late.
 
-Likewise, a permit for the main target does not authorize every out-of-band
-target mentioned by a response. Each target must be covered by the declared
-mutation footprint and current ownership. An integration may use one checked
-multi-target permit or a collection of separately admitted permits, with explicit
-partial-failure semantics.
+The profile inventories the applicable response and extension mechanisms,
+not just the primary HTML swap. Depending on the qualified HTMX version
+and configuration, these include OOB swaps, response-specified retargeting
+and swap overrides, client-side events, redirects/location changes,
+history updates, script processing, native form behavior, and
+extension-defined mutations. Response-triggered events can themselves
+cause further requests or application actions; a declared effect chain
+must either be admitted through its own entry gate or excluded.
+A configured =HX-Trigger= header cannot silently become an
+unexamined mutation capability. Likewise a response carrying
+=HX-Retarget= or =HX-Reswap= cannot enlarge a previously admitted
+mutation footprint without a new effective check.
 
-Authoritative domain provenance is distinct from content safety. A database
-observation does not prove that interpolated user content is safe HTML. The
-rendering contract specifies escaping, allowed active content, extension and
-script policy, and which response metadata can initiate work. Rendering first
-into an inert representation is useful where supported, but does not by itself
-prove all later activation safe.
+A protected main-target permit does not grant all OOB targets. Each
+secondary target requires a valid current instance, authorized
+content/disclosure scope and mutation permission. One multi-target
+permit is possible if the complete footprint and intermediate
+physical behavior are genuinely covered; otherwise individually
+scoped permits and completion records are needed. Sequential
+DOM writes are not automatically physically atomic. A later failed
+target does not undo earlier physical changes, and observed partial
+completion must retain the required repair/adoption debt. Section
+06.05 owns the detailed scoped installation contract.
 
-Generated markup must preserve the admitted relationship among its operation
-bindings, data observations, target/coordinator ownership, and relevant protocol
-version. Hand-copying an old action annotation onto newly rendered data cannot
-substitute for that construction. Replacement of a root fragment must also
-preserve or deliberately reconstruct the owner and subscription bindings needed
-for subsequent work.
+An application may safely choose a restricted response profile
+(e.g., permitting only one known inert fragment and prohibiting
+unexpected response effects), but restriction has to be enforced at
+the *actual response-processing boundary*. Merely expecting the
+server to return a harmless shape is insufficient if any other
+reachable path, cache, extension or response override can produce
+an unreviewed mutation.
+
+Authoritative provenance and HTML/content safety are separate.
+A qualified XTDB observation does not make arbitrary user-supplied
+HTML, JavaScript, =hx-*= attributes or event handlers safe for
+insertion. Rendering declares escaping, sanitization where
+untrusted markup is intentionally supported, allowed active
+content, script/CSP policy, HTMX attribute processing and
+extension behavior. The trusted construction and serving path
+must prevent client-supplied content from manufacturing managed
+actions or protected subscription/command bindings. Rendering
+into an inert container can be a useful preparation step, but
+later activation and execution are separate physical effects.
+
+The actual checked fragment must preserve the relationship
+among its protected data, operation binding, target/coordinator
+instance, authoritative observation and accepted protocol version.
+Copying an old =:choreo/op= annotation onto a newly generated
+button does not provide admission. Replacing a stable Live/HTMX
+behavior-owning root without re-establishing its declared
+connection, trigger, current-owner and continuity hooks can
+silently end all subsequent refreshes. An admitted replaceable
+inner fragment may change while its owner remains stable; if the
+root itself is replaced, the new owner and subscription lifecycle
+must be explicitly reconstructed and checked.
+
+*** Transport and response conformance histories
+
+Each positive case must exercise the real supported HTMX processing
+path and the expected source/owner bindings; negative cases must
+reach the relevant physical boundary rather than fail on an unrelated
+malformed fixture. The table specifies finished-system tests, not
+claims that Gesso v1622 already satisfies every row.
+
+| Eligible positive path | Adverse or incomplete path | Required conclusion |
+|------------------------+----------------------------+---------------------|
+| An admitted managed Claim H1 receives a qualified C42 settlement through a command-response with =hx-swap="none"= and no unadmitted secondary effect. | The same-looking response contains an unauthorized OOB card replacement or a response event that submits a second operation. | Historical C42 disposition may be recorded independently; the extra mutation is blocked before actuation or the response/profile is rejected, without asserting that the card adopted. |
+| A protected acquisition swaps the current target B2 under an admitted permit and reports actual completed installation. | An OOB replacement targets a different or retired B1, or a response retarget/override escapes the approved footprint. | Only the actually covered target may change and discharge its scoped adoption; the other target is denied or recorded as separate incomplete/repair work. |
+| A supported cancellable pre-send hook binds actual form method, route, arguments and owner to the admitted operation. | A submitter override, inherited HTMX attribute, thrown gate or uncorrelated physical request changes that binding but the network send proceeds. | Fail physically closed at the effective pre-send boundary; do not silently downgrade to unmanaged HTMX or mark the command rejected from a failed attempt. |
+| A permitted HTML fragment escapes untrusted Request text and preserves its validated data/operation bindings after replacement. | User content introduces executable =hx-*= attributes, handlers or scripts that initiate protected effects outside the admitted construction path. | Prevent unsafe activation/processing under the declared content profile; possessing an authoritative observation does not authorize injected code. |
+| A complete authorized refresh replaces the inner fragment while stable root owners, Live subscriptions and continuity resources survive or are deliberately re-established. | A whole-root swap silently drops the SSE listener or attaches new events to the retired owner's target, while tests check only the first refresh. | Reject the incomplete managed realization or perform the admitted owner handoff; later refresh and owner-bound callback tests must remain positive. |
+| A scoped installed result and a separate current command readback establish their own qualified propositions. | An HTTP 200, a generic =afterSwap= event, or the presence of a matching digest is reported as universal current RequestAssignment state and whole-board adoption. | Preserve command, read, installed target and board-cohort evidence separately; absent physical completion is unresolved, not success. |
+
+Ordinary raw HTMX interactions continue to work on legitimate routes
+under ordinary trusted server authorization. Managed stronger promises
+apply only when the exact selected rendering, transport, response,
+target and deployed integration paths have been admitted. Part VII
+must verify the actual application closure for those paths; Part VIII
+requires nonvacuous eligible HumanHelp Create/Claim/Reassign and
+one-Refresh product behavior, not merely passing negative fixtures.
 
 *** Worked example: Claim followed by protected acquisition
 

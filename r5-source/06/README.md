@@ -1,13 +1,13 @@
 # R5.1 sectional source — Part VI, Browser Realization and Recovery
 
-**Disposition:** Lossless structural preparation of the preferred R5
-Part VI is complete. Fifteen source units 06.01–06.15 reproduce the
-unchanged published Part VI exactly. All original headings, examples,
-internal links and eight `CUSTOM_ID` anchors survive. Sections **06.01–06.02 have completed R4 preservation and
-Gesso-source correspondence reviews**, recorded in their
-matching sectional audits. Sections 06.03–06.15,
-whole-part reconciliation and independent candidate acceptance
-remain outstanding.
+**Disposition:** The preferred R5 Part VI was initially split
+losslessly into fifteen numbered Org units. Subsequent substantive
+reviews revise those sources and rebuild the publication by exact
+concatenation. All eight original `CUSTOM_ID` anchors remain stable.
+Sections **06.01–06.03** have completed substantive R4-preservation
+and Gesso-source correspondence reviews, recorded in their
+matching audits. Sections 06.04–06.15, whole-part reconciliation,
+and independent candidate acceptance remain outstanding.
 Parts I–V are accepted reviewed R5.1 candidates. Parts VI–XII and
 the independent full-plan reconciliation remain unfinished.
 
@@ -110,18 +110,21 @@ specification to current Gesso implementation limits.
 the untouched candidate Parts VII–XII in
 `output/gesso-plan-v5.org`.
 
-This initial split was checked by exact concatenation of all
-15 fetched source strings against the published Part VI:
+At the initial split, all fifteen fetched source strings
+concatenated exactly to the unchanged R5 Part VI baseline:
 **84,711 decoded JavaScript string code units** and
-**1,481 newline-split lines**. The split preserved its eight
-stable anchors and did not cross an Org block. The canonical
-published Part VI and composed output need no changes
-because their normative contents are unchanged.
+**1,481 newline-split lines**. Subsequent sectional revisions
+update the canonical Part VI publication from the numbered units.
+After 06.03, the fifteen reviewed/unreviewed units exactly
+reconstruct the **111,309-character**, **1,804-line** Part VI
+publication, with all eight stable anchors and balanced Org
+blocks. The whole-plan output remains a generated artifact,
+not a separate editable normative source.
 
 The Python assembler was **not executed** in a local Gessoplan
-checkout. Initial splitting and the subsequent 06.01 publication
-were checked by GitHub-fetched exact concatenation, not by
-runtime, backend, browser or machine-proof execution.
+checkout. Initial splitting and subsequent 06.01–06.03
+publications were checked by exact GitHub-fetched concatenation,
+not by Gesso runtime, backend, Chromium or formal proof execution.
 
 **06.01 review:** see `06.01-r4-preservation-audit.md`.
 The revised section separates role-local Choreo execution from
@@ -140,6 +143,13 @@ and an actually effective synchronous veto before protected
 HTMX work. Six positive/adverse histories expose stale effects,
 request-attempt confusion, shared invalidations and suspended pages.
 
-**Next:** review **06.03 — HTMX Transport and Response Safety**
-against R4's host integration rules, the accepted R5.1 browser
-and authority boundaries, and actual supported HTMX behavior.
+**06.03 review:** see `06.03-r4-preservation-audit.md`.
+The qualified HTMX integration profile now accounts for actual
+submission, response headers, OOB/secondary effects, effective
+pre-mutation gates, untrusted markup, per-target completion,
+and stable Live root ownership. Six paired positive/adverse
+histories distinguish actual effects from copied response data.
+
+**Next:** review **06.04 — Claim Acquisition and Browser FFI**,
+including the protected Claim/acquisition path and the exact
+semantic/physical interface correspondence.
