@@ -1,84 +1,314 @@
-**** Worked example: two obligations during one refresh
+**** Worked example: two obligations during one Refresh
 
-The board has adopted an admitted observation at provider position P17. An
-advisory O1 requires compatible board coverage satisfying P18. Alice presses
-Refresh, creating grant G1 and cycle A1. While A1 is in flight, O2 arrives with
-a compatible requirement P20. These labels denote provider-issued values;
-no generic numeric ordering is assumed.
+Bob has adopted a qualified, complete HumanHelp Request-board observation
+for applied query Q and authority context K at provider position P17.
+An admitted Live advisory O1 establishes an outstanding requirement for
+compatible Q coverage satisfying provider condition P18. Under this product's
+*explicit-user-Refresh* policy, O1 creates advisory debt and a visible
+Refresh affordance, not automatic permission to fetch or adopt another board.
+Alice may independently create or Claim a Request while Bob is viewing Q.
 
-| Actual result and permission | Required behavior |
-|------------------------------+-------------------|
-| A1 observes and installs evidence satisfying O1 but not O2. | Discharge O1 at the required stage; retain O2. |
-| A1 observes evidence satisfying O1, but its installation fails. | Acquisition debt may clear; installation debt and repair remain. |
-| A1 observes and installs evidence the provider establishes satisfies both O1 and O2 within the permitted query scope. | Discharge both; no second request is needed. |
-| A1 fails, with no successor grant. | Retain both obligations and expose retry/deferred state. |
-| G1 permits one captured read only and O2 remains. | Do not automatically issue A2; wait for a new grant or another declared policy. |
-| G1 explicitly permits bounded drain-debt successors. | Issue at most the allowed successor cycle for remaining requirements. |
+Bob presses Refresh once. The admitted action creates grant G1, capturing
+the applied Q/K scope, O1 and a budget of one physical acquisition with no
+automatic successor. A1 is the admitted logical acquisition/installation
+cycle; its physical HTMX attempt, installed target and resource generation
+have distinct identities. During A1, a separate admitted advisory O2
+arrives with a requirement associated with P20. No ordering or
+satisfaction relation follows merely from the labels P17/P18/P20.
+The relevant progression provider must establish it.
 
-Tests must obtain those judgments from the admitted progression contract or an
-explicit test provider. Editing a fixture from =P18= to =P21= does not demonstrate
-that a real acquisition observed sufficiently current authoritative state.
+#+begin_src clojure
+;; Illustrative already-admitted inspection values, not authority grants
+;; created by supplying these maps from an arbitrary browser.
+{:grant/ref G1
+ :owner/ref board-owner-B1
+ :authority-context/ref K
+ :query/ref Q
+ :captured-requirements [O1]
+ :reads {:initial 1 :successors 0}
+ :adoption-policy :qualified-scoped-install}
 
-If A1 is retired and an attempted abort fails, a later A1 response remains stale
-for installation even when its progression evidence is stronger than A2's. The
-application may reuse its observation only through a separately declared current
-admission path. A stronger token cannot renew A1's revoked resource rights.
+{:cycle/ref A1
+ :grant/ref G1
+ :query/ref Q
+ :captured-requirements [O1]
+ :request-instance/ref H1
+ :owner/ref board-owner-B1
+ :status :acquiring}
 
-Discharge always considers the current obligation set and independently admitted
-evidence. It must neither restore a stale snapshot that loses O2 nor retain an
-obligation already satisfied by another completed installation. The product also
-declares whether a non-regressing partial advance may be adopted while stronger
-debt remains, or whether installation must satisfy all applicable current debt.
-The coordinator must not select between those policies by timing accident.
+{:obligation/ref O2
+ :source/ref admitted-live-interest
+ :query/ref Q
+ :required-stage :adopt
+ :progression/ref P20}
+#+end_src
 
-**** Applied query identity and local drafts
+These maps display distinctions; they do not implement
+:advisory/satisfied-by?, create a trusted provider observation, or
+justify any physical DOM installation. In particular, a field
+named =:progression/ref= is not an assertion that P20 is
+comparable to, or later than, P18.
 
-The coordinator's scope is the applied query, including relevant filters,
-organization/tenant, authorization context, temporal interpretation, and projection
-contract. A text field containing an unapplied filter draft does not redefine an
-in-flight request's scope. Conversely, committing a new filter must not leave an
-old response authorized to overwrite the new result set.
+When O2 arrives, the coordinator adds it to the current obligation
+set. It does not modify the historical snapshot captured by G1,
+silently expand the read budget, or assume that A1's already
+constructed request includes O2's minimum-read requirement.
+The *actual returned observation* may nonetheless independently
+satisfy O2. Discharge is calculated against the current outstanding
+obligations and their required stages, not against only G1's
+originally captured list.
 
-Changing scope normally creates a new owner instance. A more sophisticated
-transition may transfer compatible obligations and observations under explicit
-coverage judgments. It must not merely mutate a scope field while retaining old
-request and target permissions.
+| Qualified A1 result and actual permission | Required result |
+|-------------------------------------------+-----------------|
+| A1 returns a complete authorized Q observation O18, provider-proved to satisfy O1 only; the current target installs it successfully. | Record O1's required adoption, retain O2 and its visible advisory debt; no hidden A2. |
+| A1 returns O18 satisfying O1, but HTML or DOM installation fails or remains indeterminate. | Retain relevant acquired evidence where valid; keep installation/recovery debt for O1 and O2 as their stages require. Do not claim adoption from HTTP success. |
+| A1 returns an independently admitted O21 for Q and the provider establishes that it satisfies both O1 and O2; all required physical scopes install. | Discharge both requirements with the one authorized read, without inventing a second request. |
+| A1 fails before obtaining admitted current evidence. | Preserve O1 and O2, classify failure and expose a new user action or permitted declared retry. |
+| A1 returns an observation that covers O1 but has no comparable judgment for O2. | Keep O2 even if a token looks numerically larger; a conservative result is not incorrect over-retention. |
+| G1 authorizes exactly one acquisition; a queued successor intent remains after A1. | Do not start A2 without a new valid grant. The successor slot is scheduling intent, not independent permission. |
+| A different declared policy explicitly grants one bounded drain-debt successor. | Start no more than the admitted successor while its current owner, source, expiry, and read budget remain valid. |
+| Another qualified physical installation already satisfies O2 while A1 is active. | Remove only the now-proved satisfied obligation; avoid a redundant read or overwriting newer adopted evidence. |
 
-Continuity restoration may preserve a permitted local draft across installation.
-It cannot restore an old applied filter, stale authoritative card contents, or
-obsolete owner annotation as if those were harmless focus state.
+If A1's response has a provider progression satisfying both
+O1 and O2, *but* its actual physical footprint covers only one
+card, adoption-stage board obligations remain until the declared
+board cohort postcondition is established. Conversely a separately
+qualified newer local card S may remain adopted while Q's board
+membership is adopted from an older compatible response R.
+That selective merge cannot be described as one atomic backend
+snapshot; it must preserve each source, coverage and physical
+representation relationship under the policy of 06.05.
+
+The original R4 examples used X17/X18/X20/X21 to make the two
+possible outcomes concrete. These labels remain useful examples,
+but editing a fixture's =:basis= field from X18 to X21 does
+not issue a new admitted observation or prove the provider's
+satisfaction relation. Test witnesses must come from the actual
+qualified source, an explicitly modeled provider or a sound
+fixture generator, with separate installation completion evidence.
+No unconditional comparison such as =X21 > X20= is permitted.
+
+A1 may be retired while an attempted physical abort fails.
+A later response carrying an apparently stronger provider token
+cannot write into the new A2 owner/target or discharge its
+obligations using A1's revoked permit. If that observation is
+still useful, its source/authority and progression must be
+readmitted under a *new* applicable owner and permitted
+installation path. A later physical callback cannot resurrect
+a retired logical acquisition.
+
+An explicit one-Refresh test needs an actual authorized eligible
+board and a counted physical request budget. It must positively
+show the first permitted request, then prove no ungranted
+successor was sent, while remaining debt stays visible. A
+test that merely disables the button or intercepts all fetches
+does not establish the required positive product behavior.
+
+**** Applied query identity, local drafts and owner changes
+
+The coordinator's authoritative scope is the *applied* server
+query and its authorized cohort. It binds tenant/Organization,
+principal/actor and current disclosure context, projection,
+relevant server-side filters, selection criteria, temporal
+interpretation, and required coverage/progression semantics.
+A sort order is included when it changes the server query or
+meaning of the returned representation; pure local rearrangement
+of the same acquired cohort remains a presentation choice.
+
+Typing in a local live-search field need not initiate a new
+server query: it may filter an already acquired authorized
+cohort while retaining the same applied Q. Local search draft,
+sort preference, selected card, open details, scroll and
+compatible input drafts are presentation/continuity data.
+They cannot create trusted collection membership or rewrite
+the acquisition's authorized scope. Conversely, if a filter
+*is applied* to the server query, a previously in-flight
+response for Q1 may not be installed as if it answered Q2.
+
+A normal applied-query change admits a new coordinator owner
+and target generation, revokes the old owner's private
+resource and installation permits, and creates or transfers
+the newly applicable obligations under a checked coverage
+and authority judgment. Compatible independent observations
+may be retained, but a merely copied query key, DOM selector
+or subscription ID is not evidence of such a transfer.
+The old subscription may briefly coexist physically with
+the new one during handoff without remaining semantically
+authorized to install into its successor.
+
+Authority-context transitions require the same explicit
+re-admission. A logout, Organization switch, Membership
+change, or altered disclosure rule invalidates assumptions
+attached to the earlier principal/context. The browser
+must not retain protected old content, subscription interests
+or acquisition permissions as if they belonged to the new
+context. The trusted server independently checks every read,
+stream subscription and write, including those submitted
+by a hostile client that bypasses the browser adapter.
+
+Continuity restoration may preserve an authorized local
+draft, focus or scroll under its owner policy. It may not
+reinstate an old *applied* server filter, older Request card,
+outdated operation annotation, unapproved user draft, or
+subscription owner as though those were harmless UI state.
+An optional failed focus restoration after an admitted
+installation is a local fault; it does not revoke the
+authoritative observation or authorize obsolete rollback.
+
+HumanHelp's remote actor who has O1 sees an advisory and
+Refresh glow, but no hidden acquisition under the
+explicit-Refresh policy. Alice's own correlated new
+Request S can be installed locally after its qualified
+operation and card observation, without requiring every
+remote participant to adopt it. When Bob finally grants
+one Refresh, it must preserve a separately newer locally
+installed S in a compatible scope rather than blindly
+overwriting S with older board R. The product's positive
+behavior includes actual enabled Claim, Unclaim, Done,
+Cancel and manager Reassign where eligible, not only
+correct rejection of deliberately invalid commands.
 
 **** Initial load and subscription recovery close the same gap
 
-Initial server rendering is an authoritative acquisition/installation path. Its
-evidence, scope, asset/plan compatibility, and transition into live subscriptions
-must be admitted. Being present when the page loads does not exempt markup from
-the browser contract.
+Initial server rendering is also a qualified acquisition
+and physical installation. Its projection, applied query,
+trusted disclosure scope, coverage, installed asset/plan
+compatibility and physical owner must be related to the
+subsequently admitted Live subscription. An HTML fragment's
+mere presence on page load is not proof that its
+authoritative baseline and subscription are coherent.
 
-The interval between taking a baseline observation and establishing a subscription
-can lose relevant changes. A supported integration declares how it closes this
-gap: for example, a qualified read/subscription fence, a durable cursor with
-replay, buffered events paired with a baseline, or a polling/reacquisition rule
-that establishes the required coverage. The specific strategy must be justified
-by the provider's actual semantics.
+Consider an initial authoritative board observation B taken
+at provider position P17. The stream/interest that should
+report later changes may not be effective until after B.
+A relevant write W can occur in that interval. If no
+subsequent event is delivered for W and no other fence is
+established, the browser cannot infer that its initial
+B remains current. Establishing the stream after rendering
+is not, by itself, a coverage proof.
 
-The same obligation returns after a disconnected stream, server restart,
-subscription replacement, or page suspension. Absence of new events is not proof
-that nothing changed while disconnected. Recovery marks continuity unestablished
-and creates the necessary acquisition/replay work even if no advisory arrives.
+A supported provider/transport realization closes that
+hand-off gap by an explicitly justified mechanism, such as:
 
-A stream event ID is not automatically a database progression token or evidence
-of durable replay. The profile binds each identifier to the guarantee it actually
-provides. Overlapping replacement connections, duplicate deliveries, and delayed
-events from the old subscription all pass through resource-instance admission.
+- registering the durable interest/stream before capturing
+  the baseline, buffering or replaying admitted invalidations,
+  then reconciling against a proved overlap/fence;
+- an atomic or otherwise qualified subscription/read fence
+  that establishes all changes up to a declared provider
+  position are reflected in the baseline or replay set;
+- durable cursor/replay with explicit retention, delivery,
+  source, ordering and gap detection semantics;
+- an admissible post-interest current-state read whose
+  provider/stream protocol proves coverage of the relevant
+  gap, including authorized query and applied-scope identity;
+- bounded periodic reacquisition with an explicit staleness/
+  liveness contract, where continuous no-gap knowledge is
+  *not* claimed without stronger evidence.
 
-For a current-state view, a qualified current observation may replace the need
-to replay every intermediate change. A workflow that promises processing of every
-event needs a separate durable delivery/processing contract; refreshing the DOM
-cannot meet that promise.
+The same question arises when a router first learns of a
+node's interest, when a browser reconnects, or when a
+standby router takes over. An invalidation that no router
+formed or retained cannot be reconstructed merely by
+resending the messages still available to a recovering
+router. Idempotent redelivery is useful for messages that
+*were* generated and may have been lost; it is not a proof
+that every write inside an interest-registration race was
+ever represented. A qualified baseline/fence, replay
+contract or reacquisition is still required to establish
+the promised current-state coverage.
 
-Subscription interests also have ownership. A shared connection may outlive a
-particular card, but a retired interest must not keep authorizing updates to that
-card. Shared ownership, per-interest routing, reconnect, and final resource release
-are explicit parts of the protocol.
+If the system provides only best-effort SSE notifications,
+the safe contract retains continuity as *unestablished*
+across the gap. It may warn that the view may be stale,
+offer an explicit Refresh, or use a separately authorized
+reacquisition policy; it must not assert a successful
+subscription handoff because no more messages arrived.
+The ordinary refresh may legitimately happen after an
+advisory without providing a precise global stream-order
+witness; the assurance claim must name what the provider
+actually establishes.
 
+Disconnect, =online=, restored =pageshow=, foreground
+=visibilitychange=, server restart, subscription replacement,
+tab suspension, live-root replacement and router failover
+can all create or expose a continuity gap. These triggers
+are *opportunities to detect or repair*, not authoritative
+progression evidence or unconditional permission to fetch.
+A lifecycle wakeup with no progression token still creates
+the required reconciliation/unestablished-continuity
+state when the selected contract demands it.
+
+For a product selecting explicit user Refresh, a recovery
+gap may create visible debt without consuming an
+ungranted read. If a strong subscription invariant
+requires an immediate fence/read, application construction
+must either explicitly authorize that bounded bootstrap
+or recovery acquisition, declare a weaker live guarantee,
+or reject the incompatible combination. It may not
+quietly bypass the user's one-Refresh grant while
+claiming that the same grant covered two reads.
+Mandatory safety or privacy revocation may require
+separate immediate local invalidation under its
+security policy; that is not permission to fetch new
+protected data without trusted authorization.
+
+Stream event IDs, XTDB basis values, HTTP request
+generations and distributed router sequence numbers
+serve different purposes. They are not interchangeable,
+and their numeric-looking forms establish no universal
+order or durable replay property. Every admitted
+identifier needs a declared source, scope, epoch/
+incarnation and provider relation. Duplicate, late
+and reordered messages are ordinary protocol cases;
+the coordinator preserves independently valid debt
+and ignores stale *installation rights* without
+discarding a current, genuinely scoped advisory.
+
+Current-state views can recover from a missed sequence
+of invalidations by obtaining a qualifying current
+observation, without replaying every intermediate
+write, provided the provider's read and authorization
+semantics establish the promised resulting state.
+A workflow promising delivery or execution of *every*
+event requires a separate durable event-processing
+contract: refreshing a board cannot prove that each
+intermediate event was consumed.
+
+Interests themselves have semantic and physical
+lifetimes. A shared SSE connection may serve several
+fragments and survive replacement of one card, but a
+retired card interest cannot continue authorizing
+callbacks or disclosures for that target. Owner
+replacement and new stream registration preserve
+or deliberately reestablish live trigger bindings
+and cleanup resources by exact instance identity.
+A physically lingering old connection is cleanup
+debt, not a second semantic owner.
+
+**** Paired Refresh and subscription-gap acceptance histories
+
+These are obligations for the *finished* system and
+its declared provider/host profile. A positive path
+must use an eligible authorized read and actual
+installed result; a nearby negative must exercise
+the relevant boundary without being rejected for
+an unrelated malformed fixture.
+
+| Eligible positive history | Adverse or incomplete history | Required conclusion |
+|---------------------------+-------------------------------+---------------------|
+| Bob has O1 debt, grants exactly one G1 Refresh, and A1 installs qualified Q evidence covering only O1 while O2 arrived in flight. | The callback clears O2, or launches an ungranted A2 from a queue slot. | O1 discharges at its required stage; O2 remains visible with no second physical read. |
+| A1's real authorized observation is provider-proved to satisfy O1 and O2 and physically installs all required scopes. | The fixture edits a token from P18 to P21, assumes numeric ordering or reports HTTP success without installation. | One read can discharge both only with valid progression, coverage and adoption evidence. |
+| A1 fails or installation is partial while O1/O2 remain, and Bob may later take a new explicit action. | The failed cycle erases debt or treats an aborted request as rejected command evidence. | Preserve obligations and scope-specific repair, independently of request scheduling and historical commands. |
+| Bob applies Q2 while Q1 is in flight; a new coordinator owner admits the current Q2 read and preserves eligible local draft state. | Old Q1 content installs into Q2 or continuity restores an obsolete authoritative filter or operation annotation. | Prevent stale actuation and preserve applied-query/authorization identity separately from local draft. |
+| A current local correlated S card remains adopted while an older permitted R board membership response installs under a qualified selective merge. | Blind R replacement regresses S or claims a mixed-snapshot theorem without source evidence. | Preserve independently justified scoped card and cohort evidence or reacquire the incompatible region. |
+| The baseline B is read with a qualifying interest/read fence, or a registered replay source covers W between B and subscription activation. | The stream starts after B, W is missed and later SSE silence is treated as proof that B is current. | Establish real baseline-to-interest coverage or retain continuity-gap debt; no false currentness claim. |
+| A disconnected tab or failed router recovers through a named durable replay or qualified current-state reacquisition. | The router redelivers only known messages and treats a never-generated invalidation as recovered. | Redelivery cannot close interest-registration omissions; require fence/replay/reacquisition evidence. |
+| A best-effort stream reconnect creates an explicit stale warning and awaits Bob's grant under the selected explicit policy. | =online= or =sseOpen= silently issues an extra read and bills it to the earlier one-Refresh grant. | Recovery policy, read budget and actual physical requests must agree; retain debt when not yet authorized. |
+| A shared SSE connection outlives card replacement and a new interest is registered for the current owner. | A retired subscription still mutates or reveals old-context data, or replacing the root silently drops all future Live bindings. | Exact interest/source/owner admission, protected disclosure and explicit lifecycle repair. |
+
+The complete HumanHelp product criterion remains independent:
+eligible Claim, Reassign, local search, creator-local immediate
+presentation, remote advisory, one granted Refresh and physical
+continuity must be observed through real model and browser paths.
+Source-level state-map equality or reject-all construction
+cannot satisfy those positive requirements.
