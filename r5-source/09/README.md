@@ -9,10 +9,11 @@ proof rules, identifiers, link targets or whitespace were changed.
 The canonical publication is derived output, not a second source
 to edit independently.
 
-**Review status:** **09.01–09.16 awaiting substantive review.**
-Part IX has not yet undergone its sectional R4-preservation/Gesso
-source correspondence checks, whole-part reconciliation or independent
-candidate acceptance. Parts I–VIII are accepted R5.1 design
+**Review status:** **09.01 substantively reviewed** against R4, Gesso v1622
+and accepted Parts I–VIII, with source decisions recorded in
+`09.01-r4-preservation-audit.md`. Sections **09.02–09.16** remain for
+substantive review. Whole-part reconciliation and independent Part IX
+candidate acceptance remain outstanding. Parts I–VIII are accepted R5.1 design
 candidates; this is not evidence of a completed runtime/proof system.
 
 **R4 preservation baseline:** `main` Part IX,
@@ -106,6 +107,12 @@ property drawers are not split; all eight original
 No Gesso/HumanHelp runtime tests or formal tools were run in
 this split-only revision.
 
-**Next:** Review **09.01 — Governing Compositional Contract**
-against R4, Gesso `application-assurance`, the
-HumanHelp use case, and accepted Parts I–VIII.
+**09.01 review:** The governing contract now distinguishes proposition-specific
+conditional evidence, original-source completeness, explicit opaque policy,
+non-vacuous independent product gates, executable core/proof kernel/dedicated
+checker roles, fail-closed certified construction, trust and freshness.
+See `09.01-r4-preservation-audit.md` for R4 decisions, actual Gesso source
+correspondence and twelve positive/adversarial obligations.
+
+**Next:** Review **09.02 — Claims, Judgments, Evidence, and Semantic Interfaces**
+against the original R4 assurance vocabulary and current Gesso source.
