@@ -8,9 +8,9 @@ proof examples, identities, links or Org delimiters were modified.
 `gesso-unified-design-canonical-r4-10-formal-correspondence-and-system-boundaries.org`
 is derived output, not an independent second source.
 
-**Review status:** **10.01–10.06 substantively reviewed** against R4,
+**Review status:** **10.01–10.07 substantively reviewed** against R4,
 accepted Parts I–IX and Gesso v1622, with numbered preservation audits.
-Sections **10.07–10.20** remain for substantive review. Whole-Part-X
+Sections **10.08–10.20** remain for substantive review. Whole-Part-X
 reconciliation and independent editorial acceptance remain outstanding.
 No current Gesso/HumanHelp implementation certificate is implied.
 
@@ -171,7 +171,20 @@ tests and exact Gesso v1622 source limits are recorded in its audit.
 Published Part X now contains **4219 newline-split lines** and
 **173124 characters**.
 
-**Next:** Review **10.07 — Writer Coverage Beyond HTTP Routes** against R4,
-accepted Parts I–IX and completed 10.01–10.06, examining real deployed
-XTDB entrypoints, background/migration/service writers, physical
-capability restrictions and current Gesso inventory/mediation evidence.
+**10.07 review:** see `10.07-r4-preservation-audit.md`.
+Preserved R5's explicit non-HTTP writer inventory and R4's requirement
+that formal Claim correctness transfer to all relevant protected production
+effects. Distinguished original semantic catalog closure, scoped installed
+entrypoint/writer observation, and enforced physical writer confinement.
+Defined protected state and credential universes, direct/raw and external
+XTDB access, worker/service/initializer/migration/admin entrypoints, justified
+operational exceptions and requalification, runtime generation/TOCTOU
+invalidation, multi-node coverage, and unknown rather than empty inventories.
+Twenty paired positive/adversarial checks and Gesso v1622 source-limited
+inventory, capability and Biff mediation findings are recorded in the audit.
+Published Part X now contains **4645 newline-split lines** and
+**190002 characters**.
+
+**Next:** Review **10.08 — HumanHelp Claim as a Correspondence Slice**
+against R4, accepted Parts I–IX, completed 10.01–10.07 and actual
+Request/RequestAssignment, durable command and installed writer evidence.
