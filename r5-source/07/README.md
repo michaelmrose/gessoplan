@@ -2,9 +2,9 @@
 
 **Disposition:** The preferred R5 Part VII was initially split losslessly
 into fifteen natural Org units. That initial source/publication matched
-Git blob `55c0c46f8ccf97b2ed6d61a3a7e1aeeca876f6a7`. Sections **07.01–07.06** have completed substantive R4-preservation
+Git blob `55c0c46f8ccf97b2ed6d61a3a7e1aeeca876f6a7`. Sections **07.01–07.07** have completed substantive R4-preservation
 and Gesso-source correspondence review, recorded in their numbered audits.
-Sections 07.07–07.15, whole-Part-VII reconciliation, and independent
+Sections 07.08–07.15, whole-Part-VII reconciliation, and independent
 candidate acceptance **remain outstanding**. All nine original Part VII
 `CUSTOM_ID` anchors remain unchanged.
 
@@ -46,7 +46,7 @@ no internal `***` section, table, code block, quote or requirement
 anchor was split. The smallest source is 35 original lines and the
 largest 191; those counts describe the **initial split**, not subsequent
 revisions. The current fifteen units reconstruct the
-**167,199-character**, **2,529-line**
+**179,766-character**, **2,694-line**
 Part VII publication exactly, retaining all nine original anchors.
 
 ## Assembly and verification
@@ -128,5 +128,10 @@ coverage, generated CLJS entrypoint and compiler assumptions, byte-bound
 receipts, transitive assets, isolated staging and atomic serving-set adoption
 are now qualified by fourteen positive/adversarial histories.
 
-**Next:** review **07.07 — Rendered Affordances and Concrete Response Closure**,
-including effective HTML/HTMX actions and enforcement at actual output.
+**07.07 review:** see `07.07-r4-preservation-audit.md`. Concrete
+Claim/Reassign controls, effective HTML/HTMX actions, exact checked
+structured occurrences, deferred/cached/raw response scopes and
+postcommit knowledge are qualified with seventeen positive/adverse histories.
+
+**Next:** review **07.08 — Authoritative Outcome, Acquisition, and Propagation Closure**,
+including command attribution, permitted current observations and Live recovery.
