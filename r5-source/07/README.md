@@ -2,9 +2,9 @@
 
 **Disposition:** The preferred R5 Part VII was initially split losslessly
 into fifteen natural Org units. That initial source/publication matched
-Git blob `55c0c46f8ccf97b2ed6d61a3a7e1aeeca876f6a7`. Sections **07.01–07.04** have completed substantive R4-preservation
+Git blob `55c0c46f8ccf97b2ed6d61a3a7e1aeeca876f6a7`. Sections **07.01–07.05** have completed substantive R4-preservation
 and Gesso-source correspondence review, recorded in their numbered audits.
-Sections 07.05–07.15, whole-Part-VII reconciliation, and independent
+Sections 07.06–07.15, whole-Part-VII reconciliation, and independent
 candidate acceptance **remain outstanding**. All nine original Part VII
 `CUSTOM_ID` anchors remain unchanged.
 
@@ -46,7 +46,7 @@ no internal `***` section, table, code block, quote or requirement
 anchor was split. The smallest source is 35 original lines and the
 largest 191; those counts describe the **initial split**, not subsequent
 revisions. The current fifteen units reconstruct the
-**144,528-character**, **2,221-line**
+**156,046-character**, **2,381-line**
 Part VII publication exactly, retaining all nine original anchors.
 
 ## Assembly and verification
@@ -118,5 +118,10 @@ versus actual enforcement, finite operation/outcome/rule nonvacuity, conditional
 induction, physically complete writer coverage, request-local rights and
 fourteen positive/adversarial histories are now explicitly qualified.
 
-**Next:** review **07.05 — Transport, Installed Routes, and Trusted Execution**,
-including real request conversion, installed dispatch and model delegation.
+**07.05 review:** see `07.05-r4-preservation-audit.md`. Effective rendered
+HTMX and direct transport, installed routing semantics, issued executor
+identity, trusted command/selector/clock binding and fourteen positive/adverse
+histories now preserve the R4 contracts without overstating local Gesso proof.
+
+**Next:** review **07.06 — Browser Assembly Manifest and Physical Artifacts**,
+including source-derived build inputs, exact emitted bytes and serving adoption.

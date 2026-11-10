@@ -1183,6 +1183,33 @@ its effective executable paths, including form-level and inherited actions.
 Styling alone does not disable a transport. A permanently unavailable required
 capability still fails independent product acceptance.
 
+ 
+*** Ordinary HTMX and rendered semantic-route collisions
+
+A plain HTMX request remains a legitimate route realization when its effect
+and authorization contract are ordinary. Introducing Choreo must not make
+read-only filters, search, navigation, or independently declared ordinary
+server actions illegal. The inverse rule is equally important: an action
+targeting an assembled semantic-operation route may not become an anonymous
+ordinary request merely by losing its =:choreo/op= binding, including when a
+component or inherited form supplies the method and URL.
+
+The rendered checker evaluates the *effective* supported action. This includes
+native form =action=/=method=, form-level =hx-post=, relevant inherited
+attributes, a submitter's =formaction=/=formmethod= overrides and conflicting
+HTMX request attributes. A disabled-looking child still has an executable
+form or submitter unless all supported physical activation routes are actually
+suppressed. Semantic-route collision is evaluated using the method and concrete
+selector under the *same* routing semantics that dispatch will use. A GET
+and POST sharing a path are not automatically the same endpoint.
+
+The full client DOM may change after checked server serialization. A rendered
+surface checker cannot establish that arbitrary JavaScript will never forge
+or mutate a request. Trusted ingress must independently reject malformed,
+ambiguous and unauthorized operation envelopes, including direct HTTP
+clients that never used an admitted browser control. Section 07.07 specifies
+the complete dynamic-render enforcement and its raw-HTML escape boundaries.
+
 *** Dispatch and checking share route semantics
 
 The route constructor supplies both the installed dispatcher and the checker
@@ -1210,6 +1237,29 @@ method overrides, and content negotiation are included where relevant. Unknown
 or conflicting selectors fail explicitly rather than allowing one layer to
 silently override another.
 
+ 
+For example, a rendered =POST /app/requests/R1/claim= is not resolved by
+comparing text with the route template =/app/requests/:request-id/claim=.
+The same route matcher and codec that dispatches the request must establish
+the match and decode R1. If the envelope separately names Request R2, neither
+the path nor envelope can silently win: the trusted ingress rejects the
+contradiction before invoking Claim. This remains true if the request came
+directly from curl rather than the checked page.
+
+The checked source is the installed router, or a constructor from which both
+the actual router and its checking projection are derived. A supplied snapshot
+of declared route metadata is weaker than independently checking the actual
+installed method/template/callable and the deployed request path. Host
+rewrites, middleware and multiple route alternatives belong to the
+selected route profile. If an integration cannot inspect a custom router,
+it requires a named adaptation/qualification premise rather than silently
+claiming that a simplistic matcher covers all deployments.
+
+A multi-operation endpoint needs a verified discriminator and a trusted
+operation-to-executor mapping. Ambiguity, duplicate matches, a missing
+discriminator, or a discriminator supplied only by untrusted metadata
+cannot establish semantic dispatch correspondence.
+
 *** The installed callable is the checked callable
 
 The construction should issue or compose the actual route handlers and dispatcher,
@@ -1234,6 +1284,31 @@ routing, principal, request, response, and effect contracts. A middleware stage
 that rewrites an operation selector or replaces the handler changes the relevant
 binding and cannot inherit the previous report without checking.
 
+ 
+*** Actual host adoption and invocation lifetime
+
+The source-issued route/executor, the installed Biff handler slot, the
+network-facing server's captured handler and the physical effect invocation
+are distinct evidence subjects. An opaque local handle or a fresh comparison
+against a Biff system map can support the first two without proving the
+server actually serves that map. A later module, hot reload, retained old
+dispatcher, independent raw XTDB client or alternate HTTP entrypoint can
+break the claimed relation after a report was issued.
+
+The supported managed application constructor must either enforce the
+admitted handler selection at the serving boundary, or carry explicit
+deployment-adoption and bypass premises consistent with its stated
+assurance profile. A protected route must not preserve the strong
+production-enforcement label when its actual installation is unknown.
+
+Each accepted HTTP invocation obtains a current request-owned context,
+correct generation and appropriate scoped write capability; it is not
+authorized by an old request's one-use handle or a copied result map.
+Asynchronous completion, callbacks and durable work have separately
+declared owners and retirement rules. A bounded-serial execution profile
+may be qualified as such, but does not claim unrestricted parallel
+request admission or execution.
+
 *** Trusted command admission
 
 The transport contract defines the real wire field/encoding, supported protocol,
@@ -1253,6 +1328,35 @@ At the trusted ingress boundary:
    specified in Part IV;
 7. encode only the permitted result and observation evidence.
 
+ 
+The admitted server registry selects and invokes the actual issued executable
+delegation to the *public model operation*. The route owns protocol decoding,
+trusted subject selection, principal binding and outcome encoding; it must not
+reimplement Request/RequestAssignment business policy in a second handler.
+A route's successful response is not evidence that its declared operation
+executed: the claimed outcome must be causally joined to the exact issued
+invocation and its authoritative transaction or typed rejection.
+
+The wire contract states where =:gesso/command-id=, the semantic operation,
+argument schema, supported protocol revision and applicable observation
+context actually appear in an HTMX/form/request transport. Unrecognized
+versions and inconsistent duplicate fields fail before protected effect
+submission. =:http-request-id= and =:transport-request-id=, where used,
+identify request/attempt scopes rather than the durable domain command,
+physical Request entity or browser execution. Compatible retries may use a
+new transport attempt while preserving the original command binding; they
+must not manufacture a second logical Claim merely because the first
+response disappeared. An existing command result and a current entity read
+answer different questions.
+
+For a protected mutation, trusted request conversion and domain-model
+validation are independently specified. The route must not accept
+browser-owned principal, tenant, role, plan digest, or purported admission
+certificate as proof of current authority. Trusted authorization and
+transaction guards evaluate the appropriate *current* authoritative frame,
+including current membership and Request state; a previously displayed
+allowed affordance remains only a view of older knowledge.
+
 Browser-supplied principal IDs, role labels, basis tokens, plan references,
 certificates, or assembly IDs do not grant current authority. A basis carried by
 a browser is protocol context unless its particular provenance/use contract
@@ -1262,6 +1366,14 @@ Where cookie-based or comparable ambient credentials make cross-site invocation
 relevant, the selected transport/authentication profile includes the required
 origin/request-integrity defenses. Structural route closure and typed decoding
 do not substitute for that security contract.
+
+ 
+The selected transport must also preserve disclosure and correlation policy:
+a response for command C1 must not be accepted as C2 or reveal another
+principal's protected result. HTTP acceptance, server-side settlement,
+historical incorporation, authorized readback and physical client adoption
+remain different evidence propositions. Their distinction survives
+network retry, duplicate transport delivery, redirect, and loss after commit.
 
 *** Required execution providers are typed bindings
 
@@ -1290,12 +1402,60 @@ that the value is transaction time. The operation names the temporal meaning it
 requires. Retry semantics state whether a sampled value is preserved or replaced
 and how that affects command binding and guards.
 
+ 
+If Request Claim requires =:biff.fx/now= as a sampled =Instant= at
+the guarded model boundary, an application supplying only a function under
+=:clock= has not closed that edge. The admitted adapter must actually sample
+and place the value at the consumer's expected input path. Validation of
+type, source, temporal meaning, and lifetime is separate from verifying
+clock accuracy. On retry, the contract must distinguish an original
+command-bound timestamp from a newly sampled invocation time; changing a
+timestamp must not silently change the logical command's meaning.
+
+When an execution provider becomes unavailable after structural admission,
+the operation follows its declared typed failure, uncertainty or recovery
+path. In particular, an external side effect or XTDB submission that
+might have occurred is not rejected merely because its return path or
+subsequent publication failed. A fallback clock, database or publication
+provider is permitted only if its semantic and trust correspondence has
+been explicitly admitted.
+
 Providers include authentication, transaction execution, authoritative reads,
 progression comparison, clocks, identity generation, publication, and external
 services as needed. Missing, ambiguous, incompatible, or wrongly sourced supply
 is rejected where statically knowable. Runtime unavailability follows its
 required declared handling path. Having a transaction capability does not
 authorize the transaction's business operation.
+
+ 
+*** Positive and adversarial transport histories
+
+The application must make real eligible operations usable and reject
+individual invalid realizations at their earliest legitimate boundaries.
+A schematic status map is not a test of the actual installed request path.
+
+| History | Required disposition |
+|---------+----------------------|
+| An eligible helper uses the real annotated Claim control; its decoded Request selector, authenticated identity, command and trusted executor agree, and the guarded mutation commits. | Admit the route, execute the original public model operation, and preserve distinct transaction, outcome, acquisition and physical adoption evidence. |
+| A parameterized Claim POST omits Choreo identity after a component strips its metadata, though its physical URL still resolves to a semantic route. | Reject the malformed managed affordance at the checked rendering boundary; direct server requests still require trusted protocol validation. |
+| A form posts to a protected Claim route after the child button was visually disabled, or a submitter overrides its target. | Detect the effective action or suppress every active path in the unavailable rendering; CSS alone is insufficient. |
+| POST and GET use the same URL, but only POST is a semantic Claim route. | Preserve method-sensitive dispatch; do not forbid the legitimate ordinary GET by path text alone. |
+| A browser sends operation Claim for Request R1 while the decoded URL selects R2. | Reject contradictory selectors before the protected effect, even for a client that bypassed the browser. |
+| Two routes overlap and checking chooses route A while the running router chooses B. | Reject the incompatible route profile or establish common deterministic precedence; no claimed closure based on the wrong matcher. |
+| A current issued Claim handler is checked, but Biff or the deployed server instead installs another callable under the same route ID. | Fail or invalidate actual installation correspondence; in-process names or stale host snapshots are insufficient. |
+| The same physical endpoint admits Claim and Cancel, but no validated discriminator binds the selected operation to its issued executor. | Reject ambiguous dispatch rather than guessing from request shape, route name or button text. |
+| The incoming command claims its own principal or organization role, which conflicts with trusted session/tenant context. | Rebind authority exclusively from trusted sources; reject unsupported mismatches under the selected security contract. |
+| Claim needs a sampled =:biff.fx/now= Instant, but the provider exposes only a differently shaped unsampled clock. | Reject the static provider mismatch or block invocation at its actual capability gate. |
+| A Claim commits, its HTTP response is lost, and the browser retries. | Retain the original command ID and binding with fresh compatible transport attempt; do not duplicate the logical mutation or invent rejection. |
+| An asynchronous handler or worker continues after the invocation or assembly generation is retired. | Use its own admitted lifetime or revoke obsolete effect rights; command recovery remains separately owned. |
+| A post-commit observer reports a wrong handler while the domain write is already durable. | Record contradiction and repair obligations; do not claim the observation was a pre-effect guard or undo committed state. |
+| A normal read-only HTMX search uses a route without any semantic-operation annotation. | Permit the ordinary route under its own effect/authorization contract; Choreo does not impose imaginary command semantics. |
+
+These histories require source-derived routing, provider and executor identities,
+real physical installation and appropriately qualified runtime evidence.
+The next sections separately close browser artifact, generated HTML,
+acquisition and installation joins. No transport checker, HTTP 200 or
+copied certificate grants current model authority.
 
 ** Browser assembly manifest and physical artifacts
 :PROPERTIES:
