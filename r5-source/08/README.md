@@ -19,7 +19,7 @@ The **R4 preservation baseline** is `main` Part VIII,
 The preferred **R5 architectural predecessor** had
 **1,468 newline-split lines**, 21 second-level headings and
 **92,955 decoded characters** before substantive revision.
-The current fifteen sources reconstruct the **3,897-line**, **214,455-character** Part VIII publication exactly. Length is not
+The current fifteen sources reconstruct the **3,897-line**, **214,453-character** Part VIII publication exactly. Length is not
 evidence that all R4 obligations survive; each numbered
 review must make its own R4/Gesso/HumanHelp comparison.
 
