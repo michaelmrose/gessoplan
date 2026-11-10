@@ -8,9 +8,9 @@ proof examples, identities, links or Org delimiters were modified.
 `gesso-unified-design-canonical-r4-10-formal-correspondence-and-system-boundaries.org`
 is derived output, not an independent second source.
 
-**Review status:** **10.01–10.07 substantively reviewed** against R4,
+**Review status:** **10.01–10.08 substantively reviewed** against R4,
 accepted Parts I–IX and Gesso v1622, with numbered preservation audits.
-Sections **10.08–10.20** remain for substantive review. Whole-Part-X
+Sections **10.09–10.20** remain for substantive review. Whole-Part-X
 reconciliation and independent editorial acceptance remain outstanding.
 No current Gesso/HumanHelp implementation certificate is implied.
 
@@ -185,6 +185,20 @@ inventory, capability and Biff mediation findings are recorded in the audit.
 Published Part X now contains **4645 newline-split lines** and
 **190002 characters**.
 
-**Next:** Review **10.08 — HumanHelp Claim as a Correspondence Slice**
-against R4, accepted Parts I–IX, completed 10.01–10.07 and actual
-Request/RequestAssignment, durable command and installed writer evidence.
+**10.08 review:** see `10.08-r4-preservation-audit.md`.
+Preserved R5's real public Request/RequestAssignment Claim semantics, five
+command-branch decisions, four model outcomes, original correspondence
+ledger, and R4's separate admission versus production execution proof.
+Expanded exact actor/target/Organization identities, current guarded
+assignment and durable C42/H1/H2 causality, distinct historical outcome
+from current Request and browser presentation, actual browser-originated
+installed-plan/route/DOM adoption, and selective multi-client Refresh.
+Thirteen positive/adversarial vertical cases and Gesso v1622 bounded
+XTDB command readback, process-local route and writer evidence
+nonclaims are recorded in the audit.
+Published Part X now contains **4954 newline-split lines**
+and **204820 characters**.
+
+**Next:** Review **10.09 — Formal Obligations at Production Boundaries**
+against R4, accepted Parts I–IX, revised 10.01–10.08 and actual
+source-to-formal counterexample/production binding evidence.
