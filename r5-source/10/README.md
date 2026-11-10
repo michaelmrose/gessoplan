@@ -8,9 +8,9 @@ proof examples, identities, links or Org delimiters were modified.
 `gesso-unified-design-canonical-r4-10-formal-correspondence-and-system-boundaries.org`
 is derived output, not an independent second source.
 
-**Review status:** **10.01–10.12 substantively reviewed** against R4,
+**Review status:** **10.01–10.13 substantively reviewed** against R4,
 accepted Parts I–IX and Gesso v1622, with numbered preservation audits.
-Sections **10.13–10.20** remain for substantive review. Whole-Part-X
+Sections **10.14–10.20** remain for substantive review. Whole-Part-X
 reconciliation and independent editorial acceptance remain outstanding.
 No current Gesso/HumanHelp implementation certificate is implied.
 
@@ -255,6 +255,18 @@ certificate/graph and conditional report limitations, are in the audit.
 Published Part X now contains **6503 newline-split lines**
 and **279650 characters**.
 
-**Next:** Review **10.13 — Trusted Computing Base, Security Boundaries,
-and Failure Modes** against R4, accepted Parts I–IX, completed
-10.01–10.12 and actual Gesso/XTDB backend qualification evidence.
+**10.13 review:** see `10.13-r4-preservation-audit.md`.
+Restored R4's explicit trusted JVM/Clojure, browser/CLJS,
+HTMX/Ring/SSE, authentication, XTDB, OS/network, external proof,
+build and cryptographic boundaries within R5's claim-scoped
+assurance ledger. Qualified backend assumptions for the actual
+selected lowering and independent positive/adversarial physical
+oracles, including guard atomicity, frame, uniqueness, outcome,
+read basis, publication, revision and codec failure cases.
+The audit records source-to-runtime transfer gaps, Gesso v1622's
+actual limited evidence and nonclaims, and eighteen paired controls.
+Published Part X now contains **6635 newline-split lines**
+and **289048 characters**.
+
+**Next:** Review **10.14 — Enforced Qualification and Runtime Trust**,
+then 10.15–10.20 and whole-Part-X reconciliation.

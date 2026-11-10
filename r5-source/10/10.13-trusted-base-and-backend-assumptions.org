@@ -32,6 +32,81 @@ soundness. A small explicitly described kernel is valuable because it reduces
 the surface requiring trust and analysis, not because short code is inherently
 correct.
 
+**** Claim-indexed trusted base and independent observation
+
+The root ledger is a dependency view over individual exported guarantees,
+not one repository-wide "verified" flag. Each entry names its original
+semantic subject and source obligation, precise proposition, checker or
+physical witness, version and issuer, open premises, affected application
+operations, enforcing boundary and currently applicable deployment scope.
+An inventory that cannot enumerate its claimed original-source or physical
+writer universe reports an open completeness obligation, not an empty set.
+
+The ledger makes five different categories of dependency inspectable:
+
+- *Logical*: executable semantics, proof rules, source-to-obligation
+  derivation, elaborator, normalizer, proof checker and independent verifier.
+- *Execution*: the actually issued executor, lowering, installed handler,
+  browser adapter/effect interpreter, build and loaded output correspondence.
+- *Security*: principal authentication and session binding, protected
+  read/write/subscription admission, disclosure, credentials and capability
+  origin where relied upon.
+- *Environment*: backend isolation, atomicity, read consistency, code
+  execution, transport, process failure, persistence, clocks and any
+  fairness/liveness assumptions used by that particular theorem.
+- *Evidence*: proof object or checked derivation, exact finite exploration,
+  installed-assembly check, runtime enforcement, independently observed
+  physical result, test, application assertion or still-trusted premise.
+
+Reports distinguish =machine-proved=, =kernel-checked=,
+=exact-finite checked=, =assembly-verified=, =runtime-enforced=,
+=tested=, =asserted= and =trusted= rather than upgrading them by
+aggregation. They also expose =unknown=, =unsupported=, =incomplete=,
+=stale= and =refuted= at the relevant scope. A source fingerprint or
+serialized assurance report has no authority to mint its own proof.
+Conditional root guarantees retain every relevant unproved premise
+transitively; one central opaque premise may outweigh many checked
+derivations. Evidence-class counts and namespace sizes are review aids,
+not a confidence score or theorem.
+
+**** R4 external-boundary inventory, assigned to actual claims
+
+The following are candidate trust premises, not blanket assumed truths.
+For each applicable family the ledger names the exact behavior depended
+upon, version/configuration, checking or observation method and owner:
+
+| Boundary family | Behavior the particular claim may rely on |
+|-----------------+-------------------------------------------|
+| JVM, Clojure and third-party libraries | Primitive values, evaluation, concurrency, exception and memory behavior |
+| CLJS, JavaScript engine and browser | Portable values, DOM and effect timing, resource lifecycle and stale-callback rejection |
+| HTMX, SSE, Aleph/Ring and network | Actual route and response emission, session/request origin, reordering, loss, duplication and reconnect |
+| Authentication and protected disclosure | Trusted principal binding, command arguments, authorization and guarded read/subscription results |
+| XTDB and production adapter | Transaction guards, conflicts, atomic write footprints, query basis, codecs and provider time |
+| Host, OS, storage and clocks | Persistent state, restart, failure, process replacement, delivery and time/fairness assumptions |
+| External proof tools | Checker/kernel, input language, proof import, axioms, options and sound interpretation |
+| Semantic/build pipeline | Normalization, compilation, lowering, asset manifest, emitted plan and loaded-byte correspondence |
+| Cryptographic and identity mechanisms | Canonicalization, collision assumptions, signer origin, key lifecycle and credential secrecy |
+
+An external proof kernel may be a logical trusted premise; the browser
+runtime is a separate physical premise. Conversely, a mathematical
+theorem can remain valid when the deployed browser or backend becomes
+unqualified. An opaque Clojure callback remains outside the closed
+logic until its specified conformance is independently established.
+A malicious browser is untrusted in the modeled web contract; hostile
+code already holding unrestricted server JVM/database authority is a
+different threat model requiring separate isolation. Observation by
+a caller-supplied host, node or registry enumeration does not attest
+the deployed physical boundary. Identify separately the trusted
+issuer, acquired evidence and what is merely copied metadata.
+
+The release-level ledger is the union of claim-specific dependency
+closures and the original-source coverage obligations. It can report
+rejected, stale and unobserved claims without exposing document values,
+command records, credentials, private principal details or raw
+exceptions through public diagnostics. Subsequent admission and
+runtime gates enforce the requisite premises; the ledger by itself
+does not issue a certificate or authorize an effect.
+
 *** Backend assumptions are qualified contracts
 
 The goal is not to prove all of XTDB. The goal is to state exactly which backend
@@ -51,6 +126,35 @@ Each assumption record contains:
 - the recorded observations and known limits of those cases;
 - invalidation triggers, responsible owner, and the admission/runtime response.
 
+**** Qualification attaches to a selected lowering, not an entire product
+
+The qualification relation connects four independently justified links:
+(1) the original Gesso operation/invariant/writer catalog and its
+backend-dependent propositions; (2) the selected production lowering,
+guard/predicate and declared physical write/read footprint; (3) a
+test against the actual selected backend and adapter with an independent
+acceptance oracle; (4) evidence that the claimed installed process
+uses that qualified lowering. Completing only one link cannot
+discharge the others. A controlled test node is not automatically the
+deployed node, and observing equal records at one read basis is not
+proof of transaction-internal prestate or causality.
+
+The qualification fixture must record the positive legal operation,
+the adversarial mutation or interleaving, expected semantic result,
+physical observations and the backend API behavior being challenged.
+Independence is relative to the property: reusing the very same
+faulty guard or adapter to generate both expected and observed results
+is a shared-bug risk. Active write tests run on an isolated test
+backend; after a potentially submitted transaction, failures of
+diagnostic acquisition cannot authorize automatic retry.
+
+A timeout, environment refusal, unsupported query construct, missing
+witness, insufficient contention or ambiguous provider return is
+=incomplete= or =inconclusive= at the required scope, not a passing
+qualification. A reproduced contradiction is =refuted=. Every
+observation identifies which phase, basis, issuer and environment
+actually supplied it, plus the limits of that observation.
+
 Qualification tests must use the production lowering and actual backend boundary
 for the claim in question. A fake adapter that returns expected statuses tests
 the fake, not backend semantics. Conversely, backend tests do not establish that
@@ -67,6 +171,34 @@ The qualification contract covers the behaviors actually used:
 | Read basis and coverage have the declared meaning | Lagging readers; pinned multi-query projections; insufficient progression; reconnect | Refuse false discharge or authoritative-currentness claims |
 | Required intent survives commit failure windows | Crash before commit, after commit before dispatch, during retry, and after acknowledgment | Narrow or reject the claimed publication-recovery guarantee |
 | Revision discipline supports a history claim | Competing writers, delete/recreate, restoration, and numeric exhaustion | Do not claim ABA exclusion without the complete discipline |
+
+**** Real-backend positive and adversarial qualification pairs
+
+The selected qualification profile must include relevant paired tests
+rather than merely collecting successful unit-test counts:
+
+| Positive boundary observation | Adversarial challenge and required outcome |
+|-------------------------------+--------------------------------------------|
+| Eligible guarded Claim changes authoritative ownership | Competing assignment or Membership change cannot be defeated by a stale external pre-read |
+| Command and domain writes incorporate together | Duplicate command ID or a failed assertion cannot produce a half-committed history |
+| Qualified full-document update preserves declared frame | Concurrent unrelated insert/remove, absent/present-nil or nested field change exposes inadequate field guards |
+| Protected absence/uniqueness transition admits only one primary | Two competing inserts or association changes must not both satisfy an assumed uniqueness predicate |
+| Result and physical query have a documented relation | ID-only submit, execute return, failed assertion, exception and lost response preserve their distinct uncertainty |
+| Pinned observation matches tracked domain and command records | Independent pre/post snapshots and co-observed records never automatically prove internal read basis or specific causality |
+| Qualified read reaches the requested basis | Lagging reader or echoed caller token must not be reported as observed authoritative freshness |
+| Compatible command resolution is disclosure-authorized | Revocation, switched principal or arguments must not leak past results or resubmit historical intent |
+| Required publication intent survives committed failure windows | Crashes before commit, before dispatch, during retry and after acknowledgment must meet the promised recovery contract |
+| All covered writers preserve a version discipline | Raw writer, delete/recreate ABA, restoration and numeric overflow challenge global history claims |
+| Supported codec preserves exact value meaning | Absent/nil, unsupported values and schema changes may not silently modify guard/frame interpretation |
+| Selected backend/adapter configuration is qualified | Changed provider, driver, topology, codec or transaction form cannot silently inherit incompatible evidence |
+
+The oracle must distinguish *pre-effect enforcement* from detecting an
+already committed violation after the fact. An observed transaction
+key, command record and document at a common basis do not by themselves
+prove which submitted command caused the state. One tested schedule
+does not establish universal isolation, all-writer confinement or
+an unbounded refinement theorem. The bounded tested result and every
+still-open transfer premise remain visible.
 
 Provider time semantics are explicit. Valid time, system or transaction time,
 application domain revision, and a basis sufficient for progression are not
