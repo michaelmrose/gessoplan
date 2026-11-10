@@ -1563,13 +1563,26 @@ validation.
 Missing, present nil, false, and absent optional output are distinct according
 to the schema. A later completion which omits an optional field must not inherit
 an old value accidentally. An unknown branch selector is a typed contract fault
-rather than permission to choose an arbitrary default.
+rather than permission to choose an arbitrary default. Validation binds the
+selected *issued effect instance* and its declared action/event contract,
+including its loaded interpretation version; passing a value check for a
+different action, completion generation or schema is not admission.
+
+When an event omits an optional output, the resulting state follows its
+explicit retention/clearing rule instead of accidentally reusing a stale
+value from a prior completion. Duplicate, delayed and wrong-generation
+events are checked before they can change that state. A closed result schema
+cannot become open by inserting extra fields in an external callback.
 
 Passing a value schema establishes shape. An opaque local function returning a
 map is not automatically an authoritative source. Its output retains the
 provenance and asserted properties justified by its declared action contract.
 Authoritative outputs and observations cross their dedicated admission boundary;
-ordinary event normalization does not upgrade them.
+ordinary event normalization does not upgrade them. Value shape, source
+provenance, current owner, qualified observation scope and authorized
+disclosure are *separate* premises. A callback cannot claim that its
+response came from a participant, trusted backend or current physical
+target merely by copying an in-process event tag or binding token.
 
 Full-language implementations may access facilities beyond the portable core
 under their declared host contracts. Properties such as purity, effect footprint,
@@ -1587,7 +1600,13 @@ HTML shape, event names, or a physical handle's continued existence.
 Admission identifies the event class from its registered source path, resolves
 the declared owner, checks current applicability, validates payload and binding,
 and then delivers the event to the appropriate semantic transition. Untrusted
-fields cannot opt into a weaker ownership class.
+fields cannot opt into a weaker ownership class. The issuer of a physical
+effect retains an immutable reference to the instance, generation, source,
+expected completion and target incarnation. An asynchronous callback carries
+that issued identity, rather than reading the currently active execution and
+relabelling itself. Admission is checked again at the semantic transition
+boundary; normalizing bytes is neither a replay grant nor a physical
+installation/completion witness.
 
 A nominal record or opaque wrapper may prevent accidental substitution within
 cooperating code. After untrusted serialization, the receiving boundary must
@@ -1615,7 +1634,18 @@ A total dispatcher over a supported event vocabulary does not prove arbitrary
 Clojure callbacks terminate. It also does not imply every event is valid. The
 scope of totality, supported value domain, and callback premises must be stated.
 Invalid states can produce typed invariant violations with a safe fault/recovery
-path rather than undefined mutation.
+path rather than undefined mutation. A semantic step classification such as
+=:step/ignored-stale=, a host effect failure, a qualified historical command
+result and an installed authoritative card inhabit different namespaces
+and evidence domains. None may be used to infer another simply because a
+diagnostic report presents them together.
+
+An admitted transition updates portable semantic state before interpretation
+of the effects it emits, so a synchronous physical callback cannot observe
+an obsolete pre-transition owner. This ordering does not certify the physical
+effect: synchronous exceptions and asynchronous rejection retain their
+declared failure/recovery classification without fabricating command
+rejection or completed installation.
 
 *** Cross-host portability
 
@@ -1641,6 +1671,12 @@ core. Pure tests can substitute declared effect interpreters; browser integratio
 tests additionally exercise the actual shell and DOM/HTMX lifecycle. A mock that
 always returns installed does not establish physical installation correctness.
 Advanced compilation and actual packaged assets need their own relevant checks.
+Conformance spans the emitted canonical plan, the exact bound implementation
+and production asset rather than a test-only stand-in with the same source
+name. The check records precisely which JVM/Node/Chromium cases ran and which
+physical browser callbacks, deployment paths and provider effects remain
+unexamined. A matching diagnostic/source stamp is not proof that the
+physical asset contains that plan and implementation closure.
 
 *** Compatibility and deployment
 
@@ -1655,11 +1691,54 @@ browser can retain an unresolved command while its old local plan is retired.
 The admitted compatibility/recovery policy must preserve that command reference
 and current disclosure requirements without resuming incompatible state.
 
+On version or assembly change, compatibility is checked separately for
+(1) parsing the plan, (2) executable semantic operation and interface meaning,
+(3) registered host actions and physical protocols, and (4) permission to
+continue each currently suspended execution. A recognizable but incompatible
+plan is not malformed, yet must not be resumed. The old execution is
+semantically retired first; physical cancellation, listener removal and
+resource cleanup follow under their own fallible contract. A new compatible
+runtime may receive *declared handoff obligations* for command-specific
+reconciliation, scoped reacquisition, installation, and retained Live/Refresh
+requirements. It cannot inherit old generation/callback rights or role-local
+message knowledge by copying a state map.
+
+If the physical cleanup or authoritative reconstruction fails, retain the
+unresolved obligations and report the failure under the appropriate scope.
+The original historical command's stable binding must not silently become
+a new command, and a current Request card cannot establish the disposition
+of that old command. Likewise, an already completed command outcome does not
+prove that a new browser asset has installed a compatible authoritative view.
+
+Exact executable payload identity, compatibility judgment and packaged
+asset identity answer different questions. A rollout identifier or an equal
+source/digest label does not justify cross-version continuation, proof-sidecar
+attachment or physical entrypoint coverage without the requisite binding
+evidence.
+
 The production browser executes admitted local plans; it does not reconstruct
 the global choreography, rerun projection, load proof DAGs, or solve obligations
 to decide an ordinary transition. Executable guards and necessary admission
 contracts remain executable. Their explanations remain separate.
 
+*** Paired admission, compatibility and deployment cases
+
+The positive corpus exercises real admitted transitions and compatible
+recovery, while adverse histories reach the protected boundary rather
+than passing because some unrelated fixture was invalid.
+
+| Eligible positive history | Adverse or uncertain history | Required classification |
+|---------------------------+-----------------------------|
+| A registered local action completes with the current effect generation and an explicit optional-output clearing rule. | A late callback for an older generation omits that optional value and accidentally inherits its predecessor, or supplies undeclared result keys. | Admit only the registered source/contract and current instance; apply missing/nil/false and clearing semantics explicitly. |
+| A participant message enters via its authenticated and correlated source path; an environment timer separately enters via its issued owner. | A decoded map uses the expected event keyword or wrapper name to impersonate a participant or currently installed target. | Normalize as data; require source-specific admission and reject the wrong provenance without inventing role knowledge. |
+| A new browser asset starts a compatible plan, while an older incompatible suspended execution retires and hands off C42 resolution and board acquisition. | The old plan parses so it is resumed anyway, or retiring the execution erases unknown C42 and pending Refresh/installation debt. | Distinguish parse, plan, interface, host and continuation compatibility; retain obligations under newly admitted owners, not stale callbacks. |
+| The semantic state commits its transition before a synchronous effect immediately calls back; a failed host effect follows the declared repair path. | A callback observes pre-step ownership, or a DOM exception is mapped into an authoritative command rejection. | Preserve transition/effect ordering and report physical failure independently of model outcome. |
+| The exact built artifact, executable plan, handler closure and served entrypath are checked together in an exercised production-mode browser case. | A test-only plan, stale copied stamp, untested alternate asset or supported source-name match is promoted into deployment certification. | Qualify exact identity and installed coverage; parity and inspection evidence support only their stated subjects and executions. |
+
+These are obligations of the completed Gesso design. A current test,
+source-derived report or diagnostic sidecar does not itself establish
+trusted event provenance, general compiler correctness or deployment
+correspondence.
 ** Executable projection and diagnostic sidecars
 :PROPERTIES:
 :CUSTOM_ID: req-executable-plan-sidecar-boundary

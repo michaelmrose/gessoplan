@@ -1,9 +1,9 @@
 # R5.1 sectional source — Part V, Provisional State and Executable Presentation
 
 **Disposition:** lossless structural preparation of preferred R5
-Part V is complete. Sections 05.01–05.09 have received substantive
+Part V is complete. Sections 05.01–05.10 have received substantive
 R4-preservation and Gesso-correspondence reviews, recorded in their
-respective `05.xx-r4-preservation-audit.md` files. 05.10–05.13
+respective `05.xx-r4-preservation-audit.md` files. 05.11–05.13
 remain unreviewed.
 The thirteen source units reconstruct
 `gesso-unified-design-canonical-r4-05-provisional-state-and-executable-presentation.org` byte for byte. **Whole-Part-V reconciliation
@@ -149,7 +149,15 @@ timed-out owners and historical Claim results without conflating them.
 Six paired positive/adverse cases preserve real physical and command
 correspondence obligations.
 
-**Next:** audit and revise `05.10-execution-boundaries-and-deployment.org`
-against R4, accepted Parts I–IV, reviewed 05.01–05.09, and the current
-portable schema, browser-host and deployment compatibility boundaries.
+**05.10 review:** see `05.10-r4-preservation-audit.md`.
+The boundary contract now distinguishes effect instance/schema/owner
+and trusted source admission, makes stale optional outputs and reentrant
+physical callbacks explicit, and preserves outstanding C42, Live/Refresh
+and installation obligations across incompatible-plan retirement.
+Five paired positive/adverse histories qualify compatibility and
+exact packaged deployment evidence.
+
+**Next:** audit and revise `05.11-projection-and-payload-identity.org`
+against R4, accepted Parts I–IV, reviewed 05.01–05.10, and Gesso's
+actual projection, emitted plan/asset and identity correspondence.
 One `next` remains one bounded revision.
