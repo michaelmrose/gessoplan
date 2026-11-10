@@ -10,8 +10,9 @@ is derived output, not an independent second source.
 
 **Review status:** **10.01–10.20 substantively reviewed** against R4,
 accepted Parts I–IX and Gesso v1622, with numbered preservation audits.
-All twenty numbered sectional audits are complete. Whole-Part-X
-reconciliation and separate editorial acceptance remain outstanding.
+All twenty numbered sectional audits are complete. The Part X whole-part
+R4/R5.1 reconciliation is recorded in `PART-X-cross-section-reconciliation.md`;
+separate editorial acceptance remains outstanding.
 No current Gesso/HumanHelp implementation certificate is implied.
 
 **R4 preservation baseline:** `main` Part X, to be compared during each
@@ -370,6 +371,17 @@ against Gesso v1622's explicitly conditional evidence.
 Published Part X contains **7990 newline-split lines**
 and **363311 characters**.
 
-**Next:** Complete **Part X whole-part R4/R5.1 cross-section
-reconciliation**, then run a separate independent editorial acceptance
-gate. Parts XI–XII and whole-plan acceptance follow.
+**Whole-Part-X reconciliation:** see `PART-X-cross-section-reconciliation.md`.
+Mapped all eight R4 thematic areas, their principal technical counterexamples,
+and cross-section/cross-part evidence joins into the twenty reviewed R5.1
+sections. Restored R4's explicit iterative relation between semantic/proof
+hardening and a small real multi-node prototype in 10.20. Checked the
+pre-reconciliation twenty-fragment published-text triple checksums and length,
+R4's six stable anchor IDs, Part X Org pairing, and all twelve-part internal
+links (87 unique anchors, 84 link uses, zero unresolved). The source and
+published Part X now contain the same additional 10.20 paragraph.
+Published Part X contains **8021 newline-split lines**
+and **364684 characters** after this amendment.
+
+**Next:** Conduct the **separate Part X independent editorial acceptance gate**.
+Parts XI–XII and full twelve-part R5.1 acceptance remain open.
