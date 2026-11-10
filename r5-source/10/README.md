@@ -8,9 +8,9 @@ proof examples, identities, links or Org delimiters were modified.
 `gesso-unified-design-canonical-r4-10-formal-correspondence-and-system-boundaries.org`
 is derived output, not an independent second source.
 
-**Review status:** **10.01–10.14 substantively reviewed** against R4,
+**Review status:** **10.01–10.15 substantively reviewed** against R4,
 accepted Parts I–IX and Gesso v1622, with numbered preservation audits.
-Sections **10.15–10.20** remain for substantive review. Whole-Part-X
+Sections **10.16–10.20** remain for substantive review. Whole-Part-X
 reconciliation and independent editorial acceptance remain outstanding.
 No current Gesso/HumanHelp implementation certificate is implied.
 
@@ -283,5 +283,21 @@ boundaries and explicit nonclaims. Published Part X now contains
 **6813 newline-split lines** and
 **299095 characters**.
 
-**Next:** Review **10.15 — Validation and Physical Failure Windows**,
-then 10.16–10.20 and whole-Part-X reconciliation.
+**10.15 review:** see `10.15-r4-preservation-audit.md`.
+Restored R4's full complementary validation ladder within R5's
+physical mutation/positive-control program. Specified source- and
+assembly-bound independent test oracles, exact finite/result classes,
+nonvacuity, first pre-effect enforcement and forbidden-effect
+observations. Strengthened genuinely concurrent Biff/XTDB Claim,
+command incorporation/conflict/unknown-outcome, real HTMX/SSE/DOM,
+HumanHelp selective adoption, request-scope isolation, and deployed
+entrypoint/writer coverage obligations without turning bounded
+test source into an unrun or universal proof.
+Twenty-eight preservation decisions and eighteen paired acceptance
+controls are recorded, with Gesso v1622 source-limited evidence and
+nonclaims. Published Part X now contains
+**7033 newline-split lines** and
+**311115 characters**.
+
+**Next:** Review **10.16 — Multi-node Host Roles and Topology**,
+then 10.17–10.20 and whole-Part-X reconciliation.
