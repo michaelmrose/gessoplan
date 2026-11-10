@@ -1,9 +1,9 @@
 # R5.1 sectional source — Part V, Provisional State and Executable Presentation
 
 **Disposition:** lossless structural preparation of preferred R5
-Part V is complete. Sections 05.01–05.07 have received substantive
+Part V is complete. Sections 05.01–05.08 have received substantive
 R4-preservation and Gesso-correspondence reviews, recorded in their
-respective `05.xx-r4-preservation-audit.md` files. 05.08–05.13
+respective `05.xx-r4-preservation-audit.md` files. 05.09–05.13
 remain unreviewed.
 The thirteen source units reconstruct
 `gesso-unified-design-canonical-r4-05-provisional-state-and-executable-presentation.org` byte for byte. **Whole-Part-V reconciliation
@@ -134,7 +134,14 @@ the actually covered rendering and serving path. Five paired
 positive/adverse cases expose route collisions, submitter overrides,
 Reassign entry versus final mutation, and deployment-coverage gaps.
 
-**Next:** audit and revise `05.08-clojure-cljs-execution-and-state-ownership.org`
-against R4, accepted Parts I–IV, reviewed 05.01–05.07, and Gesso's
-portable adapter, browser shell and correspondence tests. One `next`
-remains one bounded revision.
+**05.08 review:** see `05.08-r4-preservation-audit.md`.
+The portable semantics now explicitly qualify JVM/Node/Chromium value
+compatibility, distinguish trusted source admission from normalized host data,
+preserve immediate effect completion and retired owner correlation, and
+require typed total behavior over supported events without treating
+cross-host parity tests as full runtime or deployment proofs.
+
+**Next:** audit and revise `05.09-browser-installation-and-claim-execution.org`
+against R4, accepted Parts I–IV, reviewed 05.01–05.08, and Gesso's
+actual effect/installation and Claim settlement realization.
+One `next` remains one bounded revision.

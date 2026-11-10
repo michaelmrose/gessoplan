@@ -14,10 +14,29 @@ integration belong to declared host boundaries. Full-language actions remain
 available there. The core interprets their contracts and admitted completions;
 it does not need to understand or emulate all application code.
 
+Portability is a *semantic* obligation, not merely the ability to compile the
+same namespace. Supported plan versions and inputs must give the same
+transition, role-local value, classification, effect request and ownership
+decision on JVM Clojure and supported ClojureScript hosts. Where a result
+depends on equality, numeric representation, map/set membership, ordering,
+serialization, exception classification or absent-versus-=nil= distinctions,
+the plan's portable value contract either fixes that meaning or rejects the
+unsupported value/operation at admission. Different printed diagnostics,
+source coordinates and physical handle representations are not differences in
+semantic behavior; differences in branch selection or effect authorization are.
+An opaque backend basis cannot be compared with host-local lexical or numeric
+order, regardless of whether both environments can print it.
+
 The executable semantic core is distinct from the later proof kernel/checker.
 The former executes admitted transition meaning. The latter checks derivations
 or other stated judgments about that meaning. Compiler, verifier, and proof
-machinery need not ship to the production browser.
+machinery need not ship to the production browser. The artifact executed by a
+production browser must be the compatible checked projection, not an
+independently handwritten approximation of the verified behavior. Build-time
+checks and tests may observe that semantic machine, but diagnostic sidecars,
+witnesses or optional proof metadata must not become hidden inputs that change
+its transitions. A same-source or same-schema claim is not itself a compiler,
+runtime, host-effect or global refinement proof.
 
 *** One vocabulary from construction through execution
 
@@ -51,6 +70,16 @@ An explicit extension area can carry nonsemantic metadata without changing
 execution. Semantic extensions require a registered interpretation and their own
 assurance contract.
 
+An =:await= environment event does not satisfy an expected =:receive= merely
+because the two events share a keyword or payload shape. A role-local
+environment completion, a participant delivery, an authoritative operation
+result and a qualified authoritative observation have distinct admission
+provenance and effects on role knowledge. Admitting a decoded value must not
+assign its own source class, trusted principal or authoritative basis.
+Serialization across the browser/server boundary discards any authority
+attributed solely to in-process wrappers; the receiver re-establishes the
+relevant category using the declared trusted protocol and source.
+
 *** State ownership and effects
 
 The role-local machine owns its protocol state and established values. The
@@ -66,7 +95,14 @@ choose successors or reinterpret a domain outcome from a status string.
 An abstract transition can update semantic intent immediately and request a
 physical effect. The facts it records must match that point in the lifecycle:
 request issued is not request completed; observation acquired is not observation
-installed; installation permitted is not adoption completed.
+installed; installation permitted is not adoption completed. A host may report
+immediate completion before the portable machine enters its formal await state;
+the declared registration/buffering or ordered handoff contract must preserve
+that completion without fabricating success or losing it. Effect completion
+is admitted only for the issued physical effect, current permitted owner and
+declared completion source, at the actual semantic boundary. Host exceptions
+are runtime faults with recovery/retirement obligations, not proof that a
+previously valid semantic state/event was impossible.
 
 The runtime allocates fresh effect/resource instances through a declared
 mechanism. Nondeterministic choices such as UUIDs and sampled time enter as
@@ -81,3 +117,43 @@ A callback copies the correlation issued with that physical resource. It must
 not fetch a newly current execution ID and relabel an old callback as belonging
 to the replacement execution.
 
+The transition semantics are total over their *supported* states, normalized
+event classes and declared contracts: an applicable event advances, stutters,
+is classified duplicate/stale, requests recovery, or is rejected with a typed
+fault. An unknown event, malformed payload, unsupported plan version or
+unadmitted source cannot silently fall through into browser-specific callback
+code. Where a state/event combination is excluded by construction, that
+exclusion needs an explicit invariant and appropriate check; an unexpected
+host exception must not be repackaged as a legitimate domain rejection.
+
+A local execution's semantic retirement revokes its ownership immediately,
+whether or not physical timers, DOM nodes or XHR handles still exist. Remaining
+handles are cleanup debt. A successor may inherit declared command-resolution
+or acquisition obligations through an admitted handoff, not the retired
+execution's old timer callback, target incarnation or actor-local knowledge.
+A value copied into =NormalizedEvent= is data for admission, not proof the
+sender may revive that retired execution.
+
+*** Cross-host portability and physical-boundary witnesses
+
+The common conformance corpus executes the same admitted plan and *semantic
+transition functions* in JVM Clojure, Node ClojureScript and Chromium
+ClojureScript, comparing portable semantic results, typed rejection classes,
+effect intents and owner/obligation state. Browser-host tests additionally
+observe actual effect emission, callback correlation and physical completion.
+An equal JVM/Node result is evidence for those exercised cases only; it neither
+establishes all possible compiler behavior nor certifies Chromium or real host
+effect correspondence.
+
+| Eligible positive history | Adversarial or unsupported history | Required result |
+|---------------------------+------------------------------------+-----------------|
+| The same admitted branch selector, closed event payload and portable basis relation select the same successor in JVM, Node and Chromium. | A JS precision/identity or host-specific collection comparison changes the branch, or an opaque X20 basis is ordered by its label. | Preserve canonical portable value meaning or reject the unsupported input/version; never silently choose a different transition. |
+| A role awaits a declared participant =:receive= and admits a source-qualified correlated message. | An environment =:await= callback arrives with the same event keyword or a forged map claims trusted message provenance. | Keep message and environment admission distinct; the wrong source does not satisfy role-local receipt or establish knowledge. |
+| A physical installation request is registered, its immediate completion is buffered and later admitted for the current owner and target. | Completion arrives before the machine awaits and disappears, or the shell marks a board adopted merely because an effect was requested. | Preserve admitted completion across the race and require actual qualified physical evidence for adoption. |
+| An execution retires E1 and its successor E2 takes separately admitted recovery obligations. | A late E1 timer copies E2's now-current execution ID, or a lingering DOM handle resumes E1. | Reject the old correlation without reviving retired semantic or physical rights; retain unresolved command/acquisition work through explicit handoff. |
+| A supported but inapplicable event produces a specified typed stale/duplicate/fault outcome with no unauthorized effects. | An unknown opcode, malformed normalized payload or unexpected host exception falls through to an independent browser branch or becomes a false model rejection. | Enforce closed, total supported semantic interpretation; classify admission failure and host faults separately with declared recovery. |
+
+The test corpus must retain both useful successful transitions and the
+adversarial cases above; a reject-all machine or a synthetic matching report
+cannot establish functional completeness. Actual provider, HTMX, DOM, XTDB
+and deployment obligations remain independently qualified.
