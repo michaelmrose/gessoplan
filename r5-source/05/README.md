@@ -1,9 +1,9 @@
 # R5.1 sectional source — Part V, Provisional State and Executable Presentation
 
 **Disposition:** lossless structural preparation of preferred R5
-Part V is complete. Sections 05.01–05.03 have received substantive
+Part V is complete. Sections 05.01–05.04 have received substantive
 R4-preservation and Gesso-correspondence reviews, recorded in their
-respective `05.xx-r4-preservation-audit.md` files. 05.04–05.13
+respective `05.xx-r4-preservation-audit.md` files. 05.05–05.13
 remain unreviewed.
 The thirteen source units reconstruct
 `gesso-unified-design-canonical-r4-05-provisional-state-and-executable-presentation.org` byte for byte. **Whole-Part-V reconciliation
@@ -13,9 +13,10 @@ candidates. The twelve-part plan remains a draft.
 R4 `main` is the preservation baseline; R5 `r5` is the preferred
 architectural starting point, updated during R5.1 review where warranted
 by the actual Gesso implementation and the finished-system design.
-The original Part V root, all existing headings, text, examples,
-`CUSTOM_ID` anchors and internal links are retained unchanged in
-this preparation. The existing `r4-` publication filename is
+The initial structural split retained all Part V text, headings,
+examples, `CUSTOM_ID` anchors and links exactly. Subsequent scoped reviews
+now revise the numbered sources and rebuild their published Part V without
+changing the stable anchors. The existing `r4-` publication filename is
 transitional, not an instruction to revert R5 semantics.
 
 ## Numbered source inventory
@@ -104,6 +105,12 @@ against false cancellation, specifies scoped overlap and per-target physical
 completion, and refuses unadmitted managed HTMX fallback without outlawing
 explicit raw/non-optimistic interactions.
 
-**Next:** audit and revise `05.04-continuity-ownership-and-search.org`
-against R4, accepted Parts I–IV, reviewed 05.01–05.03 and the current
-Gesso browser/continuity realization. One `next` remains one revision.
+**05.04 review:** see `05.04-r4-preservation-audit.md`.
+The continuity contract now makes owner- and edit-relative physical restore
+explicit, excludes protected inputs from generic capture, qualifies element
+identity, and distinguishes HumanHelp's local board filtering from an
+authoritative server-side query and its adoption/Refresh obligations.
+
+**Next:** audit and revise `05.05-continuity-board-replacement-and-cleanup.org`
+against R4, reviewed 05.01–05.04, Part IV adoption semantics and Gesso's
+physical continuity/HTMX lifecycle. One `next` remains one revision.

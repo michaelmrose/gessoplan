@@ -558,7 +558,12 @@ Ordinary continuity belongs behind the browser-effect boundary. Portable
 choreography observes the effect outcome defined by that boundary, not separate
 focus-restored or layout-finished events. An application can deliberately give a
 browser interaction semantic meaning through an explicit contract; such meaning
-is not inferred merely because continuity captured the interaction.
+is not inferred merely because continuity captured the interaction. A permitted
+authoritative installation remains completed even if an optional focus,
+selection, or scroll follow-up fails; a failure of physical installation
+itself retains its separate incomplete-realization and recovery contract.
+No continuity result may manufacture command acceptance, authoritative
+observation, installation evidence, or permission to reveal protected data.
 
 *** Ownership and physical captures
 
@@ -572,13 +577,23 @@ The imperative shell can retain opaque DOM references and capture resources.
 Portable semantic state retains the owner/resource references and lifecycle
 needed to control their use. A DOM node still existing does not prove its owner
 is current. A delayed restore must not consume or overwrite a newer capture.
+Restoration must check the current continuity slot, replacement owner, target
+incarnation, applicable rendering/disclosure context, and the local edit
+generation of each value it may overwrite *at its actual mutation point*.
+Admission when the capture was taken or when a deferred callback was scheduled
+is not a durable right to mutate. A user typing after capture can invalidate
+restoration even when no second board replacement occurred. If an owner is
+retired while a callback is queued, semantic permission ends immediately and
+the remaining physical handle is cleanup debt, not a renewed grant.
 
 The default capture registry binds a capture to the restore implementation and
 capture format which produced it. Re-registering a box implementation must not
 reinterpret an older capture under incompatible code. An explicit versioned
 migration may be supported; otherwise incompatible captures are retired. This
 binding does not permit an old implementation to execute after its rights have
-been revoked by the current runtime policy.
+been revoked by the current runtime policy. The bound implementation is an
+interpretation constraint, never an independent authority to restore; a
+compatible capture still requires current owner, target and edit checks.
 
 Capture/restore hooks are ordinary host code. The framework can validate their
 interfaces, registered identity, declared footprint, and resource use; claims
@@ -591,20 +606,34 @@ by calling an internal DOM helper.
 A continuity policy selects what may be captured and restored. It must not copy
 an old fragment wholesale or restore authoritative security/context fields such
 as credentials, anti-forgery tokens, operation bindings, principal identifiers,
-or hidden command arguments as if they were harmless input drafts.
+or hidden command arguments as if they were harmless input drafts. A generic
+capture of every input, including hidden fields, is not a sufficient security
+policy. Admission must classify and constrain permitted local edits independently
+of their HTML element type and reject or exclude protected fields before
+restoring into new server markup. Captures are local interaction data, not
+proof that a previously disclosed value may be disclosed again.
 
 Restoration respects the newly admitted rendering. It may reopen a Request
 already present and permitted in the new board, but cannot recreate a removed
 or undisclosable Request. Duplicate or ambiguous element keys require a declared
 failure policy; selecting the first matching node can restore into the wrong
-control.
+control. A positional fallback is safe only where the author has established
+the relevant structural identity and compatibility across replacement;
+changing collection order or membership cannot justify restoration solely by
+equal list index. On missing or ambiguous identity, omit the optional
+restoration or follow its declared recovery path rather than guess a recipient.
 
 Local draft preservation also needs a product policy. A draft can be retained as
 local user input without claiming it matches authoritative data. If replacing a
 form would lose important unsaved work, the application can declare a prompt or
 block-before-install policy. That is an explicit interaction requirement,
 separate from ordinary best-effort focus or scroll restoration. It cannot turn
-an already committed model operation into a rejection.
+an already committed model operation into a rejection. Where the user edits a
+field after its capture, that field's newer local intent prevails over the old
+capture unless a separately declared and admitted user-confirmed conflict policy
+says otherwise. A selection or focus restore may be omitted when its intended
+editable target no longer exists; this local failure does not invalidate a
+completed authoritative installation.
 
 *** Search text and query meaning must remain aligned
 
@@ -612,17 +641,48 @@ A search control's draft text is local input. The applied query and the membersh
 of its result set have semantic meaning. Restoring one does not establish the
 other.
 
-If a board observation was acquired for search =cabinet=, restoring the control
-to =cabinet hinge= must not silently label those results as satisfying the latter
-query. The application must retain the distinction between draft and applied
-query, acquire the newly requested scope, or follow another declared transition.
-The same rule applies to server-side sorting, filters, and pagination.
+The author declares whether search is *local filtering of an already adopted
+authorized cohort* or a *server-side authoritative query selector*. HumanHelp's
+text search, local sort order, priority and terminal-visibility controls may
+filter and reorder the selected Organization/Location's adopted board without
+changing its authoritative acquisition scope. Applying =cabinet hinge= to a
+locally available =cabinet= display can be valid if both are view predicates
+over the same authorized complete cohort; it is not evidence that previously
+excluded Request records were acquired.
 
-Filtering a locally adopted set may be a legitimate view operation. It does not
-prove complete membership for a new authoritative query. The query contract
-states whether a control is local presentation, an unapplied draft, or the
-selector of authoritative acquisition.
+In contrast, if the board was acquired under a server-side search predicate
+=cabinet=, restoring the control to =cabinet hinge= must not silently label those
+results as satisfying the latter authoritative query. The application keeps
+draft versus applied query identity distinct, performs a permitted acquisition
+for the new selector, or follows another declared transition. The same applies
+to server-side sorting, filters, pagination and changes in principal,
+Organization, Location, temporal or disclosure scope. A continuity callback
+cannot grant another Refresh, widen the original observation, or discharge
+unrelated acquire-and-adopt debt.
 
+Filtering a locally adopted set may be a legitimate view operation, but
+cannot prove complete membership beyond that adopted cohort. The query
+contract states whether a control is local presentation, an unapplied draft,
+or the selector of authoritative acquisition; the DOM's restored text alone
+is not a source of query provenance.
+
+*** Paired continuity and query-ownership cases
+
+These positive/adverse cases state what a finished Gesso application must
+admit and what the browser may not infer from a captured local value.
+
+| Eligible case | Adverse case | Required evidence and result |
+|---------------+--------------+------------------------------|
+| A current replacement restores Bob's permitted search draft, focus and open R17 details after installing a newly authorized board still containing R17. | The replacement excludes R17 or revokes its visibility, but the old capture recreates R17's content or operation binding. | Preserve still-authorized local interaction only; never reconstruct protected content or authority outside the new admitted view. |
+| A capture restores an unchanged draft through the still-current slot and local edit instance. | Bob types =cabinet hinge= after capture, then an old layout callback restores =cabinet= without checking the newer edit. | The actual mutation boundary checks owner, target, slot and edit rights; the newer user input wins or a declared user-confirmed policy applies. |
+| A stable unique control key survives an admitted replacement. | A reordered Request list reuses the same index, or duplicate keys select an unrelated control. | Restore only when the target identity is justified; omit optional restoration or report the declared ambiguity, never silently choose a different Request. |
+| HumanHelp filters its adopted authorized cohort locally while preserving a separately declared authoritative board query. | A server-filtered =cabinet= cohort is relabeled as a complete =cabinet hinge= authoritative result, or a draft grants a new Refresh. | Preserve local-filter freedom and actual query provenance; a changed server selection needs its own scoped acquisition and adoption. |
+| A new board installation completes and optional focus restoration fails. | The focus error is treated as rejection of the authoritative operation, or the old board is installed again. | Keep completed installation and remaining obligations intact; classify continuity failure locally without stale rollback. |
+
+A positive control requires the real current owner and physical completion
+where claimed, not an inspection map decorated with ownership fields. An
+adverse control must reach the intended stale-callback, query, or disclosure
+boundary rather than pass because an unrelated fixture failed first.
 *** Worked example: replacing a HumanHelp board
 
 Bob has applied search =cabinet=, opened Request R17, focused Refresh, and
