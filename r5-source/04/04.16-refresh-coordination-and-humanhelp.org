@@ -12,10 +12,14 @@ the advancement relations used below. These are admitted provider judgments,
 not arithmetic inferred from the names.
 
 Advisory O1 creates an acquire-and-adopt obligation for B through P18. The user
-chooses Refresh. The coordinator allocates a fresh acquisition resource A1 under
-the managed lifecycle and issues the read for O1's requirement. Its identity is
-not merely a reusable request number; reuse would need a separate admitted
-instance discriminator.
+chooses Refresh. That action grants one logical acquisition under HumanHelp's
+declared scope and lifetime, not indefinite permission to fetch or install
+later remote changes. The coordinator allocates a fresh acquisition resource A1
+under the managed lifecycle and issues the read for O1's requirement. Its
+identity is not merely a reusable request number; reuse would need a separate
+admitted instance discriminator. The grant binds the current principal, board
+owner, authorized Location/Organization, selection, acquisition scope,
+progression requirements and permitted adoption transition.
 
 While A1 is outstanding, advisory O2 creates a further obligation for B through
 P20. The coordinator must retain O2. Completing A1 must not restore an old copy
@@ -44,7 +48,9 @@ than its requested minimum.
 If installation fails, neither acquire-and-adopt obligation is discharged by
 that attempt. The acquired observation may remain available as evidence under
 its lifetime and disclosure contract, but the visible board has not thereby
-adopted it.
+adopted it. An HTTP success response or HTMX swap permission is not completion;
+any partial physical update or lost completion requires qualified inspection,
+repair or reacquisition under the current owner.
 
 If a different permitted path already adopted P21, the late P18 response must not
 roll the board backward. The existing adopted P21 evidence may already satisfy
@@ -58,14 +64,26 @@ as acquired evidence and the coordinator requests enough evidence for P20.
 Either policy is valid when declared; the framework must not switch between
 them accidentally according to response timing.
 
+For the HumanHelp proving application, the selected policy permits the P18
+non-regressing partial advance but keeps O2 visible. One user Refresh grants
+one logical board acquisition and does *not* silently grant an automatic
+successor read merely because O2 arrived in flight. A separate explicit
+Refresh/Retry, or an independently declared bounded repair grant, is required
+for the next physical read. Repeated user clicks while A1 is active can be
+coalesced only under the specified bounded successor-intent policy; they do not
+create an unbounded automatically draining queue. The generic browser adapter's
+physical scheduling strategy must be qualified against this policy rather than
+being treated as the policy itself.
+
 *** The coordinator's semantic obligations
 
 The example is implemented through admitted transitions, not direct mutation by
 arbitrary transport callbacks. A useful transition decomposition is:
 
 1. =advisory-received=: admit source and scope, then add or soundly combine debt.
-2. =acquisition-requested=: allocate the managed owner/resource and bind the
-   requested scope and progression to a declared effect.
+2. =acquisition-requested=: validate or allocate the current acquisition grant,
+   allocate the managed owner/resource, and bind the authorized query, requested
+   scope, progression, grant budget and lifetime to a declared effect.
 3. =acquisition-completed=: admit the effect completion and observation, then
    determine which requirements its evidence can cover.
 4. =installation-requested=: propose only the permitted effect for the current
@@ -81,11 +99,15 @@ their browser realization and the refinement between DOM effects and semantic
 adoption. The permanent executable semantic core owns the transition meaning;
 proof artifacts explain why the admitted realization preserves it.
 
-Every completion checks current owner and resource-instance correlation. A
-response for an obsolete search, principal context, route, or target instance
-must not install merely because its database basis is recent. Evidence may be
-usable through another declared admission path, but cannot resurrect a retired
-execution's private rights.
+Every completion checks current owner, resource-instance, acquisition-grant
+and target correlation. A response for an obsolete search, principal context,
+Location, Organization, page/window, route or target instance must not install
+merely because its database basis is recent. If local presentation options
+change without altering the authorized acquisition scope, the completed board
+may be installed under current ownership and rendered with the *current* search
+and sort settings; response-time options must not overwrite those newer local
+choices. Evidence may be usable through another declared admission path, but
+cannot resurrect a retired execution's private rights.
 
 The obligation set is updated from current state. Removing O1 must not remove a
 newer obligation with a superficially similar key, overwrite a concurrently
@@ -97,17 +119,67 @@ the combined meaning.
 
 HumanHelp can use these generic contracts to show the creator's own committed
 Request immediately through a correlated admitted result, while other viewers
-receive an advisory and explicitly refresh board membership. The policy must
-state which scopes a correlated operation result can update and how that update
-relates to the existing board selection.
+receive an advisory and explicitly refresh board membership. Remote creation
+and remote lifecycle changes to already visible Requests both follow explicit
+Refresh for ordinary board adoption. A user's own confirmed Create, Claim,
+Unclaim, Reassign or other admitted operation may update only its declared
+correlated Request-card or selective membership scope, provided the operation
+and current trusted disclosure permit that result. The policy must state which
+scopes a correlated operation result can update and how that update relates to
+the existing board selection. An SSE advisory cannot carry authoritative
+Request status, current helper ownership or permission to silently install it.
 
 A card outcome can update an already adopted Request without proving a complete
-new board query. An operation that introduces or removes a visible row needs an
-explicit membership-adoption rule. Filters, sorting, retained selection, scroll
-continuity, and optimistic overlays must not cause that scope distinction to
-disappear.
+new board query. The currently active primary RequestAssignment, not a cached
+helper field or provisional card label, establishes authoritative Claim
+ownership under the source-owned model. An operation that introduces or removes
+a visible row needs an explicit membership-adoption rule. Filters, sorting,
+retained selection, scroll continuity, and optimistic overlays must not cause
+that scope distinction to disappear. A card conflict reread may correct that
+one Request without adopting unrelated board membership or proving that an
+outcome-unknown command incorporated.
 
 The framework does not hard-code HumanHelp's particular choice. It provides
 checked acquisition, ownership, progression, installation, and obligation
 mechanisms from which the application declares that choice.
 
+*** Worked HumanHelp sequence: remote R, local S, and an excluding filter
+
+Bob has adopted authorized board cohort Q17 at P17. Alice creates remote
+Request R at P18; Bob receives a valid advisory for the board but does not
+adopt R. Bob then successfully creates Request S at P19. Bob's current
+local search filter matches R but excludes S.
+
+The correlated *authorized* Create result for S can selectively admit S
+under Bob's current board-scope membership rule without importing R.
+Because the current filter excludes S, the UI presents S in an accessible
+"Your new Request" result area with an explicit way to reveal it in the
+ordinary board. It does not silently clear Bob's search or introduce R.
+Local search, sorting, show-terminal and other presentation changes operate
+over the already adopted cohort; they cannot acquire remote R as a side
+effect. The outstanding advisory for R remains visible.
+
+Only Bob's subsequent explicit Refresh, followed by a complete authorized
+board acquisition and qualified installation, can adopt R under this
+policy. An observation with a later basis for S is not evidence that the
+complete board was read at that basis, and its adoption does not discharge
+R's scoped obligation. If Bob has an unrelated outcome-unknown command,
+that command's attribution remains independently unresolved even after
+a board reread shows its present Request status.
+
+*** Paired Refresh and HumanHelp acceptance obligations
+
+| Admitted behavior | Adverse or unsupported counterpart | Required judgment |
+|-------------------+------------------------------------+-------------------|
+| O1 starts a user-granted read through P18; later O2 through P20 remains outstanding during A1. | The old captured list is restored and removes O2 when A1 finishes. | Settle current obligations; preserve O2 without a qualified covering observation. |
+| A1 installs admitted full-board P18, while P20 remains unmet. | Partial discharge is treated as a complete current-board claim. | Adopt only the permitted non-regressing P18 advance and keep O2 visible. |
+| A1 acquires P21 with admitted matching query, provider progression and completed installation. | A server-echoed P21 label or allowed swap is counted as adopted board coverage. | Discharge both only on the required authenticated and installed evidence. |
+| One explicit Refresh grants one logical acquisition; another user click may create one bounded authorized successor intent. | An O2 advisory silently authorizes an unlimited automatic drain of remote changes. | Enforce grant scope, budget and lifetime separately from generic adapter queueing. |
+| A local Create of S is installed by a correlated authorized result while R remains only advisory. | The newer S basis imports remote R or clears R's board-membership debt. | Preserve per-scope selective admission and remote outstanding obligation. |
+| S is hidden by the current local search and remains visible in a separate accessible result area. | The UI silently resets search or declares creation invisible/successful only through a toast. | Preserve current options and prompt confirmed-result visibility. |
+| A local Claim result updates its affected Request using production RequestAssignment evidence. | A provisional label or obsolete helper field is treated as current assignment or complete board membership. | Require authoritative operation/result and declared affected-card scope. |
+| Remote Claim/Unclaim changes produce advisory for another viewer until explicit Refresh. | A pushed card or invalidation silently updates visible remote lifecycle state. | Preserve HumanHelp's selected uniform remote-adoption policy. |
+| Board scope stays valid while Bob changes local presentation options mid-read. | Response-time filters replace the newer local option state, or an old Location result populates a new Location. | Use current options for compatible scope; reject obsolete scope/owner rights. |
+| An unknown command remains resolvable through command-specific retained evidence. | A board reread showing claimed state declares that uncertain command succeeded or failed. | Keep current domain state separate from command attribution. |
+| A newer authorized local card is installed while an older whole-board read completes. | The old read overwrites that card or fabricates a common snapshot by merging arbitrary rows. | Reject regression or use independently admitted selective reconciliation. |
+| A permitted full-board install is partial or fails. | A successful HTTP response clears advisory debt and enables controls on an incoherent representation. | Retain debt, mark repair need and require installed-completion evidence. |
