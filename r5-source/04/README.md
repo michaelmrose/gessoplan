@@ -13,9 +13,9 @@ The original R5 source is preferred to R4 as the architectural starting
 point. The R4 `main` Part IV has 3,681 newline-split lines and nine
 `CUSTOM_ID` anchors; the R5 Part IV has 1,702 newline-split lines,
 57 nested requirement headings, and the same nine anchors. Lossless
-splitting does **not** determine whether the shorter R5 material omits
-valuable R4 requirements. Those substantive comparisons began with
-04.01 and continue through 04.09–04.17.
+splitting did **not** determine whether the shorter R5 material omitted
+valuable R4 requirements. All seventeen sectional preservation audits
+are complete; whole-Part-IV cross-section reconciliation is underway.
 
 ## Numbered source inventory
 
@@ -92,11 +92,15 @@ not runtime or formal proof evidence.
 The local Python assembly command was not run as part of the
 GitHub connector operation; run it in a checkout when available.
 
-**Next:** begin **whole-Part-IV cross-section reconciliation** across
-all 17 edited sections. Check preservation audits, operation identity,
-model/FX/XTDB/Live/browser evidence joins, HumanHelp policy consistency,
-positive/negative acceptance coverage, and Part I–III/Part VIII joins.
-Keep any detected gaps visible and revise the owning section rather than
-conferring whole-part acceptance from sectional audits alone.
-Subsequent `next` requests continue one bounded revision
-at a time.
+**Whole-part reconciliation, pass 01:** see
+`PART-IV-cross-section-reconciliation-01-scope-presentation.md`.
+This pass corrected an actual mismatch between authoritative board
+query scope and HumanHelp's local-only search/sort/visibility options in
+04.12, 04.15 and 04.16. The first pass is NOT acceptance of Part IV.
+
+**Next:** reconcile authoritative command/atomic-outcome/unknown-result
+joins across 04.01–04.11 and 04.17. Continue testing the full
+model/FX/XTDB/Live/browser correspondence and Parts I–III/VIII joins
+in bounded, recorded passes. Do not confer whole-part reviewed-candidate
+status until the remaining joins have independent acceptance evidence.
+Each `next` remains one bounded revision.
