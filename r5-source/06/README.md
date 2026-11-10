@@ -4,9 +4,9 @@
 losslessly into fifteen numbered Org units. Subsequent substantive
 reviews revise those sources and rebuild the publication by exact
 concatenation. All eight original `CUSTOM_ID` anchors remain stable.
-Sections **06.01–06.04** have completed substantive R4-preservation
+Sections **06.01–06.05** have completed substantive R4-preservation
 and Gesso-source correspondence reviews, recorded in their
-matching audits. Sections 06.05–06.15, whole-part reconciliation,
+matching audits. Sections 06.06–06.15, whole-part reconciliation,
 and independent candidate acceptance remain outstanding.
 Parts I–V are accepted reviewed R5.1 candidates. Parts VI–XII and
 the independent full-plan reconciliation remain unfinished.
@@ -115,14 +115,14 @@ concatenated exactly to the unchanged R5 Part VI baseline:
 **84,711 decoded JavaScript string code units** and
 **1,481 newline-split lines**. Subsequent sectional revisions
 update the canonical Part VI publication from the numbered units.
-After 06.04, the fifteen reviewed/unreviewed units exactly
-reconstruct the **121,773-character**, **1,932-line** Part VI
+After 06.05, the fifteen reviewed/unreviewed units exactly
+reconstruct the **130,552-character**, **2,057-line** Part VI
 publication, with all eight stable anchors and balanced Org
 blocks. The whole-plan output remains a generated artifact,
 not a separate editable normative source.
 
 The Python assembler was **not executed** in a local Gessoplan
-checkout. Initial splitting and subsequent 06.01–06.04
+checkout. Initial splitting and subsequent 06.01–06.05
 publications were checked by exact GitHub-fetched concatenation,
 not by Gesso runtime, backend, Chromium or formal proof execution.
 
@@ -158,6 +158,13 @@ The FFI now distinguishes issued effects from verified host
 completion, stale actuation, partial results and third-party
 effect premises; seven positive/adverse histories exercise the joins.
 
-**Next:** review **06.05 — Scoped Installation and Physical Completion**,
-including exact target/representation permits, postconditions and
-per-scope adoption under real browser callbacks.
+**06.05 review:** see `06.05-r4-preservation-audit.md`.
+The revised physical-installation contract distinguishes qualified
+acquisition, scoped permits, guarded physical actuation, actual
+target-specific completion and subsequent adoption. Seven
+positive/adverse histories cover stale effects, partial DOM writes,
+newer local card S versus older board R, one Refresh and continuity.
+
+**Next:** review **06.06 — Fragment Coordination and Advisory Debt**,
+including retained requirements, bounded active cycles and permitted
+acquisition under the same scoped ownership and progression rules.
