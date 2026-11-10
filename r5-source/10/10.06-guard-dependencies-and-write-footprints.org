@@ -1,0 +1,80 @@
+*** Guard dependencies and write footprints are different
+
+The operation's guard footprint includes every fact whose current truth the
+transition requires. Its write footprint includes every physical location it
+may change. They need not be equal. Claim may read Membership and Organization
+while writing Request, primary assignment, command outcome, and outbox intent.
+
+An abstract scalar projection cannot hide a physical whole-document overwrite.
+If lowering replaces a complete document using a prepared value, preserving
+unmodified fields requires one of the following, justified for the backend:
+
+- compare the complete relevant pre-state, including field presence, before
+  replacement;
+- compare a revision maintained by every relevant writer, where that discipline
+  really protects the complete replaced state;
+- derive the replacement from current transaction state while preserving the
+  required frame;
+- use a physical update whose semantics modify only the declared fields.
+
+Merely checking the business fields and then replacing all fields can lose a
+concurrent update to an unguarded field. A revision check protects nothing that
+another writer may change without advancing the revision. Positive-document
+checks also do not protect absence or uniqueness predicates: an insertion can
+invalidate “no active primary assignment” without changing any previously read
+row. Those predicates require an appropriate atomic constraint or conflict
+mechanism.
+
+The following executable Clojure example illustrates the lost-field problem.
+It models immutable maps only; it is neither XTDB code nor a certified operation.
+A complete-map comparison here includes presence and absence by map equality.
+A real backend lowering must establish equivalent treatment for its supported
+representation rather than assuming map equality is SQL equality.
+
+#+begin_src clojure
+(def prepared-before
+  {:request/status :open
+   :request/revision 7
+   :request/summary "Original summary"})
+
+(def prepared-after
+  (assoc prepared-before
+         :request/status :claimed
+         :request/revision 8))
+
+;; A writer outside the revision discipline changes an unguarded field.
+(def current-before-commit
+  (assoc prepared-before :request/summary "Corrected summary"))
+
+(defn checked-field-equal? [expected actual field]
+  (and (= (contains? expected field) (contains? actual field))
+       (= (get expected field) (get actual field))))
+
+(defn partial-guard? [expected actual]
+  (every? #(checked-field-equal? expected actual %)
+          [:request/status :request/revision]))
+
+(defn complete-map-guard? [expected actual]
+  (= expected actual))
+
+(assert (partial-guard? prepared-before current-before-commit))
+(assert (not (complete-map-guard? prepared-before current-before-commit)))
+(assert (= "Original summary" (:request/summary prepared-after)))
+(assert (not= (:request/summary prepared-after)
+              (:request/summary current-before-commit)))
+#+end_src
+
+A pinned pre-read establishes what was observed at that read. It can be useful
+input to a prepared conditional transaction. It does not itself establish what
+the transaction will see. The transaction-time guard supplies that separate
+condition under the qualified backend semantics.
+
+A complete value comparison can allow an ABA history: the value changed and
+later returned to the same value. This is not automatically a safety failure
+for a rule that depends only on current state. If the operation requires that
+no intervening change occurred, the contract needs a history-sensitive token or
+other mechanism. A strictly increasing, non-wrapping revision excludes reuse
+only under complete writer coverage, an explicit overflow policy, and appropriate
+identity treatment across deletion and recreation. Monotonicity is an actual
+ordering property here; ordinary identity propagation is preservation.
+

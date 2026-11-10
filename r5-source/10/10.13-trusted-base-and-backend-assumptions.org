@@ -1,0 +1,85 @@
+** Trusted computing base, security boundaries, and failure modes
+:PROPERTIES:
+:CUSTOM_ID: req-trusted-system-boundaries
+:END:
+
+Every claim identifies its trusted base. The logical trusted base, physical
+execution dependencies, security boundary, and availability premises overlap
+but are not identical. Listing every library without indicating which claim
+depends on it is insufficient.
+
+*** The assurance ledger
+
+The root ledger identifies the executable semantic core, proof kernel, semantic
+checkers, normalizers, elaborators, lowerings, runtime gates, build process,
+external checkers, and implementation or dependency versions in scope. It joins
+these to original obligations, accepted evidence, application assertions,
+external assumptions, and enforcing boundaries.
+
+For a physical claim, include the actual serving process's assembly identity,
+installed handler binding, artifact manifest, backend connection identity, and
+relevant runtime configuration under their stated trust contracts. An identity
+is recorded only where it has been acquired or verified appropriately. A value
+copied from caller metadata is labeled as claimed, not observed.
+
+The ledger exposes which claims are conditional, unsupported, stale, refuted, or
+blocked by profile requirements. It preserves the reason and first boundary of
+failure without leaking protected inputs, command records, document contents,
+credentials, or raw provider exceptions into public diagnostics.
+
+Source size and namespace inventories help focus review. They are not proof of
+soundness. A small explicitly described kernel is valuable because it reduces
+the surface requiring trust and analysis, not because short code is inherently
+correct.
+
+*** Backend assumptions are qualified contracts
+
+The goal is not to prove all of XTDB. The goal is to state exactly which backend
+behaviors the application's claims use, qualify the concrete backend and adapter
+combination against those behaviors, and invalidate dependent applicability when
+that qualification no longer holds. This follows
+[[#req-backend-assumption-qualification][Part I]].
+
+Each assumption record contains:
+
+- a stable proposition and the scope of the operations relying on it;
+- the backend product and exact version or justified compatible version range;
+- the adapter, client, query or transaction subset, codecs, topology, and relevant
+  configuration;
+- its source of justification and evidence classification;
+- the executable qualification cases and their expected semantic outcomes;
+- the recorded observations and known limits of those cases;
+- invalidation triggers, responsible owner, and the admission/runtime response.
+
+Qualification tests must use the production lowering and actual backend boundary
+for the claim in question. A fake adapter that returns expected statuses tests
+the fake, not backend semantics. Conversely, backend tests do not establish that
+all production writers use the tested lowering.
+
+The qualification contract covers the behaviors actually used:
+
+| Assumption | Required challenge cases | Consequence of failure |
+|------------+--------------------------+------------------------|
+| Guard and mutation share the promised atomic semantics | Concurrent conflicting changes; guard failure; no partial promised writes | Dependent atomic-transition claim cannot be admitted |
+| Physical replacement preserves the declared frame | Concurrent edits outside business fields; added/absent/null fields; unsupported values | Reject the lowering or strengthen its guard/update mechanism |
+| Relationship and absence constraints hold | Competing inserts, reassignment, association changes, duplicate command deliveries | Dependent uniqueness, authorization, or deduplication claim fails |
+| Provider outcome means what the adapter reports | Submission/return/exception distinctions; abort; lost reply; restart and reconciliation | Preserve uncertainty unless authoritative evidence resolves it |
+| Read basis and coverage have the declared meaning | Lagging readers; pinned multi-query projections; insufficient progression; reconnect | Refuse false discharge or authoritative-currentness claims |
+| Required intent survives commit failure windows | Crash before commit, after commit before dispatch, during retry, and after acknowledgment | Narrow or reject the claimed publication-recovery guarantee |
+| Revision discipline supports a history claim | Competing writers, delete/recreate, restoration, and numeric exhaustion | Do not claim ABA exclusion without the complete discipline |
+
+Provider time semantics are explicit. Valid time, system or transaction time,
+application domain revision, and a basis sufficient for progression are not
+interchangeable. A transaction receipt that establishes one does not fabricate
+the others. A read option must be qualified for the actual provider version;
+returning the caller's requested token in response metadata is not evidence
+that the read satisfied it.
+
+The tests must distinguish a property violation from an unavailable environment
+or inconclusive run. A passed finite corpus is tested evidence under the named
+external premise, not proof that every backend defect will be detected. No
+finite suite can guarantee discovery of every future incompatible behavior.
+The operational guarantee is that relevant changes and observed contradictions
+invalidate qualification and trigger its declared response; the evidence report
+must not promise omniscient detection.
+

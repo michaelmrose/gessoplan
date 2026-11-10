@@ -1,0 +1,75 @@
+*** Formal obligations must return to executable production boundaries
+:PROPERTIES:
+:CUSTOM_ID: req-formal-obligations-return-to-production
+:END:
+
+Every formal action and correctness-relevant assumption must trace back to the
+semantic source that owns it and the production boundary responsible for it.
+This reverse traceability is required even when a claim remains conditional.
+It is not a reverse simulation and does not prove that every formal trace is
+physically executable.
+
+An atomic formal Claim action creates an atomic production obligation. A
+formal authenticated principal creates a trusted principal-acquisition
+obligation. A formal fresh resource identity creates an allocation and
+retirement obligation. A formal eventually delivered notification creates the
+specified delivery, retention, retry, and fairness premises. Naming these facts
+in a model does not establish them in the application.
+
+The record for each obligation must identify its source object, formal subject,
+production binding, relevant identities, evidence class, remaining premises,
+and responsible enforcing boundary. For a cross-model transaction it must retain
+the association and dependency edges, not collapse them into an uninformative
+“current state” label.
+
+Generated formal subjects are derivative artifacts. A supported formal backend
+translates the admitted semantic definitions and property statements. Developers
+may inspect the generated artifact, but repairing it independently to make a
+check pass does not repair the application. A correction belongs in semantic
+source, a property statement, a lowering, a production binding, or an explicitly
+changed assumption, followed by regeneration and rechecking.
+
+**** Counterexamples identify what actually failed
+
+Suppose a candidate Claim model reads “open” before the atomic action and omits
+the current-open guard at incorporation. Its model checker may find:
+
+#+begin_example
+A observes Request R open.
+B observes Request R open.
+A incorporates Claim of R.
+B incorporates Claim of R without an intervening release.
+The declared claim-from-open-at-commit property fails in this model.
+#+end_example
+
+This is a counterexample to that candidate semantic transition. It is not a
+counterexample to a correctly guarded transition merely because both are named
+Claim. If the intended model has the current-open guard, inspect the translation,
+property, and abstraction before attributing the trace to production.
+
+Conversely, a safe guarded model can pass while production uses an unguarded
+pre-read. That is a failed or unresolved production-correspondence obligation.
+The report must not suggest that the formal theorem has covered the physical
+transaction when the necessary relation is absent.
+
+A useful diagnostic includes the violated property, semantic operation, smallest
+useful trace prefix, relevant actors and identities, formal abstraction and
+bounds, source location, corresponding production obligation, and current
+evidence for that obligation. It labels an unconfirmed abstract counterexample
+as abstract. Several possible repair owners remain alternatives until evidence
+distinguishes them.
+
+**** Automated repairs use the same evidence rules
+
+An assistant may propose a source-level correction, a lowering repair, a new
+explicit premise, or a clarified application policy. It must identify which
+evidence supports the proposal. Weakening an invariant or adding an assumption
+is a visible change to the claim, not an implementation repair disguised as a
+successful check.
+
+A proposed repair is re-elaborated, regenerated, checked, and exercised through
+the relevant production boundaries. It receives no exemption because it was
+automatically generated. The report can answer both “what does this theorem
+constrain in production?” and “which theorem or assumption depends on this
+production behavior?” without requiring manual comparison of two languages.
+

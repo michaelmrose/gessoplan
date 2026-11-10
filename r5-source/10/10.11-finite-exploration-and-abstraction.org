@@ -1,0 +1,96 @@
+*** Finite exploration and abstraction
+
+An exact-finite claim names its initial states, complete transition relation,
+data domains, property, bounds, and exploration result. It must say whether all
+reachable states were explored and how deadlock, invalid states, and terminal
+states were treated. A timeout, resource limit, missing transition case, or
+partially explored graph is incomplete evidence, not successful exhaustive
+checking.
+
+Bounded active and queued slots do not make the entire state space finite.
+Commands, resource identities, data values, dependency depth, retired metadata,
+and outstanding physical effects may remain unbounded. Checking a few UUIDs or
+counter values establishes only that chosen finite model without a further
+coverage or abstraction theorem.
+
+For a concrete safety transfer, the abstraction must cover every concrete initial
+state in scope, simulate every relevant concrete transition, and ensure that
+the abstract invariant implies the concrete safety property. State mapping alone
+is insufficient. For liveness, fairness and divergence conditions must also be
+preserved as required by the theorem. A finite over-approximation may admit
+spurious counterexamples; concretization determines what can be attributed to
+production.
+
+**** Resource ownership: a local abstraction with an explicit limit
+
+The following executable example isolates one ownership predicate. It uses
+opaque resource and effect identities and an active phase. Identity equality
+and phase are checked again at the point of mutation. It is not the complete
+Part VI adapter: execution ownership, plan compatibility, authority scope,
+observation coverage, and batch completion remain additional conditions there.
+
+#+begin_src clojure
+(defn owned-effect? [state callback]
+  (and (= :active (:resource-phase state))
+       (some? (:resource-instance state))
+       (= (:resource-instance state) (:resource-instance callback))
+       (some? (:effect-id state))
+       (= (:effect-id state) (:effect-id callback))
+       (= :awaiting-effect (:effect-phase state))))
+
+(defn ownership-observation [state callback]
+  {:active? (= :active (:resource-phase state))
+   :same-resource? (and (some? (:resource-instance state))
+                        (= (:resource-instance state)
+                           (:resource-instance callback)))
+   :same-effect? (and (some? (:effect-id state))
+                      (= (:effect-id state) (:effect-id callback)))
+   :awaiting? (= :awaiting-effect (:effect-phase state))})
+
+(defn abstract-owned-effect? [observation]
+  (and (:active? observation)
+       (:same-resource? observation)
+       (:same-effect? observation)
+       (:awaiting? observation)))
+
+(def resource-a
+  {:resource-phase :active
+   :resource-instance :fixture/resource-a
+   :effect-id :fixture/effect-a
+   :effect-phase :awaiting-effect})
+
+(def callback-a
+  {:resource-instance :fixture/resource-a
+   :effect-id :fixture/effect-a})
+
+(def resource-b
+  (assoc resource-a
+         :resource-instance :fixture/resource-b
+         :effect-id :fixture/effect-b))
+
+(assert (owned-effect? resource-a callback-a))
+(assert (not (owned-effect? resource-b callback-a)))
+(assert (not (owned-effect? (assoc resource-a :resource-phase :retired)
+                           callback-a)))
+(assert (not (owned-effect? (assoc resource-a :effect-phase :completed)
+                           callback-a)))
+(assert (= (owned-effect? resource-b callback-a)
+           (abstract-owned-effect?
+            (ownership-observation resource-b callback-a))))
+#+end_src
+
+The four Boolean observations support a local predicate comparison. They are
+not by themselves a finite transition system. A finite abstraction for the
+whole adapter must also specify allocation, identity freshness, replacement,
+retirement, queues, and adversarial late events while preserving the necessary
+equality relationships. It must account for two callbacks that alias the same
+identity and callbacks that do not. Collapsing all old identities into one name
+without preserving the relevant relations can change the modeled behavior.
+
+The final-mutation requirement follows even before a universal abstraction
+proof exists: callback A may pass its first check, be deferred, and arrive at
+mutation after resource B has replaced A. The shell must evaluate ownership
+against B at that moment. Retaining the earlier Boolean =true= is not permission.
+The same distinction applies when a completed effect has consumed its phase but
+a duplicate callback arrives.
+

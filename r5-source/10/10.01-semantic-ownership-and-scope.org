@@ -1,0 +1,106 @@
+* Part X — Formal correspondence and system boundaries
+:PROPERTIES:
+:CUSTOM_ID: part-10-formal-correspondence-and-system-boundaries
+:PART_REVISION: 10-20261108
+:END:
+
+This part specifies how a checked semantic claim applies to the application
+that actually runs. It connects Part IX's judgments and certificates to
+executable plans, transaction boundaries, browser effects, deployed handlers,
+and external systems. It also defines the assumptions and recovery contracts
+under which the same application may run across several hosts.
+
+The design uses the full host language. A closed semantic subset supports
+stronger derivation; an opaque implementation has explicit, scoped premises.
+Neither a theorem about an abstract operation nor a successful application test
+silently establishes the missing relation between them. Required product
+capabilities, assembly closure, and production enforcement remain distinct
+claims under [[#req-application-assurance-claims]].
+
+Parts XI and XII own completion gates and realization ordering. This part is a
+normative architecture, not a statement that a particular release already
+satisfies every target. The canonical evidence classifications are those of
+[[#req-assurance-classification][Part I]].
+
+** Semantic ownership and the scope of assurance
+
+*** One application meaning, several checking mechanisms
+
+The admitted semantic definitions own the application meaning that Gesso can
+inspect. A production plan and a generated formal subject derive from those
+definitions. They may use different representations, but the relation between
+them is itself an obligation with a named checking or trust mechanism.
+
+The components have distinct roles:
+
+| Component | Responsibility | Does not establish by its name alone |
+|-----------+----------------+-------------------------------------|
+| Executable semantic core | Defines and executes the supported transition semantics | Correctness of every physical shell action |
+| Semantic checkers | Check typing, projection, dependencies, progression, and other specified judgments | Universal soundness of their own implementation |
+| Proof kernel | Checks the closed derivation language of Part IX | Arbitrary Clojure correctness or current authorization |
+| External proof checker | Checks a formal theorem or proof object under its formal semantics | Correspondence with the Clojure checker or deployed application |
+| Runtime boundary | Acquires or enforces the concrete premises needed now | Unbounded correctness inferred from one successful invocation |
+| Integration harness | Exercises actual boundaries and challenges assumptions | A theorem outside the exercised domain |
+
+These components may share canonical definitions. Sharing reduces duplicated
+meaning, but also permits shared mistakes. Recomputing a result through the
+same checker protects against a forged report; it is not independent evidence
+that the checker implements the right judgment.
+
+A formalization may strengthen confidence that Claim obeys the declared
+HumanHelp policy. It cannot establish that the policy is the right product
+choice without a separately stated requirement against which to judge it.
+HumanHelp continues to own Request, Membership, Organization, and assignment
+semantics. Gesso owns its language, construction, execution, and boundary
+contracts.
+
+*** Evidence belongs to a claim, not to an application-wide adjective
+
+A claim records its subject, proposition, quantification domain, assumptions,
+evidence mechanism, enforcing boundary, and applicable artifact identities.
+The root report may contain machine-proved, kernel-checked, exact-finite
+checked, assembly-verified, runtime-enforced, trusted, asserted, and tested
+claims at the same time.
+
+Conditional liveness qualifies a progress claim; it is not a ninth evidence
+class. A conditional liveness theorem and a fault test of its environmental
+premises remain separate evidence. Counts of assertions or passing tests are
+useful diagnostics, not probabilities of correctness.
+
+The report must distinguish at least:
+
+- an obligation derived from source;
+- evidence offered for that obligation;
+- evidence accepted by the relevant checker or runtime boundary;
+- an explicitly admitted assumption;
+- an unsupported, incomplete, stale, or refuted claim;
+- the decision of the selected admission profile.
+
+These distinctions are reporting requirements, not a new outcome vocabulary
+for model operations. The model outcomes remain those of Part IV.
+
+A profile may explicitly admit an opaque implementation premise where Part I
+allows one. A failed mandatory proof cannot be relabeled as an assertion to
+make the same profile pass. An incomplete check is not a counterexample, and a
+counterexample is not merely missing evidence.
+
+*** Opaque host code remains useful and visible
+
+Arbitrary Clojure and ClojureScript may compute values, implement application
+policy, interact with external services, and construct admitted semantic data.
+Gesso does not require those computations to become proof-language expressions.
+It requires their proof-relevant interfaces and effects to be explicit.
+
+For each opaque boundary, record the input and output contract, affected state,
+read and write footprint, authority used, possible effects and failures, and
+claims that depend on its asserted behavior. Runtime checks enforce the
+observable portions of that contract. Tests challenge the remainder. A
+separately proved implementation may later discharge a particular premise
+without changing unrelated application semantics.
+
+An opaque renderer does not invalidate an independent theorem about command
+binding. An opaque policy predicate does prevent claiming that the policy's
+truth follows from the small rule calculus unless the necessary premise is
+explicit. An undeclared database writer can invalidate a whole-domain invariant
+even when every declared operation has a sound preservation proof.
+

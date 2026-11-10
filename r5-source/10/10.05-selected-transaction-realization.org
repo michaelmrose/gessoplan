@@ -1,0 +1,41 @@
+*** The selected transaction realization
+
+For operations whose physical transition can be constrained, the selected
+realization has one authoritative submission owner:
+
+1. Trusted invocation code binds the principal, public operation, canonical
+   arguments, authority scope, and stable command identity.
+2. The admitted operation constructs a typed transaction plan with explicit
+   guard dependencies, write footprint, command-resolution behavior, and
+   required durable publication intent.
+3. The gateway derives or independently checks the complete physical transaction
+   from that plan. Callers cannot append arbitrary operations, swap the backend
+   client, or supply a replacement submission callback through this boundary.
+4. The gateway submits the exact immutable transaction vector and records the
+   actual attempt and provider observation without promoting diagnostic data
+   into a commit witness.
+5. Public outcome resolution uses the provider's qualified outcome contract and
+   authoritative command evidence. Progression and disclosure follow Parts IV
+   and V.
+
+The checked lowering subset must define insertion, absence guards, updates,
+deletes where allowed, relationship constraints, and every supported value
+encoding it uses. Unsupported physical forms reject from that path. An opaque
+adapter remains possible through an explicit alternative contract; it does not
+silently inherit the constrained gateway's claim.
+
+A one-use submission capability belongs to one invocation attempt. Retries may
+acquire fresh attempt capabilities for the same bound command under its replay
+contract. Consumption of one capability is atomic with respect to competing
+local users; it does not replace durable exclusion between separately issued
+capabilities for the same command. Fresh independent requests may execute
+concurrently. Neither one
+process-global one-shot writer nor a single global request lease is the general
+application model. Capacity limits are explicit operational policy, not evidence
+of authority or a semantic requirement to serialize unrelated commands.
+
+Asynchronous and deferred execution require an explicit invocation context with
+scope, lifetime, ownership, and retirement. A thread-local binding alone cannot
+justify work scheduled after that binding ends. The same rule applies to jobs,
+subscriptions, maintenance tasks, and response completion callbacks.
+

@@ -1,0 +1,58 @@
+** Multi-node realization and authoritative rendezvous
+:PROPERTIES:
+:CUSTOM_ID: req-multi-node-realization
+:END:
+
+Multi-node deployment changes physical placement. It does not create a second
+authority model, a second command meaning, or automatic permission to adopt
+remote state.
+
+*** Roles, principals, authorities, and hosts remain distinct
+
+A role is a choreography role. An actor realizes that role under a principal and
+context. An authority owns specified authoritative facts or operations. A host
+is a physical process that may realize an authority projection for an invocation.
+None of these identities is interchangeable.
+
+A Claim sent through host A and retried through host C retains its bound
+=:gesso/command-id= and public operation meaning. Each delivery may have a new
+=:http-request-id= and attempt identity. Host C must authenticate its own
+invocation, validate the existing command binding, and use the shared authoritative
+command-resolution mechanism. Node-local caches cannot establish cross-node
+deduplication.
+
+The retention contract names the period and scope in which replay is supported.
+A deleted command record cannot silently make an old command identifier a fresh
+intent. The protocol must either preserve sufficient tombstone/exclusion evidence,
+use an enforced expiry or epoch contract that rejects expired reuse, or narrow
+the claimed retry guarantee explicitly. A client must not work around uncertainty
+by allocating a new command identifier for the same pending intent.
+
+Physical relocation cannot reconstruct an intent whose binding was never retained.
+A current-state read at host C may establish the Request's present state while
+leaving the originating participant's command outcome unknown.
+
+*** The selected ordinary topology is deliberately small
+
+The baseline multi-node realization uses:
+
+- at least two independently running application processes behind a request
+  distributor that can route a retry or reconnect to another process;
+- one qualified authoritative backend deployment shared by those processes;
+- durable publication intent stored atomically with the model operation where
+  the application requires post-commit notice recovery;
+- a dispatcher and advisory distribution path that can reach interested
+  sessions on either application process;
+- shared or otherwise compatible authentication, command resolution, protocol,
+  artifact, and assembly-compatibility contracts.
+
+These are responsibilities, not a required list of infrastructure products. A
+separate broker is warranted only when the selected delivery contract needs it.
+Multiple processes and a shared database are sufficient to test meaningful host
+replacement; a single process with two labels is not.
+
+The topology qualification identifies concrete services, versions, transport
+configuration, credentials, failure model, and consistency assumptions. A backend
+being shared does not prove that two read paths have identical freshness.
+Qualified progression checks still apply at each host.
+
