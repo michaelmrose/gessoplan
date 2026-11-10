@@ -1,13 +1,13 @@
 # R5.1 sectional source — Part V, Provisional State and Executable Presentation
 
 **Disposition:** lossless structural preparation of preferred R5
-Part V is complete. Sections 05.01–05.12 have received substantive
-R4-preservation and Gesso-correspondence reviews, recorded in their
-respective `05.xx-r4-preservation-audit.md` files. 05.13
-remains unreviewed.
+Part V is complete. All thirteen sections 05.01–05.13 have received
+substantive R4-preservation and Gesso-correspondence reviews, recorded
+in their respective `05.xx-r4-preservation-audit.md` files.
+Whole-Part-V reconciliation and independent acceptance are now next.
 The thirteen source units reconstruct
 `gesso-unified-design-canonical-r4-05-provisional-state-and-executable-presentation.org` byte for byte. **Whole-Part-V reconciliation
-and acceptance have not begun.** Parts I–IV remain reviewed R5.1
+and acceptance remain outstanding.** Parts I–IV remain reviewed R5.1
 candidates. The twelve-part plan remains a draft.
 
 R4 `main` is the preservation baseline; R5 `r5` is the preferred
@@ -172,8 +172,16 @@ actual selected runtime locators; and qualifies fixed-input
 noninterference, observer isolation, redaction and mandatory audit work.
 Five positive/adverse pairs cover these joins.
 
-**Next:** audit and revise `05.13-sidecar-authority-and-conformance.org`
-against R4, reviewed 05.01–05.12, current Gesso artifact/runtime
-mechanisms and the independent HumanHelp/assembly acceptance contract.
-One `next` remains one revision; whole-Part-V reconciliation begins
-only after every section is reviewed.
+**05.13 review:** see `05.13-r4-preservation-audit.md`.
+The completed final sectional audit retains R4's non-authoritative
+sidecars and exact build closure, makes diagnostic disclosure and
+runtime/assembly/product assurance claims independent, and strengthens
+the existing conformance inventory with a real eligible HumanHelp
+positive-path matrix, non-vacuity controls and evidence/disposition scope.
+
+**Next:** perform one bounded **whole-Part-V reconciliation** across
+05.01–05.13, R4 preserved requirements, Parts I–IV and VI–X,
+and the published Part V joins. Record any repairs and remaining
+acceptance evidence explicitly before an independent Part V
+candidate-acceptance decision. No sectional audit itself certifies
+the whole part or Gesso runtime.
