@@ -4,105 +4,377 @@
 :PART_REVISION: 10-20261108
 :END:
 
-This part specifies how a checked semantic claim applies to the application
-that actually runs. It connects Part IX's judgments and certificates to
-executable plans, transaction boundaries, browser effects, deployed handlers,
-and external systems. It also defines the assumptions and recovery contracts
-under which the same application may run across several hosts.
+Part X specifies when an assurance statement about Gesso's admitted
+semantics can also be asserted about *the application that actually runs*.
+Part IX defines claim categories, checked derivations, issuer-controlled
+construction and assumption propagation; this part specifies the additional
+semantic-transfer, host, transaction, browser, provider and deployment
+relationships that give such claims a physical interpretation. One must
+not equate successful model checking, correct assembly, real test execution
+and complete production refinement.
 
-The design uses the full host language. A closed semantic subset supports
-stronger derivation; an opaque implementation has explicit, scoped premises.
-Neither a theorem about an abstract operation nor a successful application test
-silently establishes the missing relation between them. Required product
-capabilities, assembly closure, and production enforcement remain distinct
-claims under [[#req-application-assurance-claims]].
+Gesso uses ordinary Clojure/ClojureScript construction and implementation,
+including opaque full-language functionality. Its supported closed
+semantic fragments admit stronger mechanized judgments; opaque
+implementations contribute named, scoped conformance premises.
+The application and its current trusted models still own business
+policy. A generated formal subject may strengthen a source-owned
+judgment, but cannot substitute a newly handwritten, more convenient
+application for the source or prove the current host installed it.
 
-Parts XI and XII own completion gates and realization ordering. This part is a
-normative architecture, not a statement that a particular release already
-satisfies every target. The canonical evidence classifications are those of
-[[#req-assurance-classification][Part I]].
+Single- and multi-node deployments implement the *same* application
+semantics, protected operation and participant permissions. Host placement
+and routing affect what correspondence, delivery, replay and failover
+evidence is necessary, not what a Claim means. The specific distributed
+architecture and acceptance cases appear in 10.16–10.19.
+
+This is a timeless finished-system contract rather than a claim about
+the implementation at any particular revision. Parts XI–XII own
+independent completion and realization ordering. Every assurance
+conclusion retains the claim dimensions and evidence classifications
+of [[#req-assurance-classification][Part I]], the compositional
+issuance boundaries of Part IX and the separate structural, physical
+and product categories of [[#req-application-assurance-claims]].
 
 ** Semantic ownership and the scope of assurance
 
 *** One application meaning, several checking mechanisms
 
-The admitted semantic definitions own the application meaning that Gesso can
-inspect. A production plan and a generated formal subject derive from those
-definitions. They may use different representations, but the relation between
-them is itself an obligation with a named checking or trust mechanism.
+The source-owned *executable semantic core* specifies those supported
+state, operation, proof-relevant value and Choreo transition meanings
+that Gesso can inspect. Abstract model subjects, emitted plans,
+checked obligations and formal exploration derive from those admitted
+definitions under versioned normalization and interpretation contracts.
+The model need not use the same representation as a runtime program:
+where the representations differ, their *directional correspondence*
+is an independent proof/checking or explicitly qualified trust obligation.
 
-The components have distinct roles:
+An external formal model may be generated from the semantics, or a
+separate implementation of the semantics may serve as an independent
+cross-check. Neither receives an exemption from that obligation simply
+because it bears the original operation name. A more independent
+interpretation can detect common bugs, but then must show which exact
+source meaning it interprets; reusing implementation logic can help
+avoid drift, but creates common-mode risks. A trustworthy argument
+cannot be built by freely choosing whichever interpretation passes.
 
-| Component | Responsibility | Does not establish by its name alone |
-|-----------+----------------+-------------------------------------|
-| Executable semantic core | Defines and executes the supported transition semantics | Correctness of every physical shell action |
-| Semantic checkers | Check typing, projection, dependencies, progression, and other specified judgments | Universal soundness of their own implementation |
-| Proof kernel | Checks the closed derivation language of Part IX | Arbitrary Clojure correctness or current authorization |
-| External proof checker | Checks a formal theorem or proof object under its formal semantics | Correspondence with the Clojure checker or deployed application |
-| Runtime boundary | Acquires or enforces the concrete premises needed now | Unbounded correctness inferred from one successful invocation |
-| Integration harness | Exercises actual boundaries and challenges assumptions | A theorem outside the exercised domain |
+The rejected pattern is:
 
-These components may share canonical definitions. Sharing reduces duplicated
-meaning, but also permits shared mistakes. Recomputing a result through the
-same checker protects against a forged report; it is not independent evidence
-that the checker implements the right judgment.
+#+begin_example
+handwritten abstract model A -> proof of A
+handwritten production machine B -> deployed application
+(no checked relation between A and B)
+#+end_example
 
-A formalization may strengthen confidence that Claim obeys the declared
-HumanHelp policy. It cannot establish that the policy is the right product
-choice without a separately stated requirement against which to judge it.
-HumanHelp continues to own Request, Membership, Organization, and assignment
-semantics. Gesso owns its language, construction, execution, and boundary
-contracts.
+The intended source-derived pattern is:
 
-*** Evidence belongs to a claim, not to an application-wide adjective
+#+begin_example
+original Gesso/application declarations and contracts
+                    |
+             checked interpretation
+                    |
+         admitted executable semantics S
+           /            |            \
+  issued runtime    generated      checked formal
+  plans/operations  obligations    subject/proof
+           \            |            /
+           explicit correspondence and assumptions
+                    |
+    installed host, actual physical execution, observations
+#+end_example
 
-A claim records its subject, proposition, quantification domain, assumptions,
-evidence mechanism, enforcing boundary, and applicable artifact identities.
-The root report may contain machine-proved, kernel-checked, exact-finite
-checked, assembly-verified, runtime-enforced, trusted, asserted, and tested
-claims at the same time.
+The diagram is a dependency picture, not one proof that every link
+is already established. The issuer and trusted assembler reconstruct
+the required declarations and proof obligations from the *original*
+source. They may not accept an elaborator's conveniently reduced
+operation/invariant catalog as a complete application theorem.
+Part IX owns those original-source checks; Part VII separately
+owns installed application closure and its physical limitations.
 
-Conditional liveness qualifies a progress claim; it is not a ninth evidence
-class. A conditional liveness theorem and a fault test of its environmental
-premises remain separate evidence. Counts of assertions or passing tests are
-useful diagnostics, not probabilities of correctness.
+| Component | Governing responsibility | Boundary not established merely by invoking it |
+|-----------+--------------------------+-----------------------------------------------|
+| Source-owned executable semantic core | Defines supported transition and value/operation meanings | Actual server, XTDB or browser execution of those meanings |
+| Normalizer and elaborator | Derive typed subjects, obligations, projections, plans and proof candidates from original declarations | Semantic preservation of every transformation or completeness of real deployed writers |
+| Dedicated semantic checker | Establishes an expressly stated typing, projection, finite or guarded-transition judgment | Soundness for unrelated judgments or implementation fidelity |
+| Small proof kernel | Rechecks admitted derivations from original proposition/subject and retained premises | Independent metatheoretic soundness, opaque business truth or runtime authority |
+| External proof/model checker | Establishes the specific formal property under its selected semantics, bounds and logic | Identity/refinement of that formal subject with deployed Clojure/CLJS and providers |
+| Trusted application assembler/host | Checks compatible issued products, routes, writers, assets and selected generation | Exhaustive discovery of external bypass writers or a theorem for all physical schedules |
+| Runtime authorization and effect boundary | Enforces or authentically observes the particular principal, guard, transaction and browser effect | General theorem from one observed successful invocation |
+| Independent conformance harness | Discriminates semantic implementations and exercises identified actual failure seams | Universal proof beyond exercised scope, or current deployment adoption without provenance |
 
-The report must distinguish at least:
+These responsibilities can share implementation modules without
+becoming a single evidence class. Running the same evaluator in two
+wrappers may establish reproducibility, but does not independently
+validate the evaluator. Conversely, a second independent evaluator
+may discover a mismatch while proving neither version correct
+outside the reference interpretation and tested domain.
 
-- an obligation derived from source;
-- evidence offered for that obligation;
-- evidence accepted by the relevant checker or runtime boundary;
-- an explicitly admitted assumption;
-- an unsupported, incomplete, stale, or refuted claim;
-- the decision of the selected admission profile.
+A proof that the semantic Claim operation preserves one-primary
+RequestAssignment cardinality is conditional on its initial state,
+entire source-derived operation catalog, guard/frame interpretation
+and other relevant premises. Applying it to HumanHelp additionally
+requires correspondence to the *actual* protected public model
+operation, its current transaction guard, other writers and
+current installed caller. The rule does not become true for real
+XTDB merely because the semantic operation was called =Claim=.
 
-These distinctions are reporting requirements, not a new outcome vocabulary
-for model operations. The model outcomes remain those of Part IV.
+*** Proof transfer is a separate, quantified obligation
 
-A profile may explicitly admit an opaque implementation premise where Part I
-allows one. A failed mandatory proof cannot be relabeled as an assertion to
-make the same profile pass. An incomplete check is not a counterexample, and a
-counterexample is not merely missing evidence.
+The claim about a formal subject, a checked derivation and the
+claim about a runtime implementation have distinct quantifiers.
+For example:
+
+#+begin_example
+S: admitted abstract states, events and transition relation
+I: a selected implemented machine under a declared environment E
+alpha: a checked abstraction of relevant implementation state/events
+
+Abstract safety: every admitted S trace satisfies invariant P.
+Realization safety: every relevant I trace allowed by E is
+  related through alpha to an admitted S trace, including failure,
+  concurrency, rejection and recovery observations.
+Physical safety: P transfers to I only where the relation
+  and all required implementation/environment premises hold.
+#+end_example
+
+This is a schematic proof obligation, not an existing Gesso user
+API or a claim that the current physical relation has been proved.
+The chosen simulation/refinement direction matters. A single
+passing execution, bounded finite exploration, identical source
+hashes or matching after-the-fact ledger fields cannot establish
+the universal realization condition. Unobservable internal steps,
+real operation outcomes, actor and command identities, installation
+generation and failure cases need an explicit relation and
+applicability envelope. Unknown effects and omitted bypass writers
+remain genuine open obligations, not vacuous proof successes.
+
+Progress/liveness requires separate fairness, availability,
+retention, scheduling, continued participant and permitted
+user-action premises. Proving that a safe terminal state is
+reachable does not establish its eventual reachability for
+every fair run. Physical safety must not depend on fictional
+eventual delivery; a lost response may preserve a committed
+transaction while the browser honestly remains unknown.
+
+A checked external theorem can be reused under its exact
+semantic assumptions while the compiled artifact, host route,
+provider adapter or browser bundle changes. Such reuse does
+*not* preserve a previous implementation-correspondence or
+runtime-authority judgment. The consumer independently
+requalifies each affected physical edge and retains the
+same source-derived meaning across single- or multi-host
+placements.
+
+*** Evidence belongs to individual claims, not system labels
+
+An assurance claim records at least its proposition and
+quantifiers, normalized subject, proof/observation scope,
+relevant source and generation identities, inference or
+enforcement mechanism, open premises, dependency closure
+and applicability conditions. A root report aggregates
+heterogeneous claims without assigning one global
+=:proved=, =:certified?= or confidence percentage.
+
+The classifications of Part I and R4 remain distinct:
+
+| Evidence class | What it can establish when qualified |
+|----------------+--------------------------------------|
+| Machine-proved / externally machine-checked | The specific formal conclusion under the formal interpretation, inference rules and assumptions |
+| Kernel-checked | Validity of the submitted closed derivation under the stated proposition language and open premise set |
+| Exact-finite checked | The stated finite subject and bounds were explored as declared, including non-vacuity and exhaustion information |
+| Assembly-verified | The actual checked source/assembly and artifact relation at its named inspection/installation scope |
+| Runtime-enforced | A named concrete premise was enforced at the actual trusted boundary for the relevant invocation or resource |
+| Trusted | A specified external/opaque implementation or environmental contract is assumed within an explicit qualification envelope |
+| Asserted | An application-owned proposition was declared but not established by that declaration |
+| Tested | Actual qualified scenarios/observations support the named behavior over their exercised scope |
+
+The words *conditional*, *bounded*, *historical*, *current*,
+*installed* and *progress* qualify the proposition or its
+applicability; they are not additional evidence mechanisms.
+An issued nominal semantic product and a copied report shape
+are not independent proof categories. A conditional liveness
+theorem remains conditional; a test of a network partition
+does not establish eventual fairness in untested schedules.
+
+Each claim must separately expose:
+
+- the source-derived obligation and original semantic subject;
+- evidence offered and whether the responsible checker/physical
+  gate genuinely accepted it, including independent provenance;
+- inherited premises, which remain open, which were discharged
+  through an admitted judgment, and which are accepted as trust;
+- relevant finite bounds, physical trace/writer coverage and
+  model-to-implementation abstraction assumptions;
+- unsupported syntax, exhausted budgets, unavailable evidence,
+  counterexamples, stale generations and their distinct outcomes;
+- the selected profile's *admission decision* and any separate
+  release/product completion requirements.
+
+An unsupported proof fragment means the checker has not
+established its claim; it does not mean the statement is
+false. An actual model counterexample refutes the claimed
+property *under the examined model and premises*; it is
+not automatically a production XTDB trace. A source-checked
+report may be accurate but still not be issuer-controlled
+admission, runtime authorization or a durable transferable
+certificate. The selected admission policy cannot turn
+a failed mandatory proof into a trusted statement without
+an explicit permitted change of claim/profile and
+reconstruction of the resulting obligations.
+
+A model operation's four outcomes
+=:committed=, =:rejected=, =:already-incorporated=
+and =:commit-unknown= are not these checking
+dispositions. Nor are participant presentation
+=:accepted=, =:rejected=, =:unknown= or
+Part XI release-gate states interchangeable
+with evidence classes.
 
 *** Opaque host code remains useful and visible
 
-Arbitrary Clojure and ClojureScript may compute values, implement application
-policy, interact with external services, and construct admitted semantic data.
-Gesso does not require those computations to become proof-language expressions.
-It requires their proof-relevant interfaces and effects to be explicit.
+Gesso must remain usable with arbitrary Clojure and
+ClojureScript. Developers write policies and real model
+implementations with normal host-language facilities;
+they do not maintain a second handwritten specification
+in TLA+, Quint, Recife or Lean. When such implementation
+behavior is relevant to an assurance claim but outside
+the closed language, it supplies an explicit
+*source- and implementation-bound opaque contract*
+and any checked or runtime-qualified premises the
+selected profile requires.
 
-For each opaque boundary, record the input and output contract, affected state,
-read and write footprint, authority used, possible effects and failures, and
-claims that depend on its asserted behavior. Runtime checks enforce the
-observable portions of that contract. Tests challenge the remainder. A
-separately proved implementation may later discharge a particular premise
-without changing unrelated application semantics.
+At an opaque boundary the constructed application
+records the declared typed input/output and failures,
+effect/authority dependencies, read and write footprints,
+required current actor and disclosure context, possible
+external/provider interactions, callable/closure and
+library/build/configuration applicability, and which
+exported claims rely on the contract. Actual effects
+and runtime guards are checked at the appropriate
+enforcing boundary when the claim requires them;
+a structural contract by itself proves neither
+the code implements the policy nor that every
+relevant branch or writer was discovered.
 
-An opaque renderer does not invalidate an independent theorem about command
-binding. An opaque policy predicate does prevent claiming that the policy's
-truth follows from the small rule calculus unless the necessary premise is
-explicit. An undeclared database writer can invalidate a whole-domain invariant
-even when every declared operation has a sound preservation proof.
+An independent theorem about pure command-identity
+binding need not be discarded when the renderer
+contains opaque formatting code unrelated to it.
+An opaque Organization-policy predicate, however,
+prevents claiming *that predicate's real truth*
+from the small rule calculus without a qualified
+bridge or visible premise. A raw XTDB writer
+outside the admitted operation catalog can
+invalidate a whole-domain invariant even if
+all declared transitions preserve it. The
+source completeness gate and actual writer
+coverage are therefore separate evidence
+subjects, not two names for one manifest.
+
+An externally checked implementation theorem,
+an actual authenticated runtime observation or
+a sufficiently qualified provider contract may
+justify a *particular* opaque premise at its
+exact scope. Substitution/discharge follows
+09.11's actual checked entailment and
+premise-inheritance rules; a successful test
+alone cannot silently become a general proof.
+A changed callable, dynamically bound Var,
+provider version or resource generation
+requires rechecking applicability even if
+the abstract interface remains textually
+unchanged.
+
+Semantic-policy review is a separate owner:
+Gesso checks the rules that the application
+declares and detects unaccounted implementation
+policy only where inspection can establish it.
+HumanHelp decides whether its real Membership,
+Organization, Request and RequestAssignment
+policy is desirable. The formal checker cannot
+invent a missing helper-role business restriction
+from a friendly function name. A genuinely
+eligible Claim and its adversarial wrong-actor
+neighbor are both required positive/negative
+controls against a vacuous reject-all policy.
+
+*** Acceptance and counterexample controls at this boundary
+
+The finished framework must discriminate the
+following paired cases without changing their
+responsible evidence class:
+
+- a source-generated abstract model and
+  its corresponding production semantic
+  evaluator agree on a discriminating
+  operation; a separately handwritten
+  model that drops an original Unclaim
+  case cannot establish the original
+  production claim;
+- a genuine checked propositional derivation
+  preserves its open premises; a copied
+  =:kernel-checked= report, unsupported
+  atom truth or circular assumption
+  discharge cannot create a theorem;
+- a bounded finite invariant check with
+  nonempty valid initialization is
+  reported under its exact scope;
+  truncated exploration, empty/vacuous
+  state space or a fabricated proof
+  label is not universal assurance;
+- a public Request/RequestAssignment
+  Claim transition satisfying a
+  source-derived one-primary invariant
+  is accepted at its abstract scope;
+  a hidden alternative writer or
+  stale pre-read cannot inherit the
+  corresponding physical safety proof;
+- a source-issued handler, currently
+  installed route and real generated
+  browser plan have separately
+  qualified correspondence; a
+  matching stale source/asset stamp
+  does not authenticate their deployment;
+- a current authenticated helper
+  performs an eligible Claim,
+  while a browser-supplied
+  helper flag, wrong-Organization
+  principal or revoked Membership
+  is rejected at the *actual*
+  protected model/host boundary;
+- a known historical command C42
+  is reconciled without new incorporation
+  after lost delivery; a present
+  Request card alone cannot establish
+  that particular past result;
+- a permitted creator-local Create and
+  one user-granted remote Refresh
+  produce scoped physical adoption;
+  SSE advisory delivery cannot mint
+  another read or a completed DOM effect;
+- a correct conditional progress claim
+  exposes its fairness/retention/user-action
+  premises; a timeout or one positive
+  retry is not an unconditional
+  liveness theorem;
+- a physically safe single-node and
+  multi-node execution preserve the
+  same operation semantics; a lost
+  router/interest registration and
+  unqualified replay/gap failover
+  cannot be called universally
+  safe or convergent by reusing
+  a static certificate.
+
+Each oracle names its subject, positive
+control, adversarial perturbation,
+expected first checking/enforcing
+boundary and needed independent
+observation before execution. A
+source checker cannot claim to
+have prevented a physical effect
+it cannot observe or gate, and
+a physical diagnostic is not
+retroactively an abstract proof.
 
 ** System-wide assurance targets
 :PROPERTIES:

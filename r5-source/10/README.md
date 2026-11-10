@@ -8,10 +8,11 @@ proof examples, identities, links or Org delimiters were modified.
 `gesso-unified-design-canonical-r4-10-formal-correspondence-and-system-boundaries.org`
 is derived output, not an independent second source.
 
-**Review status:** **10.01–10.20 pending substantive review.** Parts I–IX
-are independently accepted R5.1 editorial design candidates. The Part X
-whole-part reconciliation and independent acceptance have not yet occurred.
-This split is not a proof that current Gesso or HumanHelp satisfies Part X.
+**Review status:** **10.01 substantively reviewed** against R4, accepted
+Parts I–IX and Gesso v1622, with decisions in its preservation audit.
+Sections **10.02–10.20** remain for substantive review. Whole-Part-X
+reconciliation and independent acceptance remain outstanding.
+This editorial review is not a certification of current Gesso or HumanHelp.
 
 **R4 preservation baseline:** `main` Part X, to be compared during each
 substantive review.
@@ -99,5 +100,15 @@ not cut. The assembler is extended to check and build Part X.
 browser/XTDB tests, formal checker execution, complete physical writer
 coverage or distributed failure tests.
 
-**Next:** Review **10.01 — Semantic Ownership and the Scope of Assurance**
-with R4, accepted Parts I–IX and actual Gesso correspondence sources.
+**10.01 review:** see `10.01-r4-preservation-audit.md`.
+Preserved the R4 one-semantic-machine/formal-production relation, restored the
+eight distinct Part I evidence classes, and defined directional trace/host
+correspondence, proof-kernel versus dedicated checker ownership, source-derived
+obligation completeness, explicit opaque Clojure conformance, real Claim/model
+policy authority and separate safety/liveness premises. Sixteen paired
+positive/adversarial verification cases and Gesso v1622 evidence limitations
+are recorded in the audit. Published Part X now contains
+**1720 newline-split lines** and **98586 characters**.
+
+**Next:** Review **10.02 — System-wide Assurance Targets** against R4,
+accepted Parts I–IX, revised 10.01 and corresponding Gesso code/assurance tests.
