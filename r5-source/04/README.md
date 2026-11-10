@@ -131,7 +131,17 @@ may replace an explicit message with an admitted authoritative read
 in 04.03, 04.08, 04.12 and 04.17. **Whole-Part-IV acceptance
 remains open.**
 
-**Next:** perform a remaining cross-part coverage and non-vacuity
-audit against Parts I–III and VIII–X, identifying any unresolved
-semantics before an independent whole-Part-IV acceptance decision.
+**Whole-part reconciliation, pass 08:** see
+`PART-IV-cross-section-reconciliation-08-capability-closure-and-nonvacuity.md`.
+Completed a bounded cross-part traceability and non-vacuity pass against Parts
+I–III and VIII–X. Updated 04.17 to distinguish independently required product
+capabilities from source-discovered operations, finite positive witnesses,
+installed physical paths, and proof claims. Successful Claim does not establish
+Reassign or a separately selected response interaction.
+**Whole-Part-IV candidate acceptance remains open.**
+
+**Next:** make an independent, explicit whole-Part-IV acceptance decision
+using the seventeen sectional audits and eight reconciliation passes,
+checking whether any remaining normative contradiction needs a focused
+correction. Do not treat documentary acceptance as production certification.
 Continue one bounded revision per `next`.
