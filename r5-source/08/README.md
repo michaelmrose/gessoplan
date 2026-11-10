@@ -7,10 +7,10 @@ published Part VIII and `r5` publication had the **same Git blob**
 No normative wording, operation contract, example, heading, table,
 `CUSTOM_ID` or cross-part link was changed.
 
-**Review status:** **08.01–08.14 have completed substantive R4-preservation
+**Review status:** **08.01–08.15 have completed substantive R4-preservation
 and Gesso/HumanHelp source-correspondence review**, recorded in their
-numbered audits. Section **08.15**, whole-Part-VIII reconciliation
-and independent Part VIII acceptance remain outstanding. Parts I–VII
+numbered audits. All fifteen numbered sectional reviews are complete; whole-Part-VIII
+reconciliation and independent Part VIII acceptance remain outstanding. Parts I–VII
 are accepted reviewed R5.1 candidates; Parts VIII–XII and full-plan
 acceptance remain open.
 
@@ -19,7 +19,7 @@ The **R4 preservation baseline** is `main` Part VIII,
 The preferred **R5 architectural predecessor** had
 **1,468 newline-split lines**, 21 second-level headings and
 **92,955 decoded characters** before substantive revision.
-The current fifteen sources reconstruct the **4,994-line**, **275,301-character** Part VIII publication exactly. Length is not
+The current fifteen sources reconstruct the **5,335-line**, **290,437-character** Part VIII publication exactly. Length is not
 evidence that all R4 obligations survive; each numbered
 review must make its own R4/Gesso/HumanHelp comparison.
 
@@ -246,6 +246,15 @@ and R4 defect/migration ownership were reconciled with R5 and actual code.
 Seventeen positive/adversarial obligations are recorded without asserting
 that the current implementation has already fulfilled them.
 
-**Next:** Review **08.15 — Completion Gates and Final HumanHelp Invariant**,
-including the independent product and evidence gates, selected remote policy,
-open response-flow contract, and the final Part VIII acceptance boundary.
+**08.15 review:** see `08.15-r4-preservation-audit.md`.
+R4's eleven independent HumanHelp completion gates and R5's fourteen-gate
+framework were reconciled with the selected remote advisory-only policy,
+unselected response-flow product decision, profile-specific publication
+claims, independent user acceptance, precise safety/progress evidence and the
+final HumanHelp proving-application invariant. Open cross-section issues
+are recorded in the audit for whole-Part-VIII reconciliation.
+
+**Next:** Perform **whole-Part-VIII reconciliation** across all fifteen
+sectional sources and their audits, including normative-status leakage,
+source/target consistency, cross-part references and full acceptance gates.
+Independent Part VIII candidate acceptance remains a distinct later decision.
