@@ -4,9 +4,9 @@
 losslessly into fifteen numbered Org units. Subsequent substantive
 reviews revise those sources and rebuild the publication by exact
 concatenation. All eight original `CUSTOM_ID` anchors remain stable.
-Sections **06.01–06.13** have completed substantive R4-preservation
+Sections **06.01–06.14** have completed substantive R4-preservation
 and Gesso-source correspondence reviews, recorded in their
-matching audits. Sections 06.14–06.15, whole-part reconciliation,
+matching audits. Section 06.15, whole-part reconciliation,
 and independent candidate acceptance remain outstanding.
 Parts I–V are accepted reviewed R5.1 candidates. Parts VI–XII and
 the independent full-plan reconciliation remain unfinished.
@@ -115,14 +115,14 @@ concatenated exactly to the unchanged R5 Part VI baseline:
 **84,711 decoded JavaScript string code units** and
 **1,481 newline-split lines**. Subsequent sectional revisions
 update the canonical Part VI publication from the numbered units.
-After 06.13, the fifteen reviewed/unreviewed units exactly
-reconstruct the **239,829-character**, **3,714-line** Part VI
+After 06.14, the fifteen reviewed/unreviewed units exactly
+reconstruct the **259,586-character**, **4,089-line** Part VI
 publication, with all eight stable anchors and balanced Org
 blocks. The whole-plan output remains a generated artifact,
 not a separate editable normative source.
 
 The Python assembler was **not executed** in a local Gessoplan
-checkout. Initial splitting and subsequent 06.01–06.13
+checkout. Initial splitting and subsequent 06.01–06.14
 publications were checked by exact GitHub-fetched concatenation,
 not by Gesso runtime, backend, Chromium or formal proof execution.
 
@@ -231,6 +231,16 @@ application certification remain distinct. Ten paired positive/
 adverse histories challenge unsafe failures, vacuous acceptance,
 incomparable obligation debt and unjustified progress claims.
 
-**Next:** review **06.14 — Refinement Traces and Execution Isolation**,
-including actual physical occurrence matching, independent
-source/extractor witnesses and scoped shared-effect interference.
+**06.14 review:** see `06.14-r4-preservation-audit.md`.
+The revised refinement contract distinguishes actual adapter steps,
+role-local Choreo candidates, physical/host and trusted backend
+witnesses, and scoped adoption. It requires occurrence-preserving
+trace alignment with independent extraction, justified stuttering,
+causal commuting and admitted shared-effect interference.
+Ten paired positive/adverse histories cover actual trace,
+isolation, source and diagnostic noninterference boundaries.
+
+**Next:** review **06.15 — Installation Invariants and Conformance**,
+including the final unified Part VI safety invariant, physical
+acceptance matrix, adversarial browser authorization and
+independent whole-part reconciliation prerequisites.
