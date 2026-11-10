@@ -8,9 +8,9 @@ proof examples, identities, links or Org delimiters were modified.
 `gesso-unified-design-canonical-r4-10-formal-correspondence-and-system-boundaries.org`
 is derived output, not an independent second source.
 
-**Review status:** **10.01–10.11 substantively reviewed** against R4,
+**Review status:** **10.01–10.12 substantively reviewed** against R4,
 accepted Parts I–IX and Gesso v1622, with numbered preservation audits.
-Sections **10.12–10.20** remain for substantive review. Whole-Part-X
+Sections **10.13–10.20** remain for substantive review. Whole-Part-X
 reconciliation and independent editorial acceptance remain outstanding.
 No current Gesso/HumanHelp implementation certificate is implied.
 
@@ -240,6 +240,21 @@ and abstract-command model limitations in the audit.
 Published Part X now contains **6157 newline-split lines**
 and **259267 characters**.
 
-**Next:** Review **10.12 — Reproducible Formal Evidence and Maintenance**
-against R4, accepted Parts I–IX, completed 10.01–10.11 and Gesso's
-source-bound evidence, proof-artifact, dependency and requalification code.
+**10.12 review:** see `10.12-r4-preservation-audit.md`.
+Restored R4's original theorem/definitions, checker/axiom, normalized subject,
+reproduction, correspondence, assumption and observed-result evidence package
+and retained R5's selective semantic dependency/invalidation lifecycle.
+Specified separate semantic, artifact and physical replay; independently
+qualified issuer/checker/evidence import; revocation and replacement of
+conditional premises without rewriting valid old theorems or command history;
+source/normalizer/kernel/codec/build/route/asset/backend changes and
+mixed-version deployment applicability; privacy-safe diagnostics and fail-closed
+mandatory profiles. Twenty-four preservation decisions and eighteen paired
+positive/adversarial checks, with Gesso v1622 source-relative identity,
+certificate/graph and conditional report limitations, are in the audit.
+Published Part X now contains **6503 newline-split lines**
+and **279650 characters**.
+
+**Next:** Review **10.13 — Trusted Computing Base, Security Boundaries,
+and Failure Modes** against R4, accepted Parts I–IX, completed
+10.01–10.12 and actual Gesso/XTDB backend qualification evidence.

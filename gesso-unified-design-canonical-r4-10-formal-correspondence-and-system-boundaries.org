@@ -5613,24 +5613,370 @@ machine is valuable when it covers the right
 behaviors, not because its state count is small.
 *** Reproducible formal evidence and maintenance
 
-An evidence package includes the theorem or model property, semantic versions,
-canonical subject and dependency identities, checker and toolchain versions,
-options and axioms, exact bounds or abstraction proof, actual observed result,
-and instructions to reproduce it. It records the production enforcement and
-remaining assumptions separately from proof-generation diagnostics.
+A formal or source-checked result is usable only when its *exact claim,
+scope, origin, assumptions, inputs and applicability* can be reconstructed.
+The evidence package is a versioned, inspectable record of what was actually
+checked, not an independent source of application semantics, an executable
+permission, or a transferable certificate merely because it contains a
+fingerprint or successful status. Gesso derives it from the original admitted
+source and trusted checker/issuer boundary; application developers do not
+hand-maintain parallel formal declarations.
 
-A relevant semantic, primitive, codec, checker, translator, adapter, backend,
-or build change invalidates the applicable dependent evidence. The dependency
-graph determines scope: an unchanged interface theorem may be reused while its
-physical realization needs requalification. Content identities must include all
-meaning-changing fields without treating every irrelevant source edit as a new
-semantic interface.
+Two enduring questions must be answerable separately: *Is this theorem still
+valid for the same semantic subject under the same premises?* and *Does the
+currently installed application still satisfy the correspondence and
+environment premises needed to use it?* A source-level proof can survive a
+route replacement while its production applicability fails. A physical
+observation can become stale without disproving the underlying theorem.
+No evidence record, regeneration operation or failed tool run silently
+upgrades one kind of claim to another.
 
-Admitted assumptions are not erased when a downstream check succeeds. Their
-continued applicability, revocation, and replacement follow the assumption
-propagation contract of Part IX. External theorem validity and applicability to
-a particular deployed assembly are reported separately.
+Part IX governs the actual proof judgments, original-source requirement
+closure, premise substitution and issuer-controlled admission. Sections
+10.01–10.11 identify the formal theorem, physical realization and exact-finite
+abstraction obligations. This section defines their reproducibility,
+dependency/revocation and deployment-applicability lifecycle; 10.13
+separately owns trust-base and backend-assumption qualification details.
 
+**** Evidence package: identify the proposition and the actual result
+
+An evidence package has a closed, versioned schema appropriate to its selected
+claim category. For every applicable entry it records:
+
+| Element | Required binding and interpretation |
+|---------+-------------------------------------|
+| Claim | Exact proposition/temporal property, quantifiers, domain, observation alphabet, selected assurance profile and evidence class |
+| Original source | Actual admitted model/rule/operation/Choreo subject, normalization and identity versions, complete original operations, initializers and source-required obligations |
+| Formal subject | Generated translation/extraction version, normalized definitions, declared axioms, explicit abstraction and proof/refinement direction |
+| Method | Kernel/derivation checker, model exploration, independent oracle, external proof system, controlled physical observation or qualified runtime enforcement, without conflating them |
+| Reproducibility | Exact checker/translator/toolchain/dependency versions, meaningful flags, solver options, bounds, fairness, seeds, resource budgets and supported input encodings |
+| Result | Observed success, counterexample, rejection, inconclusive, unsupported, timeout, environment failure or not-run, plus real logs/trace references where permitted |
+| Premises | Used and still-open assumptions, trusted external contracts, discharged source obligations, provenance of discharge and explicit nonclaims |
+| Dependency closure | Exact semantic/interface and proof dependencies, checker/issuer dependencies, currentness and invalidation relationships |
+| Production applicability | Installed callable, route/worker, model, assets, runtime/resource generation, backend/credential domain and actual correspondence evidence where claimed |
+| Evidence custody | Trusted issuer/checker origin, how inputs/results were acquired, immutable artifact identity, validation/import rules, authorized access and redaction boundary |
+| Recheck lifecycle | Owner, triggering changes/contradictions, failed or stale disposition, dependent claim invalidation and permitted recovery/requalification path |
+
+A theorem proof and a model-checking run have different semantics even when
+both finish successfully. An external backend result that exhausted its state
+space, a finite typed-rule sample, a source-rechecked kernel derivation, a
+process-local transaction witness and an observed Chromium DOM effect each
+establish only their own named claim. A report must not compress their
+distinct conclusions into a common =:certified?= boolean or make several
+incomplete witnesses add up automatically to universal soundness.
+
+For exhaustive finite evidence, include the *entire declared finite machine*:
+types and optional presence, initial states, complete operation/environment
+relation, enabledness, abstract identity quotient, state/edge bounds,
+reachability and deadlock treatment. Record whether actual exploration was
+complete. For unbounded claims, include the separately checked abstraction,
+simulation, induction or external metatheorem required for that conclusion.
+Timeout, budget exhaustion, failed external checker and an unrun gate do not
+mean “no counterexample.” An independently observed model counterexample can
+remain a valid *scoped failure* even if wider exploration terminates early.
+
+**** Reproducibility means rechecking the right original source
+
+A replay starts from the authenticated original semantic subject and its
+required proof/profile obligations, regenerates or independently validates
+the formal subject, and checks the exact claim under the recorded definitions
+and assumptions. It does not trust a cached positive report as input to its
+own validation. Canonicalization must represent all meaning-changing parts:
+type, field presence, ordered expression and proof-step operands, nominal
+atom/role/operation IDs, interface, dependencies, abstraction, admitted
+primitives, relevant versions and assumptions.
+
+Structural identity is not denotational equivalence. A hash of a normalized
+EDN interface establishes an identity for those canonical bytes under
+the stated encoder and collision assumptions; it does not establish that an
+opaque Clojure function implements the interface, that an XTDB node executed
+a particular transaction, or that the served browser bytes came from the
+claimed build. Conversely, an irrelevant comment, formatter change or
+metadata field omitted under a *proved/defined canonicalization contract*
+need not invalidate an unchanged semantic theorem. The consumer must not
+choose arbitrary fields to omit merely to preserve a stale cache hit.
+
+The replay procedure must distinguish three reproducibility targets:
+
+1. *Semantic replay:* same admitted source meaning, exact proof statement,
+   valid abstract evidence and open premises, even when nonsemantic build
+   details change.
+2. *Artifact replay:* deterministic or explicitly qualified reproducible
+   generation of formal/compiled artifacts, with relevant compiler, codec,
+   dependency, target/runtime, optimization and asset-manifest inputs.
+3. *Physical replay/observation:* a newly acquired, qualified observation at
+   the actual running model, backend, authenticated handler/worker and browser
+   effect boundary. This need not reproduce the same physical history;
+   it establishes only the stated new physical applicability/behavior.
+
+A bitwise identical formal artifact need not result from every valid rerun if
+the selected backend has nondeterministic output. In that case a small trusted
+checker may validate the same theorem independently and the package records
+the actual seed, ordering, checker version and evidence identity. If the claim
+requires bitwise reproducibility of emitted assets or provenance of the exact
+deployed executable, then nondeterministic rebuilding is not an excuse to
+accept different unverified bytes. A stored digest is useful as an integrity
+index only when the artifact was acquired from a trusted source and the
+expected digest is authenticated at the consuming boundary.
+
+External theorem-checking code, formal definitions, axioms, imports,
+normalization, backend version and proof rules are part of the relevant
+trusted base unless independently justified. A successful CLI exit status
+is not by itself a proof. A generated checker result may carry a checked
+proof term, a genuinely re-executed finite trace or a named conditional
+provider assumption, but the package must say which.
+
+**** Evidence origin, portability and proof-authority boundaries
+
+Gesso distinguishes *descriptions* of evidence from *issuer-controlled
+admission* of evidence. Ordinary maps, saved logs, Git objects, labels,
+summaries, copies of proof reports and matching fingerprints remain
+descriptive unless a trusted current checker/consumer validates their
+actual contents and binding. A process-local, registry-backed proof handle
+can be authoritative for the particular source-relative local check under
+its trusted-JVM threat model; serializing its printed representation
+does not make it a portable certificate or cross-process security token.
+
+A durable proof artifact may be retained, moved between processes or
+reused across releases only under a separately specified authenticated
+revalidation, signed-attestation or trusted publication/import contract.
+If signatures are used, the key, signer, trust/revocation, validity scope,
+payload schema and bytes covered must be defined. Signing that a map was
+written does *not* prove its theorem is valid, its model source is current
+or its claimed backend execution occurred. Rechecking a sound proof term
+against current definitions can be stronger than trusting the signature of
+a fallible checker, but only within the actually established trust base.
+
+A qualified theorem can be imported without rerunning its expensive
+derivation for every HTTP request when the exact immutable premise and
+dependency lifecycle supports reuse. Runtime authorization, actor/tenant
+membership, command replay/retention, protected reads, transaction prestate
+and effect-time browser ownership are *not* permanently discharged by
+that reuse. Logical premise substitution is also not a way to clone a
+one-Refresh user grant, one-shot transaction attempt, resource lease or
+actual principal capability.
+
+Source- and production-based reports should be inspectable without
+publishing protected raw Request, Membership, Organization, command ledger,
+SQL parameters, document contents, session credentials or private browser
+state. The evidence store can retain authorized access-controlled
+artifacts while a copyable diagnostic exposes redacted subject handles,
+claim categories, bounded counters, stable failure reasons and permitted
+source spans. A privacy-safe redaction must not change the semantics of a
+supposedly exact checked subject; the trusted checker uses the protected
+original and the viewer receives a separate nonauthoritative explanation.
+
+**** Dependency-aware validity, applicability and revocation
+
+The dependency graph separates semantic claims, checked proof rules,
+conditional assumptions and *physical applicability* rather than
+containing one undifferentiated whole-release checksum.
+
+| Dependency change or observation | Appropriate consequence |
+|----------------------------------+-------------------------|
+| Meaning-changing original rule, model interface, operation set, initializer, invariant or proposition | Invalidate affected original-source theorem and dependent proof/admission, then recompute required obligations |
+| Checker rule, parser, normalizer, proof kernel, formal axioms or translation semantics changes | Revalidate/reprove affected checker/formal trust and the source-to-encoding correspondence, even if an old artifact's string digest still matches |
+| Codec, target platform, compiler/lowering or generated executable changes | Requalify dependent executable/physical correspondence; an unaffected abstract theorem may remain valid |
+| Installed route, callable/Var, worker, browser asset, resource generation or backend client changes | Reestablish current deployment adoption and effect/transaction boundary; a pure theorem is not automatically false |
+| Backend version/configuration/isolation, writer credentials, topology or external provider contract changes | Requalify the affected external/physical premises under the actual new environment |
+| Accepted trusted assumption is revoked, contradicted or expires | Retract the dependent claim's applicability or restore an explicitly justified replacement premise; do not erase its dependency |
+| New observed counterexample contradicts a claimed formal theorem or qualified implementation relation | Classify and investigate the specific theorem/bridge, block unsupported stronger claims, preserve reproducible evidence and notify affected consumers |
+| No relevant dependency changes under verified canonicalization and lifetime | Reuse only the unaffected claim and its valid supporting premises, without inferring fresh physical authority |
+
+Dependencies include the actual *original-source-required* obligations,
+not merely a structurally consistent user-submitted proof DAG. The graph
+must distinguish a theorem's used named premises, an application's required
+but still open capability/acceptance conditions, and the provider facts
+whose continued truth the consumer needs. If a provider's proposition
+only implies a narrower consumer assumption, the substitution is checked
+directionally and the provider's still-open premises propagate.
+
+Revocation and replacement operate on applicability, not history revision.
+A once-correct theorem does not become a false historical claim simply
+because the deployed XTDB version or Biff handler changed. Its *use*
+for that current system is suspended until the new correspondence is
+qualified. If the theorem's own proof rule or source meaning was invalid,
+the theorem's evidence must instead be retracted or rechecked at that
+level, with dependent results appropriately invalidated. A stored C42
+command's actual committed outcome likewise is historical application
+data; invalidating a proof cache does not rewrite it.
+
+A compatible semantic interface may allow a pure proof to be reused
+through a checked directional equivalence/refinement bridge, including
+its assumptions. A mere matching friendly operation name, same shape,
+old certificate, copied fingerprint or source file path does not
+supply such a bridge. Changed opaque implementation can leave a
+source proof intact while its implementation obligation reopens.
+For source or runtime changes outside a theorem's proven dependency
+closure, avoid needless rechecking when that lack of dependency is
+actually justified, not simply inferred from a filename or build cache.
+
+**** Admission, deployment and failure-aware requalification
+
+For a selected strong construction profile, required evidence must be
+present, correctly issued, current and within its qualified scope
+*before* the protected application/operation is admitted or an
+effect requiring it is permitted. Unavailable external prover,
+unsupported subject, invalid import, lost proof artifact, stale
+premise, failed backend qualification or incomplete evidence
+yields a typed failure/open status; it does not silently downgrade
+to an opaque rule, mark an assumption discharged or issue a
+certificate from cached descriptive metadata.
+
+An outage of the external theorem tool need not retroactively
+invalidate a still-current independently checked immutable theorem
+under an explicitly defined lifecycle. It can prevent *new*
+strong-profile admissions and required rechecks. Whether a running
+deployment may continue serving depends on its own previously
+admitted generation, currentness, assumed environment and
+runtime enforcement policy. A change that revokes a needed
+current model/server authorization still prevents the relevant
+protected effect at the actual effect boundary, regardless
+of theorem-cache health.
+
+A deployment rollout can temporarily serve different generations
+or route a participant to a host with different assets. Each
+claim identifies the actual process/host and loaded artifact
+generation for which it applies, or a proven compatibility
+relation covering the mixed versions. A prior successful
+startup check does not guarantee subsequent route/worker
+replacement, remote-node credentials, browser cache
+or direct XTDB writer remains constrained. Multi-node
+deployments use the *same* application semantics as one
+node, with additional physical topology, routing,
+writer, outbox replay, registration-frontier and
+failover premises rather than a new proof language.
+
+A maintenance operation may be explicitly privileged, but it
+must state its protected effects, source/operational contract,
+effect on invariants and the requalification required before
+stronger dependent evidence resumes. Migrations and initializers
+are not outside the model solely because they do not arrive
+through HTTP. An incomplete/unknown physical writer census
+cannot be replaced by a green source proof report.
+
+For each failed/retracted claim, preserve a useful typed
+diagnostic: the specific first blocker, original source/proof
+subject, evidence class, premise or physical boundary owner,
+current versus stale generations, safe reproduction
+instructions and an actionable requalification requirement.
+Do not turn a timeout into an observed counterexample,
+a failed post-submit read into a known rejection, or a
+post-effect mismatch into prevention of an already occurred
+effect.
+
+**** Paired acceptance for reproducibility, reuse and staleness
+
+The following controls must be fixed before the acceptance
+campaign, including original source, actual evidence issuer,
+selected profile, positive case, adversarial mutation,
+first enforcing boundary and independently observable
+result where a physical effect is claimed:
+
+1. The same canonical semantic source replays to a
+   qualified exact theorem; a changed original guard
+   cannot reuse the old semantic cache entry.
+2. Source reordering that is explicitly nonsemantic
+   retains defined canonical identity; reordering
+   meaningful formula operands or proof steps
+   must change the affected subject.
+3. A real independent checker validates an admitted
+   proof under its actual stated axioms; a
+   “proved” flag or exit-code-only copy is rejected.
+4. A complete finite-domain oracle records true
+   exhaustive coverage; a timed-out, truncated or
+   unsupported run remains incomplete, not
+   counterexample-free.
+5. A valid source-relative certificate can be
+   reused while source and graph remain current;
+   copied EDN, forged process-local handle
+   and stale dependency graph cannot gain admission.
+6. A declared assumption that is still needed
+   propagates to the consumer; an apparently
+   matching provider report cannot
+   silently discharge it.
+7. Revoking a qualified provider or current
+   backend premise blocks dependent production
+   applicability; an unaffected pure theorem
+   need not be declared mathematically false.
+8. A changed checker rule or normalizer forces
+   affected independent proof validation even
+   when the generated theorem bytes happen
+   to be identical.
+9. A changed Biff handler/worker or loaded
+   browser asset reopens its physical binding;
+   a source proof remains scoped to its
+   actual original semantic subject.
+10. A controlled installed gateway/XTDB
+    observation supports only that acquired
+    call/result/readback scope; copied
+    node identity or matching ledger cannot
+    prove full write causality and all writers.
+11. A new legitimate helper with current
+    Membership may Claim under the actual
+    public model; an old proof artifact
+    cannot authorize a revoked helper.
+12. A compatible H2 replay preserves
+    durable historical C42 incorporation;
+    re-running the formal checker
+    does not grant a fresh command write
+    or rewrite a known outcome.
+13. An authorized browser resource
+    may perform its currently permitted
+    DOM effect; an old certificate or
+    resource-instance ID cannot grant
+    an effect after owner retirement.
+14. A staged multi-node rollout
+    uses qualified exact
+    host/asset/provider identities;
+    merely matching the source
+    hash on incompatible served
+    executable generations is
+    insufficient.
+15. A redacted public diagnostic
+    exposes the correct claim and
+    first blocker without private
+    Request/command data; a raw
+    credential or sensitive trace
+    is not published as evidence.
+16. An actual semantic contradiction
+    invalidates relevant affected
+    claims under the chosen owner;
+    a different external solver
+    outage is classified as
+    unavailable, not a
+    falsified theorem.
+17. A changed migration or direct
+    external writer is either
+    formally/physically included,
+    constrained or retained as
+    open; a returned empty
+    inventory does not
+    establish complete coverage.
+18. Eligible Claim, Unclaim,
+    Reassign and selective
+    user-authorized Refresh
+    remain independent
+    product positives; a
+    fail-closed proof gate
+    cannot claim whole-app
+    acceptance by rejecting
+    all operations.
+
+Each case records whether evidence was actually obtained, whether
+the result proves a finite/abstract theorem or only selected
+physical behavior, all remaining premises and its exact
+invalidation conditions. A copied report, stale fingerprint
+or successful explanation is never a permission to commit
+an XTDB transaction, disclose a protected document,
+replay a command or mutate a retired DOM target.
+
+The maintenance invariant is *exact proposition,
+honest evidence, current applicability*. Changed
+systems should not invalidate everything
+indiscriminately, but no change that affects a
+claim's meaning or enforcing boundary may be
+hidden behind a convenient cache hit.
 ** Trusted computing base, security boundaries, and failure modes
 :PROPERTIES:
 :CUSTOM_ID: req-trusted-system-boundaries
