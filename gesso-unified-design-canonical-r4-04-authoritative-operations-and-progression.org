@@ -2383,7 +2383,11 @@ requirements need an explicit compatibility or migration policy.
 An advisory obligation records what a participant must still acquire or adopt
 under the application's declared policy. It is scoped debt, not a Boolean
 global dirty flag. Its meaning includes the required observation, coverage,
-progression, owner/resource lifetime, and completion milestone.
+progression, owner/resource lifetime, and completion milestone. The owner and
+query selection are part of the obligation's meaning: two requirements with
+equivalent frontier tokens need not be coalescible across distinct principals,
+board filters, projections, or adoption policies. A debt-free status is a
+claim justified by admitted settlement evidence, not by a queue's emptiness.
 
 Advisory knowledge and adopted authoritative knowledge remain separate. A
 participant can know that newer relevant authority exists while deliberately
@@ -2414,25 +2418,77 @@ The following milestones cannot be collapsed:
 For an acquire-only obligation, the first milestone may suffice. For an
 acquire-and-adopt obligation whose realization includes a DOM update, merely
 returning true from =can-install?= or emitting an HTMX allow-swap decision does
-not suffice.
+not suffice. Nor does HTTP success, an effect-issued marker, or an untrusted
+client-reported completion prove that physical installation occurred. A
+completed-installation observation is admitted only through its qualified
+realization and exact effect/owner/candidate correlation. The semantic state
+must then perform the declared adoption transition using *current* obligations
+and authority/visibility policy; installation and adoption are not equivalent
+merely because both happen in one ordinary browser callback.
 
 The final installation-right check and the physical mutation must be serialized
 against competing owner changes and relevant installations, or protected by an
 equivalent mechanism. Checking a right, yielding, and later mutating an arbitrary
-replacement target can install into the wrong resource instance.
+replacement target can install into the wrong resource instance. Permission is
+scoped to the particular acquisition generation, authorized query, observation,
+target instance and owner; it is not transferable to a newer DOM target or a
+replacement Choreo execution. A late, duplicate or stale completion may supply
+separately admitted evidence, but must not exercise the retired instance's
+installation or debt-discharge rights.
 
 The physical completion or failure is correlated to the admitted installation
 effect, owner, target instance, and observation. Adoption and debt discharge use
 that evidence under the current semantic state. A synchronous implementation
 may establish these milestones together; an asynchronous shell needs explicit
-completion/failure handling.
+completion/failure handling. The coordinator must not restore an obligation
+snapshot captured before a newer advisory arrived. It settles each *current*
+obligation only if admitted coverage and the required milestone are satisfied.
+Conversely, if another admitted installation already fulfills that obligation,
+a rejected late candidate does not justify retaining debt forever.
 
 If a physical update can partially apply, the realization must define that case.
 It may require repair, authoritative reacquisition, or a representation-unknown
 state. It cannot report complete installation merely because the effect began.
 Similarly, loss of a completion event requires a reconciliation path if the
-physical representation may already have changed.
+physical representation may already have changed. A physical effect whose
+completion is unknown cannot be classified as either definitely installed or
+definitely absent without additional evidence. The recovery contract must say
+whether it re-observes the actual target, replaces it from an admitted complete
+projection, or transfers the unresolved obligation to an eligible owner. No
+recovery route may silently promote speculative or incomplete DOM state into
+authoritative adoption.
 
+*** Worked boundary: permission before owner replacement
+
+A1 acquires a complete authorized board projection at P18 and receives
+permission to install it into target instance T1 owned by execution E1.
+Before the physical mutation completes, E1 retires and a replacement E2
+owns T2. A late =installation-completed= event for A1/T1 is *not* permission
+to install into T2 or to declare E2's board adopted at P18. The old
+obligation may be retired or transferred only by its declared lifecycle
+policy; outstanding work for E2 is independent.
+
+If A1's mutation already occurred but its completion event was lost, the
+physical representation may be unknown. The system must reconcile or
+reacquire before claiming an adopted P18 board. If a separate qualified
+installation of P21 for the current owner has completed, that evidence can
+satisfy compatible outstanding adoption obligations; the rejected P18
+callback does not force a regression or perpetual pending debt.
+
+*** Paired advisory/adoption acceptance obligations
+
+| Admitted history | Adverse or unsupported counterpart | Required judgment |
+|------------------+------------------------------------+-------------------|
+| An advisory creates scoped acquisition/adoption debt under the current principal, query and owner. | A global dirty flag or equal token collapses different principal, filter or adoption-policy obligations. | Retain the distinct debt or use qualified semantic subsumption. |
+| An admitted query fulfills an acquire-only requirement without installation. | The same acquired result is reported as adopted for a required visible board installation. | Credit acquisition only; leave adoption debt pending. |
+| Installation permission is issued for the currently owned target and candidate. | HTMX allow-swap or HTTP 200 is reported as completed DOM installation. | Permission is not completion; no acquire-and-adopt discharge yet. |
+| The trusted physical realization reports completed installation for the exact effect and current owner. | A client-forged, late, duplicate or wrong-resource completion advances semantic adoption. | Correlate and admit only the qualifying physical completion. |
+| A new advisory arrives while the original candidate is being installed. | An old captured obligation list is restored after physical completion, erasing the newer requirement. | Evaluate the current obligations and discharge only covered milestones. |
+| A newer compatible P21 observation is installed by a separate qualified path. | A stale P18 candidate subsequently overwrites P21 or forces independently fulfilled debt to remain forever. | Reject regression and credit already fulfilled obligations from independent evidence. |
+| Owner E1 retires; its installation work is retired or transferred under the declared policy. | An E1/T1 completion installs into E2/T2 after owner replacement. | Enforce current owner/target rights, keeping independent durable work intact. |
+| A physical mutation partially succeeds or throws, leaving representation uncertain. | Beginning the effect is counted as complete adoption or the partial DOM is trusted as a whole projection. | Retain unknown/repair/reacquisition according to the realization contract. |
+| A completed effect loses its callback; a later qualified target inspection or reacquisition establishes state. | Callback loss is treated as certain non-installation or silent success. | Preserve uncertainty until admissible reconciliation establishes the specific claim. |
+| HumanHelp gives an originating creator immediate correlated card evidence while other viewers retain board membership until Refresh. | A correlated card update silently adopts newly visible board membership for every viewer. | Honor the declared per-scope selective-adoption policy. |
 *** Worked example: two advisories during one refresh
 
 Let B denote one complete authorized board query: Organization selection,
