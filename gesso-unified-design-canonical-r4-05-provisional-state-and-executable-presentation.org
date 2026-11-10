@@ -399,6 +399,13 @@ cleanup has its own completion/failure contract.
 Not every operation needs every branch, but omitted branches need a supported
 reason they cannot occur. Static preflight need not predict dynamic facts; it
 requires declared handling for conditions capable of stranding the operation.
+Each transition identifies the current execution and effect owners, which
+command-attribution and acquisition/adoption debts survive, which physical
+resources are retired or transferred, and which effects must be retried or
+repaired. Semantic retirement takes effect without waiting for best-effort DOM
+cleanup; a still-visible provisional remnant remains visibly provisional.
+A recovered authoritative card can settle presentation while the original
+command's disposition remains unknown.
 
 A recovery path is not proof it eventually succeeds. Liveness claims identify
 continued authority, backend/network availability, retention, scheduling, and
@@ -408,7 +415,11 @@ those progress premises fail.
 Cancelling a local wait or dismissing an overlay does not cancel an authoritative
 command. A genuine cancellation operation has model-defined effects and can
 itself be too late, rejected, or uncertain. Wording preserves this distinction
-where it affects the user's decisions.
+where it affects the user's decisions. The recovery owner must not reuse a
+retired execution's timer, callback, transport, DOM target rights, or
+authenticated principal authority merely because it retains a compatible
+semantic command identifier. A terminally failed submission attempt does
+not by itself establish a terminally rejected command.
 
 *** Concurrent provisional work and application-defined resolution
 
@@ -417,7 +428,12 @@ multiple authoritative histories. The model resolves commands under its policy.
 Within one browser, overlapping provisional effects also require a policy;
 untracked DOM replacement must not choose it accidentally.
 
-An operation family declares one of these or another equally precise strategy:
+An operation family declares one of these or another equally precise strategy.
+Its conflict relation covers the actual read, write, field, query-membership,
+target/installation, and separately retained local-draft scopes used by the
+provisional operations; equal or different DOM node IDs alone do not establish
+that semantic effects are disjoint. The selected policy states its arbitration
+and successor-owner rule at the point where overlapping work is admitted:
 
 - serialize conflicting commands or disable conflicting activation;
 - permit independent overlays on disjoint declared scopes;
@@ -426,9 +442,20 @@ An operation family declares one of these or another equally precise strategy:
 - compose or rebase overlays under an admitted dependency/conflict rule.
 
 Gesso does not assume all optimistic effects commute. If C2 depends on C1's
-provisional output, that dependency and its resolution are explicit. Rejection
-or changed authoritative results for C1 can invalidate C2's projection. C1's
-provisional output cannot silently become an authoritative premise for C2.
+provisional output, that dependency and its resolution are explicit. Rejection,
+unknown resolution, or changed authoritative results for C1 can invalidate
+C2's projection. C1's provisional output cannot silently become an
+authoritative premise for C2.
+
+The continuation depends on whether C2 is only a local draft, has an admitted
+but unsent command, or may already have been submitted. A local draft may be
+rederived, suspended, discarded, or presented as needing review under the
+declared strategy. An already-issued C2 must retain its own immutable
+command binding and independent disposition/recovery; retracting its overlay
+does not retract its possible authoritative effects. A dependency failure is
+not automatically a terminal rejection of C2. Rebase, composition and
+supersession must preserve any independently newer adopted observation and
+outstanding command and installation obligations.
 
 Rebasing an overlay does not authorize changing an already-issued command's
 immutable arguments. Changed intent follows a declared new-command or
@@ -436,9 +463,13 @@ cancellation/replacement protocol, retaining uncertainty about any old command.
 
 Application-defined strategies remain ordinary Clojure/ClojureScript behind
 typed registered contracts. Inputs identify admitted observations, scopes,
-owned overlays, command knowledge, and declared local inputs. Outputs specify
-retention, removal, recomputation, or acquisition. They do not write domain state
-or create evidence by returning a success tag.
+owned overlays, command knowledge, current owners, relevant dependencies,
+and declared local inputs. Outputs specify retention, removal, recomputation,
+deferred admission, or acquisition, with explicit unresolved debt and resource
+handoffs. They do not write domain state, disclose a protected observation,
+transfer authority, or create evidence by returning a success tag.
+A stale result or callback from the superseded owner is rechecked against
+current owner and scope before any physical mutation.
 
 Analyzable strategies can support derived properties. Opaque strategies retain
 asserted behavioral premises while structure and runtime bindings are checked.
@@ -451,10 +482,17 @@ One operation can affect a card, count, board membership, and notification
 surface. Its presentation contract declares scopes and required local atomicity.
 A collection of DOM swaps is not automatically one atomic installation.
 
-Where partial installation is possible, the runtime records completed effects
-and follows the repair path. It cannot advance a global adopted frontier for
-all targets because one card installed. Retiring one card's provisional owner
-need not remove unrelated overlays or advisory debt.
+Where partial installation is possible, the runtime records *per-target*
+completed, pending, failed, or indeterminate effects with their source
+observations, coverage, owners, and recovery paths. It cannot advance a
+global adopted frontier for all targets because one card installed. A
+requirement for atomic multi-target presentation must name an actual
+all-or-nothing physical mechanism or a declared compensating protocol
+whose intermediate state and failure cases are admitted; ordinary
+sequential DOM writes cannot be called physically atomic. Retiring one
+card's provisional owner need not remove unrelated overlays or advisory debt.
+A later broad board refresh also cannot erase a separately newer
+creator-local card or membership without the selected adoption policy.
 
 HumanHelp can permit immediate correlated self-action updates while other
 participants receive advisories. A card alone does not prove a complete new
@@ -468,15 +506,44 @@ resolution support prevents an enabled incomplete realization. The framework
 cannot silently emit an ordinary =hx-post= and hope for equivalent behavior.
 
 An explicitly declared non-optimistic alternative may be selected when its own
-realization is complete. That is a semantic choice, not a fallback for missing
-plans or adapters. An unavailable affordance preserves operation identity and
-reason without an active weaker transport path; it does not count as a working
-capability in an eligible acceptance scenario.
+realization is complete and is permitted by the authored operation and
+application contract. That is an explicit construction or invocation decision,
+not a catch-all fallback for missing plans or adapters. In a managed HTMX
+operation the required command/plan/correlation gate is enforced before the
+physical send becomes irreversible; a missing projector, wrong owner, or
+unready transport handoff fails that attempted path closed without a naked
+replacement request. Other supported transports may realize asynchronous
+provisional derivation under their declared buffering and failure contract:
+one particular HTMX bridge's current synchronous limitation is not a
+finished-system prohibition.
+
+An unavailable affordance preserves operation identity and reason without an
+active weaker transport path; it does not count as a working capability in an
+eligible acceptance scenario. Raw HTMX remains legitimate for explicitly
+unmanaged interactions and for authored non-optimistic paths with their own
+complete authorization, effects, and recovery semantics.
 
 Views remain free to use labels, badges, spinners, CSS, layout, and accessible
 treatment. They render state rather than choose business outcomes or redefine
 progression.
 
+
+*** Paired resolution and capability cases
+
+The finished application must admit useful eligible paths, not merely pass
+negative checks by declining all optimistic work.
+
+| Positive admitted history | Adverse history | Required independent result |
+|---------------------------+-----------------+-----------------------------|
+| E1 times out; successor E2 acquires a current card and later resolves C1 under its retained binding. | E2 reuses E1's retired timeout or DOM rights, or the card read is labeled as C1's command result. | Presentation recovery, command attribution, and owner retirement remain distinct, with a qualified effect at each boundary. |
+| C2 is a not-yet-submitted provisional draft depending on C1; C1's rejection selects the declared suspend/rederive continuation. | C2 was already sent, but removing its local overlay is used to mark C2 rejected or to allocate a silent replacement command. | Unsent local work may be recomputed; submitted C2 retains immutable identity and independent reconciliation debt. |
+| Two independent local overlays use proven disjoint declared semantic and installation scopes. | Their card targets differ but both modify the same board count or membership, or one consumes the other's unadopted premise. | Admit overlap only under the stated conflict/ordering strategy; no accidental commutativity or fabricated authoritative input. |
+| An operation installs its card while a required board count remains pending, then follows a declared repair. | The first successful DOM swap is claimed to atomically install all targets or clear unrelated Live/Refresh debt. | Observe exact per-target completion and retain unmet scope and recovery obligations. |
+| An authored non-optimistic operation uses its complete admitted HTTP path, and a managed optimistic operation issues C42 through its full projected path. | Required optimistic construction is missing, yet an ordinary =hx-post= is issued as a fallback. | Preserve positive legal raw/declared modes; reject the incomplete managed send before physical handoff without changing operation meaning. |
+
+These cases must exercise their claimed model, admission, browser and host
+boundaries. A diagnostic map or artificial rejection before the intended
+boundary is not proof of correct physical enforcement.
 ** Continuity
 :PROPERTIES:
 :CUSTOM_ID: req-continuity-boundary

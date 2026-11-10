@@ -1,9 +1,9 @@
 # R5.1 sectional source — Part V, Provisional State and Executable Presentation
 
 **Disposition:** lossless structural preparation of preferred R5
-Part V is complete. Sections 05.01 and 05.02 have received substantive
+Part V is complete. Sections 05.01–05.03 have received substantive
 R4-preservation and Gesso-correspondence reviews, recorded in their
-respective `05.xx-r4-preservation-audit.md` files. 05.03–05.13
+respective `05.xx-r4-preservation-audit.md` files. 05.04–05.13
 remain unreviewed.
 The thirteen source units reconstruct
 `gesso-unified-design-canonical-r4-05-provisional-state-and-executable-presentation.org` byte for byte. **Whole-Part-V reconciliation
@@ -97,6 +97,13 @@ RequestAssignment observation, per-owner recovery and actual DOM adoption.
 Paired positive/adverse histories preserve R4's important cases while
 using Part IV's stronger authority and physical evidence contracts.
 
-**Next:** audit and revise `05.03-resolution-concurrency-and-no-downgrade.org`
-against R4, accepted Parts I–IV, reviewed 05.01–05.02 and the current
-Gesso browser implementation. One `next` is one bounded revision.
+**05.03 review:** see `05.03-r4-preservation-audit.md`.
+The reviewed resolution contract now carries command and acquisition debt
+past local execution retirement, protects dependent submitted commands
+against false cancellation, specifies scoped overlap and per-target physical
+completion, and refuses unadmitted managed HTMX fallback without outlawing
+explicit raw/non-optimistic interactions.
+
+**Next:** audit and revise `05.04-continuity-ownership-and-search.org`
+against R4, accepted Parts I–IV, reviewed 05.01–05.03 and the current
+Gesso browser/continuity realization. One `next` remains one revision.
