@@ -1,9 +1,9 @@
 # R5.1 sectional source — Part V, Provisional State and Executable Presentation
 
 **Disposition:** lossless structural preparation of preferred R5
-Part V is complete. Sections 05.01–05.05 have received substantive
+Part V is complete. Sections 05.01–05.06 have received substantive
 R4-preservation and Gesso-correspondence reviews, recorded in their
-respective `05.xx-r4-preservation-audit.md` files. 05.06–05.13
+respective `05.xx-r4-preservation-audit.md` files. 05.07–05.13
 remain unreviewed.
 The thirteen source units reconstruct
 `gesso-unified-design-canonical-r4-05-provisional-state-and-executable-presentation.org` byte for byte. **Whole-Part-V reconciliation
@@ -118,7 +118,15 @@ independently newer local card/Refresh obligations, and rejects CSS-value
 coincidence as evidence for safe height-lock cleanup. Six paired histories
 exercise actual physical installation and optional continuity failure.
 
-**Next:** audit and revise `05.06-views-binding-and-availability.org`
-against R4, accepted Parts I–IV, reviewed 05.01–05.05, the HumanHelp
-action catalog and Gesso's real view/action preparation. One `next`
+**05.06 review:** see `05.06-r4-preservation-audit.md`.
+The reviewed view/preparation contract now keeps policy availability,
+complete input-collection entry, dynamic deferment and assembly failure
+separate, with exact model/plan binding and trusted execution boundaries.
+It requires a real eligible HumanHelp manager-directed Reassign path and
+independent product-capability coverage, rather than accepting hidden
+or incomplete actions as successful implementations.
+
+**Next:** audit and revise `05.07-view-api-affordances-and-assembly.org`
+against R4, accepted Parts I–IV, reviewed 05.01–05.06, and Gesso's
+current Hiccup/HTMX/runtime assembly boundaries. One `next`
 remains one bounded revision.
