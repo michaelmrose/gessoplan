@@ -2056,6 +2056,39 @@ A direct response, durable resolver, and current-state acquisition have differen
 claims. Assembly closes the paths required by the operation rather than assuming
 one route serves all three purposes.
 
+ 
+*** Historical command truth, presentation, and disclosure
+
+The four authoritative outcomes are not four interchangeable HTTP statuses.
+The supported command protocol has an explicit, provenance-aware mapping to
+participant-facing settlement and to the particular observation/recovery path
+needed after ambiguous transport delivery.
+
+| Authoritative outcome or evidence | Permitted participant interpretation |
+|-----------------------------------+--------------------------------------|
+| =:committed= with admissible command binding and disclosure | =:accepted= for that command, with the required progression/acquisition contract; not proof that its card was installed. |
+| =:already-incorporated= with exact recorded binding and authorized disclosure | A permitted replay of recorded incorporation without another domain write; incompatible reuse or undisclosable result has a separate guarded disposition. |
+| =:rejected= from the authoritative operation for this command | =:rejected= with only the disclosed reason; not an inference from HTTP failure, current state, or a missing record. |
+| =:commit-unknown= or uncorrelated/lost outcome | =:unknown= with a retained command-resolution owner; neither automatic repetition as a new command nor fabricated rejection. |
+| A current authorized Request-card acquisition | Current projection at a stated scope and basis, which may differ from the historical effect of this particular command. |
+
+A transient retry and a durable command are separately identified. Retries
+preserve the original =:gesso/command-id=, principal/operation/argument binding
+and the versioned protocol required to interpret it, while a new HTTP or
+transport attempt may have its own correlation identity. A command ID is not
+authority or permission to disclose another user's recorded outcome.
+Reconciliation must validate the current disclosure predicate and the
+*original* binding before revealing replay or enabling any further action.
+An absent record in one read, even a pinned read, is not evidence of
+nonincorporation unless the selected storage/consistency model establishes
+the stronger negative proposition.
+
+When a domain update and durable command record are claimed to be atomic,
+the qualified physical transaction must actually write both in the same
+guarded commit. An unrelated single-update writer plus a later diagnostic
+lookup cannot establish that stronger command-record claim. The
+source-owned assembly must retain the distinction in its assurance report.
+
 *** Recovery includes an owner, trigger, and retained binding
 
 A declaration that names a resolver endpoint is incomplete if nothing can invoke
@@ -2076,6 +2109,25 @@ old arguments under changed operation semantics while keeping the old command ID
 The assembly identifies retained resolver/compatibility support independently of
 new invocation support.
 
+ 
+A recovery endpoint's mere existence is not a recovery *behavior*.
+For a possibly submitted Claim, the resolver must preserve typed uncertainty
+until it obtains admissible command-specific evidence or reaches a separately
+defined blocked/manual state. Its invocation permission, authorized principal,
+record retention, operation-version decoder and outcome-disclosure policy are
+independently checked. A response renderer failure, timeout, disconnected
+tab, browser refresh, retired generation or process restart must not
+silently discard ownership of the outstanding resolution obligation.
+
+Where a retry is admitted after uncertainty, the system establishes the
+original operation/argument binding and declared deduplication guarantee
+rather than treating an unobserved outcome as a fresh operation. A
+read-only command-record lookup is not a retry permit or an
+implementation of the authoritative operation. Loss of command
+retention or an incompatible replacement plan produces an explicit
+defer, block, transfer or manual reconciliation condition, never a
+made-up successful or rejected settlement.
+
 *** Progression remains scoped through the return path
 
 The mutation, command record, publication/durable intent, acquisition, renderer,
@@ -2089,11 +2141,55 @@ installation uses that observation and the browser's current target/owner rights
 Adoption and debt discharge require the applicable physical completion, as in
 Part IV and Part VI. HTTP completion is not a substitute.
 
+ 
+The progression contract is typed by its provider and queried subject.
+An XTDB transaction key, snapshot token, read-consistency requirement,
+fragment advisory and physical DOM installation receipt may all contain
+opaque values without sharing an order. Requirements compose only under
+the declared scope and combination relation; generic maximum, string
+comparison or receipt equality must not fabricate an advancement
+witness. Where a mutation's returned basis is needed for a later
+projection, the selected acquisition route must establish the required
+lower bound and expose its *actual* satisfied observation, not simply
+echo the requested token.
+
+The browser may mark an observation adopted only after authorized
+projection acceptance and the applicable physical installation/target
+completion, under the selected progression and owner-generation policy.
+A 200 response, swap attempt or Live advisory is insufficient. If
+continuity restoration fails after a successful authoritative DOM
+installation, that local failure must be represented separately; it
+does not roll back the installed observation or the server's transaction.
+
 A query membership obligation may require different evidence from a card-content
 obligation. Initial server-rendered content is also an acquisition path with
 provenance and coverage. An empty managed fragment needs a permitted acquisition
 path and a truthful loading/unavailable state; absence of both initial knowledge
 and acquisition is a structural defect.
+
+ 
+*** Subscription establishment cannot open a silent knowledge gap
+
+An initial server-rendered card and the subsequently active interest
+subscription have a *relative* consistency problem: a relevant commit may
+occur after the initial read but before the subscription is registered.
+Likewise a subscription may become active first and then a later read
+may cover already published changes. The selected strategy identifies
+the baseline observation, interest-registration fence/receipt, replay or
+buffering horizon, and the provider's consistency comparison by which
+one phase covers the other. It may use re-acquisition instead of
+replaying every invalidation, because an invalidation requests
+fresh authority rather than carrying authoritative domain content.
+
+A Live assembly that validates only a configured SSE route and GET
+endpoint has not thereby established the no-gap property. Startup,
+new subscription, reconnect, host change, authorization-context change,
+interest evolution and router failover must each have a qualified
+continuity/reconciliation path. The registration and baseline need
+not be performed in one atomic database transaction if a suitable
+fence and recovery argument closes the interval. Without one, the
+application retains advisory/acquisition debt rather than claiming
+an interest was up-to-date merely because no advisory arrived.
 
 *** Required publication and durable work have recovery semantics
 
@@ -2111,6 +2207,27 @@ A lost settlement or publication leaves incorporation intact and creates or
 preserves the relevant delivery/recovery debt. Worker acknowledgment and retries
 must agree with the durable work contract. External effects such as payment or
 notification are not undone by browser retirement or response failure.
+
+ 
+The commit-to-publication failure interval is a real failure boundary.
+A completed XTDB mutation followed by process failure before an
+in-memory SSE dispatch is not repaired by adding another function
+named =publish!= to the assembly. An application requiring durable
+convergence chooses an actual mechanism: e.g. transactionally bound
+outbox/change intent, replayable write log with stated ordering and
+retention, or a qualified independent periodic/permitted authoritative
+reread. These strategies differ in latency, permissions and liveness,
+and the assembly records which one closes the selected product promise.
+
+A durable work processor acknowledges only after the relevant delivery,
+handoff or recovery contract is satisfied; retry after crash must be
+idempotent or have an admitted duplicate-safe effect protocol. A
+publication may be redelivered because its meaning is advisory, but
+repeated delivery must not issue repeated one-use Refresh grants,
+new command IDs or unbounded acquisitions. Delivery loss, worker
+failure and compaction/retention expiry lead to honest recovery debt
+or an explicitly bounded unavailability, not an assertion that
+the original guarded mutation was rolled back.
 
 *** Live closure includes subscription continuity and adoption policy
 
@@ -2131,11 +2248,79 @@ required recovery work even when no new advisory arrives. Coarse routing/filteri
 can optimize delivery only under a contract that preserves the required coverage
 or has a compensating recovery path.
 
+ 
+The semantic interest is owned by its logical participant/fragment
+scope, not by the accidentally selected SSE connection or router node.
+One physical stream may carry multiple authorized interests, and a
+router may hold coarse or hierarchical filters as a performance
+optimization. Neither the absence of an interest in one process's
+memory nor failure of a particular router establishes that no
+remote participant needs a relevant refresh.
+
+For distributed deployment, the same single-node semantic rule holds:
+a change relevant to a registered or newly established interest must
+eventually become recoverable by a permitted authoritative acquisition
+under the declared fairness/availability assumptions. Interest
+advertisement, invalidation routing, router replacement, replay
+horizon, duplicate-safe redelivery and authorization are separate
+contracts. A router that learns an interest after an invalidation
+was forwarded requires a fence/replay/reacquisition argument; copying
+a coarse filter to another node does not prove that the intervening
+change was preserved. A failed router can be handled by conservative
+re-delivery of a qualifying range when the protocol is idempotent
+and bounded, but the availability of such a replay source is an
+actual premise, not an implied fact about SSE.
+
+The design does not require storing every successfully delivered
+advisory for each client. It requires sufficient provenance,
+retention, scope and failure detection to repair possible loss
+without assuming exactly-once messaging. A single-node
+implementation and a multi-node implementation realize the same
+interest/progression/acquisition obligations; extra routers
+introduce deployment evidence, not a different semantic model.
+
 Advisory debt, acquisition permission, and adoption permission remain distinct.
 HumanHelp may announce remote changes and wait for explicit Refresh. A newly
 arriving advisory does not silently inherit an expired one-read grant. Closure
 checks that the declared policy has a real trigger, retained debt, and a viable
 path to the promised scoped adoption.
+
+ 
+*** Positive and adversarial end-to-end settlement histories
+
+The following cases must be exercised against the selected source-owned
+application, qualified transport and relevant browser/Live boundaries.
+A model trace or a synthetic SSE frame does not establish real
+production-path acceptance by itself.
+
+| History | Required result and evidence |
+|---------+------------------------------|
+| An eligible helper Claims an open Request; the guarded command incorporates and the initiating card is authoritatively reread and physically installed. | Preserve command-specific accepted settlement, scoped progression and a separate successful DOM adoption receipt. |
+| Another helper receives an advisory about that Request, but HumanHelp policy requires explicit Refresh. | Retain advisory debt and show the prompt; do not silently fetch or install without a valid grant. |
+| The remote user exercises one permitted Refresh, then a second advisory arrives after that grant is consumed. | The first authorized acquisition may adopt its observation; the new debt needs a newly permitted action and must not reuse the consumed grant. |
+| A Claim commits, but its HTTP response disappears. | Server incorporation remains; the participant is unknown until admissible command-specific evidence resolves it. |
+| A compatible retry locates the same disclosed durable command record. | Replay the recorded outcome without a new domain mutation, while retaining original binding and disclosure checks. |
+| A pinned command-record read returns no row, or prior disclosure is not permitted. | Report unresolved or nondisclosable as appropriate; do not infer rejection, absence of a write or a retry permit. |
+| A source-observed domain update exists but the selected physical writer did not atomically create the canonical command record. | Do not certify durable command incorporation or causal attribution from current state and a later lookup. |
+| A later manager Reassigns a Request after a helper's earlier Claim incorporated. | The current card may show a new assignee while the earlier Claim remains historically incorporated; neither observation rewrites the other. |
+| The acquisition route returns a card whose snapshot is older than the required mutation progression. | Retain unmet scope/debt and retry/defer under policy; HTTP 200 cannot establish advancement. |
+| The authoritative HTML is installed, but browser continuity restoration then fails. | Preserve the adopted observation and classify continuity failure separately, without undoing the XTDB commit or fabricating rollback. |
+| A fragment has neither initial authoritative content nor an admissible acquisition path. | Reject structural Live closure or mark the required capability unavailable; absence of advisories is not initial knowledge. |
+| A change occurs between initial page observation and SSE interest registration. | Fence/replay/buffer/reread closes the gap or the no-gap claim remains open; loss is not disproved by silent stream startup. |
+| The transaction commits and the server crashes before it sends the declared invalidation. | Recover from the selected durable intent/replay/reacquisition path, or disclose the unmet convergence obligation; no false transaction rejection. |
+| One advisory is duplicated during failover or replay. | Preserve idempotent debt handling and grant accounting; do not create a second logical command or unrestricted acquisition. |
+| Router A loses state while Router B learns an interest after the relevant invalidation. | Establish a valid replay/fence/reacquisition interval or retain a coverage gap; a coarse filter alone is not a delivery proof. |
+| A Live stream reconnects with a changed principal or lost authorization. | Revalidate each interest and acquisition/disclosure permission, retire obsolete subscriptions, and recover knowledge without leaking protected projections. |
+| A publication topic is declared but the actual model executor never emits it. | Structural application-summary closure may pass, but production publication/convergence remains unestablished and positive integration must fail. |
+| The browser receives an advisory but its target was replaced before the response completes. | Enforce logical owner and current physical generation/target rights; do not adopt stale DOM or discharge debt without admissible completion. |
+
+Successful acceptance requires usable Create/Claim/Unclaim/Reassign
+histories where promised, including the remote advisory and user
+Refresh policy, not just a structurally valid but inert graph.
+No green assembly report establishes eventual progress without
+named fairness, network, replay-retention, provider and user-action
+premises. Parts VIII–X define stronger product, compositional and
+physical correspondence evidence separately.
 
 ** Static preflight and required dynamic handling
 
