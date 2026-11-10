@@ -7,9 +7,9 @@ published Part VIII and `r5` publication had the **same Git blob**
 No normative wording, operation contract, example, heading, table,
 `CUSTOM_ID` or cross-part link was changed.
 
-**Review status:** **08.01–08.11 have completed substantive R4-preservation
+**Review status:** **08.01–08.12 have completed substantive R4-preservation
 and Gesso/HumanHelp source-correspondence review**, recorded in their
-numbered audits. Sections **08.12–08.15**, whole-Part-VIII reconciliation
+numbered audits. Sections **08.13–08.15**, whole-Part-VIII reconciliation
 and independent Part VIII acceptance remain outstanding. Parts I–VII
 are accepted reviewed R5.1 candidates; Parts VIII–XII and full-plan
 acceptance remain open.
@@ -19,7 +19,7 @@ The **R4 preservation baseline** is `main` Part VIII,
 The preferred **R5 architectural predecessor** had
 **1,468 newline-split lines**, 21 second-level headings and
 **92,955 decoded characters** before substantive revision.
-The current fifteen sources reconstruct the **4,171-line**, **229,350-character** Part VIII publication exactly. Length is not
+The current fifteen sources reconstruct the **4,334-line**, **240,423-character** Part VIII publication exactly. Length is not
 evidence that all R4 obligations survive; each numbered
 review must make its own R4/Gesso/HumanHelp comparison.
 
@@ -223,6 +223,13 @@ dependency/writer closure, opaque host premises, physical-trace evidence
 and sixteen positive/adversarial assurance cases were reconciled against
 R4, R5, Gesso and HumanHelp source.
 
-**Next:** Review **08.12 — Test Architecture and Oracles**,
-including independent positive browser/XTDB results, deterministic
-concurrency, adverse recovery histories and model/physical evidence scope.
+**08.12 review:** see `08.12-r4-preservation-audit.md`.
+Real browser-generated lifecycle commands, independent production-model/XTDB
+oracles, deterministic same-prestate races, causal negative-knowledge checks,
+two-client advisory/Refresh acceptance, current Chromium lifecycle evidence,
+paired positive/defective fixtures and retention/recovery limits were reconciled
+against R4, R5, Gesso and HumanHelp sources.
+
+**Next:** Review **08.13 — Structural Rejection and Production Enforcement**,
+including production-assembly defect injection, first responsible guards,
+actual installed handler enforcement and positive/nonvacuous counterparts.
