@@ -1,12 +1,12 @@
 # R5.1 sectional source — Part IV, Authoritative Operations and Progression
 
 **Disposition:** lossless structural preparation of the original R5 Part IV,
-with sections 04.01–04.16 now substantively reviewed against R4,
-Part VIII's production RequestAssignment meaning, and Gesso's source.
-Their scoped preservation audits are
+with all 17 sections 04.01–04.17 substantively reviewed against
+R4, Part VIII's production RequestAssignment meaning, and Gesso's
+source. Their scoped preservation audits are
 `04.01-r4-preservation-audit.md` through
-`04.16-r4-preservation-audit.md`. The final numbered
-unit, 04.17, remains an unreviewed candidate. Part IV is not yet accepted. Parts I–III
+`04.17-r4-preservation-audit.md`. **Individual sectional review is
+complete; whole-Part-IV reconciliation and acceptance are still open.** Part IV is not yet accepted. Parts I–III
 are reviewed R5.1 candidates. The twelve-part plan remains a draft.
 
 The original R5 source is preferred to R4 as the architectural starting
@@ -85,18 +85,18 @@ assembles Part I–IV and composes the remaining unreviewed R5
 published parts V–XII into `output/gesso-plan-v5.org`.
 
 The 17 source files reconstruct the published Part IV exactly.
-Sections 04.01–04.16 have since been revised, preserving the
-original root heading and anchors; the published Part IV is
-rebuilt from the sixteen edited units and one unchanged R5 unit. These are
-editorial/documentary checks, not runtime or formal proof evidence.
+All 17 sections have now been revised, preserving the original
+root heading and anchors; the published Part IV is rebuilt from
+all seventeen edited units. These are editorial/documentary checks,
+not runtime or formal proof evidence.
 The local Python assembly command was not run as part of the
 GitHub connector operation; run it in a checkout when available.
 
-**Next:** revise **04.17 — Assurance Obligations and Acceptance Cases**,
-checking positive/negative invariant coverage, executable correspondence,
-physical installation milestones, external-work uncertainty, and
-non-vacuous completion criteria against R4 and the accepted R5.1 parts.
-Add its scoped preservation audit and rebuild Part IV. A separate
-whole-Part-IV cross-section reconciliation follows.
+**Next:** begin **whole-Part-IV cross-section reconciliation** across
+all 17 edited sections. Check preservation audits, operation identity,
+model/FX/XTDB/Live/browser evidence joins, HumanHelp policy consistency,
+positive/negative acceptance coverage, and Part I–III/Part VIII joins.
+Keep any detected gaps visible and revise the owning section rather than
+conferring whole-part acceptance from sectional audits alone.
 Subsequent `next` requests continue one bounded revision
 at a time.
