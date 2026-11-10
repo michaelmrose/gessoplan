@@ -1,11 +1,11 @@
 # R5.1 sectional source — Part IV, Authoritative Operations and Progression
 
 **Disposition:** lossless structural preparation of the original R5 Part IV,
-with sections 04.01–04.10 now substantively reviewed against R4,
+with sections 04.01–04.11 now substantively reviewed against R4,
 Part VIII's production RequestAssignment meaning, and Gesso's source.
 Their scoped preservation audits are
 `04.01-r4-preservation-audit.md` through
-`04.10-r4-preservation-audit.md`. The other 7 numbered
+`04.11-r4-preservation-audit.md`. The other 6 numbered
 units remain unreviewed candidates. Part IV is not yet accepted. Parts I–III
 are reviewed R5.1 candidates. The twelve-part plan remains a draft.
 
@@ -85,17 +85,17 @@ assembles Part I–IV and composes the remaining unreviewed R5
 published parts V–XII into `output/gesso-plan-v5.org`.
 
 The 17 source files reconstruct the published Part IV exactly.
-Sections 04.01–04.10 have since been revised, preserving the
+Sections 04.01–04.11 have since been revised, preserving the
 original root heading and anchors; the published Part IV is
-rebuilt from the ten edited units and seven unchanged R5 units. These are
+rebuilt from the eleven edited units and six unchanged R5 units. These are
 editorial/documentary checks, not runtime or formal proof evidence.
 The local Python assembly command was not run as part of the
 GitHub connector operation; run it in a checkout when available.
 
-**Next:** revise **04.11 — Authoritative basis and XTDB**, checking
-backend qualification, actual incorporation and read visibility,
-concurrent-write guards, valid/system time, and explicit backend
-premises against R4 and current Gesso physical correspondence code.
+**Next:** revise **04.12 — Scope-aware progression and authoritative
+acquisition**, checking query coverage, provider-authorized token comparison,
+read/adoption milestones, partial pages and mixed observations against R4,
+current Gesso Live acquisition code, and the accepted Part II semantics.
 Add its scoped preservation audit and rebuild Part IV.
 Subsequent `next` requests continue one bounded revision
 at a time.

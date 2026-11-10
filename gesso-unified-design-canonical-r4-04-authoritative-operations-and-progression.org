@@ -1742,14 +1742,41 @@ and a changed basis does not by itself make a command's business preconditions
 false.
 
 XTDB integration should use XTDB-specific consistency mechanisms where they
-provide useful guarantees. Gesso must describe those mechanisms through a
-qualified adapter contract rather than inventing generic arithmetic on opaque
-tokens or claiming guarantees from a dependency's name alone.
+provide useful guarantees. Gesso need not invent a backend-neutral global
+revision system merely for speculative portability. It must describe the
+selected mechanisms through a qualified adapter contract rather than inventing
+generic arithmetic on opaque tokens or claiming guarantees from a dependency's
+name alone.
 
 The [[#req-backend-assumption-qualification][backend qualification contract]] of
 Part I applies. A Gesso proof may be conditional on specific XTDB premises. It
 need not prove the whole database implementation, but it must make visible
 exactly which database behavior would invalidate the proof.
+
+*** Basis provenance and the untrusted command boundary
+
+An =AuthoritativeBasis= is established by an admitted authoritative read or
+trusted runtime boundary. A =ProgressionRequirement= is a scoped obligation on
+a later acquisition. An =ObservedBasisClaim= is what an untrusted participant
+says it previously observed. They may carry identical XTDB token bytes, but
+they are not interchangeable semantic capabilities or a demand for three
+wrapper classes.
+
+For example, a browser command may include =:observed-basis= to help request
+consistent reads or explain what it believed. Parsing the token, comparing it
+to a server-issued value, accepting its Malli shape, or trusting a client-added
+=:authoritative= label does not prove that the browser received, installed, or
+understood that observation. If this history matters, a separately admitted
+receipt or trusted server-side record must establish the precise historical
+proposition it supports; issuance still does not prove delivery, installation,
+human acknowledgement, or current business authorization.
+
+An untrusted basis claim may only influence a read through its validated
+provider, authority/database incarnation, scope and permitted consistency
+mode. Invalid or unsatisfiable claims fail under declared typed handling rather
+than weakening the authoritative read. A command's current business guards are
+determined by source-owned operation policy, not by whether its browser token
+happens to match the most recent database frontier.
 
 *** Backend assumptions are distinct obligations
 
@@ -1773,7 +1800,9 @@ These premises are not interchangeable. Atomic writes do not prove predicate
 protection. A row count does not prove target or principal binding. A committed
 transaction ID does not prove an exact immediate poststate unless the backend
 contract supplies that relationship. A source-bound local return does not
-prove all remote backend semantics.
+prove all remote backend semantics. An external pinned pre-read plus a later
+pinned post-read does not establish the transaction's internal snapshot or that
+no unenumerated writer changed a protected dependency.
 
 The adapter must specify the actual protected mechanism for each supported
 operation class. It must not imply that arbitrary Clojure callbacks execute
@@ -1799,6 +1828,12 @@ Qualification should target the behavior on which proof depends. A dependency
 version string check is useful configuration evidence, but is not a semantic
 conformance test. Likewise, a passing abstract transition model does not test
 the actual adapter's transaction construction or backend interpretation.
+Regression evidence must include the scope- and failure-sensitive boundary:
+read-after-write progression, snapshot-token propagation, relevant guards
+under contention, absence and aggregate dependencies, representation/field
+preservation, valid-time selection, and unknown submission or readback outcomes.
+A passing positive readback without paired mutated or competing-writer controls
+is insufficient to certify the protected operation family.
 
 If a required premise is violated or its support becomes unavailable, the
 affected proof claim cannot remain unqualified. Admission policy may stop the
@@ -1812,7 +1847,11 @@ does not establish their rejection.
 An acquired prestate can support preparation and construction checks. It is not
 automatically the backend's internal prestate at the later incorporation point.
 The protection mechanism must establish the needed relationship despite that
-interval.
+interval. If a prepared whole-document update can overwrite fields that were
+not in the acquired predicate set, the declared frame and dependency protection
+must cover those writes or explicitly narrow the proven operation class. A
+version check on one document is not automatically a guard on absent rows,
+related documents, aggregates, or unrelated writers.
 
 The design does not universally require the backend to expose an internal
 prestate token. A sufficient qualified guard, isolation contract, or conditional
@@ -1829,7 +1868,10 @@ visibility evidence, but not an exact immediate poststate witness.
 Submission acceptance, transaction completion, and query visibility may be
 different backend milestones. The adapter must distinguish them. A log position
 allocated to an aborted or merely submitted transaction must not be presented
-as evidence that the domain command incorporated.
+as evidence that the domain command incorporated. A returned submission ID,
+a completed transaction key, and a pinned read that observes a command record
+are different evidence subjects; their association must be justified rather
+than assumed from matching metadata.
 
 After a confirmed commit, the adapter may issue a progression requirement that
 an authoritative read must satisfy to include the relevant effect. The read
@@ -1852,6 +1894,39 @@ A restore, fork, or migration may create an authority/database incarnation in
 which old tokens have no comparable meaning. The adapter must establish an
 explicit migration relation or reject comparison. Equal-looking numbers or
 token bytes from different incarnations are not evidence of continuity.
+
+*** Worked example: database advancement versus business conflict
+
+At an admitted basis X17, an authorized browser observes Request R unclaimed
+and constructs command C42. At X18 a different Membership changes; at X19
+another Request changes. When C42 reaches authority at X23, that advancement
+alone is not a reason to reject Claim. The source-owned Claim operation must
+check R's current lifecycle, active primary RequestAssignment uniqueness,
+membership/authorization dependencies and the command's retained identity
+under its protected incorporation contract. If an intervening helper actually
+claimed R, the relevant domain facts differ and the operation applies its
+specified conflict or reconciliation policy. X17 and X23 are illustrative
+opaque basis symbols, not integers on which the browser may calculate.
+
+The same X17 bytes returned by the browser remain an =ObservedBasisClaim=;
+they do not certify that its display was installed. A read satisfying an
+admitted minimum X23 requirement may observe a later frontier and perhaps later
+authoritative changes. It may justify visibility through X23 but cannot, solely
+by that fact, prove C42's exact immediate poststate or its incorporation.
+
+*** Paired XTDB qualification and correspondence cases
+
+| Admitted case | Adverse or unsupported case | Required result |
+|---------------+-----------------------------+-----------------|
+| A trusted read establishes a scoped basis, and an acquired projection meets its minimum frontier. | A browser-supplied token or a parsed matching value is upgraded to trusted observation or current authorization. | Preserve provenance; reject the unsupported upgrade. |
+| An operation's current guarded dependencies remain valid despite unrelated database advancement. | Another writer changes a protected Claim dependency while an older plan attempts incorporation. | Admit the unrelated advancement; enforce actual current business guards and declared conflict handling. |
+| A compatible supported guard protects the relevant document, absence and aggregate conditions. | Only a familiar revision field is guarded while an unenumerated field, related row or external writer breaks the invariant. | Establish precisely the supported guarded scope or retain an explicit unsatisfied premise. |
+| A transaction and bound command record are atomically incorporated under the qualified backend. | A submitted ID, row count, or independently supplied key is called proof of commit causality. | Require evidence binding the actual operation, outcome and protected effect; otherwise return a bounded or unknown verdict. |
+| An admitted read reaches the required scope and frontier at a compatible valid/system-time selection. | A newer but narrower, wrong-time, wrong-tenant or partial read purports to discharge a broader requirement. | Admit the exact covered observation and retain outstanding acquisition debt. |
+| One pinned snapshot establishes a consistent set of acquired targets. | Separate before/after reads are represented as the transaction-internal pre/post pair despite intervening writes. | Retain actual pinned observation scope; do not claim unproved internal snapshot refinement. |
+| A qualified adapter for a supported XTDB build and configuration passes relevant positive and mutated conformance cases. | A dependency change silently preserves the prior certification or a typed error maps unknown incorporation to rejection. | Invalidate affected claims, fail closed or apply explicitly weaker admission, and preserve command reconciliation. |
+| A migrated or restored database presents evidence under an admitted incarnation relation. | Identically shaped tokens from unrelated incarnations are compared or merged. | Require a supported migration relation; otherwise reject comparison without inventing authority continuity. |
+
 
 ** Scope-aware progression and authoritative acquisition
 :PROPERTIES:
