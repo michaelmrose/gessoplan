@@ -1891,16 +1891,140 @@ claim; reject-all is not certification.
 
 *** Exact finite checking and bounded diagnostics
 
+An exact finite result is a judgment about an *explicit
+finite transition system*, not about every state that happens
+to fit a convenient Clojure map. The checked source identifies
+nominal state/input domains, initialization, every admitted
+transition and nondeterministic choice, state comparison,
+invariant or temporal property, and observation semantics.
+The checker records whether its exploration was exhaustive
+relative to **that** finite subject. It cannot silently
+substitute a finite sample for a declared infinite type.
+
+The result classification is not a Boolean:
+| Result | Supported interpretation | Not established |
+|--------+--------------------------+-----------------|
+| Exhaustive safe | Every reachable state/transition of the specified finite model was explored under the stated semantics and satisfies the checked safety property. | Correspondence to a larger or deployed system. |
+| Genuine counterexample | A valid finite-model initial state and enabled transition trace violate the property, with a replayable source/operation path. | That the same violation is physically reachable without refinement. |
+| Incomplete | A state/case/depth/time/memory budget was reached, or the language/transition coverage could not be established. | Success, falsity of the property, or absence of counterexamples beyond the explored prefix. |
+| Invalid or unsupported source | A syntax/type/domain/interpretation requirement fails. | A mathematical counterexample or a theorem. |
+
+For safety, a complete algorithm enumerates all declared initial
+states and enabled transition alternatives, adding new states until
+the reachable set reaches a fixed point without dropped successors.
+If an enabled successor falls outside the enumerated state universe,
+either the model's declared transition/closure contract rejects it
+or a checked abstraction maps it to a covered state. It cannot
+silently be discarded and still report exhaustive success.
+Visited-state deduplication itself uses the correct nominal and
+presence-sensitive state equality. A bounded trace-prefix
+enumeration is not closed-world exploration unless an independent
+completeness argument justifies the bound.
+
+The finite result also names its exact property and quantifier.
+Safety assertions about every reachable state, trace-invariant
+assertions, deadlock freedom, fairness, termination and leads-to
+are different judgments. Temporal conclusions need the
+appropriate finite-state temporal semantics and scheduling/
+fairness assumptions; merely checking an invariant on visited
+states does not prove eventual delivery, user Refresh or
+progress after a process failure.
+
+
 A completed exact finite exploration establishes its stated property over that
 finite model. Its evidence includes domains, initial states, transition relation,
 property, exploration algorithm/profile, completion status, and counterexample
 when one exists. A fixed trace-depth bound is a bound on explored prefixes, not
 proof of all paths unless a separate completeness argument establishes it.
 
+*** Domains, closure, non-vacuity and model relevance
+
+A finite enum or Boolean domain can be covered exhaustively when
+its nominal declared values and interpretation are exact. A
+bounded set of integer, string, Request ID, timestamp, actor or
+database-state representatives is generally a *sampled subset*.
+Even when every selected sample is explored, the report must
+identify the restriction and avoid claiming correctness for
+unrepresented values. Numerical boundary choices, nil/absent
+values, role/tenant scope, competing RequestAssignment rows,
+retry attempts and multiple client generations are meaningful
+dimensions; omitting them can hide an intended counterexample.
+
+An initialized finite model can be empty or can disable every
+transition. Formal safety may then hold vacuously. Stronger
+product acceptance requires separately checked or witnessed
+eligible initial states, meaningful enabled operations and,
+where relevant, contention, recovery or failure paths.
+An invariant that says "no two active primary assignments"
+cannot be certified for HumanHelp by a finite state made only
+of one RequestStatus field; the abstract property needs the
+assignment relation or a justified mapping to it.
+
+The finite checker distinguishes *relative model completeness*
+from *application-source coverage* and *physical correspondence*.
+The source-owned operation catalog must include every required
+declared transition/branch for the selected claim; production
+coverage additionally needs all relevant initializer and
+writer paths, including administrative/import/background/raw
+writes, and a justified state abstraction. A closed catalog
+that intentionally or accidentally omits Reassign can be
+model-checked exactly while still failing an independently
+required HumanHelp capability.
+
+To transfer safety from a finite abstraction to a larger
+concrete system, a checked relation must explain concrete
+initial-state inclusion and how each relevant concrete step
+is simulated by an abstract allowed step (or invariant-preserving
+stutter), and preserve the observed property. Under-approximate
+samples cannot establish this relation by themselves. The
+state-space reduction, symmetry or partial-order method
+must expose its own soundness premises. An abstract
+counterexample requires concretization or a separately
+checked feasibility argument before it becomes evidence of
+an actual XTDB/browser exploit.
+
+
 A finite Boolean truth-table check can establish the validity of one instantiated
 propositional implication for all valuations of its distinct atoms. That does not
 prove a universally quantified rule schema over all formulas/arity or prove the
 production checker's implementation correct.
+
+*** Truth tables, typed atoms and replayable witnesses
+
+For a *fixed well-formed propositional formula*, complete
+enumeration of every Boolean valuation can decide its
+truth-table validity under the specified propositional
+semantics. Treating typed atoms as independent Boolean
+variables is appropriate for checking a tautology:
+validity for all valuations implies validity for any
+typed interpretation that maps atoms to Booleans.
+It does not show that all independently assigned
+valuation combinations are reachable from a real
+typed Gesso source or current Request snapshot.
+
+For a candidate *counterexample*, a Boolean valuation
+in which two related typed atoms disagree might be
+impossible for any common input state. A typed-atom
+bridge therefore checks real nominal domains, reader
+presence/nullability, shared subject bindings and
+the simultaneous interpretation of correlated atoms.
+A sound abstract violating valuation is not automatically
+a feasible typed counterexample; the report labels the
+valuation as propositional-only until a typed
+binding witness or concretization is established.
+
+Conversely, a typed counterexample must include the
+actual source data, qualified variable environment,
+initial/input bindings, evaluated rule terms, step
+sequence and property failure so that an *independent*
+interpreter can reproduce the violation. A compact
+counterexample with no original-source provenance or
+one that was merely emitted by a checker being tested
+is not yet independent semantic evidence.
+Counterexample minimization may improve diagnosis,
+but must preserve the original violation and replay
+relation rather than substituting a different subject.
+
 
 A typed-atom bridge instead enumerates actual binding domains, evaluates atoms
 under their typed semantics, and derives the corresponding Boolean valuations.
@@ -1909,12 +2033,101 @@ reachable application states. All-Boolean-valuation validity can establish a
 stronger propositional tautology; a counterexample with impossible typed atom
 values is not automatically a concrete typed/application counterexample.
 
+The checker must preserve distinctions among:
+an invalid syntactic derivation, a true proposition for a
+bounded finite model, a discovered model counterexample,
+an inconclusive timeout, and a proposition proved
+conditionally under named unverified premises. A
+counterexample does not necessarily refute the
+formal *inference rule schema*; it may instead reveal
+a false model premise or a source-to-concrete mismatch.
+The actual first accountable checker and source are
+reported with the result.
+
+
 Independent bounded interpreters, differential JVM/CLJS tests, rule-instance
 truth tables, and mutation corpora are valuable evidence. They remain precisely
 scoped. Increasing the sample count or giving a module “soundness” in its name
 does not create an unbounded meta-theorem.
 
+*** Independent oracles and evidence of rule soundness
+
+Independence is *semantic and implementation-specific*, not
+a claim that two different namespaces have different names.
+An oracle that invokes the production rule evaluator, its
+normalizer, the production proof checker, or a wrapper around
+the same captured implementation shares those assumptions
+and bugs. That may still detect substituted public results,
+but it is not independent support for the reused rule.
+
+The assurance inventory identifies which code and semantics
+each oracle shares: parser, typechecker, optional/null codec,
+integer comparison, transition interpreter, proof rules,
+step-closure algorithm, source catalog and mutation harness.
+A separately implemented finite oracle or test-local
+truth-table interpreter can independently challenge some
+of those layers. It must not be promoted into a complete
+meta-soundness result merely because it agrees on every
+enumerated test input. Deliberately injected unsound
+proof rules and transition mutants should be rejected
+by the specific independent oracle at the expected
+boundary, while an admitted positive source still passes.
+
+A meaningful property claim about the *proof kernel*
+needs a different kind of evidence from checking one
+proof instance. The checker-soundness goal is:
+for every accepted well-formed derivation under the
+specified semantics, the conclusion follows from
+its computed premises. Establishing this universally
+requires a mathematical/mechanized rule-by-rule
+argument or a suitably trusted proof, together with
+a verified relationship to the actual parser,
+JVM implementation and runtime primitives.
+An independent finite audit may falsify an
+unsound rule schema with one example; surviving
+a finite mutation corpus does not discharge
+unbounded checker meta-soundness.
+
+External theorem tools (Recife, TLA+/TLC, Quint,
+or a proof assistant) are *implementation aids for
+Gesso*, not an obligation for ordinary application
+authors to maintain a separate formal model. An
+external result is imported only with the source
+transition/typed semantics, exact theorem, model
+and version, assumptions, checked execution status,
+tool trust and correspondence bridge. A successful
+TLC exploration of a two-operation finite Request
+machine is valuable bounded regression evidence,
+not a proof about all XTDB writers or production
+browser/Live behavior.
+
+
 *** Trusted checking base and fault containment
+
+The trusted checking base is assessed *per judgment*.
+A proof-kernel certificate, exact finite-state result,
+typed atom interpretation, source/plan fingerprint
+and physically acquired XTDB observation may rely
+on different primitives and trusted execution
+paths. A single "fully verified" flag erases
+essential distinctions and is forbidden as a
+substitute for the root proposition/assumption
+ledger. Reports remain source-bound, versioned
+and tamper-aware, but self-reported status or
+hash equality alone never crosses a certified
+admission boundary.
+
+Proof search, budget scheduling and an elaborator's
+optimization heuristics need not live inside the
+small trusted kernel. Its actual admission parser,
+inference rule verification and primitive meaning
+still belong to the trusted surface. The complete
+application certificate additionally names the
+source-coverage, original-code elaboration,
+projection/lowering, physical writer, served
+browser and installed host bridges that this
+kernel does not check.
+
 
 The checking base includes parser/decoder behavior, canonical representations,
 primitive interpretations, inference/checker code, dependency resolution, and the
@@ -1939,11 +2152,113 @@ trusted process, but it is not an independent oracle for bugs in that same
 implementation. Multiple wrappers around the same procedure do not multiply
 its logical assurance.
 
+*** Reproducibility, failure modes and host portability
+
+For every finite or independently checked result,
+record the original source identity and canonical
+semantics, named domain enumeration and whether
+it is complete or representative, initial states,
+operations, property and quantifier, exploration
+strategy/algorithm, stopping reason, budgets,
+tool/checker version, trust and external assumptions,
+and a replayable counterexample or certified
+completion witness as appropriate. A duration,
+test count, fingerprint or green exit code
+without this scope cannot substitute for a
+claim-specific evidence record.
+
+An exceeded case/state/time/memory budget and
+interrupted search must return incomplete, never
+safe or false by default. Invalid AST/typed
+domain, unsupported external operation, unresolved
+source correspondence and a legitimate model
+counterexample have distinct typed failure
+classes. A failed reference interpreter, missing
+Node process, unavailable TLC/Recife runner or
+different JVM/CLJS integer codec is an
+uncompleted check, not evidence that the
+application policy was disproved.
+
+JVM-versus-CLJS portability requires actual
+independent host executions and comparison of
+the same normalized result/failure corpus;
+running the JVM half of a shared test file
+is not host agreement. Mathematical integer
+ranges, nil versus absent, nominal enums,
+short-circuit evaluation, Unicode/keyword
+encoding and nondeterministic iteration must
+be qualified for the chosen host/runtime.
+A finite cross-host regression test can
+expose divergence and support a selected
+portable profile; it is not proof of all
+host computations.
+
+The root application accepts a requested
+strong assurance profile only when all
+*required* judgment types and obligations
+are discharged under their stated trust
+contracts. A finite diagnostic report can
+support testing and conditional decisions
+without becoming a runtime execution permit,
+a cryptographic certificate, an authenticated
+read, or proof of product correctness.
+
+
 External formal evidence may establish rule-schema soundness or a checker theorem
 under named semantics. Its bridge must bind the theorem's statement, definitions,
 versions, and assumptions to the exact claim consumed by Gesso. A theorem about
 a logical calculus alone does not prove the parser, JVM implementation, database,
 or browser adapter.
+
+*** Non-vacuous positive and adversarial checks
+
+Acceptance includes a genuinely closed finite
+Boolean/enum model with valid reachable initial
+states and a proved safety invariant; a
+nearby source mutation producing an actual
+replayable counterexample; and an otherwise
+legitimate model whose exploration exceeds
+a small budget and is therefore *incomplete*.
+
+A complete fixed-formula truth table checks
+an accepted tautology and a non-tautology.
+The latter's Boolean counterexample must
+not be presented as a typed application trace
+until correlated atoms have a satisfiable
+shared binding. A typed bridge must also
+accept a genuine correlated typed witness
+and reject inconsistent nominal, optional
+or nullable bindings.
+
+The regression corpus independently exercises
+guarded frame/assignment cases, finite
+multi-operation orderings, abstract induction
+cases, propositional rule mutations, and
+the exact result of each declared checker
+rather than its display label. A deliberately
+faulty proof elaborator, an omitted operation
+or branch, altered original source and
+modified executable/served bytes must fail
+the appropriate *distinct* coverage,
+kernel, normalization, lowering or host
+correspondence boundary. A small finite
+checker cannot be credited for observing
+external XTDB writers it never enumerated.
+
+A valid conditional theorem can retain
+open physical correspondence and checker
+meta-soundness premises without being
+discarded as useless. A requested stronger
+certificate must fail closed if any of
+its required premises remains unresolved.
+A malicious copied proof report, mismatched
+checker version, incomplete partial trace
+or all-rejecting test implementation is
+not acceptable evidence of completed
+certification. Successful local proofs
+and exact finite cases remain useful,
+precisely scoped evidence for future
+composition.
 
 ** Distributed admissibility and projection judgments
 
