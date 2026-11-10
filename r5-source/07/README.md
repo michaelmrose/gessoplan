@@ -2,9 +2,9 @@
 
 **Disposition:** The preferred R5 Part VII was initially split losslessly
 into fifteen natural Org units. That initial source/publication matched
-Git blob `55c0c46f8ccf97b2ed6d61a3a7e1aeeca876f6a7`. Sections **07.01–07.02** have completed substantive R4-preservation
+Git blob `55c0c46f8ccf97b2ed6d61a3a7e1aeeca876f6a7`. Sections **07.01–07.03** have completed substantive R4-preservation
 and Gesso-source correspondence review, recorded in their numbered audits.
-Sections 07.03–07.15, whole-Part-VII reconciliation, and independent
+Sections 07.04–07.15, whole-Part-VII reconciliation, and independent
 candidate acceptance **remain outstanding**. All nine original Part VII
 `CUSTOM_ID` anchors remain unchanged.
 
@@ -46,7 +46,7 @@ no internal `***` section, table, code block, quote or requirement
 anchor was split. The smallest source is 35 original lines and the
 largest 191; those counts describe the **initial split**, not subsequent
 revisions. The current fifteen units reconstruct the
-**120,133-character**, **1,900-line**
+**131,148-character**, **2,047-line**
 Part VII publication exactly, retaining all nine original anchors.
 
 ## Assembly and verification
@@ -108,5 +108,10 @@ composition, independently checked physical choices, scoped inventory closure,
 assembly identity, runtime lifetimes and ten adversarial histories are explicit.
 This is editorial specification, not deployment certification.
 
-**Next:** review **07.03 — Whole-Application Closure Graph and Evidence**,
-including source-bound propositions, evidence scopes and failure dispositions.
+**07.03 review:** see `07.03-r4-preservation-audit.md`. Typed source/physical
+nodes, bidirectional and orphan coverage, non-circular evidence dependencies,
+proposition-scoped dispositions, and twelve positive/adversarial cases now
+make the closure graph independently inspectable.
+
+**Next:** review **07.04 — Application Assurance Policy and Operation Coverage**,
+including nonvacuous operation exercise, writer coverage and proof premises.
