@@ -8,9 +8,9 @@ proof examples, identities, links or Org delimiters were modified.
 `gesso-unified-design-canonical-r4-10-formal-correspondence-and-system-boundaries.org`
 is derived output, not an independent second source.
 
-**Review status:** **10.01–10.09 substantively reviewed** against R4,
+**Review status:** **10.01–10.10 substantively reviewed** against R4,
 accepted Parts I–IX and Gesso v1622, with numbered preservation audits.
-Sections **10.10–10.20** remain for substantive review. Whole-Part-X
+Sections **10.11–10.20** remain for substantive review. Whole-Part-X
 reconciliation and independent editorial acceptance remain outstanding.
 No current Gesso/HumanHelp implementation certificate is implied.
 
@@ -212,6 +212,20 @@ paired acceptance controls, with Gesso v1622 source-limited evidence,
 appear in the audit. Published Part X now contains
 **5326 newline-split lines** and **224816 characters**.
 
-**Next:** Review **10.10 — External Formalization Has a Concrete First Target**
-against R4, accepted Parts I–IX, completed 10.01–10.09 and Gesso's
-actual small proof kernel, source rechecking and finite independent audits.
+**10.10 review:** see `10.10-r4-preservation-audit.md`.
+Retained the preferred R5 seven-rule small propositional proof-kernel first
+formal target and R4's source-derived, tool-independent proof architecture.
+Separated mathematical rule soundness, source derivation soundness, actual
+Clojure checker/normalizer correspondence, typed-atom interpretation,
+issuer/admission and downstream production transfer. Specified exact
+quantifiers, used open premises, external theorem/evidence import,
+fail-closed mandatory checking, reproducible backend identity and
+independent finite-oracle limits. Twenty-two preservation decisions
+and sixteen paired positive/adversarial controls, with Gesso v1622
+source-level kernel/semantic audit nonclaims, appear in the audit.
+Published Part X now contains **5804 newline-split lines**
+and **242144 characters**.
+
+**Next:** Review **10.11 — Finite Exploration and Abstraction** against
+R4, accepted Parts I–IX, revised 10.01–10.10 and actual finite-model,
+resource-identity and abstract/concrete correspondence code.

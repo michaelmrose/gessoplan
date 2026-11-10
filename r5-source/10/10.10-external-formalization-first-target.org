@@ -1,34 +1,512 @@
 *** External formalization has a concrete first target
 
-The first external soundness target is the small propositional kernel and its
-formal acceptance relation. Its syntax and rules are those of Part IX: premise,
-truth introduction, implication reflexivity, conjunction introduction and
-elimination, implication elimination, and disjunction introduction. The formal
-statement quantifies over the supported derivations and interpretations; it
-must not smuggle in atomic truth or an undeclared hypothetical-discharge rule.
+The first external theorem target is the *closed propositional proof
+kernel* and its acceptance relation, because its language and trusted
+judgments are small enough to specify independently of arbitrary
+Clojure, XTDB transactions, the browser and the full Choreo machine.
+The purpose is to remove a specific trust assumption from Part IX's
+proof issuer, *not* to assert that having a proof assistant has already
+proved the framework or every application using it.
 
-The external development must then distinguish:
+Ordinary application authors define rules, model operations and
+Choreo constructions in Gesso's admitted Clojure/data interfaces.
+The framework derives the formal subjects and proof obligations.
+They do not maintain a second handwritten HumanHelp specification
+or write Lean tactics, Quint, TLA+ or Recife models to use an
+ordinary admitted operation. Framework maintainers may choose a
+proof assistant such as Lean, another proof-producing checker or
+a mechanized semantics with a suitably small trusted checker.
+The architectural requirement is the theorem and evidence-import
+contract, not a permanent commitment to one tool vendor or syntax.
 
-1. Soundness of those mathematical rules.
-2. Correctness of the formal derivation checker for those rules.
-3. Correspondence between that checker and the production Clojure acceptance
-   boundary, including parsing, normalization, rejection, and resource limits.
-4. The typed-proposition bridge from application rules to atom interpretations.
-5. Composition with the source-derived obligations and certificate issuer.
+Part IX supplies the original subject, typed proposition source,
+small proof rules, source-derived dependency closure, premise
+inheritance, checker admission and explicit open assumptions.
+Sections 10.01–10.04 specify formal/theorem versus runtime
+correspondence; 10.09 names the independent production discharge
+obligations. External formalization must preserve these boundaries
+rather than add an unrelated parallel assurance scheme.
+10.11 owns exact-finite exploration/abstraction and 10.12 owns
+the broader reproducible evidence package.
 
-These are separately reportable results. A formal proof of item 1 does not
-establish item 3. A finite audit of one production derivation may supplement
-these results without pretending to replace them.
+**** Specify the closed inference system before proving it
 
-A proof assistant such as Lean may implement the external role. The required
-interface is an immutable theorem/checker identity, explicit axioms, canonical
-subject encoding, reproducible check, and supported evidence-import contract.
-No application developer must write tactics or maintain a second handwritten
-HumanHelp specification to use an ordinary admitted operation.
+The initial formal calculus covers the same *seven* inference rules
+as the admitted Gesso propositional kernel, with their exact
+well-formedness, arity, ordering, reference and conclusion
+restrictions:
 
-Further formal targets are the typed evaluator, guarded-transition consequence
-rules, induction composition, knowledge/provenance judgments, progression
-algebra, projection, and browser refinement. Each target is selected to reduce a
-specific trusted surface, with its own production correspondence. Merely adding
-more formal code is not an assurance objective.
+| Admitted rule | Semantic consequence and required shape |
+|---------------+----------------------------------------|
+| =:premise= | A declared named premise P remains open and entails P |
+| =:truth-introduction= | Truth is derivable without taking an unrecorded atom as true |
+| =:implication-reflexivity= | For the same well-formed P, P implies P |
+| =:conjunction-introduction= | From admitted P1 ... Pn, n at least two, derive the matching conjunction in the selected source order |
+| =:conjunction-elimination= | From a checked conjunction derive exactly its selected indexed conjunct |
+| =:implication-elimination= | From P implies Q and P, in the required reference order, derive Q |
+| =:disjunction-introduction= | From P derive a disjunction containing exactly that P at the declared supported position |
 
+A calculus statement quantifies over well-formed finite formula trees,
+finite derivation sequences, all valid rule parameter values and
+all Boolean valuations of the distinct admitted *opaque atoms*.
+The atom declarations are inert for this propositional theorem:
+the theorem does *not* decide whether an embedded age,
+Membership or Request policy predicate is true of real
+application state. Formula syntax admits its defined truth
+connectives; the seven *inference rules* do not thereby acquire
+additional proof operations. Neither the presence of
+=:not= or =:false= in a proposition nor a valid semantic
+tautology licenses an unimplemented classical proof rule,
+arithmetic solver, arbitrary rewriting, atomic-truth axiom
+or hypothetical-context discharge.
+
+Let =Gamma= be the named open source premises, =D= a
+well-formed source derivation, =P= its exact goal and =v=
+a total Boolean valuation of the opaque atoms in the
+admitted formulas. The initial external soundness target is:
+
+#+begin_example
+For every supported original source Gamma, D, P:
+  If the defined small-kernel derivation relation accepts D
+  from Gamma with conclusion P, then
+  for every Boolean valuation v:
+    (every premise in Gamma that D actually depends on
+     is true under v) implies P is true under v.
+#+end_example
+
+The antecedent must use the *defined inference rules*, not an
+opaque call to Gesso's own implementation checker—otherwise the
+proof could accidentally assume precisely the correctness it is
+meant to establish. The formal theorem states how used premises
+are computed by rule references and what happens to declarations
+not used by a particular step. The source admission path may
+additionally require all declared premises/steps to participate;
+that stricter input discipline must not be confused with a
+logical rule that discharges unused assumptions. A finite
+closed derivation with =Gamma= empty is unconditional
+*only for the admitted opaque-Boolean interpretation*.
+
+Proofs may be vacuous under inconsistent premises; a valid
+logical entailment does not prove that the application can
+ever reach a state satisfying those premises. Nonempty
+initial state, reachable eligible operations, authenticated
+actor context and real product capability have different
+independent obligations. A theorem proving
+=Gamma |= P= cannot silently produce =P= unless
+=Gamma= is actually discharged or separately justified.
+
+**** Five distinct theorem and implementation claims
+
+The formalization has at least five separately reported
+objectives. A later result may depend on earlier ones, but
+a single passing artifact does not collapse them.
+
+1. *S0 — Inference-rule soundness.* Every admitted rule
+   schema preserves Boolean entailment for all legal
+   formulas, arities, indices and reference patterns.
+   Formalize the rules independently and prove their
+   preservation lemmas, including the premise rule's
+   open-assumption effect.
+
+2. *S1 — Derivation-system soundness.* Induct on the
+   finite ordered derivation. Each source step inherits
+   exactly the used named open premises of its valid
+   predecessor steps, and the final step entails the
+   declared goal. Forward references, cycles,
+   wrong-conclusion substitution, undeclared premise
+   use and unsupported rules are outside the admitted
+   derivation relation rather than trusted exceptions.
+   A mathematical induction proof is not evidence
+   that a particular Clojure parser enforces it.
+
+3. *S2 — Actual Clojure checker correspondence.*
+   For all supported concrete inputs accepted by
+   the *production* parser, normalizer, proof checker
+   and current admission path, establish a semantics-
+   preserving relation to the formal derivation
+   relation of S1. Include original-source normalization,
+   nominal variable/subject identity, premise and step
+   references, source rejection, malformed encodings,
+   resource limits and implementation/version binding.
+   This can be a proven implementation/refinement,
+   verified extraction, an independently checked
+   translation or a separately qualified trust
+   premise. Simply invoking the production checker
+   from the formal model is not independence.
+
+4. *S3 — Typed atomic-proposition correspondence.*
+   Relate opaque Boolean atom valuations to the
+   actual supported typed-rule evaluator under its
+   original source, reader footprint, presence/nil
+   semantics, runtime variable bindings and
+   evaluation/error contract. The conditional
+   propositional theorem cannot establish any
+   arbitrary Clojure implementation predicate,
+   model eligibility or current server input.
+   A bounded typed-atom oracle establishes only
+   its enumerated original bindings unless an
+   additional abstraction/correspondence theorem
+   justifies wider scope.
+
+5. *S4 — Issuer/composition and source-to-production
+   transfer.* Bind the exact source derivation and
+   checked theorem to the trusted current source,
+   original-source-required obligation ledger,
+   certificate issuer, selected admission profile,
+   premise inheritance, compatible consuming
+   operation and installed execution boundaries.
+   The actual server model guard, XTDB write,
+   loaded browser asset or protected read needs
+   its own qualification under 10.04–10.09.
+   A correct calculus theorem does not mint
+   runtime authorization or a durable
+   transferable certificate.
+
+A final application claim must state exactly which S0–S4
+edges were established and which remain conditional,
+tested, source-checked or unknown. It is legitimate
+to prove S0–S1 before S2–S4. That yields a useful
+formal result but *not* an externally proven Clojure
+checker, sound whole-application composition or
+formally verified HumanHelp deployment.
+
+**** Checker semantics, resource bounds and fail-closed admission
+
+The actual acceptance relation includes more than
+the names of seven inference rules. It must define
+which original source forms are admissible: metadata-
+free/plain structures where required, qualified IDs,
+exact keys, typed nominal contexts, formula
+depth/arity, atom encoding, duplicate or unused
+steps, strictly prior references, all required
+dependency/assumption bindings and the exact goal.
+
+A bounded production checker can soundly reject
+inputs because of a configured depth, formula-node,
+proof-step, premise, atom or computation budget.
+Such conservative rejection does not refute
+*soundness* of what it does admit.
+Completeness—for example, admission of all
+otherwise valid derivations in the advertised
+supported/bounded domain—is a separate
+usability/property target. The strong
+product acceptance must not be satisfied by a
+checker or constructed application that
+rejects every legitimate Claim.
+
+A successful proof result, a genuine semantic
+counterexample, a malformed-source rejection,
+an unsupported rule/judgment, exhausted
+resource budget, external tool failure and
+unavailable checker are distinct dispositions.
+If a selected profile requires S2 or another
+external theorem at construction, an unavailable,
+timed-out or mismatched check fails that
+*new* admission. The framework may continue
+serving a previously admitted still-current
+assembly under its actual lifetime contract;
+it cannot silently downgrade the profile,
+invent a checked theorem or grant
+an unauthorized protected operation.
+
+Preprocessing and normalization belong inside
+the correspondence boundary. An independently
+sound rule calculus cannot compensate for a
+normalizer that drops a premise, changes the
+formula tree, coalesces distinct typed atoms
+incorrectly or maps source proposition A
+to theorem subject B. Revalidating just
+the resulting normalized formula is not
+necessarily validation of the *original*
+source claim. A checked trusted source-to-
+normal-form semantics relation is needed.
+
+**** External backend and theorem evidence import
+
+The external backend must produce evidence whose
+meaning is independent of source-level report
+labels. The evidence package identifies at least:
+
+- the immutable formal theorem statement, explicitly
+  admitted axioms or trusted primitives, proposition
+  and proof-rule definitions, theorem/checker version,
+  backend/toolchain configuration and claim category;
+- the canonical original-source semantic subject,
+  normalized representation, dependency/obligation
+  closure, source-to-formal encoding and all versions
+  required to interpret them;
+- a proof term or independently checkable result
+  where the backend supports one, together with the
+  exact trusted checker/admission mechanism;
+- finite-domain or generated conformance coverage,
+  resource/execution budgets and any unsupported
+  language features when these are supplementary
+  *tests*, not the external universal theorem;
+- current exact issuer/consumer binding, selected
+  semantic source, required open/used premises,
+  installed asset/plan identity if the claim
+  transfers to production, and all unresolved
+  S2–S4 implementation/environment obligations;
+- a reproducible invocation and observed disposition
+  with privacy-appropriate diagnostics, source
+  correspondence and invalidation/rechecking triggers.
+
+A Lean proof might be one implementation of the S0–S1
+evidence. A separate kernel/checker or supported
+proof-producing tactic may be used, but the trusted
+assumption set must state the actual proof-checking
+kernel and any imported axioms. A successful CLI
+exit code, copyable EDN report or saved
+"proved" label is not itself trusted proof origin.
+A checker-based import should recheck the actual
+proof/evidence at the selected current consumer,
+or rely on a properly qualified persistent
+attestation/lifecycle contract rather than
+raw purported hashes.
+
+The external checker does not need physical
+XTDB/network/Chromium access to prove S0.
+That is precisely why the abstract theorem and
+its independently qualified runtime transfer
+are separate. Proof/diagnostic sidecars must
+not change an already admitted runtime
+state transition or become a principal,
+one-Refresh grant, command retry authorization
+or browser effect lease.
+
+The tool-independent exchange need not be a
+single universal serialization format, but
+every backend must preserve the exact canonical
+judgment and evidence class. A backend may
+reject unsupported constructs honestly;
+it cannot silently translate them to
+axioms, omit difficult cases or assert
+all application obligations discharged.
+
+**** Independent oracles, mutations and common-mode bugs
+
+Gesso's own independent rule-interpretation
+and finite audits are valuable *falsifiers*
+of claimed correspondence. They can expose
+a changed inference index, missing premise,
+malformed step, normalized atom mismatch
+or deliberate invalid rule. Running the
+same Clojure normalizer in two wrappers
+does not independently validate the
+normalizer; an independently written
+reference can discover more bugs but
+requires its own domain/soundness
+qualifications.
+
+An exhaustive truth table over one
+finite set of opaque atoms proves
+only the particular local entailment
+within that declared domain. Checking
+one representative for each of the
+seven rule tags does not quantify
+over every formula tree, premise
+combination, conjunction arity,
+conjunct index, depth or
+malformed source form.
+A compositional source-level
+induction over a finite derivation
+is stronger for *that derivation*
+than checking only its final
+Boolean valuation sample, but
+its local rule and interpreter
+premises must remain explicit.
+Neither result automatically
+establishes the universal
+mathematical metatheorem or
+production Clojure implementation.
+
+A required acceptance corpus includes paired
+positive/adversarial controls:
+
+1. A valid derivation of a source premise is
+   accepted *with that premise open*; the
+   same source with the premise omitted
+   must not yield an unconditional theorem.
+2. Premise-free truth introduction and
+   implication reflexivity are checked
+   for arbitrary supported well-formed
+   formulas; an invented arbitrary
+   typed-atom truth axiom is rejected.
+3. Correct two-or-more conjunction
+   introduction and indexed elimination
+   preserve their source order; reversed
+   premise order, invalid arity or
+   out-of-range index is rejected.
+4. Implication elimination requires its
+   exact implication and antecedent;
+   swapped references or changed
+   consequent fails the rule.
+5. Disjunction introduction requires
+   the indexed embedded source
+   conjunct; a different injected
+   atom or unsupported position
+   cannot be inferred.
+6. Valid references use previously
+   established derivation steps;
+   forward/circular references
+   and fabricated prior-step
+   conclusion are rejected.
+7. The complete original source
+   and normalized formula denote
+   the same supported proposition;
+   a dropped premise, altered
+   atom or forged typed context
+   cannot inherit the proof.
+8. A finite independent truth
+   valuation matches a supported
+   source step; truncation or
+   over-budget enumeration is
+   incomplete, not proof of
+   all valuations.
+9. Formal S0/S1 applies to every
+   supported rule/formula shape
+   under its premises; one
+   checked instance or sample
+   catalog is not promoted
+   to universal soundness.
+10. The source-level Clojure
+    checker accepts an admitted
+    derivation under its exact
+    grammar; a deliberately
+    faulty parser or
+    normalizer admits the
+    wrong original subject
+    and fails S2.
+11. The typed-atom bridge
+    agrees over its qualified
+    source-binding domain;
+    an opaque Membership
+    or Organization-policy
+    atom is not marked
+    universally true from
+    finite examples.
+12. The trusted issuer
+    rechecks current
+    original-source
+    obligations and the
+    genuine proof;
+    a copied successful
+    report or stale
+    assembly/certificate
+    cannot mint a new
+    current proof.
+13. An external proof
+    artifact with exact
+    statement, axioms,
+    backend and checker
+    is reverified in
+    the declared
+    admissible scope;
+    changed axioms,
+    malformed proof,
+    unsupported syntax
+    or exit-code-only
+    success cannot
+    create the claim.
+14. A valid abstract
+    Claim proof may
+    coexist with an
+    independently
+    qualified physical
+    implementation
+    witness; an
+    unguarded actual
+    XTDB writer is
+    not made safe
+    by the kernel
+    theorem.
+15. Retired browser
+    owner/resource
+    cannot mutate
+    a reused target;
+    proof-term
+    reuse or matching
+    artifact ID
+    is not
+    effect-time
+    permission.
+16. Genuinely eligible
+    HumanHelp Claim
+    and the other
+    independently required
+    lifecycle/product
+    positives remain
+    executable; a
+    reject-all source
+    machine is not
+    accepted as a
+    completed product.
+
+Each case names the original source,
+selected proof checker and
+quantified domain, exact
+positive control and mutant,
+first rejecting or enforcing
+boundary, actual evidence
+class, remaining premises
+and independently observed
+effect where physical
+correctness is claimed.
+A theorem that is
+still open or a
+tool run that was
+not performed
+must be reported as such.
+
+**** Order later formal targets by the trust gap they eliminate
+
+After the propositional theorem and its concrete
+checker-binding work, expand only where a
+specific original-source judgment and transfer
+edge can be defined. Appropriate later
+subjects include:
+
+- typed-rule evaluation and semantic
+  preservation of proposition
+  normalization/atom meaning;
+- guarded-transition consequence
+  and simultaneous assignment/
+  presence-aware frame rules;
+- source-complete conditional
+  induction and exact certificate
+  premise substitution;
+- role-local knowledge/provenance
+  and protected authority
+  non-escalation;
+- conservative progression/
+  observation algebra and
+  requirement discharge;
+- global-to-local Choreo
+  projection and portable
+  executable-plan lowering;
+- browser adapter/resource
+  refinement and selected
+  physically enforced
+  authorization/XTDB
+  transitions.
+
+Theorem selection is driven by
+the original operation language,
+the size of the remaining
+trusted base, independent
+counteroracles and real
+correspondence needs.
+A formal theorem for one
+closed calculus cannot
+automatically cover arbitrary
+host-language conditionals
+or all multi-node schedules.
+The aspiration is high
+assurance of the original
+source and deployed
+application, without
+forcing developers to
+author formal syntax or
+pretending the full
+general-purpose Clojure
+runtime has been proved.
