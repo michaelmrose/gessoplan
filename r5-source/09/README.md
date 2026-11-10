@@ -9,9 +9,9 @@ proof rules, identifiers, link targets or whitespace were changed.
 The canonical publication is derived output, not a second source
 to edit independently.
 
-**Review status:** **09.01–09.14 substantively reviewed** against R4,
+**Review status:** **09.01–09.15 substantively reviewed** against R4,
 Gesso v1622 and accepted Parts I–VIII, with source decisions recorded in
-the numbered preservation audits. Sections **09.15–09.16** remain for
+the numbered preservation audits. Section **09.16** remains for
 substantive review. Whole-part reconciliation and independent Part IX
 candidate acceptance remain outstanding. Parts I–VIII are accepted R5.1 design
 candidates; this is not evidence of a completed runtime/proof system.
@@ -233,6 +233,16 @@ Gesso v1622 diagnostic/preflight/opaque source limitations, and twenty
 positive/adversarial conformance pairs in the audit. Published Part IX:
 **5199 newline-split lines**, **258903 characters**.
 
-**Next:** Review **09.15 — Systematic Mutation and Conformance Corpus**
-against R4, reviewed sections 09.01–09.14, Gesso source- and runtime-checking
-oracles, and the independent product acceptance boundaries of Part VIII.
+**09.15 review:** see `09.15-r4-preservation-audit.md`.
+Retained R5's organized semantic mutation taxonomy and recovered R4's
+fresh-baseline runner, predeclared boundary and expected diagnostic,
+immutable injection point, instrumented prohibited artifact/effect checks,
+valid controls and honest incomplete/unsupported outcomes. Added source-
+required dependency closure, premise scope, real C42/XTDB provenance,
+real-browser command/target and explicit one-Refresh tests. Twenty-two
+positive/adversarial conformance pairs and Gesso v1622 independent-oracle
+precursors/nonclaims are documented in the audit. Published Part IX:
+**5696 newline-split lines**, **274982 characters**.
+
+**Next:** Review **09.16 — Developer Workflow and Completion Criteria**
+against R4, all completed 09.01–09.15 contracts and accepted Parts I–VIII.
