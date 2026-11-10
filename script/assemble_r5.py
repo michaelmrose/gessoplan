@@ -6,7 +6,7 @@ Usage:
     python3 script/assemble_r5.py --write
 
 The twelve published parts retain their established root filenames during
-R5 candidacy. Parts I–VIII have independently checkable sectional sources.
+R5 candidacy. Parts I–IX have independently checkable sectional sources.
 """
 from __future__ import annotations
 
@@ -48,6 +48,7 @@ FIFTH_SOURCE_DIR = ROOT / "r5-source" / "05"
 SIXTH_SOURCE_DIR = ROOT / "r5-source" / "06"
 SEVENTH_SOURCE_DIR = ROOT / "r5-source" / "07"
 EIGHTH_SOURCE_DIR = ROOT / "r5-source" / "08"
+NINTH_SOURCE_DIR = ROOT / "r5-source" / "09"
 SECTIONS_PART_THREE = (
     "03.01-what-a-choreography-is.org",
     "03.02-coordination-vocabulary.org",
@@ -167,6 +168,25 @@ SECTIONS_PART_EIGHT = (
     "08.15-completion-and-final-invariant.org",
 )
 
+SECTIONS_PART_NINE = (
+    "09.01-governing-compositional-contract.org",
+    "09.02-claims-judgments-and-semantic-interfaces.org",
+    "09.03-closed-rule-language-foundations.org",
+    "09.04-rule-refinement-and-opaque-boundaries.org",
+    "09.05-judgment-contracts-and-proof-kernel-foundations.org",
+    "09.06-proof-facts-guarded-consequence-and-induction.org",
+    "09.07-finite-checking-and-checker-trust.org",
+    "09.08-distributed-admissibility-and-projections.org",
+    "09.09-certified-construction-and-admission.org",
+    "09.10-dependency-composition-and-identity.org",
+    "09.11-assumption-propagation-and-discharge.org",
+    "09.12-production-realization-correspondence.org",
+    "09.13-humanhelp-compositional-pilot.org",
+    "09.14-profiles-diagnostics-and-policy-review.org",
+    "09.15-mutation-and-conformance-corpus.org",
+    "09.16-developer-workflow-and-final-invariant.org",
+)
+
 FIRST_PART = ROOT / "gesso-unified-design-canonical-r4-01-foundations.org"
 SECOND_PART = ROOT / "gesso-unified-design-canonical-r4-02-semantic-model.org"
 THIRD_PART = ROOT / "gesso-unified-design-canonical-r4-03-choreography-and-projection.org"
@@ -175,6 +195,7 @@ FIFTH_PART = ROOT / "gesso-unified-design-canonical-r4-05-provisional-state-and-
 SIXTH_PART = ROOT / "gesso-unified-design-canonical-r4-06-browser-realization-and-recovery.org"
 SEVENTH_PART = ROOT / "gesso-unified-design-canonical-r4-07-whole-application-construction.org"
 EIGHTH_PART = ROOT / "gesso-unified-design-canonical-r4-08-humanhelp-proving-application.org"
+NINTH_PART = ROOT / "gesso-unified-design-canonical-r4-09-compositional-certification.org"
 OUTPUT = ROOT / "output" / "gesso-plan-v5.org"
 
 
@@ -242,14 +263,22 @@ def part_eight() -> str:
     return text
 
 
+def part_nine() -> str:
+    pieces = [(NINTH_SOURCE_DIR / name).read_bytes() for name in SECTIONS_PART_NINE]
+    text = b"".join(pieces).decode("utf-8")
+    if text.count("* Part IX — Compositional certification\n") != 1:
+        raise SystemExit("Expected exactly one Part IX root heading")
+    return text
+
+
 def whole_plan(first: str, second: str, third: str, fourth: str, fifth: str,
-               sixth: str, seventh: str, eighth: str) -> str:
+               sixth: str, seventh: str, eighth: str, ninth: str) -> str:
     remaining = [
         (ROOT / f"gesso-unified-design-canonical-r4-{i:02d}-"
          f"{NAMES[i]}.org").read_text(encoding="utf-8")
-        for i in range(9, 13)
+        for i in range(10, 13)
     ]
-    return first + second + third + fourth + fifth + sixth + seventh + eighth + "".join(remaining)
+    return first + second + third + fourth + fifth + sixth + seventh + eighth + ninth + "".join(remaining)
 
 
 NAMES = {
@@ -281,12 +310,14 @@ def main() -> None:
     sixth = part_six()
     seventh = part_seven()
     eighth = part_eight()
+    ninth = part_nine()
     if args.check:
         for part, assembled in ((FIRST_PART, first), (SECOND_PART, second),
                                 (THIRD_PART, third), (FOURTH_PART, fourth),
                                 (FIFTH_PART, fifth), (SIXTH_PART, sixth),
                                 (SEVENTH_PART, seventh),
-                                (EIGHTH_PART, eighth)):
+                                (EIGHTH_PART, eighth),
+                                (NINTH_PART, ninth)):
             if part.read_bytes() != assembled.encode("utf-8"):
                 raise SystemExit(
                     f"{part.relative_to(ROOT)} differs from its numbered source"
@@ -301,14 +332,16 @@ def main() -> None:
     SIXTH_PART.write_bytes(sixth.encode("utf-8"))
     SEVENTH_PART.write_bytes(seventh.encode("utf-8"))
     EIGHTH_PART.write_bytes(eighth.encode("utf-8"))
+    NINTH_PART.write_bytes(ninth.encode("utf-8"))
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
-    OUTPUT.write_text(whole_plan(first, second, third, fourth, fifth, sixth, seventh, eighth), encoding="utf-8")
+    OUTPUT.write_text(whole_plan(first, second, third, fourth, fifth, sixth, seventh, eighth, ninth), encoding="utf-8")
     print(f"Updated {FIRST_PART.relative_to(ROOT)}, "
           f"{SECOND_PART.relative_to(ROOT)}, {THIRD_PART.relative_to(ROOT)}, "
           f"{FOURTH_PART.relative_to(ROOT)}, "
           f"{FIFTH_PART.relative_to(ROOT)}, {SIXTH_PART.relative_to(ROOT)}, "
           f"{SEVENTH_PART.relative_to(ROOT)}, "
-          f"{EIGHTH_PART.relative_to(ROOT)} and {OUTPUT.relative_to(ROOT)}")
+          f"{EIGHTH_PART.relative_to(ROOT)}, "
+          f"{NINTH_PART.relative_to(ROOT)} and {OUTPUT.relative_to(ROOT)}")
 
 
 if __name__ == "__main__":

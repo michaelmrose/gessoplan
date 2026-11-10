@@ -9,9 +9,9 @@ proof rules, identifiers, link targets or whitespace were changed.
 The canonical publication is derived output, not a second source
 to edit independently.
 
-**Review status:** **09.01–09.08 substantively reviewed** against R4,
+**Review status:** **09.01–09.09 substantively reviewed** against R4,
 Gesso v1622 and accepted Parts I–VIII, with source decisions recorded in
-the numbered preservation audits. Sections **09.09–09.16** remain for
+the numbered preservation audits. Sections **09.10–09.16** remain for
 substantive review. Whole-part reconciliation and independent Part IX
 candidate acceptance remain outstanding. Parts I–VIII are accepted R5.1 design
 candidates; this is not evidence of a completed runtime/proof system.
@@ -173,6 +173,13 @@ witnesses, quantified trace refinement and qualified progress. Twenty
 paired positive/adversarial cases and Gesso v1622 Choreo source evidence
 are documented separately from the timeless normative design.
 
-**Next:** Review **09.09 — Certified Construction and Admission**
-against R4, the current source-issued certificate path, and accepted
-Parts I–VIII.
+**09.09 review:** see `09.09-r4-preservation-audit.md`.
+Retained R5 source-issued handles and efficient immutable reuse while
+recovering R4 original-source construction, independent complete obligations,
+conditional/non-vacuous claims, typed admission, coherent issuance,
+consumer-controlled freshness and durable checking. Eighteen paired positive/
+adversarial cases and Gesso v1622 precursor/nonclaim boundaries are in the
+audit. Part IX now has **3476 newline-split lines** and **185969 characters**.
+
+**Next:** Review **09.10 — Dependency Composition and Semantic Identity**
+against R4, Gesso dependency/freshness code and accepted Parts I–VIII.
