@@ -5,6 +5,26 @@ The notation is descriptive; production terms use closed, versioned data schemas
 Their implementation may be split among focused checkers, but their meaning and
 admission result cannot be left to each caller's interpretation.
 
+A judgment is a versioned, typed relation between named *original*
+semantic sources, its input context and the exact proposition it establishes.
+For each admitted family the standard defines: accepted source and
+elaboration form, nominal variable/subject identities, required context and
+dependencies, the deterministic meaning of the conclusion, finite or
+unbounded scope, checking and inference rules, coverage obligations, permitted
+assumptions, statuses, resource limits, and its current applicability.
+Implementation namespaces may divide these responsibilities, but a caller
+cannot supply a preferred truth/status field and thereby select the result.
+
+The finished Gesso API retains a distinction between a raw declaration,
+a parsed or typed *description*, a checked derivation or dedicated
+checker result, a source-bound admitted certificate, and a runtime
+observation/effect. Each stage needs its own authority boundary.
+An immutable Clojure map, matching fingerprint or old proof report is not
+a substitute for an issued current checked result. Application authors
+normally express ordinary Clojure/Gesso rules; proof terms and ledger
+bookkeeping are generated and checked by Gesso rather than separately
+hand-maintained by HumanHelp authors.
+
 | Judgment | Inputs and conclusion | Required coverage |
 |----------+-----------------------+-------------------|
 | Rule typing | Reader types and path refinements establish a Boolean expression with safe reads. | Every expression node, actual reader, operator, and refinement use. |
@@ -15,6 +35,73 @@ admission result cannot be left to each caller's interpretation.
 | Distributed admissibility | A rule/action is permitted at the specified role and program point. | Knowledge, provenance, authority placement, refinements, observation scope, and relevant resource/continuation cases. |
 | Projection/lowering correspondence | The actual projected/lowered subject satisfies the named correspondence relation. | All required behaviors/observables under the declared communication and runtime semantics. |
 | Certificate composition | Checked evidence establishes required claims for the actual dependency closure and selected profile. | Both graph validity and source-derived required dependencies/obligations. |
+
+Each judgment also declares the scope it *does not* establish.
+An intrinsic Boolean rule does not imply distributed role knowledge;
+a propositional derivation cannot prove the truth of an atomic business
+fact from its type; abstract guarded consequences cannot assert that
+a specific XTDB transaction ran; and a matching generated plan does
+not prove its deployed browser artifact is the matching physical
+program. Required bridge judgments connect those distinct subjects,
+preserving their open assumptions instead of laundering them into
+one "verified" label.
+
+*** Obligation generation is independently checked
+
+For each claimed artifact class, a source-derived checker must establish
+that the required obligation ledger is complete for the original
+normalized subject and requested profile. Validating every derivation
+the elaborator volunteered is insufficient. The ledger covers every
+declared operation, relevant reachable branch, declared reader/effect,
+message and continuation case, initial state, protected resource exit,
+public semantic dependency, and independently required product
+capability *within the selected guarantee*. Requiring a dependency to
+be covered does not imply that the checker has inspected an arbitrary
+Clojure implementation body or all physical writers; the latter
+remain separate coverage/conformance premises.
+
+A missing branch cannot make a theorem easier. If a source retains
+both an approved and not-approved Claim branch but the proposed
+obligation list contains only the approved branch, coverage checking
+rejects the stronger artifact before certificate issuance. A proof
+about a Claim-only operation catalog also does not satisfy
+HumanHelp's independently required Reassign capability. The
+accepting boundary derives or checks required coverage against
+the original source and public capability contract, not merely
+against the elaborator's own submitted proof tree.
+
+A judgment over a truly restricted model may legitimately pass
+while a larger required application proof remains open. Such a
+result records its actual subset, justified exclusions, opaque
+external calls, relevant writer set, completeness assumptions,
+and whether the expected next stage may consume it. In particular,
+"unreachable branch" requires an appropriate checked
+unreachability argument, not a missing test or a hard-coded
+assumption that a UI button is disabled.
+
+*** Results, failed proofs and assurance scope
+
+Judgment outcomes distinguish: checked with no logical premises
+under the specified calculus; checked conditionally with named
+premises; a model counterexample to a stated property (where the
+dedicated checker can establish one); invalid syntax or derivation;
+unsupported language/assurance request; incompletely checked
+resource-limited exploration; mismatched or stale source/dependency;
+and unavailable physical/trusted evidence. A checked conditional
+conclusion remains conditional even if an operator has accepted
+the premises for a particular deployment profile.
+
+A counterexample to a *claimed model invariant* is not the same
+thing as a malformed proof term, an incomplete search, or a
+misstated HumanHelp business policy. Likewise the absence of
+a finite counterexample is not evidence about unenumerated
+states, external writers or the actual deployed browser.
+Diagnostics identify the exact proposition, original source,
+first responsible checker, relevant context, status, dependencies,
+and what must be repaired or qualified; they redact protected
+data for the recipient. A result accepted only under a
+named opaque premise does not get reported as a
+discharged unconditional theorem.
 
 Each judgment has positive, negative, unsupported, and resource-limit conformance
 cases as applicable. Parser rejection, a checker report, certificate admission,
@@ -38,6 +125,26 @@ all model exploration, database refinement, browser effects, and every future
 theory. Dedicated checkers can establish different judgments and participate
 through explicit bridges.
 
+The kernel's trusted surface includes the chosen logical interpretation,
+its parser and typed subject representation, every primitive inference
+rule and side condition, the checked implementation and relevant
+runtime/representation assumptions. Keeping the kernel small makes
+review possible, not automatically sound. Checker meta-soundness and,
+where stronger assurance is requested, an independent mathematical
+or mechanized argument and adversarial conformance evidence are separate
+obligations. A proof-producing elaborator and a checker that simply
+calls back into that same elaborator cannot count as independent
+fault containment.
+
+For proof admission, the kernel recomputes the expected conclusion
+and inherited premises from the actual original proof steps. It
+does not trust user-provided =:conclusion=, =:valid?=,
+=:proof-status=, a compiled-report hash, or a
+previously checked but changed derivation. The certificate issuer
+subsequently checks required dependency/current-source bindings
+and the requested assurance scope; the kernel does not
+issue an application execution credential.
+
 *** Baseline propositional language
 
 The propositional layer has =true=, =false=, typed Boolean atoms, negation,
@@ -46,11 +153,49 @@ well-typed rule declaration. The proposition binds one exact semantic subject
 and one nominal variable context; declared variables equal the actual union of
 atom readers in the accepted source.
 
+All proposition constructors have closed grammar and exact arity:
+=[:true]=, =[:false]=, a typed =[:atom rule]=,
+unary =[:not p]=, binary =[:implies p q]=, and
+at-least-binary =[:and ...]= and =[:or ...]=. Every
+atomic rule is rechecked against its declared nominal
+variable context, reader types and original source;
+undeclared and unused variables are rejected. The
+finite source and proof budget is part of the checker
+profile. An unsupported term cannot execute arbitrary
+Clojure or be interpreted as an implicit theorem.
+
+An atomic rule denotes a Boolean proposition only under its
+specified interpretation. Its typecheck does not supply
+the atom's truth; logical constants remain distinct from
+runtime evidence that an Organization policy actually holds.
+In particular, introducing a *premise* =[:false]=
+produces a conditional derivation dependent on that
+premise, not an unconditional contradiction or proof
+that the system's current state is inconsistent.
+
 Propositional connectives express logic. They are not the rule interpreter's
 control-flow operators. In particular, a presence atom in the antecedent of a
 propositional implication does not make an otherwise ill-typed consequent atom
 safe. Put that guarded evaluation inside one well-typed rule atom, or use a
 separately specified refinement-aware proof judgment.
+
+This independence rules out a subtle unsoundness: the proposition
+=[:implies [:atom present?] [:atom unsafe-read]]= is
+not well typed if the second atom's reader is optional and
+has not been safely refined *inside that atom*. A logical
+implication can reason about two already well-typed
+Boolean propositions, but does not import the rule
+interpreter's short-circuit presence facts across
+separate atom boundaries. Later refinement-aware proof
+constructors must make the stronger relation explicit
+and prove its typing/evaluation meaning.
+
+Logic here permits ordinary reuse of established
+propositions; it does not imply consumption or duplication
+of runtime resource leases. Section 09.06 owns
+resource-sensitive transition consequences and the
+proper treatment of actual one-use authority, and
+Part V owns physical effect/ownership lifetimes.
 
 The minimal inference catalog is:
 
@@ -64,17 +209,155 @@ The minimal inference catalog is:
 | Implication elimination | P implies Q, and P. | Q, with exact antecedent matching. |
 | Disjunction introduction | P. | A well-formed disjunction whose checked indexed child is exactly P. |
 
+Each rule is a *constructor-specific checked inference*, not
+a generic "trust this consequence" function. Premise introduction
+preserves the exact named premise dependency; truth introduction
+uses no premises; implication reflexivity proves only
+=[:implies P P]= for the exact same well-formed P.
+Conjunction introduction maintains the declared ordered
+conjuncts; elimination uses a checked valid index.
+Modus ponens requires the exact antecedent match and
+ordered implication/antecedent inputs; disjunction introduction
+checks the requested child position and well-formed whole
+disjunction. These rules do not assert independent
+truth of an atomic =P= and contain no magic closure
+under semantic or arithmetic equivalence.
+
+This catalog intentionally does not include
+an unchecked "assert" axiom, arbitrary atomic truth,
+a parser shortcut for falsehood elimination,
+natural-deduction hypothetical discharge,
+untrusted rewriting or a Clojure callback that
+can register additional inference tags.
+A further rule is admitted only after a
+separate rule semantics/soundness obligation,
+source schema, exact subject/variable matching,
+conformance corpus and checker-version upgrade.
+
 Proof steps have unique identities and can reference only earlier steps. The
 final checked step must establish the exact goal. Premise dependencies are
 computed through the used steps. The baseline rejects unused proof steps and
 unused declared premises, making an allegedly relevant premise or hidden dead
 proof fragment visible rather than silently carrying it along.
 
+Each step has a unique identity, a recognized rule-specific exact
+source shape, only references to earlier steps, an explicit
+conclusion bound to the same proposition subject/context, and
+verified side conditions. The final step must equal the stated
+goal under the checking relation. The checker computes
+all *reachable* step dependencies from the final goal and
+rejects unused declared steps or premises rather than
+letting dead proof fragments conceal a forged assumption
+or apparently discharged obligation. This also prevents
+simple cyclic, self or forward references from appearing
+as an admissible finite proof DAG.
+
+A valid propositional derivation with no named premises
+is a no-premise judgment under this stated logical
+calculus. It is *not* automatically a theorem
+about the executable state machine or the physical
+database, and it does not establish the kernel's own
+meta-soundness. A proof with named premises retains
+each exact one even when the premise is a Boolean
+constant or an opaque business-policy statement.
+A dependency graph of certificates may itself
+not close a circular logical justification
+without an explicitly checked induction or
+fixed-point rule.
+
 This catalog has no arbitrary atomic-truth rule, no arithmetic solver, no
 hypothetical-context discharge, and no rewriting by an unproved equivalence.
 Additional rules require explicit source schemas, interpretation, side conditions,
 soundness obligations, and conformance cases. They cannot be installed through
 an application-supplied “trusted inference” callback.
+
+*** What a checked derivation actually certifies
+
+The checked conclusion has a versioned logical subject and
+nominal variable context. It is logically about those
+propositions under the accumulated premise environment.
+The framework separately checks whether the original
+Gesso model/Choreo/operation, the generated abstract
+projection, and the actual application runtime are
+the *same relevant semantic subject*. Source-to-proof
+elaboration, proof-to-operation relation, and
+operation-to-deployed XTDB/browser behavior are distinct
+bridges. If any required bridge is absent,
+the derivative claim remains conditional/open.
+
+A trusted application consumer validates the current
+certificate's issuing checker, source dependencies,
+selected profile and applicability. A map reconstructed
+from serialized EDN with a copied certificate ID is
+not an admitted checked value. Even a valid local
+proof certificate grants neither an authenticated
+session principal, current database permission
+nor a physical browser installation permit.
+
+*** Fault containment against a buggy elaborator
+
+The architecture is tested with defects injected at
+the *actual proposed* boundary, not fake isolated
+checker data invented to look like the application.
+A large elaborator may generate an invalid derivation,
+an incomplete obligation set, or valid proof data for
+the wrong normalized source. These are three different
+failures with different responsible checkers.
+
+#+begin_example
+1. Invalid derivation:
+   Helper Claim branch asks for private-review fact.
+   Elaborator emits :knowledge-from-global-syntax.
+   Small kernel: unknown rule; no knowledge theorem.
+
+2. Omitted required obligation:
+   Normalized source retains Claim and Deny branches.
+   Elaborator proposes evidence only for Claim.
+   Source-derived coverage checker: missing Deny/continuation.
+   No certificate for the requested closed construction.
+
+3. Valid proof for wrong executable:
+   Certified subject S1 and proof are legitimate.
+   Lowering actually emits S2 but copies S1's stamp.
+   Source/projection/executable correspondence rejects.
+   The proof kernel did not inspect the emitted plan.
+#+end_example
+
+These cases must not be credited to a kernel that
+does not inspect the relevant defect. In particular,
+all volunteered proof steps can be correct while
+the required branch/operation ledger is incomplete;
+an entirely valid kernel theorem about S1 can
+coexist with a faulty or substituted executable S2.
+A stronger deployed correspondence claim must
+also check the actual served browser assets,
+installed Ring/Biff handler, guarded XTDB
+writer boundary and authorized observation
+where those are required.
+
+*** Positive and adverse proof-kernel acceptance
+
+At minimum acceptance exercises the concrete
+conditional derivation below and a truly premise-free
+truth/reflexivity proof; correct conjunction/
+disjunction introduction/elimination and exact
+implication elimination; false as an *open*
+named premise; two distinct nominal contexts;
+a malformed or omitted rule argument; an
+unknown rule; a forward/self reference;
+unused step/premise; a copied source report
+or forged certificate; a changed checker
+version; oversized input/terminated checking;
+and a well-typed rule atom improperly relying
+on refinement from a different proposition.
+
+Each negative names the first enforcing
+boundary and preserves a nearby admitted
+positive. An unsupported arithmetic relation
+is not "proved false" when the kernel lacks
+an arithmetic rule; it is an unsupported
+judgment until a dedicated checker provides
+a separately qualified bridge.
 
 *** A concrete conditional derivation
 
@@ -113,6 +396,16 @@ that eligibility holds, that the policy implication is the right product rule,
 or that either is satisfied by a particular request. Removing the eligibility
 step, changing its subject, changing the policy antecedent, or relabelling the
 goal must fail the appropriate check.
+
+This is an authentic *conditional* proof of Q, not proof
+of either assumption's actual validity, correctness of the
+business-owner's policy, the original application
+elaboration, execution of an appropriate Request
+transition, or browser knowledge. The separate
+qualification path must still establish required
+premises at their true model/transaction/acquisition
+boundaries and prove or explicitly assume the
+applicable implementation correspondence.
 
 An atom whose rule compares an integer with 7 remains an atom to this kernel.
 The kernel cannot infer that =x > 7= entails =x >= 7= merely because a human sees

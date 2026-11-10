@@ -9,9 +9,9 @@ proof rules, identifiers, link targets or whitespace were changed.
 The canonical publication is derived output, not a second source
 to edit independently.
 
-**Review status:** **09.01–09.04 substantively reviewed** against R4,
+**Review status:** **09.01–09.05 substantively reviewed** against R4,
 Gesso v1622 and accepted Parts I–VIII, with source decisions recorded in
-the numbered preservation audits. Sections **09.05–09.16** remain for
+the numbered preservation audits. Sections **09.06–09.16** remain for
 substantive review. Whole-part reconciliation and independent Part IX
 candidate acceptance remain outstanding. Parts I–VIII are accepted R5.1 design
 candidates; this is not evidence of a completed runtime/proof system.
@@ -121,7 +121,7 @@ non-discharge, public model-interface ownership, exact versus implementation
 identity, and original-source report/certificate trust boundaries.
 Fourteen positive/adversarial scenarios and current Gesso precursor scopes
 are recorded separately from the timeless normative requirements.
-The published Part IX now has **2,255 lines** and **126,588 characters**.
+The published Part IX now has **2,548 lines** and **140,789 characters**.
 
 **09.03 review:** see `09.03-r4-preservation-audit.md`.
 Preserved the strict data-only AST, exact nominal reader/type footprints,
@@ -139,5 +139,13 @@ semantic-policy escapes, and explicit relational extension judgments.
 Eighteen paired acceptance challenges and Gesso v1622 implementation
 boundaries are recorded in the source-preservation audit.
 
-**Next:** Review **09.05 — Executable Judgment Contracts and
-Proof-Kernel Foundations**, including the first closed proof rules.
+**09.05 review:** see `09.05-r4-preservation-audit.md`.
+Reconciled executable judgment signatures, distinct admissibility/result
+classes, independently generated obligation coverage, the bounded small
+propositional proof kernel and its meta-soundness boundary, strict proof
+DAG/premise discipline, and three different elaborator/coverage/lowering
+fault-containment failures. Eighteen positive/adversarial challenges and
+Gesso source correspondence are retained in the audit.
+
+**Next:** Review **09.06 — Proof Facts, Guarded Consequence and Induction**
+against R4 and Gesso's abstract transition and induction implementations.
