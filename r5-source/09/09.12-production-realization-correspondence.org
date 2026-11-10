@@ -1,87 +1,429 @@
 ** Binding proof claims to production realization
 
-Certification must meet the construction and installation boundaries of
-[[#req-application-assurance-claims]]. A good proof about an uninstalled or
-semantically different program does not make the real application correct.
+A checked theorem about an abstract source is not automatically a theorem about
+the program running in XTDB, Ring/Biff, HTMX or the browser. Certification must
+cross the construction and installation boundaries of
+[[#req-application-assurance-claims]] with an explicit, directional
+correspondence argument. The finished Gesso framework must make the strongest
+supported relationship between source, checked semantics, executable artifacts,
+installed entrypoints and observed physical effects mechanically inspectable,
+without pretending that the existence of a certificate, matching name or stamp
+establishes their equality.
+
+The source-relative semantic judgment, the implementation-binding judgment,
+the installed application/asset judgment and the actual occurrence judgment
+have different owners. An admitted proof may be reused after its concrete
+implementation correspondence expires, but no consumer can silently strengthen
+its scope. Failure to establish one edge leaves that edge open, rejects a
+profile requiring it, or yields a separately requested weaker claim; it cannot
+be supplied by the apparent success of adjacent edges.
+
+*** The correspondence ladder and its evidence subjects
+
+For each required path, the assembly records a typed chain of claims:
+
+| Edge | Required subject and boundary |
+|------+-------------------------------|
+| Original declarations to checked semantics | Source-owned schemas, rules, operations, writer catalog and choreography match the normalized subject and the admitted judgment. |
+| Checked semantics to issued realization | A checked constructor binds original operation, generated plan, exact implementation callable and intended adapter effect, not just labels copied into maps. |
+| Issued realization to installed host | Trusted application assembly binds actual route, handler, worker, initializer, source registration and current provider wiring to the issued callable. |
+| Installed host to physical occurrence | The actual invocation binds request/principal, selected implementation, one command/transaction context, protected effect and source-authenticated observation. |
+| Physical occurrence to abstract operation | A stated abstraction/refinement relation matches actual relevant prestate, guarded transition, outcome and observed effects to the modeled operation. |
+| Emitted browser plan to loaded execution | Generated manifest, compiled artifact bytes, serving origin, selected plan and installed browser/HTMX runtime correspond under an explicit host contract. |
+| Browser effect to adopted state | Real source, scope, permission, target/resource generation, effect admission and observed physical completion justify the specific adoption claim. |
+
+Every edge names its source, target, abstraction map if any, identity/provenance
+requirements, observable events, allowed hidden steps, failure cases, checked
+or assumed implementation semantics and expiry/requalification conditions.
+An origin-preserving structural join and one successfully replayed trace are
+legitimate *bounded evidence*. Neither automatically establishes all-path
+refinement, liveness, physical safety or complete coverage of the deployed
+application.
+
+Proof justification remains acyclic even where actual protocols, retries and
+subscriptions legitimately cycle. A success report returned by the implementation
+under test is not independently authenticated evidence of that implementation.
+The checker records the trust and independence of each observation path, not
+simply a sequence of optimistic agreement booleans.
 
 *** Source-owned construction and issued callables
 
-A useful strategy derives semantic subjects, operation catalogs, obligations,
-plans, and compatible executors from one source-owned construction. Issued
-callables retain their exact admitted plan and implementation binding. Installed
-handlers delegate to those callables through the declared trusted input and
-response mappings.
+A supported construction derives typed model/operation declarations,
+choreography, obligations, compiled plans and compatible issued executors
+from one admitted source and dependency generation. The resulting callable
+has a checked original subject, immutable operation/plan binding, source
+and profile identity and a declared effect/response contract. The public
+API should make it difficult to replace the checked executor with a
+same-shaped Clojure map or similarly named unverified function. An issued
+handle is a checked category within its trusted JVM boundary, not a
+proof that an arbitrary server process installed or invoked it.
 
-This constrains accidental drift and permits identity checks that metadata alone
-cannot supply. It does not prove that an arbitrary input-conversion callback
-selects the right principal, that a response callback preserves disclosure, or
-that the running server installed the checked handler. Those remain distinct
-contracts/evidence subjects.
+An installed Ring/Biff handler must actually delegate to the issued
+callable through checked, current request-to-input and result-to-response
+mappings. That means checking the true HTTP method/path, route dispatch,
+authenticated session/principal source, canonical argument construction,
+tenant/scope association, anti-forgery and other mandatory host gates,
+operation and command IDs, model dependencies, and the disclosure/response
+mapping. Replacing a trusted principal with a request parameter or
+turning an unknown backend outcome into success is not made safe by
+an otherwise correctly issued handler.
 
-Coverage follows effects. Non-HTTP writers, startup initialization, imports,
-administration, migrations, and background work must be represented or retained
-as explicit premises of relevant invariant claims. It is not a universal rule
-that every writer must correspond to one HTTP route or that every route writes.
+Request-local ownership is essential. An operation's command identity,
+invocation context, transaction/XTDB node, guarded source, selected
+executor and outcome evidence must be associated with the *same real
+execution*, even under overlapping and reentrant requests. An optional
+diagnostic that runs a second transaction after the real request cannot
+be combined with the first request's result to claim same-invocation
+refinement. A single global mutable controller, reentrant callback or
+stale dynamic Var must not allow one user's context to provide another
+request's authority or transaction receipt.
 
-One global single-use controller is not a substitute for per-invocation authority
-and effect ownership. Independent requests require independent bound contexts;
-reentrant or overlapping requests must not borrow each other's transaction,
-principal, or result evidence. Narrow one-request fixtures retain their narrow
-claim.
+Coverage follows *possible effects*, not merely route names. Startup
+initializers, import/migration paths, administrative commands,
+background jobs, scheduled work, external writers, direct XTDB access
+and other non-HTTP operations may alter protected state. Required
+physical-writer and initializer inventories must include or explicitly
+exclude each admitted effect-capable entrypoint under independently
+qualified source/host coverage. Not every route writes, and not every
+writer has a route. A host-enumerated list is evidence relative to its
+own actual enumeration boundary; it cannot prove it enumerated every
+external process, direct writer or dynamically selected callback merely
+by comparing with itself.
 
-*** Transaction and outcome correspondence
+*** Guarded incorporation and exact transaction causality
 
-A physical incorporation claim binds the authoritative operation, canonical
-arguments, stable command identity, principal, protected dependencies, generated
-transaction/guard realization, and actual backend outcome. Receipt of a submitted
-transaction is not necessarily evidence of successful incorporation; a generic
-post-read cannot attribute a change to this command.
+A protected incorporation claim is about a specific authoritative
+operation, actual canonical input, current actor and protected
+dependencies, permitted writer/plan, stable command identity,
+atomic guard and physically incorporated effects. These bindings
+must survive from the checked declaration to the same actual
+transaction or remain explicit open premises. A hypothetical
+prestate or caller-supplied before/after map is useful for testing
+an abstract relation but does not authenticate XTDB's internal
+transaction prestate.
 
-Runtime evidence must preserve the distinction between the actual prestate at
-the atomic boundary and a candidate pre-read. A proof over the latter applies
-to the transaction only through a qualified guard/recomputation correspondence.
-A post hoc mismatch report can reveal a defect but cannot undo an already
-performed unauthorized write; prevention needs the gate before the effect.
+The physical guard must operate at, or be qualified as equivalent
+to, the actual atomic read/write boundary. A preflight check
+on a candidate pre-read can establish only that *the candidate*
+would have been eligible. Between that read and a separate
+write, Request or Membership state can change. An admitted
+conditional guard/CAS implementation must bind required
+current authorization and state/frame conditions to the
+transaction's actual serialization and conflict behavior.
+Where the backend cannot expose or prove its internal prestate,
+the guarantee names the exact guarded-writer assumption and
+the observable failures that can test it; no unconditional
+transaction-level theorem is issued.
 
-A guarded-transition observation over caller-supplied pre/input/post values is
-an abstract relation check. It is not evidence that those values were read from
-the actual transaction. Physical evidence capture needs its own source and
-implementation binding, including what it does not observe.
+A submitted transaction, returned TransactionKey, a ledger row,
+pinned-basis poststate and a canonical durable command record
+are distinct facts. They can provide progressively stronger
+*bounded co-observation* when joined at one exact execution
+and source. However, even a matching ledger, command record
+and domain poststate can be produced through unrelated
+writers unless causal provenance, node/transaction binding
+and writer completeness are independently established.
+A copied transaction key, caller-supplied node or callback
+report does not authenticate the physical submission.
+The root report states which causal step is genuinely
+observed, which is an implementation trust premise,
+and which is unestablished.
 
-A compatible command replay must use the recorded binding and current disclosure
-check before applying guards intended only for new incorporation. Certificates
-must not encode “Request is open” as a mandatory replay precondition after a
-successful Claim. Publication and response failure do not erase a known commit.
+A post hoc discrepancy can reject an assurance claim,
+diagnose a defect or quarantine a future deployment.
+It cannot undo an unauthorized physical write that
+already occurred. If the selected strong profile
+requires prevention, a genuinely installed and
+synchronous enforcement gate must run before the
+relevant effect and must fail closed on unknown
+principal, missing authority, changed generation,
+unverified target or incompatible operation.
+Checking only after submission cannot substitute.
 
-*** Browser build, output, and installation
+*** Historical command identity, retries and outcomes
 
-The generated browser bootstrap, manifest, executable plan registry, actual asset
-bytes, and serving path are linked under Part VII's qualified build contract.
-A receipt must be produced by that construction; arbitrary matching labels or
-digests cannot prove that unknown JavaScript embeds or executes the declared plan.
+A stable command C42 and physical requests H1/H2 are
+not interchangeable identities. Compatible replay
+after a lost response must use the original command
+binding, deduplication/retention and actual historical
+outcome evidence, with a fresh disclosure check for
+the receiving principal. It must not regenerate a new
+domain write because HTTP delivery became uncertain.
 
-Concrete render evidence binds the actual expanded output, assembly, prepared
-affordances, and serialization boundary. Deferred, streamed, cached, and error
-responses preserve that checking context. The report states which effect/output
-forms are covered and which remain opaque or unsupported.
+A replayed incorporated Claim may now find Request
+in a different state, including after Reassign.
+A new-Claim guard such as “Request is open”
+must not be reapplied as a prerequisite for reporting
+a genuinely existing C42 outcome. Conversely,
+a present Request card does not tell whether C42
+incorporated historically. Backend outcomes
+=:committed=, =:rejected=,
+=:already-incorporated= and =:commit-unknown=
+remain separate from presentation
+=:accepted=, =:rejected= and =:unknown=.
+One physically observed submission must not
+be silently retried on an exception; exception
+after submission means this caller may still
+lack attribution.
 
-Browser adoption evidence follows Part VI: admitted observation, permission and
-scope, current target/resource identities, final effect admission, and physical
-completion. A pre-swap approval or HTTP completion is not completed adoption.
-A local card observation cannot discharge an unrelated collection obligation
-merely because its provider position is newer.
+Durable command record creation, domain mutation
+and publication intent require the actual declared
+atomicity or compensating contract, not inferred
+success from similar subsequent data. Outbox
+publication, invalidation fanout, provider progression,
+browser notification and physical adoption add
+separate later events. No report may equate
+queued/outbox-ready work, dispatched notification,
+received SSE message, current fact acquisition
+and completed fragment installation.
 
-*** Correspondence has a direction and a scope
+*** Browser build, response and loaded-plan correspondence
 
-Evidence that all observed physical executions matched an abstract transition
-is scoped to those observations. A universal refinement claim needs the relevant
-simulation/correspondence argument and complete effect/writer coverage under its
-premises. Matching a modeled successor from an arbitrary supplied predecessor
-is weaker than an observed adjacent physical execution history.
+The browser build contract follows original
+Choreo source through its checked projection,
+ExecutablePlan, manifest, emitted bootstrap and
+actual compiled asset bytes. Source-derived
+reconstruction or comparison of a deterministic
+emitter's output may establish a bounded build
+correspondence under its compiler/encoding
+assumptions. Copying the expected stamp to
+an unrelated bundle does not establish
+that the real asset embeds or executes the plan.
+Shared emitter/checker bugs require a separate
+independence argument or remain a named premise.
 
-Every correspondence claim states its abstraction map, actual source/target
-semantics, observable behavior, treatment of hidden steps/failures, and trust
-boundary. Where a source binding or physical observation cannot be established,
-that edge stays conditional or unestablished. The report must not infer it from
-nearby successful edges.
+The consuming assembly checks actual serving
+routes, assets and compatible host/plan/runtime
+versions, then establishes which bytes the
+browser loaded and which plan/source generation
+they activated. A generated manifest does
+not prove the production server uses it, and
+a response carrying correct metadata does
+not prove the browser installed the correct
+program. Compatibility with suspended tabs,
+retired plans and per-session resource rights
+requires fresh runtime admission.
+
+Rendered-affordance evidence must bind the
+concrete expanded Hiccup, operation identity,
+effective HTMX attributes/request target,
+response closure and final serialization.
+Checks of a supplied render are not universal
+coverage of every possible data-dependent,
+deferred, streaming, cached, exception or
+out-of-band response. The selected output
+forms must either be checked at their
+actual emission boundary or be explicitly
+outside the strong profile. A raw ordinary
+HTMX control is legitimate as such; it
+cannot silently occupy a protected
+semantic operation route or inherit the
+strong managed claim without assembly
+and effect checking.
+
+Actual DOM adoption is a physical event:
+an authenticated source/observation and
+authorized acquisition precede target-
+and scope-specific effect admission, followed
+by completion or honest partial failure.
+An =htmx:afterSwap= event or HTTP 200
+without matching current target and installed
+content is not automatically completed
+multi-target or OOB adoption. An old
+resource generation cannot restore or
+remove a newer owner's DOM, continuity
+or transport effect merely because it
+once held a valid plan.
+
+The HumanHelp creator-local Create path
+can adopt a single authorized new card
+without importing an unrelated remote
+board revision. Remote notification
+creates advisory debt, not permission
+to fetch. A one-Refresh user grant
+admits only its scoped acquisition,
+and physical completion/disclosure
+must be shown separately. A newer
+local card does not establish that
+an older whole-board query or missing
+item list is complete.
+
+*** Independent proof, physical observations and refinement
+
+The report classifies conclusions by evidence
+owner and quantifier: checked source syntax/
+typing, structural admission, abstract
+transition proof, exact finite-model
+coverage, bounded simulated trace, controlled
+physical diagnostic, authenticated
+production occurrence, installed-protocol
+correspondence, or universal refinement
+under explicit environment assumptions.
+These classes are not ordered by a single
+“more verified” bit. A valid observation
+about one controlled node is not the same
+subject as a live production handler.
+
+For an operation-to-physical refinement
+the checker specifies the simulation
+relation between abstract and concrete
+states, the allowed initial relation,
+observable operations/outcomes,
+stuttering/internal effects,
+partial-order/scheduling assumptions,
+what happens on rejection and unknown
+delivery, and how source/target traces
+are authenticated. The direction matters:
+a physical trace explained by *some*
+abstract trace is a safety/refinement
+question; existence of one executable
+example does not show that *every*
+permitted physical trace is explainable.
+A progress/correspondence theorem needs
+additional enabledness, fairness,
+delivery/retention and environment
+assumptions; no amount of finite
+examples alone establishes it for
+unbounded deployments.
+
+Real source/host observations must
+name their failure domains and
+limits. Instrumentation may miss
+unobserved bypasses, external writers,
+reordered callbacks, truncated
+ledger windows, provider-specific
+snapshot semantics or physical
+events that escaped the collector.
+Where only a process-local handle
+ties an issued executor to a
+controlled invocation, the report
+states that scope and does not
+claim live router adoption.
+Where the proven object is merely
+an abstract source graph, it does
+not borrow the producer's host
+permissions or causal evidence.
+
+*** Assembly, deployment and positive conformance gates
+
+The entire root source and application
+closure must be checked under Part VII:
+model writers and initialization,
+installed routes and workers, issued
+executors, physical host provider
+bindings, rendered controls, actual
+loaded client assets and named
+recovery/acquisition paths. Current
+source and one coherent deployment
+generation come from the trusted
+assembler, not a client-supplied
+old source plus self-consistent
+old report. The plan remains
+timeless about intended guarantees;
+Gesso source evidence belongs in
+the preservation audit and is
+not promoted into normative claims
+about which module is currently
+implemented.
+
+An accepted conditional root may
+contain outstanding external
+semantics, compiler, host, opaque
+model-policy or coverage premises
+when its profile explicitly allows
+them. A strong realization claim
+cannot accept unproven physical
+writer completeness, missing
+current enforcement, forged
+execution origin or absent
+production adoption as if they
+had been checked. A source-level
+failure cannot quietly downgrade
+the installed action to a
+different semantic category.
+
+The independent HumanHelp proving
+application remains a positive
+control: a genuinely authorized
+Claim/Unclaim/Reassign, Create,
+creator-local visibility, remote
+advisory and one granted Refresh,
+live search/selection continuity
+and declared response interaction
+must work through their real
+production model/route/browser
+boundaries. Nearby wrong-principal,
+wrong-Organization, lost-response,
+stale-plan, stale-guard, duplicate
+submission, unexpected writer and
+unauthorized-refresh cases must
+fail at their actual trusted
+enforcement points.
+
+A conformance corpus records the
+expected claim, source and
+selected profile, trusted
+observation boundary and exact
+first enforcing gate *before*
+running each test. Important
+paired cases include:
+
+- a valid source-issued handler
+  used by the current installed
+  route versus a copied handler
+  label or replaced callable;
+- a valid Request principal and
+  current guarded writer versus
+  actor data substituted from
+  request parameters or stale
+  independent pre-read;
+- one actual submission whose
+  ledger, pinned command record,
+  domain poststate and reported
+  outcome agree versus unrelated
+  co-written data or a second
+  diagnostic transaction;
+- successful known C42 replay
+  with fresh disclosure versus
+  new incorporation, stale
+  principal or invented commit;
+- an independently qualified
+  writer/initializer inventory
+  versus hidden background,
+  migration or raw XTDB path;
+- real emitted and loaded plan
+  bytes matched to the admitted
+  Choreo versus copied manifest
+  stamp or old suspended tab;
+- a valid concrete affordance/
+  response/target installation
+  versus an unobserved deferred
+  stream, wrong OOB target or
+  superseded effect owner;
+- one authorized remote
+  Refresh and scoped adoption
+  versus a second ungranted
+  acquisition or claimed
+  whole-board convergence;
+- a controlled one-execution
+  trace admitted at its actual
+  observation scope versus
+  a universal refinement
+  conclusion inferred from it;
+- a genuine eligible positive
+  Claim/Create path versus
+  reject-all admission with
+  superficially green proof.
+
+A passing abstract proof, green
+source test or successful
+controlled XTDB/Chromium scenario
+does not erase an unobserved
+production-correspondence edge.
+Conversely, production failures
+must be attributed to their real
+model, host, source, effect or
+environment boundary rather than
+credited to a checker that did
+not have that evidence.
 

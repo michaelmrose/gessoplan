@@ -9,9 +9,9 @@ proof rules, identifiers, link targets or whitespace were changed.
 The canonical publication is derived output, not a second source
 to edit independently.
 
-**Review status:** **09.01–09.11 substantively reviewed** against R4,
+**Review status:** **09.01–09.12 substantively reviewed** against R4,
 Gesso v1622 and accepted Parts I–VIII, with source decisions recorded in
-the numbered preservation audits. Sections **09.12–09.16** remain for
+the numbered preservation audits. Sections **09.13–09.16** remain for
 substantive review. Whole-part reconciliation and independent Part IX
 candidate acceptance remain outstanding. Parts I–VIII are accepted R5.1 design
 candidates; this is not evidence of a completed runtime/proof system.
@@ -201,6 +201,16 @@ assumption/kernel/certificate implementation boundary remain in the audit.
 The published Part IX now has **4003 newline-split lines**
 and **210853 characters**.
 
-**Next:** Review **09.12 — Binding Proof Claims to Production Realization**
-against R4, Gesso's actual source/physical correspondence machinery, and
-accepted Parts IV–VIII plus reviewed 09.01–09.11.
+**09.12 review:** see `09.12-r4-preservation-audit.md`.
+Reconciled the R4 root model/Choreo/ExecutablePlan/application/browser
+correspondence chain with source-owned issued callables, same-invocation
+Ring/Biff and guarded XTDB boundaries, command-specific incorporation and
+readback, non-HTTP writer inventory, compiled and actually loaded asset
+identity, scoped physical target completion and sound refinement quantifiers.
+Twenty positive/adversarial cases and Gesso v1622 diagnostics/nonclaims
+remain separately attributed in the preservation audit. Published Part IX:
+**4345 newline-split lines**, **224460 characters**.
+
+**Next:** Review **09.13 — HumanHelp Compositional Certification Pilot**
+against R4, accepted Part VIII proving-app requirements, and actual
+source/physical evidence limits from reviewed 09.01–09.12.
