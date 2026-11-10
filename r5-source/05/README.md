@@ -1,9 +1,10 @@
 # R5.1 sectional source — Part V, Provisional State and Executable Presentation
 
 **Disposition:** lossless structural preparation of preferred R5
-Part V is complete. Section 05.01 has now received its first substantive
-R4-preservation and Gesso-correspondence review, recorded in
-`05.01-r4-preservation-audit.md`; 05.02–05.13 remain unreviewed.
+Part V is complete. Sections 05.01 and 05.02 have received substantive
+R4-preservation and Gesso-correspondence reviews, recorded in their
+respective `05.xx-r4-preservation-audit.md` files. 05.03–05.13
+remain unreviewed.
 The thirteen source units reconstruct
 `gesso-unified-design-canonical-r4-05-provisional-state-and-executable-presentation.org` byte for byte. **Whole-Part-V reconciliation
 and acceptance have not begun.** Parts I–IV remain reviewed R5.1
@@ -89,6 +90,13 @@ local provisional rendering and authoritative physical adoption, and provides
 paired valid/adverse Claim and creation scenarios. The section's accepted
 scope remains editorial rather than a deployed Gesso certificate.
 
-**Next:** audit and revise `05.02-optimistic-authority-and-claim-histories.org`
-against R4, accepted Parts I–IV, the reviewed 05.01 contract and Gesso's
-browser/HTMX realization. Work one bounded substantive revision at a time.
+**05.02 review:** see `05.02-r4-preservation-audit.md`.
+The reviewed Claim histories now distinguish physical attempt failure,
+binding-scoped terminal command rejection, historical replay, current
+RequestAssignment observation, per-owner recovery and actual DOM adoption.
+Paired positive/adverse histories preserve R4's important cases while
+using Part IV's stronger authority and physical evidence contracts.
+
+**Next:** audit and revise `05.03-resolution-concurrency-and-no-downgrade.org`
+against R4, accepted Parts I–IV, reviewed 05.01–05.02 and the current
+Gesso browser implementation. One `next` is one bounded revision.
