@@ -120,11 +120,18 @@ installation and kept physical adoption separate from acquisition.
 
 **Whole-part reconciliation, pass 06:** see
 `PART-IV-cross-section-reconciliation-06-actor-authority-and-knowledge.md`.
-Distinguished historical command recovery from actor-local knowledge,
-Live subscriber permission, HumanHelp one-Refresh grants and DOM rights,
-and repaired the accidentally joined 04.16 Org heading from pass 05.
-**Whole-Part-IV acceptance remains open.**
+Separated actor-local branch knowledge from command identity, Live
+subscription, one-Refresh consent and physical DOM ownership.
 
-**Next:** reconcile branch knowledge and the alternative authoritative
-read or communication paths in Part III with command recovery in
-Part IV, then continue independent cross-part acceptance checks.
+**Whole-part reconciliation, pass 07:** see
+`PART-IV-cross-section-reconciliation-07-branch-knowledge-alternatives.md`.
+Distinguished historical C42 command-branch evidence from current
+RequestAssignment observations, and qualified when a choreography
+may replace an explicit message with an admitted authoritative read
+in 04.03, 04.08, 04.12 and 04.17. **Whole-Part-IV acceptance
+remains open.**
+
+**Next:** perform a remaining cross-part coverage and non-vacuity
+audit against Parts I–III and VIII–X, identifying any unresolved
+semantics before an independent whole-Part-IV acceptance decision.
+Continue one bounded revision per `next`.
