@@ -2165,133 +2165,305 @@ not reasons to weaken the required result.
 :CUSTOM_ID: req-browser-managed-effects
 :END:
 
-A managed effect is physical work whose ownership, permitted footprint,
-completion, and retirement behavior are part of the admitted plan. Effects may
-create resources, alter presentation, initiate transport, or request another
-owned action. They do not acquire server authority by being called managed.
+A managed browser effect is physical work whose ownership, allowed footprint,
+completion, failure, retention and retirement are part of the admitted
+application's semantic contract. It may start a timer, register a listener,
+invoke transport, install a provisional or authorized representation, capture
+continuity, persist a permitted local value or release a resource. The shell
+implements the physical work; it does not independently decide authoritative
+business results, Choreo branches, command attribution or which superseded
+execution may regain presentation ownership.
 
-*** Classify effects along independent dimensions
+The finished framework does not need to own every unrelated browser resource.
+It must, however, close *every actual mutation and callback path* that can
+affect a protected managed scope. An opaque application effect or third-party
+library is admitted under a declared contract and noninterference premise,
+not excluded from the guarantee by simply calling it "unmanaged".
+Server-side authorization and physical browser effect admission remain
+independent obligations.
 
-A single effect can be asynchronous, allocate a resource, and provisionally mutate
-DOM. These are not mutually exclusive categories. The contract records the
-relevant dimensions separately:
+*** Effect kinds have multiple independent properties
 
-| Dimension | Examples of the distinction |
-|-----------+----------------------------|
-| Footprint | Transport send, listener registration, timer, scoped DOM mutation, local storage. |
-| Semantic purpose | Provisional presentation, authoritative-observation installation, continuity, command reconciliation, diagnostic output. |
-| Owner/lifetime | Execution-private, coordinator-owned, shared subscription, durable recovery owner. |
-| Completion | Synchronous postcondition, correlated asynchronous completion, externally indeterminate result. |
-| Repetition | One-shot local mutation, repeatable cleanup, replay-safe read, deduplicated command attempt. |
-| Retirement | Abort physical work if possible, revoke future rights, detach an interest, transfer unresolved obligation. |
-| Compensation | No compensation, permitted local restoration, or a separate authoritative command with its own checks. |
+Resource, reversible, authoritative, asynchronous and ephemeral are useful
+descriptions, not mutually exclusive state-machine cases. For each admitted
+effect, the assembled application records the independently applicable
+dimensions:
 
-Installing authoritative data is a browser realization of an admitted observation.
-It does not make the DOM an authoritative domain model. A local rollback is not
-an atomic undo of a server operation.
+| Property | Required distinction |
+|----------+----------------------|
+| Kind and permitted footprint | Timer, listener, transport, provisional/authorized DOM target, continuity slot, local storage, subscription interest, or declared application-specific effect. |
+| Semantic purpose | Execution progression, provisional presentation, authoritative installation, read/advisory coordination, command resolution, optional diagnostics or cleanup. |
+| Ownership | Exact runtime, root/child effect scope, owner generation and resource instance; shared ownership is an explicit class and protocol. |
+| Issue and completion | Issued, physically committed, completed, failed, partly realized, unknown, or cancelled under an effect-specific physical postcondition. |
+| Timing and reentrancy | Synchronous host gate, immediate callback, Promise, deferred callback, host reentry and any required final-actuation permit. |
+| Repetition | Repeatable read or cleanup, once-per-physical-resource mutation, command-bound transport retry, or nonrepeatable external act. |
+| Revocation and release | Semantic removal of rights, best-effort physical cancellation, verified release, retained remnant and transferable obligations. |
+| Compensation | No compensation, legal local restoration, declared repair, or a distinct authorized server command; no universal undo. |
+| Evidence and assumptions | Proven adapter consequence, tested physical handler, external host/HTMX premise, or as-yet-unproved opaque behavior. |
 
-*** One root effect scope per execution, with explicit children
+One local DOM installation can be synchronous, reversible only until a stronger
+authoritative projection arrives, and capable of allocating listeners whose
+lifetime exceeds the installation step. A timer can be an asynchronous
+callback source and a resource requiring release. The actual authoritative
+observation remains an authority-source fact; the browser's physical
+installation is not a new trusted model mutation.
 
-Each active local execution has one root ownership scope. Child scopes may
-separate a provisional card, a presentation deadline, and other resources whose
-lifetimes differ. Coordinators and shared connections have their own named
-ownership scopes. No effect is ownerless simply because several executions may
-benefit from it.
+*** One root effect scope per execution, with explicit owned children
 
-Resource references include actual incarnation identity. Retiring one timer or
-transport cannot retire another resource that later reused the same registry key.
-Ownership transfer is an admitted semantic transition, not two unrelated writes
-that briefly leave the resource uncontrolled or doubly controlled.
+An active local execution has one admitted root effect scope, with child scopes
+for resources such as provisional presentation, its restoration permit,
+settlement timer, transport attempts, continuity capture and local asynchronous
+work. Fragment coordinators, shared SSE connections and durable command-recovery
+owners have separately declared root scopes. All current managed effects must
+be reachable through their admitted owner graph. A physical registry is a
+mapping from semantic issued resource identities to opaque host handles, not a
+second mutable model of which execution ought to win.
 
-Shared-resource release distinguishes detaching one interest from closing the
-underlying connection. A reference count can implement the policy, but the
-semantic contract must define which interests are current and how duplicate
-attach/detach events behave.
+#+begin_example
+execution E42 / generation G7
+  -> provisional card target B1 / install effect F1
+  -> settlement timer T1 / issued resource R1
+  -> physical attempt H1 / issued transport F2
+  -> local continuity slot L1 / physical capture F3
 
-*** Register before issuing; reconcile late physical handles
+board coordinator B3 / distinct owner
+  -> Live interest S9 / shared connection with explicit references
+  -> applied query Q / advisory and adoption obligations
 
-The runtime commits an effect/resource issuance record before calling the host
-API. This permits a synchronous completion to be matched to real issued work.
-It also handles the opposite race: retirement may occur before the host API
-returns its cancellation or listener handle.
+command recovery owner K8 / distinct lifetime
+  -> unresolved C42 historical attribution and resolver obligations
+#+end_example
 
-A physical registry therefore needs states such as awaiting-handle, live,
-retired-awaiting-handle, and released. When a late handle arrives, the shell checks
-whether the corresponding owner and resource instance are still current. If they
-are retired, it immediately performs the permitted release and never publishes
-the handle as a live resource.
+This ownership graph is illustrative, not a second runtime API. Sharing the
+command ID C42 does not make an old execution's timer or card current. A
+coordinator may continue after E42 retires, and K8 may retain C42 while
+E42's provisional resources are revoked. A current subscription invalidation
+is admitted by its own registered source, not by E42's private callback.
 
-A completion that arrives during registration follows the same admission gate
-as any later completion. The implementation must handle completion-before-handle,
-retirement-before-handle, duplicate completion, and exceptions after partial
-registration. A handler that promises cleanup must expose enough information to
-clean up any work it actually created.
+Each physical resource identity includes an issuing runtime, owner, generation
+and concrete incarnation sufficient to distinguish recycled timer IDs, DOM
+selectors, register slots, transport IDs and reused handle values. Equality
+of a CSS selector, numeric timer ID or current style value does not prove
+ownership. An alias between identities is permitted only under an explicit
+same-resource contract. Resource ownership transfer is a semantic transition
+with old rights revoked and a current receiving owner established; it is
+not two uncoordinated registry writes that leave a gap or dual owners.
 
-Local effect issuance and remote operation incorporation are different protocols.
-One-shot execution of a DOM permit does not provide exactly-once network delivery.
-Remote retries rely on the command binding and authoritative deduplication contract
-from Part IV.
+A shared connection has an explicit reference/interest lifecycle. Detaching
+one fragment interest must not close a connection still required by another.
+Duplicate attachment or release must not grant a new interest or decrement
+another owner's reference. Reference counting can realize the policy but is
+not itself evidence of correctly admitted subscription scopes or protected
+server disclosure.
 
-*** Semantic retirement precedes physical cleanup
+*** Issue registration precedes host work; late handles remain owned
 
-Retirement first invalidates semantic rights. Physical abort, listener removal,
-timer clearing, and temporary-node cleanup follow. Safety cannot depend on those
-physical operations succeeding immediately.
+The adapter records an *issued effect and resource instance* in committed
+semantic state before calling the physical handler. An immediate completion
+may then be correlated with the issued work, and a nested event sees the
+newly committed owner. That semantic order does not by itself close the
+physical-handle race.
 
-A late callback from a retired resource may report cleanup progress or provide
-evidence through a separately admitted surviving owner. It cannot regain the
-retired execution's right to send, settle, roll back, or install. A callback
-carrying a newer observation does not bypass this rule.
+Some host APIs return a cancellation handle only after initiating work.
+An injected scheduler may invoke its callback synchronously; a registered
+listener may trigger a callback during registration; a Promise may settle
+while the outer effect batch still holds other work; retirement may occur
+before a host call finally returns a handle. The physical registry therefore
+implements a protocol equivalent to:
 
-Cleanup is idempotent for the same issued resource instance. It uses the captured
-physical handle or an equivalently strong binding, rather than searching the DOM
-for whichever current node matches an old selector. Deleting a temporary node or
-removing a style by comparing its current value is unsafe when a later owner may
-have written an identical value. Ownership and incarnation, not value coincidence,
-control cleanup.
+| Physical state | Required treatment |
+|----------------+--------------------|
+| Issued, awaiting handle | The semantic owner and issue instance are recorded before host invocation; callback admission is already possible. |
+| Callback/completion before handle | Completion or retirement is correlated to the same issue without inventing a second live resource or losing subsequent cleanup. |
+| Handle returned for current issue | The opaque handle is registered only if the issue and owner are still current and the resource remains live. |
+| Handle returned after retirement | The handle is never published as current; release/cancel it through the retired issue's exact cleanup rights. |
+| Issue throws after partial registration | Record the actual uncertain physical footprint, attempt permitted cleanup, and preserve the originating semantic failure. |
+| Duplicate/late completion | Apply the declared duplicate/stale admission disposition; do not settle a successor resource. |
+| Release completes or fails | Mark only this resource instance released or report retained physical remnant debt; no fabricated successful cleanup. |
 
-The runtime can continue semantic recovery while best-effort cleanup remains
-outstanding, subject to resource limits. If physical remnants exceed the admitted
-budget, it may suspend new work or require a stronger reset. The debt remains
-observable; a failed abort cannot be counted as successful resource release.
+A late host return is not allowed to recreate a resource that a synchronous
+callback or nested dispatch already completed. Checking only whether the
+registry key exists *before* invoking the scheduler, then unconditionally
+associating the returned handle afterward, fails this contract. The shell
+may use an issuance cell, retired tombstone, effect-specific latch or another
+bounded mechanism with an equivalent checked transition. Tombstone retention
+must have explicit generation/reuse and resource bounds; retaining all old
+handles forever is not the intended solution.
 
-*** Rollback and continuity rights have bounded lifetimes
+Registration also precedes every irreversible protected *act*, with a
+still-current permit checked at the last controllable mutation boundary.
+An outer dispatch's effect list is not a perpetual license: an immediate
+handler callback can retire its owner before a later listed effect runs.
+A deferred effect must not write to a newer target solely because its
+completion event would later be rejected as stale. A physical action that
+crossed its declared commitment point may be partial or irreversible and
+requires actual completion/failure/repair evidence rather than fictional
+rollback.
 
-A reversible presentation effect carries a scoped restoration right. That right
-expires when its owner retires, the target is replaced, authoritative installation
-supersedes the affected scope, or the declared concurrency policy revokes it.
+Local once-only physical actuation is distinct from remote command
+incorporation. H1 and H2 can be different HTTP attempts for the same
+immutable C42 under the admitted deduplication/repetition contract.
+"Do not run this DOM effect twice" is not evidence that the server
+received exactly one request or that C42 incorporated exactly once.
 
-Continuity capture is bound to its actual capture implementation and matching
-restore contract. A later registry change cannot silently interpret an old
-capture using a different restoration function. Captures may preserve permitted
-focus, selection, scroll, or local draft state; they do not preserve obsolete
-authoritative content or arbitrary old HTML as a privileged snapshot.
+*** Semantic retirement precedes best-effort physical cleanup
 
-Authoritative supersession may retire one provisional overlay while leaving an
-unresolved command's reconciliation owner alive. Competing presentation timers
-lose their settlement rights immediately when their branch settles or is
-superseded. A separately owned command-resolution deadline may remain necessary.
-Cancelling every timer associated with the command would conflate those lifetimes.
+Retirement first revokes the execution's semantic progression, callback,
+rollback, target and pending-send rights. The host then attempts abort,
+timer clear, listener detach, temporary-node removal and continuity/resource
+release through the appropriate exact physical handles. A failed cancellation
+does not restore the old owner's rights, and a late callback cannot mutate
+the newer owner simply because it carries a stronger-looking observation
+or has the same physical selector.
 
-*** Fault containment preserves the original failure and uncertainty
+A cleanup operation is idempotent *for the same issued resource instance*
+and safe in the presence of repeated retirement, timer/settlement races,
+failed aborts and nested dispatch. Cleanup order follows declared resource
+dependencies, normally reversing acquisition order where that matters.
+Independent cleanup is best effort: if the first release throws, other
+permitted releases must still be attempted. Cleanup failures are separately
+recorded against the original owner and resource.
 
-A failure in a pure step before state commitment has not partially performed its
-abstract effects. The implementation retains the last committed state for
-diagnosis and follows the declared containment path. Where the affected owner
-cannot safely continue, it is retired through the trusted failure mechanism.
+Deleting a temporary DOM node by re-querying today's ID is unsafe if that
+ID now belongs to a successor. Resetting an applied CSS property only when
+its current value matches the old value is also insufficient: a newer owner
+can intentionally write the *same* value. Resource release must compare
+ownership/incarnation or use an exclusive physical handle/lease capable of
+distinguishing the writers. If a host API cannot provide that relationship,
+the application must explicitly limit the guarantee, serialize ownership
+or choose another safe realization; coincidentally equal values are not
+evidence of unchanged ownership.
 
-A failure after physical work begins is different. Some effects may have occurred,
-and remote incorporation may be unknown. The shell records the actual stage and
-partial work, revokes unsafe rights, preserves unresolved obligations, and runs
-best-effort cleanup. It must not rewind semantic state and blindly reissue the
-whole effect batch.
+Physical-remnant records describe attempted, completed, failed and
+indeterminate release separately from semantic retirement. The system
+must specify finite or bounded retention, instrumentation, backpressure,
+compaction and a safe degraded/unavailable state if physical remnants
+accumulate. Logical single-flight does not bound lingering XHRs, timers
+or native listeners after abort failure. An exhausted resource budget
+may stop new work without granting old callbacks permission or erasing
+unresolved command and subscription debts.
 
-Cleanup failures are secondary diagnostic events linked to the primary fault.
-They do not replace its cause, manufacture an authoritative rejection, or erase
-command uncertainty. Independent owners may continue only if their isolation
-premises still hold. Corruption of a runtime-wide registry may require retiring
-the whole runtime instance rather than one execution.
+The runtime may recover current authority and install a new target after
+semantic retirement, without waiting indefinitely for the last physical
+cleanup. That independence depends on the still-retained old effects being
+unable to act on or interfere with the new scope under the declared host
+noninterference premises.
 
+*** Restoration and continuity have narrow, expiring permits
+
+A local provisional "undo" is a scoped, guarded physical action. It may
+restore particular previously captured presentation only while the same
+current owner retains the applicable target and no stronger admitted
+authoritative or competing presentation has superseded it. A rollback
+cannot reverse server incorporation, reassign a RequestAssignment or
+overwrite a newly installed canonical card. Expiration occurs on owner
+retirement, target replacement, admitted authoritative installation,
+conflict-policy revocation or another specified semantic event.
+
+Continuity captures are opaque physical resources whose implementation
+and restore contracts are bound at capture. A changed registry of restore
+functions cannot reinterpret a stale capture as an authorized new operation.
+The supported capture may preserve focus, input draft, caret, scroll,
+details-open state, or other declared local state. It must not promote
+obsolete server data, a previous applied query, old operation bindings,
+privileged HTML snapshots or expired disclosure rights to authoritative
+state.
+
+Continuity preparation required to protect a mandatory user draft must
+run before the protected swap is allowed. Optional restoration, after
+the authoritative installation has completed, is a separate best-effort
+local effect: a failed scroll/focus restore cannot retroactively reject
+the command or undo the current observation. Delayed animation-frame
+callbacks must recheck that their capture and target owner remain current
+before touching DOM. A resource's physical released latch can prevent
+an old callback from acting, but does not replace the semantic owner
+and target-generation check.
+
+A provisional presentation timeout and a command-history resolver deadline
+may have different owners. Settlement or authoritative supersession must
+immediately revoke the former's ability to roll back, while the latter
+may persist after the local execution retires. Blindly cancelling *every*
+timer with the same command ID would lose a required unresolved-command
+recovery obligation. Conversely retaining the presentation timer because
+the command is still unresolved would risk stale physical mutation.
+
+*** Fault containment preserves original causality and honest uncertainty
+
+Failure before a pure semantic transition is committed and failure
+after physical actuation begins have different consequences.
+If an adapter step fails before commitment, its emitted effects
+have not yet been interpreted, and the last valid committed state
+is the relevant diagnostic reference. The declared failure path
+retires unsafe owner rights rather than inventing a successful
+step or blindly rewinding an already committed successor.
+
+If a physical handler throws or returns an indeterminate result
+after some actions have taken place, the runtime preserves the
+committed semantic transition and records actual attempted,
+completed, partial or unknown effects. It revokes unsafe rights,
+continues permitted independent cleanup and repair, and retains
+the original failure/command uncertainty. It must not blindly
+reissue an entire effect batch, restore a superseded DOM snapshot
+or translate a network failure into an authoritative
+=:rejected= outcome.
+
+The primary failure F and cleanup failures CA/CC have different
+provenance and ordering:
+
+#+begin_example
+primary failure F
+   -> semantic owner retired
+   -> cleanup resource A: failed CA
+   -> cleanup resource B: released
+   -> cleanup resource C: failed CC
+
+report primary F with subordinate cleanup evidence [CA CC]
+retained resource debt for A and C; no invented release
+#+end_example
+
+Reporting, observer callbacks and diagnostics are not allowed to
+select a different semantic successor. Optional observers require
+bounded, declared failure isolation; a throwing/reentrant or
+unbounded same-process diagnostic can still interfere unless the
+implementation supplies that protection. A corrupt runtime-wide
+physical registry may require retiring the entire runtime rather
+than assuming each child owner remains isolated. Independent
+owners may proceed only while their stated shared-resource and
+noninterference contracts remain true.
+
+Recovery keeps actual historical command incorporation, local
+provisional presentation, authorized current observation and
+completed DOM adoption as distinct evidence subjects. A failed
+physical cleanup does not undo C42's server Claim; a failed DOM
+installation does not prove that C42 was rejected; an expired
+recovery window does not prove the original command never ran.
+
+*** Paired managed-effect and cleanup acceptance histories
+
+The finished system must provide eligible positive cases that
+exercise real admitted host effects and nearby adverse cases
+that reach the relevant physical lifecycle. A fabricated
+success map, disabled operation or purely symbolic timer
+is not by itself a conformance witness for the deployed browser.
+
+| Eligible positive history | Adverse or incomplete history | Required conclusion |
+|---------------------------+-------------------------------+---------------------|
+| E42 issues T1 with a recorded effect instance; a synchronous test scheduler fires before returning its handle and T1 retires in the nested dispatch. | The scheduler then returns a handle and the outer frame registers T1 as a fresh live timer after retirement. | Registration-before-issue, immediate-completion handling and late-handle cleanup prevent phantom live resources. |
+| E42 starts provisional B1; its callback reenters and lets a newer E43 own B2 before the outer effect batch finishes. | A later effect from the outer batch mutates B2 using a previously issued permit for B1. | Recheck current permit at last actuation; stale callback rejection afterward is not sufficient. |
+| An exact old timer/resource handle is cancelled or released twice safely while the successor timer shares a label or registry slot. | Old cleanup looks up today's slot and cancels E43's newly installed timer. | Cleanup is instance-relative and idempotent; recycled keys do not transfer ownership. |
+| A continuity owner installs a height lock and releases it while no successor owns that style. | A newer owner writes the same =min-height= value, then old release restores a previous value by value comparison alone. | Only a valid owner/incarnation lease may restore the property; equal CSS values are not proof of same ownership. |
+| A newer authoritative card installs while E42's provisional rollback is semantically retired and a separate C42 resolver remains active. | Old settlement timer restores obsolete card content or all C42 timers are cancelled, losing the resolver deadline. | Expire presentation rights without erasing independently owned command recovery. |
+| One shared SSE connection has two admitted current fragment interests; one owner retires. | Retirement closes the entire connection or leaves the retired interest authorized to mutate its old target. | Detach only the exact interest; preserve active shared owners and their security/continuity obligations. |
+| A mandatory effect fails after partial host work; the runtime records its stage, retires the unsafe owner and attempts remaining cleanup. | The first cleanup exception aborts all releases or replaces the primary error with a fabricated command rejection. | Retain original F, subordinate CA/CC, unresolved physical debt and honest command uncertainty. |
+| A current target's admitted swap finishes, then optional scroll restoration fails or a stale animation-frame callback arrives. | The runtime undoes the canonical swap, treats continuity failure as a command failure, or lets the old RAF mutate the successor. | Preserve authoritative adoption, isolate optional restoration and revoke stale physical continuation rights. |
+| Several failed native aborts leave physical remnants while logical E42 work is retired. | The runtime asserts zero resources solely because its semantic maps are empty and continues allocating without limits. | Retain observable remnant/budget state; backpressure or require safe reset without reviving old rights. |
+
+Part VII must account for the *actual* registered handlers,
+rendered routes, third-party writers, startup paths and served assets.
+Part VIII requires positive HumanHelp Claim/Reassign and
+one-Refresh behavior through those physical paths. Parts IX–X
+distinguish finite host tests, proof-kernel claims, source
+correspondence and the real browser/transport assumptions.
 ** Async event safety
 :PROPERTIES:
 :CUSTOM_ID: req-browser-async-admission
