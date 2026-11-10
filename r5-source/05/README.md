@@ -1,10 +1,10 @@
 # R5.1 sectional source — Part V, Provisional State and Executable Presentation
 
 **Disposition:** lossless structural preparation of preferred R5
-Part V is complete. Sections 05.01–05.11 have received substantive
+Part V is complete. Sections 05.01–05.12 have received substantive
 R4-preservation and Gesso-correspondence reviews, recorded in their
-respective `05.xx-r4-preservation-audit.md` files. 05.12–05.13
-remain unreviewed.
+respective `05.xx-r4-preservation-audit.md` files. 05.13
+remains unreviewed.
 The thirteen source units reconstruct
 `gesso-unified-design-canonical-r4-05-provisional-state-and-executable-presentation.org` byte for byte. **Whole-Part-V reconciliation
 and acceptance have not begun.** Parts I–IV remain reviewed R5.1
@@ -165,7 +165,15 @@ injective canonical encoding and role-inventory obligations, and adds five
 positive/adverse cases covering ambiguous encodings, global outcomes,
 fabricated sidecars, stale host bindings and substituted deployed assets.
 
-**Next:** audit and revise `05.12-sidecar-binding-and-noninterference.org`
-against R4, reviewed 05.01–05.11, Gesso's artifact compiler and
-runtime observer implementation, and Parts IX–X proof/diagnostic
-admission boundaries. One `next` remains one bounded revision.
+**05.12 review:** see `05.12-r4-preservation-audit.md`.
+The reviewed design separates exact artifact matching from source-relative
+and checker-verified claims; retains compacted-state provenance and
+actual selected runtime locators; and qualifies fixed-input
+noninterference, observer isolation, redaction and mandatory audit work.
+Five positive/adverse pairs cover these joins.
+
+**Next:** audit and revise `05.13-sidecar-authority-and-conformance.org`
+against R4, reviewed 05.01–05.12, current Gesso artifact/runtime
+mechanisms and the independent HumanHelp/assembly acceptance contract.
+One `next` remains one revision; whole-Part-V reconciliation begins
+only after every section is reviewed.
