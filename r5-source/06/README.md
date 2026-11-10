@@ -5,11 +5,12 @@ losslessly into fifteen numbered Org units. Subsequent substantive
 reviews revise those sources and rebuild the publication by exact
 concatenation. All eight original `CUSTOM_ID` anchors remain stable.
 All **fifteen numbered sections (06.01–06.15)** have completed
-substantive R4-preservation and Gesso-source correspondence reviews,
-recorded in their matching audits. **Whole-part reconciliation and
-independent candidate acceptance remain outstanding.**
-Parts I–V are accepted reviewed R5.1 candidates. Parts VI–XII and
-the independent full-plan reconciliation remain unfinished.
+substantive R4-preservation and Gesso-source correspondence reviews.
+**Whole-Part-VI editorial reconciliation is complete**, recorded in
+`part-06-whole-part-reconciliation.md`. **Independent candidate
+acceptance remains outstanding.** Parts I–V are accepted reviewed
+R5.1 candidates; Part VI is a reconciled but unaccepted candidate,
+and Parts VII–XII and independent full-plan reconciliation remain unfinished.
 
 R4 (`main`) Part VI, 3,709 newline-split lines, is the preservation
 baseline; R5 (`r5`) Part VI, 1,481 newline-split lines, is the
@@ -96,12 +97,12 @@ A callback or diagnostic report does not substitute for
 actual host effects, current authorization, physical adoption,
 or proof of the installed application's complete behavior.
 
-Every substantive section review will revise the full numbered
-Org file, add its `06.xx-r4-preservation-audit.md`, rebuild
-published Part VI, and verify the result. Whole-Part-VI
-reconciliation and independent candidate acceptance are
-subsequent, separate decisions. Do not shrink the finished
-specification to current Gesso implementation limits.
+All fifteen substantive sectional reviews and their matching
+R4-preservation audits are complete. The whole-part reconciliation
+is separately recorded in `part-06-whole-part-reconciliation.md`;
+independent candidate acceptance is the next decision.
+Do not shrink the finished specification to current Gesso
+implementation limits.
 
 ## Assembly and verification
 
@@ -115,10 +116,10 @@ concatenated exactly to the unchanged R5 Part VI baseline:
 **84,711 decoded JavaScript string code units** and
 **1,481 newline-split lines**. Subsequent sectional revisions
 update the canonical Part VI publication from the numbered units.
-After 06.15, all fifteen substantively reviewed units exactly
-reconstruct the **279,169-character**, **4,495-line** Part VI
+After whole-part reconciliation, all fifteen reviewed units exactly
+reconstruct the **279,742-character**, **4,503-line** Part VI
 publication, with all eight stable anchors and balanced Org
-blocks. Whole-part reconciliation is still pending. The whole-plan output remains a generated artifact,
+blocks. Independent candidate acceptance remains pending. The whole-plan output remains a generated artifact,
 not a separate editable normative source.
 
 The Python assembler was **not executed** in a local Gessoplan
@@ -249,9 +250,16 @@ application and assurance closures. The unified normative
 browser realization invariant preserves source/physical evidence,
 independent command truth, scoped adoption and safe retirement.
 
-**Next:** perform **Part VI whole-part reconciliation** across
-all fifteen section sources, R4 preservation audits, internal
-and cross-part links, source/target/permission vocabulary,
-physical/browser and trusted-provider correspondence and
-HumanHelp acceptance obligations. Independent candidate
-acceptance follows that reconciliation, not this commit.
+**Whole-part reconciliation:** see `part-06-whole-part-reconciliation.md`.
+It covers R4-to-R5.1 theme preservation, the fifteen-section
+identity/authority/physical contracts, scoped negative evidence,
+one-Refresh and interest-gap recovery, trusted server security,
+deployed host correspondence and source/trace assurance.
+It records the example-label, timeless-language and heading
+repairs applied across the numbered sources.
+
+**Next:** perform the **independent Part VI candidate-acceptance review**,
+evaluating the whole reconciled normative document for architectural
+coherence, R4 preservation, accepted Parts I–V joins and the
+finished-framework/positive HumanHelp conformance target.
+Do not mark Part VI accepted before that independent judgment.
