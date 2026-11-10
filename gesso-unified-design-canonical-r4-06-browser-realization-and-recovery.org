@@ -1893,76 +1893,273 @@ name the trust premises, actual installed subjects and
 boundaries of any opaque Clojure or browser behavior.
 *** Retirement transfers surviving obligations before cleanup
 
-Retiring a stale execution revokes its private presentation, callback, timer, and
-send rights. It does not cancel a server transaction that may already have been
-submitted, and it does not establish a rejected command outcome.
+A stale or incompatible browser execution must lose its private semantic
+rights before any of its physical resources can affect the current view or
+operation. Semantic retirement and *survival of unresolved obligations* are
+separate properties: revoking E7's timer, send, rollback and target authority
+does not establish that C77 was rejected, that a server transaction stopped,
+or that the application may forget how to resolve a possibly incorporated
+command.
 
-If unresolved command or delivery obligations must survive, retirement transfers
-them to a declared current recovery owner as one semantic ownership transition.
-Only then may the old execution's private resources be released. The transfer
-preserves binding and existing evidence without giving the new owner permission
-to reuse old DOM targets or machine locators.
+The retiring owner and a current recovery owner participate in one declared
+handoff contract. For obligations promised to survive, the handoff must
+establish both their continued ownership and the old execution's revocation.
+An implementation may establish the durable recovery record before revocation
+or use an admitted atomic handoff. It may not first erase the only recoverable
+command binding, then claim that a later best-effort callback will recreate it.
+If an atomic handoff cannot be performed, the runtime fails closed on old
+private effects, retains or reconstructs the obligation from a separately
+qualified durable source where available, and exposes any unresolved
+recovery failure. It cannot keep an unsafe old execution running simply
+to wait for successful physical cleanup.
 
-For recovery promised across page loss, a merely in-memory owner is insufficient.
-The assembly supplies durable client retention, authenticated server discovery,
-or another declared mechanism that survives the promised failure domain. If a
-retention horizon expires, the resulting unresolved/manual-reconciliation state
-is explicit; forgetting the record does not establish non-incorporation.
+| Subject | What retirement changes | What may still survive |
+|---------+-------------------------+------------------------|
+| E7 local execution and projected machine | Revokes machine progression, private send, rollback, timer, target and restoration rights. | Historical diagnostic facts, with source and retention bounds. |
+| H1 physical HTTP attempt and old timers | Requests best-effort abort/cancellation and rejects callbacks under the retired owner. | Physical remnants and uncertainty about whether H1 reached or incorporated on the server. |
+| C77 immutable command intent | Does not rewrite C77's operation, actor, arguments or historical evidence. | An authorized resolver, compatible replay/deduplication contract, unknown-outcome obligation and command-specific retention. |
+| Current authoritative entity/collection | Does not change trusted model state. | A newly acquired and installed Order/Request view under current disclosure/coverage rules. |
+| Continuity and provisional presentation | Expires obsolete restore/rollback permits and old target ownership. | Deliberately selected compatible local drafts or newer independently justified presentation under a new owner. |
+| Live and fragment coordination | Revokes retired private interest/target rights, retaining any owned shared connection according to its explicit protocol. | Subscription-gap, advisory and refresh debt transferred or re-established at the current applied query. |
+| Deployment/runtime identity | Refuses to continue unsupported machine or effect implementations. | A new admitted plan/host and resolver that intentionally supports an old historical command contract. |
 
-*** Worked example: a sleeping checkout crosses a deployment
+Logical retirement must precede or be committed independently of physical
+cleanup. The adapter invalidates execution/resource generations and exact
+target ownership; the shell attempts cancellation and release of its *captured*
+physical handles afterward. A failed abort, late XHR response or thrown
+cleanup hook is physical debt, not a resurrection of E7. A later callback
+may be admitted only as cleanup evidence, or under a separate surviving
+owner with independently justified semantics. Its old execution-private
+rights never transfer by implication.
 
-A browser running executable plan P7 submits command C77 to the admitted
-=place-intent!= operation. The server may have atomically created an Order in
-payment-pending state and durable payment work. The response is lost, so the
-browser knows only that C77 is unresolved. The tab sleeps while deployment D8
-introduces plan P8.
+This ordering also constrains recovery failure. If the new page or resolver
+cannot be loaded, E7 remains retired. A handler that throws, a storage quota
+failure, an unavailable browser location, or a failed timer cancellation
+must produce a typed visible/diagnostic state at the applicable boundary,
+not re-enable old effects or interpret the last command as rejected.
+A newer owner may begin safe independent work only while runtime-wide
+resource and isolation premises remain satisfied.
 
-On resume:
+*** Durable command recovery has an explicit failure domain
 
-1. The runtime checks P7's continuation compatibility and the current authority
-   context. If P7 may not continue, it revokes P7's private execution rights.
-2. It transfers C77's binding and recovery obligation to an admitted recovery
-   owner. It does not treat the old timeout as proof of payment or rejection.
-3. It admits the current runtime/plan and obtains the resolver contract capable
-   of interpreting C77's retained operation binding.
-4. The trusted resolver checks current permission to disclose the result. It may
-   establish prior incorporation, authoritative rejection, or continued unknown.
-5. The browser separately acquires and installs the permitted current Order
-   projection, observing its actual payment/workflow state.
-6. Further payment progression follows Part IV's durable workflow contract, not
-   the old browser's optimism or the mere success of =place-intent!=.
+The assembly declares which interruptions its recovery promise actually
+survives: a local execution replacement, page reload, tab process loss,
+device restart, offline interval, deployment rollover, account change,
+backend failover, or retention expiry are different failure domains.
+A recovery promise across page destruction cannot rely solely on an
+in-memory JavaScript closure or a pending Promise. It requires an
+appropriate durable client record, trusted server discovery/intent
+ledger, durable command-idempotency record or another specified
+surviving mechanism. These mechanisms have different privacy,
+availability and retention properties.
 
-| Resolved condition | Permitted presentation |
-|--------------------+------------------------|
-| C77 incorporated; payment remains pending. | Show the acquired pending Order and its declared recovery/progress state. |
-| Current evidence establishes the later successful payment transition. | Show the acquired completed state allowed by the Order model. |
-| Authoritative rejection is disclosable. | Present that rejection and the permitted continuation. |
-| Outcome remains indeterminate. | Preserve unknown with the declared resolver/backoff/manual path. |
-| Current user cannot receive the old result. | Use the permitted nondisclosing outcome; do not expose the record or infer rejection. |
-| The retained command contract is unavailable. | Block incompatible repetition and expose the declared recovery limitation. |
+At the command boundary, the application must preserve or permit trusted
+reconstruction of:
 
-A card displaying a similar Order is not, by itself, proof that C77 created it.
-Current-state acquisition and command attribution are separate evidence claims.
-Likewise, P8 cannot simply execute C77's old arguments using a newly changed
-operation meaning.
+- the exact C77 semantic command identity and original operation/schema;
+- authenticated actor/Organization context and immutable arguments or a
+  protected resolver reference sufficient to check the original binding;
+- the authoritative write/deduplication semantics under which another
+  attempt could be compatible, including the possible-incorporation interval;
+- existing qualified settlement, retry and readback evidence with its
+  source, scope and temporal interpretation;
+- a designated current recovery owner and trusted resolver entrypoint;
+- which retention/expiry conditions permit a strong answer, leave
+  uncertainty, or require manual reconciliation;
+- present disclosure authority and the current authorized projection,
+  which are re-established independently of the original actor.
 
-*** Recovery is a bounded, visible protocol
+A semantic command ID alone is not a credential, an original binding,
+or proof that the operation was accepted. Persisted browser bytes
+remain attacker-controllable input. They must not carry unconditional
+read permission or override the current principal, Membership,
+tenant or transaction rules. Sensitive canonical arguments may
+remain server-side; a browser may retain only an opaque lookup key
+whose use is authenticated and appropriately scoped.
 
-Every recoverable branch declares who acts next, which evidence is requested,
-what authority is needed, what can be retried automatically, and when user or
-operator action is required. A label saying recoverable is not a strategy.
+If retention is bounded, the framework must specify what evidence survives
+expiry and whether the original authoritative effect may still be pending.
+An expired deduplication window cannot silently be treated as permission
+to repeat an unknown non-idempotent operation. A missing resolver record
+is not necessarily a terminal rejected command: it can mean
+=:commit-unknown=, denied disclosure, unsupported old schema,
+expired history, or an actually proven non-incorporation, which
+have distinct consequences. A promise of eventual automatic resolution
+requires realistic fairness, provider availability, retention and
+scheduling premises; otherwise a truthful blocked/manual state is valid.
 
-The policy covers unavailable plans/assets, unsupported retained schemas,
-network failure, resolver failure, denied disclosure, expired retention,
-subscription gaps, and failed installation. It may stop in a truthful read-only,
-blocked, unknown, or manual-reconciliation state. It must not create an infinite
-reload loop or silently fall back to an incompatible old plan.
+A selected plan may be retired while the recovery ledger remains useful
+for multiple later deployments. The current plan's operation interface
+does not automatically define the old command's meaning. A surviving
+resolver must understand the exact original command and its committed
+transaction/evidence scope; compatible replay requires a named
+authoritative deduplication/repetition contract. A new command ID
+cannot be allocated just to evade an unknown C77 result and produce
+a duplicate Order or assignment.
 
-Offline duration does not oblige the system to replay every missed UI event. A
-current authorized observation may suffice for current-state presentation. Durable
-business work retains its own completion obligations regardless of how much
-intermediate UI history is discarded.
+*** Worked example: a sleeping checkout crosses deployment
 
+An authorized browser running executable plan P7 prepares and submits
+the =place-intent!= operation with semantic command C77 through one
+physical attempt H1. The trusted transaction may have created Order
+O900 in =payment-pending= state and atomically admitted durable payment
+work. That is not the same as asserting that the later payment completed.
+The network response is lost. The browser knows only that the
+historical C77 disposition is unresolved, while E7 may still hold
+a provisional "submitting" presentation and a pending retry timer.
+
+Deployment D8 makes P7's continuation incompatible with the installed
+plan P8. Alice's tab wakes after a long suspension. The supported
+runtime checks current plan/host compatibility and present
+authority context before allowing another protected send, timer
+continuation or DOM act. An =online= or =pageshow= callback is a
+wakeup opportunity, not compatibility or authorization evidence.
+
+The default safe sequence is:
+
+#+begin_example
+recoverable C77 binding/lookup is already durable,
+or its survival is established by an admitted handoff
+        |
+P7 continuation found incompatible
+        |
+retire E7 and revoke H1/timer/rollback/target rights
+        |
+attempt best-effort physical cleanup
+        |                  (physical failure may remain debt)
+admit current P8/runtime + current principal/authority
+        |
+resolve historical C77 under its old operation contract
+        |                 separately
+acquire authorized current Order O900 observation
+        |
+install the qualified current presentation
+        |
+continue durable payment/workflow monitoring independently
+#+end_example
+
+The handoff of recovery obligations and retirement of unsafe local
+rights form a safe semantic transition; physical cleanup need not
+finish before authoritative recovery can proceed. The diagram's
+steps need not impose an artificial total order between independent
+readback and current-state acquisition. A current Order may be
+known when C77 attribution remains unresolved, or C77 may be
+historically incorporated before a current Order card can be
+read or installed. Each result retains its own owner/source evidence.
+
+The trusted resolver identifies the original operation/actor and
+deduplication context, checks the current requester's permission
+to learn the result, and returns only the proposition its evidence
+supports. For illustration:
+
+| Trusted evidence and current read | Allowed presentation/recovery |
+|-----------------------------------+-------------------------------|
+| C77 is qualified as incorporated; an authorized current read shows O900 still =payment-pending=. | Show current pending Order and separate admitted payment-progress/recovery affordance; do not claim payment succeeded. |
+| C77 is incorporated and later independently qualified payment completion is observed. | Show the authorized completed state; the later workflow result is not inferred from C77's original outcome. |
+| The old command was authoritatively rejected and disclosure is currently permitted. | Present its qualified rejection and the admitted next action; do not claim the Order was created by C77. |
+| An authorized read finds O900, but no qualified causal attribution to C77 exists. | Display O900 if permitted while preserving C77's unresolved historical incorporation; similar state is not command readback. |
+| Neither incorporation nor rejection is established after H1's lost response. | Retain =:commit-unknown= and the declared resolver/backoff/manual reconciliation path; do not assign a fresh ID for blind replay. |
+| The principal changed or disclosure is denied. | Quarantine old protected display and give only an authorized nondisclosing status; no implicit C77 rejection. |
+| The original operation resolver/schema is unavailable or its retention horizon elapsed. | Block incompatible repetition, report the precise unavailable/expired/manual disposition, and avoid fabricated terminal results. |
+| P8 cannot be loaded or current resources/transport are temporarily unavailable. | Leave E7 retired; use a bounded reload/retry or safe blocked state without silently falling back to P7. |
+
+This example is deliberately about a durable business process. A
+payment-pending Order can advance while the browser is closed
+because the trusted workflow owns it; an old browser timer
+does not. The same principle applies to HumanHelp's Claim:
+a protected RequestAssignment may have incorporated even if
+the browser lost the response and its old provisional
+presentation was retired. A subsequent manager Reassign
+does not retroactively reject the original Claim. Trusted
+historical command resolution and permitted current card
+acquisition remain distinct.
+
+No part of this example creates a universal runtime
+=order-model/resolve-command= function or a concrete public
+Clojure API by implication. Actual operation admission,
+resolver schema, durable payment progression and evidence
+must be supplied by the declared application model and
+the assembled Gesso interface.
+
+*** Recovery is bounded, observable, and non-privileged
+
+A branch described as recoverable must state its recovery owner,
+required inputs/evidence, current authorizations, executable
+next actions, retry/expiry policy, progress conditions and
+terminal or manual alternatives. It cannot be satisfied merely
+by labeling a catch block =:recoverable=. Recovery must have
+a real path for eligible positive users as well as explicit
+failure states.
+
+The policy covers incompatible executable assets or protocol
+schemas, failed authenticated readback, revoked Membership,
+subscription/interest gaps, missing or stale target instances,
+partially completed DOM effects, exhausted retention, browser
+storage loss, server-side resolver unavailability, and network
+partitions. Each branch preserves the distinction between:
+
+- physical resource cleanup and logical execution retirement;
+- a historical command result and the currently acquired entity;
+- acquired data and physically adopted representation;
+- a still-pending durable business workflow and its prior
+  admission/command result;
+- uncertain command delivery and proven terminal exclusion;
+- a current recovery plan and an obsolete suspended machine;
+- permission to initiate recovery acquisition and permission
+  to disclose its protected result.
+
+Restart/reload, readback, reacquisition and reinstallation do
+not automatically erase outstanding Live interest/Refresh debt.
+An initial-load or reconnect gap must be covered by the
+applicable 06.06–06.07 source/fence/admission contract.
+A fresh initial authoritative read may be separately permitted
+as a new-page bootstrap under its declared product policy;
+it may not be billed invisibly against an exhausted prior
+one-Refresh grant.
+
+Failure to acquire a current artifact or observation may stop
+safely in =:blocked=, =:unknown=, =:read-only=, or
+=:manual-reconciliation= with an explicit reason and next
+admitted action. Automatic retries require bounded budgets,
+backoff, cancellation and fairness assumptions. A failed
+reload cannot simply schedule another unbounded reload,
+and expiry of a retry timer cannot reauthorize the stale
+execution. If the resource budget for lingering physical
+effects is exhausted, the runtime may require a stronger
+reset while retaining truth about unresolved commands.
+
+Current-state views need not replay every missed UI event
+after a long offline interval when a qualified current
+observation establishes the promised state. Systems that
+promise durable per-event processing must separately
+retain and process those event obligations. The browser
+cannot manufacture completed payment, Claim attribution,
+or an entire event history from one freshly rendered card.
+
+*** Paired retirement and recovery acceptance histories
+
+Each positive witness must exercise an eligible real application
+path and the relevant current trusted authority/physical boundary.
+An adverse case must reach the intended failure/recovery point
+rather than being rejected for an unrelated malformed fixture.
+
+| Eligible positive history | Adverse or incomplete history | Required conclusion |
+|---------------------------+-------------------------------+---------------------|
+| C77's immutable binding survives before or atomically with E7's incompatible-plan retirement; its resolver remains available under a declared retention promise. | E7 is destroyed first, the only C77 binding was an in-memory closure, and a later reload claims the command is recoverable. | Recovery has a genuinely surviving owner or a reported loss/manual state; retirement never fabricates command rejection. |
+| E7 is semantically retired, its timer/transport/target rights revoked, and physical cleanup succeeds. | Timer cancellation throws, then an old callback fires or a physical request completes after P8 starts. | Old private effects remain powerless; cleanup failure is bounded physical debt and cannot restore E7. |
+| A resolver proves C77 created pending Order O900; another qualified source later proves payment completion. | Payment success is inferred solely from =:committed= for =place-intent!= or from an optimistic checkout label. | Command incorporation and durable payment-workflow progression are separate trusted propositions. |
+| P8's current authorized Order read succeeds while historical C77 attribution remains unknown. | The presence of O900 or matching order text is taken as proof that C77 committed, or unknown is renamed rejected. | Present the current Order if permitted while retaining unresolved command attribution. |
+| A compatible replay of C77 is admitted through its original deduplication/operation schema during the retention horizon. | A new command ID is used after H1 timeout, or C77's arguments are silently reinterpreted under changed P8 operation semantics. | Permit only qualified original-binding repetition or readback; no duplicate non-idempotent incorporation. |
+| Alice's tab wakes as Bob; the current trusted resolver denies disclosure of Alice's old protected command. | Bob recovers the old result by copying a browser command ID, cached view or retained stale session label. | No unauthorized historical disclosure; keep the appropriate nondisclosing/unknown status independently of server truth. |
+| A full reload reconstructs current plan and an authorized board/read without an ungranted second remote Refresh. | A reconnect/reload secretly consumes an expired G1 one-Refresh budget or treats SSE silence as subscription continuity. | Bootstrap/recovery acquisition has explicit permission, scoped adoption and a qualified continuity fence or retained debt. |
+| A resolver is unavailable and an authorized user follows bounded retry or manual reconciliation. | The runtime enters an unbounded reload loop, silently uses P7, or converts lost history into terminal command rejection. | Stop safely with truthful blocked/unknown/manual state and declared retention/fairness premises. |
+| A supported target migration preserves permitted local draft state and rebinds its current owner. | Arbitrary old DOM capture or provisional rollback is restored after the newer authoritative target installed. | Preserve only explicitly compatible local state; never revive obsolete restoration rights. |
+
+The finished-framework behavior may require stronger durable command
+storage, server idempotency, plan retention and recovery UI than the
+present Gesso implementation. Those are normative targets and
+separately owed implementation, assembly and certification evidence,
+not reasons to weaken the required result.
 ** Browser managed effects
 :PROPERTIES:
 :CUSTOM_ID: req-browser-managed-effects
