@@ -27,9 +27,24 @@ When no one observation can satisfy both, a bundle may allow separate
 acquisitions. Bundle fulfillment does not imply a common snapshot. It also does
 not erase the distinction between acquiring evidence and adopting it.
 
+For a bundle B, =fulfills(E, B)= requires each currently outstanding obligation
+to have a specifically admitted witness in E meeting its *own* query scope,
+minimum frontier, authorized visibility and declared completion milestone. The
+witnesses need not be one read, but no witness can be counted twice for
+incompatible scopes merely because its token looks sufficiently new. An
+unsupported compact join does not make either original obligation disappear;
+the conservative bundle remains the safe alternative when it is representable.
+
 Dropping R1 because R2 supersedes it requires established entailment, including
 compatible scope and coverage. A later-looking token for another query is not
 such evidence. Unknown comparison does not authorize dropping either obligation.
+Entailment is a claim about *all admitted satisfying observations* under the
+applicable provider and semantic versions, not a guess drawn from a few equal
+payloads or previous request completions. Any proof or provider-qualified
+subsumption rule must account for scope, authorization, query version,
+valid/system-time selection, coverage and adoption milestones. Evidence that a
+particular observation satisfied two requirements is not by itself a proof that
+those requirements entail one another in every future state.
 
 Normalization preserves semantic meaning and is deterministic where stable
 identity depends on it, under the declared semantic/provider versions. If the
@@ -41,7 +56,10 @@ A stronger combined requirement may preserve safety while making acquisition
 impossible. A liveness claim must therefore establish that the strengthened
 requirement is satisfiable by the admitted read path under its declared progress
 premises. Soundness is not permission to promise eventual acquisition of an
-impossible join.
+impossible join. If no admitted read can satisfy the proposed common scope or
+basis, Gesso must retain separately satisfiable obligations where supported or
+report a typed unsupported configuration, rather than replacing achievable
+requirements with an impossible one and continuing to promise progress.
 
 *** Bounded representation and backpressure
 
@@ -66,6 +84,16 @@ resource, under an explicit retirement policy. It must not erase durable
 command uncertainty or work owned elsewhere. The reason for retiring an
 obligation is part of its lifecycle semantics, not a claim that it was satisfied.
 
+Backpressure must classify what is being bounded: physical in-flight requests,
+queued wakeups, retained distinct requirements, serialized obligation size,
+resource owners or the abstract states used in checking. A one-request limit
+bounds only concurrency; infinitely many new incomparable query scopes can
+still accumulate. A finite verification model must declare an abstraction and
+why it preserves each checked safety or progress property. Queue eviction,
+timeout, failed reads, cancelled swaps and owner replacement require explicit
+retention, transfer, qualified retirement or an unsupported result; counters
+reaching zero are not evidence of fulfillment.
+
 *** Mixed observations do not imply an aggregate snapshot
 
 A board may retain membership justified at P17 while one Request card is
@@ -85,3 +113,49 @@ without being eligible to replace the current display. Equivalent bases also
 do not make different projection schemas, principals, or query meanings
 interchangeable.
 
+*** Worked example: a later advisory during an in-flight Refresh
+
+An authorized complete HumanHelp board starts a managed acquisition A1 with
+outstanding obligation O1: acquire and adopt the current board query through
+provider-admitted frontier P18. While A1 is in flight, another relevant advisory
+adds O2 for the *same* query and adoption milestone, through P20.
+
+A1's originally captured O1 is its request-start justification; it does not
+freeze the set of outstanding obligations. On completion, the coordinator must
+evaluate the *current* obligation set against the actual admitted observation
+and its installation evidence. For the compatible board scope:
+
+| Completion evidence from A1 | O1 | O2 |
+|-----------------------------+----+----|
+| Complete board acquired through P18 and actually installed. | Discharged. | Remains pending unless a separate admissible witness satisfies P20. |
+| Complete board acquired through P21, with provider-established advancement through both P18 and P20, and actually installed. | Discharged. | Discharged. |
+| Complete board through P21, but the current browser target retired before installation. | Remains for an acquire-and-adopt milestone. | Remains for an acquire-and-adopt milestone. |
+| HTTP completion without admitted query, basis or coverage evidence. | Remains pending. | Remains pending. |
+
+A =:acquire-only= obligation may be discharged by sufficient admitted
+acquisition even when installation is denied; =:acquire-and-adopt= requires
+actual permitted adoption. The names P18/P20/P21 are illustrative opaque
+frontiers, not comparable integers. If provider evidence cannot establish
+advancement, the coordinator retains the obligations despite numeric-looking
+suffixes.
+
+This example does not dictate one browser queue layout. It requires lossless
+semantic accounting across the period in which new obligations arrive after
+the physical request begins. A failed or cancelled A1 does not automatically
+submit the original domain command again; any successor acquisition must
+retain the necessary scope and requirements without weakening authority.
+
+*** Paired combination, queue and mixed-observation acceptance cases
+
+| Admitted behavior | Adverse or unsupported behavior | Required judgment |
+|-------------------+---------------------------------+-------------------|
+| Combine two distinct scopes as an explicit conjunctive bundle. | Keep only the token that looks newer and silently delete the other scope. | Retain both obligations unless a qualified entailment proof exists. |
+| A provider establishes sound entailment for compatible requirement scope, coverage and milestone. | Comparable raw bases are treated as proof that different query, principal, or adoption requirements entail one another. | Credit only supported entailment; do not guess from basis ordering. |
+| One admitted observation satisfies two obligations according to their full contracts. | This one witness is used to claim unconditional general entailment between the two requirement types. | Distinguish observed joint satisfaction from universal entailment. |
+| A stronger combined requirement is supported by an admitted read path. | An impossible joined read replaces two individually fulfillable requirements while liveness remains promised. | Preserve separate work or return explicit unsupported configuration. |
+| In-flight A1 returns admitted P18 board evidence after later O2 at P20 arrives. | Completing A1 clears all pending obligations because it was named Refresh. | Discharge O1 on its own terms; retain O2. |
+| The returned board observation is admitted through P21 and meets both milestones, including actual adoption when required. | A browser-returned P21 label or an uninstalled response is counted as satisfying both acquire-and-adopt obligations. | Discharge only with actual authorized acquisition and installation evidence. |
+| One physical request coalesces compatible wakeups while retaining independently queued requirements. | A one-in-flight limit is treated as a proof of bounded pending debt. | Verify concurrency and retained-obligation bounds separately. |
+| A finite-state abstraction soundly preserves the property being checked. | Arbitrary real scope/identity data are collapsed to a fixed counter without a justified abstraction. | Limit the verification claim or establish abstraction correctness. |
+| An owner retirement follows a declared policy and transfers or ends only owner-scoped work. | Retirement deletes durable command uncertainty or another owner's required work. | Keep independent obligations and record retirement reason. |
+| One Request card at P19 is displayed alongside board membership from P17 with separate provenance. | The card advance relabels the entire board current or automatically adopts new membership. | Preserve mixed-scope knowledge and the authorized adoption policy. |
