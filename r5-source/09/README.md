@@ -11,10 +11,9 @@ to edit independently.
 
 **Review status:** **09.01–09.16 substantively reviewed** against R4,
 Gesso v1622 and accepted Parts I–VIII, with individual source decisions
-recorded in all sixteen numbered preservation audits. **Whole-Part-IX
-reconciliation and independent editorial acceptance remain outstanding.** Whole-part reconciliation and independent Part IX
-candidate acceptance remain outstanding. Parts I–VIII are accepted R5.1 design
-candidates; this is not evidence of a completed runtime/proof system.
+recorded in all sixteen numbered preservation audits. **Whole-Part-IX reconciliation complete;
+independent editorial acceptance still pending.** Parts I–VIII are accepted
+R5.1 design candidates; this is not evidence of a completed runtime/proof system.
 
 **R4 preservation baseline:** `main` Part IX,
 5201 lines, 15 second-level topics.
@@ -254,7 +253,18 @@ source-limited Gesso v1622 evidence and sixteen paired positive/adversarial
 checks are recorded in the source and audit. The published Part IX now has
 **6292 newline-split lines** and **291408 characters**.
 
-**Next:** Perform **whole-Part-IX reconciliation** across 09.01–09.16,
-resolve sectional and cross-Part-VIII joins, confirm R4 preservation and
-structural assembly, and write the whole-part reconciliation record before
-independent editorial reviewed-candidate acceptance.
+**Whole-Part-IX reconciliation:** see `part-09-whole-part-reconciliation.md`.
+The full sixteen-section R4 crosswalk and joined claim/evidence, source
+identity, proof kernel, typed language, distributed use, scoped assumption,
+physical writer, installed browser, HumanHelp and independent product
+boundaries were reviewed. Reconciled same-contract single-/multi-node
+semantics with Part X's additional placement/failover evidence; repaired
+Org inline emphasis/code markup in 09.03, 09.15 and 09.16 without
+changing their semantic obligations. Publication, anchors, block pairing
+and cross-part links require readback validation of the committed tree.
+The reconciliation is *not* a new formal or runtime test result.
+
+**Next:** Perform **independent Part IX reviewed-candidate acceptance**
+against all sixteen revised sections, the preservation audits, whole-part
+reconciliation and Parts I–VIII; repair any blocking contradiction before
+acceptance. Parts X–XII and final whole-plan reconciliation remain open.
