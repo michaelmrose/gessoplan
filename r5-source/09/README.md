@@ -9,9 +9,9 @@ proof rules, identifiers, link targets or whitespace were changed.
 The canonical publication is derived output, not a second source
 to edit independently.
 
-**Review status:** **09.01–09.10 substantively reviewed** against R4,
+**Review status:** **09.01–09.11 substantively reviewed** against R4,
 Gesso v1622 and accepted Parts I–VIII, with source decisions recorded in
-the numbered preservation audits. Sections **09.11–09.16** remain for
+the numbered preservation audits. Sections **09.12–09.16** remain for
 substantive review. Whole-part reconciliation and independent Part IX
 candidate acceptance remain outstanding. Parts I–VIII are accepted R5.1 design
 candidates; this is not evidence of a completed runtime/proof system.
@@ -191,6 +191,16 @@ evidence are recorded separately in the preservation audit.
 The published Part IX now has **3719 newline-split lines**
 and **198410 characters**.
 
-**Next:** Review **09.11 — Assumption Propagation and Genuine Discharge**
-against R4, the 09.09–09.10 admitted dependency interface and current Gesso
-assumption-checking and proof-source correspondence.
+**09.11 review:** see `09.11-r4-preservation-audit.md`.
+Reconciled per-claim premise propagation, typed and context-correct proof
+substitution, actual discharge versus permitted conditionality, non-vacuity,
+Organization implementation and current Claim enforcement, durable command
+identity, qualified XTDB/HTMX provider premises, one-use Refresh and liveness.
+Eighteen paired positive/adversarial checks and the narrow Gesso v1622
+assumption/kernel/certificate implementation boundary remain in the audit.
+The published Part IX now has **4003 newline-split lines**
+and **210853 characters**.
+
+**Next:** Review **09.12 — Binding Proof Claims to Production Realization**
+against R4, Gesso's actual source/physical correspondence machinery, and
+accepted Parts IV–VIII plus reviewed 09.01–09.11.
