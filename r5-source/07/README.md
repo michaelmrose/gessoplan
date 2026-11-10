@@ -2,9 +2,9 @@
 
 **Disposition:** The preferred R5 Part VII was initially split losslessly
 into fifteen natural Org units. That initial source/publication matched
-Git blob `55c0c46f8ccf97b2ed6d61a3a7e1aeeca876f6a7`. Sections **07.01–07.09** have completed substantive R4-preservation
+Git blob `55c0c46f8ccf97b2ed6d61a3a7e1aeeca876f6a7`. Sections **07.01–07.10** have completed substantive R4-preservation
 and Gesso-source correspondence review, recorded in their numbered audits.
-Sections 07.10–07.15, whole-Part-VII reconciliation, and independent
+Sections 07.11–07.15, whole-Part-VII reconciliation, and independent
 candidate acceptance **remain outstanding**. All nine original Part VII
 `CUSTOM_ID` anchors remain unchanged.
 
@@ -46,7 +46,7 @@ no internal `***` section, table, code block, quote or requirement
 anchor was split. The smallest source is 35 original lines and the
 largest 191; those counts describe the **initial split**, not subsequent
 revisions. The current fifteen units reconstruct the
-**206,144-character**, **3,054-line**
+**219,009-character**, **3,253-line**
 Part VII publication exactly, retaining all nine original anchors.
 
 ## Assembly and verification
@@ -143,5 +143,10 @@ preflight, source-owned condition/continuation coverage, typed uncertainty,
 resource budgets, and sixteen positive/adversarial failure histories are now
 explicit about structural checks versus production enforcement.
 
-**Next:** review **07.10 — Lifecycle, Installation, and Supported Startup**,
-including real module ordering, physical handler adoption and activation.
+**07.10 review:** see `07.10-r4-preservation-audit.md`. Biff init-before-start
+exposure, module provenance, actual handler adoption, async generation lifetime,
+coherent reload, partial cleanup and eighteen positive/adversarial histories
+now distinguish admission from operational serving and product acceptance.
+
+**Next:** review **07.11 — Production-Path Enforcement Evidence**,
+including actual startup and runtime fault injection and positive acceptance.

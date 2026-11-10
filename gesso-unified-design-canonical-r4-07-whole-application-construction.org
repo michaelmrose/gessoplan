@@ -2585,6 +2585,29 @@ IDs, incompatible shared ownership, and required dependency cycles are rejected.
 A module is not accepted merely because it uses the expected ID while replacing
 the required implementation with a different function.
 
+ 
+*** Lifecycle identity, resources and independent host choices
+
+The construction retains a *module provenance* relation, not merely an
+ordered list of keyword identifiers. Each actual lifecycle module
+has a source owner, selected implementation, generation/profile,
+required dependency edges, side-effect footprint, resource ownership,
+initialization contract, start/stop behavior and compatibility scope.
+A built module with the correct =:biff.core/id= but another
+=:biff.core/start= implementation is not the admitted module. A
+shared XTDB provider, listener, subscription or browser asset reference
+needs explicit shared ownership and retirement rather than a
+duplicate cleanup callback.
+
+The application derives mandatory Gesso preflight and guarded-output
+module requirements from its canonical assembly, while independently
+selected Biff and host-specific modules are checked against that
+selection. Duplicate IDs, unknown ordering targets, mismatched
+implementations, inconsistent provider owners and cycles affecting
+required ordering fail before application exposure. A valid module
+graph alone is not evidence that the host started the named modules,
+installed the anticipated handler, or serves their outputs.
+
 *** Preflight and installation precede application exposure
 
 The required partial order is:
@@ -2612,6 +2635,38 @@ must not expose unchecked application behavior under a health-check exception.
 A listener bound privately or returning only a separately admitted unavailable
 response is different from a ready application listener; the profile states its
 observable behavior precisely.
+
+ 
+*** Init-before-start and external-effect fencing
+
+The selected host lifecycle matters. In released Biff 2, all module
+=:biff.core/init= functions run before the ordered
+=:biff.core/start= phase. Placing the Gesso preflight module first
+in the *start* order therefore cannot prove that an initializer
+did not already open a network listener, schedule protected
+background work, mutate protected XTDB state, or publish a
+browser resource under an unchecked configuration.
+
+Initialization required for preflight may allocate private,
+non-exposed resources under admitted contracts. An initializer
+that creates an effecting resource must have a fence,
+disconnected capability, private binding or other independent
+guarantee that prevents protected external application behavior
+until activation. This applies to scheduled workers, callbacks,
+subscriptions and background tasks as much as to HTTP traffic.
+An initializer that must perform a durable effect needs its
+own authorized transaction/work contract; preflight cannot
+retroactively make it private merely by being sequenced later.
+
+The externally observable activation condition is that *every*
+mandatory semantic, asset, route, provider, writer, render and
+policy obligation needed by the selected managed service has
+passed at its respective legitimate boundary. An early open
+listener is allowed only if it cannot serve the managed
+application before that condition, under a separately checked
+unavailable/administrative protocol. A health endpoint is not
+an exception permitting unchecked Claim or arbitrary model
+effects.
 
 *** The ordinary constructor installs the guarded handler
 
@@ -2648,6 +2703,39 @@ actual server/installation relationship to the extent promised by the profile.
 Local system-map adoption, observed invocation, and deployed-service adoption
 remain separately scoped evidence.
 
+ 
+*** Concrete Biff installation and serving adoption
+
+The ordinary supported Biff 2 integration must identify its actual
+=:biff.ring/handler= owner and the handler consumed by the real
+Aleph or equivalent serving module. A canonical module can
+check the current =ApplicationAssembly=, require a callable
+handler, install a wrapped handler and remove an internal
+temporary assembly key. Those actions establish a concrete
+local system-map binding, but they do *not* independently
+establish that an already-started listener or a different
+server module adopted that handler.
+
+Later Biff modules and mutable Vars can replace or invoke
+another callable after the checked module ran. An externally
+facing server can ignore the conventional handler system key,
+and a handler can return raw pre-serialized HTML bypassing the
+structured Gesso guard. The finished managed path must prevent
+or detect these substitutions within its claimed coverage,
+or retain explicit disqualifying deployment premises rather
+than reporting unconditional production enforcement.
+
+An actual adoption receipt or qualification may include
+the issued handler/route identity, server instance/endpoint,
+admitted assembly generation, guard and policy version,
+asset serving reference and observed guarded invocation.
+A source-issued system map, a caller-provided receipt, or
+a single successful test request does not by itself prove
+perpetual adoption or completeness of every serving path.
+Controlled faults at the real boundary are required for the
+claimed operational scope. Section 07.11 owns that
+independent production-path evidence.
+
 *** Request lifetime spans asynchronous completion
 
 At entry, an invocation captures its assembly instance and concrete context. It
@@ -2665,6 +2753,28 @@ still checks the current trusted model/authentication premises required by its
 contract. If an old assembly or provider profile is revoked, its continued use
 requires the declared retirement/compatibility policy, not indefinite reliance
 on the fact that a request once acquired a reference.
+
+ 
+An asynchronous Ring handler's returned value and its completed
+response are distinct lifecycle events. Closing the handler's
+lexical/dynamic scope when it returns a future, stream or
+callback must not release the request's generation, change the
+installed guard to a different one, or authorize use of a new
+executor/provider accidentally looked up through a global Var.
+The request's retained context supplies the checked response
+boundary through completion, rejection and cancellation.
+
+Background jobs, Live streams and durable command-resolution
+work have their own admission and retirement scopes. Some
+obligations transfer across generations or process restarts
+using retained durable state; a process-local admitted handle
+does not become a durable certificate by serialization.
+A retired Request card target cannot be reanimated by an
+old callback, and current trusted model authorization is
+re-evaluated where an effect requires it. HTTP response
+completion alone does not discharge uncertain command
+incorporation, post-commit publication or physical DOM
+adoption debt.
 
 *** Reload builds a candidate before activation
 
@@ -2694,6 +2804,38 @@ can reuse unchanged checked subgraphs and artifacts, but must recheck their join
 into the new root. Cache reuse is justified by complete dependency/applicability
 bindings; it is not an assertion that the source looks similar.
 
+ 
+*** Generation-coherent activation and draining
+
+An activation transition has a single authoritative choice of
+the new-entry generation for the selected deployment scope.
+It may switch an immutable dispatch/asset/provider composite
+by atomic pointer exchange, a short quiescence barrier, or an
+equivalent qualified host protocol. Updating several mutable
+Vars in sequence without isolating new requests is not
+coherent activation. A compare-and-activate check also
+prevents an older candidate that finished compiling late
+from superseding a newer admitted generation.
+
+The transition records which old requests, streams, workers
+and browser clients may continue, which may only resolve
+previous commands, and which must be cancelled or migrated
+through an explicit compatibility contract. A browser page
+rendered under A can fetch its A-specific assets after B is
+current; it must not receive an incompatible B bundle at the
+same unchecked mutable URL. The retained old serving
+reference and command decoder lifetime cannot be inferred
+solely from active server request reference counts.
+
+An invalidated security or model premise may require
+revocation of an old generation's *future effect rights*
+even while preserving its durable command outcome
+and authorized reconciliation. Keeping old code running
+because B failed preflight is permitted only while A's
+own actual predicates and deployment authorization
+remain satisfied. The shutdown of A does not authorize
+a premature deletion of resources still owned by B.
+
 *** Cleanup preserves ownership and primary failure
 
 Each lifecycle module owns the resources it acquires and any explicitly shared
@@ -2710,6 +2852,63 @@ Shutdown and replacement preserve uncertain command/work obligations through
 admitted transfer or durable recovery. Best-effort physical stop follows semantic
 retirement; failure to close a socket or release a registry handle does not retain
 the old owner's authority to initiate work.
+
+ 
+A failure is not necessarily all-or-nothing at the physical
+level: a module may open a socket and then throw without
+returning a completed start result, or a worker may publish
+an advisory before an activation attempt is rejected.
+The lifecycle contract records partial acquisitions and
+side effects as they occur, not only successful module
+return values. Failed admission prevents new protected
+exposure but must retain cleanup failures, surviving
+external effects and transferred durable debt as distinct
+diagnostic facts. An already committed domain mutation
+cannot be undone by simply calling a stop handler.
+
+Resource teardown is idempotent to the degree declared
+by its owner and ordered against shared dependents.
+The primary failure cause remains visible, with secondary
+cleanup errors and unreleased physical resources attached.
+A failed cleanup may demand process fencing, restart or
+operator action; it never silently upgrades a failed
+candidate into admitted service.
+
+*** Positive and adversarial lifecycle histories
+
+These examples apply to the *real managed constructor* and
+selected Biff/Aleph/Live profile. A fake startup map or a
+successful stand-alone preflight unit test cannot replace
+observed host/module execution where that evidence is required.
+
+| History | Required disposition |
+|---------+----------------------|
+| Canonical startup validates a real source-derived Claim/Reassign assembly, builds current browser assets, installs the wrapped handler and starts a server that actually consumes it. | Admit and activate only after required phase and adoption checks; real eligible controls and runtime behavior need separate positive evidence. |
+| A malformed browser artifact is detected before normal application service. | Reject startup; no protected listener or worker may expose the rejected generation, and privately allocated resources are cleaned or accounted for. |
+| The Biff module uses the expected preflight ID but substitutes a different =:biff.core/start= callable. | Reject module identity/correspondence before serving; keyword equality is not implementation provenance. |
+| Preflight is first in the ordered Biff start list, but an earlier =:init= function already starts a protected Aleph listener. | Fail the no-exposure contract or require a genuinely unavailable/private fence; first-start ordering does not justify the earlier side effect. |
+| A module initializer starts a scheduled raw XTDB writer before admission. | Reject or isolate the protected writer under its own admitted capability; a valid later preflight cannot authorize already-exposed unchecked effects. |
+| The checked handler is installed in =:biff.ring/handler=, but the actual serving module captures another callable. | Leave deployed enforcement unestablished or reject activation under strict policy; local system-map equality is insufficient. |
+| A later module or hot reload replaces the guarded handler while keeping the original report. | Invalidate the affected installation/serving evidence and refuse protected use until new admission. |
+| A valid handler begins under A, then returns an asynchronous response after B becomes current. | Complete under A's retained guard, assets and authorized lifetime or use a separately checked transfer; do not silently serialize under B. |
+| Candidate B installs new routes but still references A's incompatible browser assets or provider set. | Reject partial activation; new requests observe a coherent generation, not a mixture. |
+| Two reload candidates race and the older finishes after the newer activates. | Compare-and-activate prevents stale overwrite; dependency and phase receipts remain generation-scoped. |
+| Candidate B fails validation while a still-valid A is serving. | Preserve A unchanged and retire B's private resources; do not publish B's partial files or workers. |
+| Candidate B fails, but A's authorization or security premise has been revoked. | Suspend affected A operations or enter a separately admitted restricted mode rather than retaining obsolete effect rights. |
+| A previously served page uses an A-specific asset reference after B activates. | Honor the declared A retention/compatibility policy; never silently substitute B's incompatible runtime. |
+| A module acquires a socket and then fails before returning its startup result. | Account for partial physical resource ownership and cleanup; do not claim no resource was started because no result map was returned. |
+| A cleanup callback throws while the original preflight failure is being reported. | Preserve the primary failure and separately report cleanup error, leaked resource and required repair. |
+| An old request is retired while its Claim might have committed and its response or Live publication was lost. | Preserve durable command resolution and publication debt; lifecycle retirement does not fabricate rejection or undo incorporation. |
+| The canonical HTTP guard blocks a malformed Reassign response, while a raw Ring HTML endpoint in the same process bypasses it. | Keep the raw path outside the claimed structured-output coverage or independently qualify it; do not report universal rendering enforcement. |
+| A deployment starts healthy and serves an actual valid Claim with authorized reread and browser adoption. | Establish distinct structural, deployed-effect and positive user acceptance evidence; a reject-everything handler is not a completed application. |
+
+Part VII's lifecycle contract applies to a single-node and to
+multi-node deployments with the same application-generation
+semantics. Additional network nodes, router failover and
+distributed activation require separately stated traffic
+placement, epoch/fencing, recovery and compatibility premises.
+There is no claim that Biff module ordering alone serializes
+an entire distributed deployment.
 
 ** Production-path enforcement evidence
 :PROPERTIES:
