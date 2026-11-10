@@ -5628,68 +5628,664 @@ expected guarantee.
 
 ** Developer workflow and completion criteria
 
-A normal developer writes production schemas/contracts, ordinary application
-logic, named rules, authoritative operations, choreography, views, and assembly
-choices. Gesso generates internal proof terms and bookkeeping where mechanically
-possible. Developers need not handwrite derivation trees, copy transitive hashes,
-manage certificate registries, or learn an external proof assistant to use the
-ordinary construction path.
+Gesso's assurance architecture succeeds only when ordinary application
+development remains *source-first, declaration-first and repairable*.
+The developer owns the intended business policy, public model contracts,
+authoritative operations, Choreo, views and application assembly. Gesso
+owns the mechanical elaboration, scoped proof terms, required obligation
+inventory, checker/issuer bookkeeping, dependency identities, projection,
+derived plans and intelligible root assurance reports wherever its
+declared semantics can actually derive them. A developer must not
+maintain an independent TLA+/Quint/Recife/Lean program merely to use
+ordinary Gesso guarantees, copy transitive fingerprints into models,
+manually assemble proof DAGs or mint checker-issued handles.
 
-An unsupported proof goal must explain the missing judgment and available honest
-choices: provide supported evidence, use an explicit accepted contract, change
-the claim/profile, or revise the program. It must not suggest asserting the exact
-failed conclusion without showing the resulting trust boundary and policy impact.
+The full Clojure language remains available for ordinary implementation.
+The closed, typed reasoning fragments are deliberately narrower than
+arbitrary computation and carry executable semantic interpretations.
+Where full-language code is opaque, its explicitly scoped implementation
+contract enters the same ordinary assembly path without pretending that
+Gesso has proved all of the function body. A user may choose a stronger
+profile requiring more independent correspondence; the system reports
+exactly what evidence is missing rather than silently granting it.
 
-The compositional milestone requires:
+*** Developer-facing construction, feedback and ownership
 
-1. Executable, versioned syntax, interpretation, and judgment contracts for the
-   supported rule/proof fragments, with meaningful conformance cases.
-2. Source-derived obligation and dependency coverage, including exact declared
-   operation/invariant accounting where induction is claimed.
-3. Checked derivations and dedicated-checker results bound to their actual subjects,
-   with no report-shaped path to certificate issuance.
-4. Claim-specific premise propagation and evidence substitution that preserve
-   scope, context, dependencies, and applicability.
-5. Opaque full-language contracts integrated into the normal assembly path, with
-   useful surrounding proofs and no hidden promotion from assertion to theorem.
-6. Safe semantic reuse and separate invalidation of changed implementation,
-   checker, provider, asset, and deployment bindings.
-7. Production enforcement of the selected profile and applicable realization
-   checks at their actual installation/invocation/effect boundaries.
-8. A complete HumanHelp Claim pilot connecting semantic inheritance, production
-   realization, and independent real-browser evidence in their proper scopes.
-9. A mutation corpus with valid controls, stable diagnostics, and explicit
-   unsupported/incomplete classifications.
-10. A generated root report that exposes which claims are established, conditional,
-    tested, inapplicable, or still unavailable, and why.
+The normal successful experience is conceptually:
 
-The milestone does not require a proof of all Clojure, XTDB, HTMX, the JVM, or the
-browser. It requires that claims relying on those components state the exact
-assumptions, qualification, and correspondence evidence they use. External formal
-soundness and broader deployment results are separately named goals, not implied
-by the word “certified”.
+#+begin_example
+source-owned model schemas, rules, operations, choreography,
+views, assets and application construction
+                 |
+                 v
+             Gesso assembly
+                 |
+       +---------+-----------+
+       |                     |
+  source invalid       source admitted under profile
+       |                     |
+  typed first         independently checked local
+  blocker and         judgments + complete source-
+  repair context      derived obligation/assumption ledger
+                             |
+                         issued compatible
+                         semantic/runtime products
+                             |
+                         host/asset installation
+                         and current effect gates
+                             |
+                         claim-scoped root report
+                         + independent product tests
+#+end_example
+
+This is a sequence of *semantic responsibilities*, not a required
+single compiler pass or a promise that every step is statically
+provable. The source-to-host and effect boundaries have independent
+evidence owners; a green source report alone does not install code.
+Likewise, browser and transaction execution can succeed while a
+stronger proof or source-coverage claim remains unestablished.
+Optional diagnostics may be computed and cached, but cannot alter
+issued runtime transitions or grant authority after plan admission.
+
+For an ordinary user, routine IDs, strings, maps and Clojure values
+should not need hand-wrapped nominal/admission records at every
+expression. Typed wrappers and opaque issuer-registered products
+belong at the relatively few boundaries where a same-shaped raw
+value would break a real semantic or authorization invariant.
+The framework constructs those wrappers when it can; the developer
+receives stable diagnostics when it cannot. Manual creation of a
+similar-looking map is not a substitute for an admitted result.
+
+The public workflow accepts explicit contracts for business facts
+only an application can own. It distinguishes a model assertion,
+a checked proposition, a conditional theorem with open premises,
+a physical authorization/observation, and an installed application
+capability. Declaring “this Membership is eligible” does not prove
+that a present Request writer checked it; qualified production
+authority still belongs to the model and installed trusted host.
+
+*** Readable valid, invalid and conditional examples
+
+The following is *schematic Clojure authoring notation*; it
+illustrates the desired contract without freezing exact macro
+spellings or asserting currently exported functions.
+
+#+begin_src clojure
+(rule claimable?
+  (and (= request.status :open)
+       (has-role? current-user :helper)))
+#+end_src
+
+With admitted RequestStatus and role sources, this can be an
+intrinsically well-typed rule. It is not, by itself, the complete
+HumanHelp Claim policy: current Membership, RequestAssignment
+cardinality, Organization/Location association and actual writer
+guards remain required by the governing public model contract.
+
+A malformed use is:
+
+#+begin_src clojure
+(rule claimable?
+  (< request.status 10))
+#+end_src
+
+No numerical ordering exists merely because RequestStatus is
+represented using a host-language keyword. The source checker
+reports the operator, actual nominal types, selected rule,
+required versus supplied facts, and the earliest blocked
+downstream artifact, without inventing a different policy.
+
+A well-typed rule can also be *inadmissible at its use site*.
+A helper browser may not branch on a private authoritative
+=Request= review fact until the required role-local knowledge,
+provenance, disclosure and program-point conditions hold.
+Passing intrinsic type checking does not create a browser
+observation or an authorization to disclose the fact.
+
+If upstream Request schema S18 removes a status variant
+required by rules certified against S17, the new schema
+may be coherent while the *old dependent* proof/operation/
+Choreo/plan is stale. Construction rejects the mismatch
+at the first supported source/dependency boundary. A
+checked compatibility bridge or a re-elaborated valid
+rule may repair it; copied old signatures, names and
+fingerprints cannot.
+
+A same-shaped ={:valid? true}= or ={:checked-result true}=
+map is never an issued rule or application certificate.
+A fabricated derivation with a missing premise fails
+its actual independent proof checker. A genuinely
+accepted conditional Claim certificate may still
+carry a named opaque Organization callable, XTDB
+atomic-guard, external provider or deployed-route
+correspondence premise; those are not silently
+upgraded to truths or hidden from the root report.
+
+The developer's repair options for an unsupported or
+unestablished strong goal are specific: correct malformed
+source, provide a supported derivation/evidence mechanism,
+give a properly qualified explicit premise under a
+profile that permits it, change the requested *named*
+profile/claim with visible consequences, or revise the
+actual business rule with application-owner authorization.
+The diagnostic does not advise simply adding an
+assertion of the failed theorem, swapping a trusted
+principal for a browser parameter, or ignoring an
+unresolved physical writer.
+
+*** Source ownership and derived artifacts
+
+Each stage has an accountable producer/consumer. Public
+domain/model contracts and policy decisions belong
+to application model authorities; source normalization
+and required-judgment derivation belong to the specified
+Gesso semantics; proof checking belongs to the small
+kernel or dedicated checker with named assumptions;
+issued products belong to the admitted source/profile
+and dependency generation; actual routing and asset
+adoption belong to the trusted installation context;
+transaction and browser effects belong to their
+actual enforcing physical boundaries.
+
+An application builder derives the complete *declared*
+closure, does not require the user to reconstruct
+transitive dependency hashes, and differentiates
+source-side completeness from independent physical
+writer/host inventory and production source binding.
+When source or policy changes, affected abstract proofs,
+runtime plans, implementation correspondence and
+installed resources are invalidated according to
+their own scopes rather than conflated into one
+namespace-wide success bit.
+
+An unsupported opaque Clojure branch may be a valid
+explicit implementation premise for one profile
+and fail a stronger checked-causality or all-writer
+profile. A module exposing the same named public
+interface but a different callable cannot inherit
+unverified previous implementation evidence.
+The developer sees both which proof is still valid
+and which physical assurance requires requalification.
+A policy-intent finding from a human/heuristic/LLM
+reviewer remains advisory until the application
+owner deliberately changes the source-owned rule.
+
+*** Compositional milestone acceptance contract
+
+The framework's compositional-certification milestone
+requires *all* of the following independent gates.
+A gate is marked complete only with a declared
+positive control, adversarial near-neighbor,
+actual checker/host evidence and a source/profile
+scope that the test exercised.
+
+1. *Precise source semantics.* Supported rule,
+   typed value/reader/effect, relationship,
+   operation, Choreo and proof fragments have
+   executable, versioned syntax, interpretation
+   and checking judgments. Optional absent versus
+   present nil, nominal enums, short-circuit
+   branch refinement, reader footprints, frames,
+   integer/codec limits and source normalization
+   have discriminating conformance witnesses.
+
+2. *Complete original-source obligations.*
+   Construction independently regenerates
+   required initialization, invariant,
+   operation/base/step, branch, knowledge,
+   dependency and positive-path obligations.
+   A structurally valid reduced proof DAG
+   missing a difficult Unclaim/Reassign
+   case cannot establish the original claim.
+   Declared source coverage and actual
+   physical writer coverage remain separate.
+
+3. *Real checked issuance.* Kernel/dedicated
+   checker conclusions are bound to their
+   exact original subject, inference
+   semantics, checked dependencies and
+   evidence class. Forged report/maps,
+   constructed handles, incomplete
+   proof packages and fake rule tags
+   cannot issue the requested product.
+
+4. *Conditional premise accounting.*
+   Premises propagate per *used claim*,
+   with issuer, actor, scope, source,
+   knowledge, time and implementation
+   applicability. Genuine discharge
+   uses checked evidence/typed
+   substitution and inherits the
+   replacement's remaining conditions;
+   no trusted assertion is promoted
+   by matching labels.
+
+5. *Opaque full-language integration.*
+   Ordinary Clojure implementation
+   remains usable through declared
+   contracts in the same authoring
+   path. The source audit identifies
+   checked closed subsets, explicit
+   opaque implementations, actual
+   detected semantic-policy escapes
+   and uninspected decision paths,
+   without assuming absent policy
+   where no inspection occurred.
+
+6. *Correct composition and reuse.*
+   Exact semantic/proposition,
+   implementation, installation
+   and runtime identities remain
+   distinct. Changed upstream
+   commitments invalidate affected
+   consumers; permissible bridges
+   are checked and directional.
+   Currentness comes from the
+   trusted consuming assembler,
+   not a caller's old mutually
+   matching graph and source.
+
+7. *Distributed use correctness.*
+   Intrinsic well-typedness is
+   separately checked from
+   point-indexed knowledge,
+   provenance, authority,
+   optional refinements,
+   observation/basis and
+   correct role-local
+   Choreo projections,
+   with explicit unknown/
+   recovery alternatives.
+
+8. *Production realization and
+   authority.* Checked source
+   connects to the actual issued
+   executor, trusted server
+   route, model writer,
+   installed source/asset
+   and browser plan with
+   named qualified premises
+   or authentic physical
+   correspondence evidence.
+   Pre-effect enforcement,
+   post-effect detection,
+   co-observed records
+   and actual causality
+   retain different
+   claims. Provider
+   assumptions remain
+   versioned and scoped.
+
+9. *Real HumanHelp Claim pilot.*
+   Its root includes public
+   production Request,
+   RequestAssignment,
+   Membership/Organization/
+   Location, Claim rule,
+   required invariants,
+   operation/Choreo,
+   helper/authority
+   projections, plan,
+   assembly, installed
+   handler/browser, atomic
+   C42 result, selective
+   card adoption and
+   independent positive
+   user outcome.
+   Two-helper contention,
+   Membership revocation,
+   lost response, historical
+   replay and one-primary
+   safety have qualifying
+   positive/negative
+   evidence. A toy proof
+   fixture cannot pass
+   this gate.
+
+10. *Independent product demands.*
+    The full HumanHelp
+    proving application
+    keeps all Part VIII
+    user-capability and
+    fourteen completion
+    gates, including real
+    eligible Unclaim,
+    Mark-on-the-way,
+    Complete, Cancel,
+    manager Reassign
+    selection, creator-local
+    Create, remote advisory,
+    one explicit Refresh,
+    continuity and the
+    separately selected
+    response interaction.
+    A completed Claim
+    proof milestone
+    does not silently
+    complete this
+    independent product
+    acceptance program.
+
+11. *Adversarial conformance.*
+    The mutation corpus
+    has fresh valid baselines,
+    isolated source/evidence/
+    installation/runtime
+    perturbations, predeclared
+    expected results,
+    independent prohibited-
+    artifact/effect oracles,
+    actual first boundary,
+    stable diagnostics and
+    unambiguous incomplete/
+    unsupported statuses.
+    Reject-all checking,
+    infra failures and
+    unobserved effects
+    cannot be scored
+    as success.
+
+12. *Usable developer output.*
+    Ordinary source derives
+    the checked artifacts
+    without proof-assistant
+    bookkeeping. Error
+    reports are repairable,
+    privacy-conscious,
+    source-relative and
+    correctly distinguish
+    malformed construction,
+    model counterexample,
+    stale dependency,
+    unsupported analysis
+    and coherent but
+    suspicious product
+    intent. The generated
+    root report exposes
+    every relied-on guarantee,
+    checking boundary,
+    open assumption,
+    actual tested/physical
+    evidence and incomplete
+    independent product gate.
+
+These are intended final-framework
+acceptance *obligations*,
+not an assertion that
+a present Gesso release
+already passes them.
+Different milestones can
+complete at different times;
+the report distinguishes
+their result classes
+and cannot advertise
+total completion on
+the strength of a
+subset or a successful
+single browser scenario.
+
+*** Root report, release decision and open results
+
+The root report is a
+readable source-derived
+inspection of an admitted
+construction, not a
+caller-writable admission
+token. It must let a
+reviewer answer:
+
+- What exact application/
+  source/claim/profile
+  and current generation
+  were selected?
+- Which original producer
+  declarations and
+  checked exported semantic
+  interfaces justify each
+  relied-on guarantee?
+- Which mandatory proof/
+  source-coverage cases
+  passed, failed, remain
+  unsupported or were
+  not attempted?
+- What conditional premises
+  were inherited, which
+  were genuinely discharged,
+  which remain trusted,
+  and who owns their
+  qualification/expiry?
+- Which plans, handlers,
+  model writers,
+  physical source/assets,
+  transaction observations,
+  browser effects and
+  deployments are actually
+  bound or only asserted?
+- Which independent positive
+  product capabilities,
+  races, retries, errors,
+  recoveries and remote-
+  acquisition rights
+  were tested, missing
+  or unavailable?
+- What first blocked a
+  stronger requested claim,
+  what dependent artifacts
+  were not admitted,
+  and what legitimate
+  repair/verification
+  options remain?
+
+The root does not turn
+ordinary checked
+schematic rules into
+instance-specific
+Membership authorization.
+It cannot treat HTTP
+success, SSE notification,
+a pinned domain record
+or a current Request card
+as a theorem of command
+incorporation. Nor may
+a successful real
+browser acceptance test
+forge a missing proof
+kernel theorem. Source,
+physical and product
+evidence are separate
+columns of the
+same inspectable
+construction, not
+a single `certified?`
+value.
+
+The milestone does
+*not* demand a universal
+proof of arbitrary
+Clojure bodies, XTDB
+internals, HTMX,
+the JavaScript engine,
+the JVM or the
+unbounded real network.
+For strong claims
+that rely on them,
+it demands precise
+qualified premises,
+source-to-physical
+relations, checked
+or tested scopes
+and the appropriate
+runtime enforcement.
+External formal
+metatheorems about
+proof rules and
+universal refinement
+results may strengthen
+the root later;
+until then the report
+cannot invent them.
+
+A release process
+checks that every
+selected mandatory
+gate has its applicable
+issued evidence and
+that permitted open
+premises are honestly
+accepted under the
+chosen profile.
+When a needed
+guarantee is missing,
+the stronger named
+release claim fails
+closed. A separately
+requested weaker
+claim may be usable
+without inheriting
+the stronger label,
+physical rights or
+false product
+completion.
 
 ** Compositional certification invariant
 
-A certified Gesso construction exports only the propositions its checked evidence
-and explicit premises justify. Its source, normalized subject, semantic interfaces,
-obligations, dependencies, implementation bindings, and applicability remain
-connected. Shape, names, fingerprints, successful tests, and copyable reports
-cannot silently replace the required checking boundary.
+A certified Gesso construction exports *only* the
+propositions warranted by the admitted source,
+their checked semantic judgments, independently
+required obligation/dependency closure, actual
+proofs or dedicated checker results, and
+explicitly attributed remaining premises. A
+raw declaration, normalizing digest, source
+filename, copied `valid?` field, test
+report, same-shaped Clojure map or
+uncorroborated host artifact never
+becomes an issued certified
+category by resemblance.
 
-The full host language remains available. The closed reasoning fragments have
-precise executable meanings; opaque logic enters through named contracts whose
-assumptions remain visible. Intrinsic typing, distributed admissibility, conditional
-induction, implementation correspondence, runtime authority, and product intent
-are distinct judgments that compose without erasing those distinctions.
+The full Clojure host language remains available.
+Closed typed semantic fragments have precise
+executable meanings; opaque functions enter
+through explicit, source- and implementation-
+scoped contracts with their assumptions
+visible. Policy correctness is not inferred
+from a well-typed expression: a coherent
+business choice can still be wrong by
+product intent. Mechanical invalidity,
+counterexample, unsupported checking
+and advisory review therefore remain
+different conclusions.
 
-The proof kernel checks its small derivation language. Dedicated checkers establish
-their stated judgments. Source coverage prevents omitted obligations; correspondence
-binds checked subjects to actual plans and effects; runtime boundaries establish
-current instance facts. None alone is the entire assurance argument.
+Intrinsic typing, source-derived obligation
+completeness, guarded transition/induction,
+finite-model checking, distributed
+knowledge/provenance, valid Choreo
+projection, issuer admission,
+source-to-implementation/installation
+correspondence, runtime actor/transaction
+authority, observed browser adoption
+and product acceptance are distinct
+judgments. They compose through checked,
+directional dependency and evidence
+interfaces without silently upgrading
+one into another or erasing open premises.
 
-HumanHelp demonstrates that this composition reaches a real application. Its
-Claim certificate cannot manufacture current authorization, its browser success
-cannot manufacture a proof, and its current card cannot manufacture command
-attribution. The root report makes the valid connections and the remaining limits
-explicit enough for both developers and downstream checking to rely on them.
+Justification dependencies are well
+founded; implementation binding,
+installation and runtime occurrence
+have their own independently
+qualified edges. Source changes
+invalidate affected dependents
+and may require checked compatibility;
+implementation or resource changes
+can invalidate physical evidence
+while leaving an abstract theorem
+intact. Cached reports, previous
+success, physical stamps and
+conveniently similar outputs
+cannot establish currentness
+or extend a one-use effect right.
+
+The Gesso proof kernel checks only its
+admitted derivation language and
+named semantic assumptions.
+Dedicated checkers establish
+only their expressly stated
+judgments. Exact finite
+checking, conditional
+induction, controlled
+physical experiments
+and runtime effect
+enforcement each
+retain their actual
+subjects and quantifiers.
+No complete-looking
+submitted DAG can omit
+source-required cases;
+no successful readback
+automatically proves
+transaction causality
+or universal physical
+refinement.
+
+HumanHelp Request Claim is the first
+substantial compositional
+proving application.
+Its typed public model
+and assignment semantics
+must connect through
+Claim operation,
+Choreo/projections,
+ExecutablePlan,
+ApplicationAssembly,
+installed route and
+asset, guarded model
+writer, trustworthy
+command-specific
+outcome and permitted
+browser acquisition
+to genuine user-visible
+adoption. An upstream
+semantic mismatch
+prevents stale
+dependent construction.
+An unverified writer,
+unknown command,
+stale browser target
+or disallowed
+assumption cannot
+borrow proof
+authority from a
+neighboring layer.
+
+The independent
+HumanHelp product
+contract—including
+eligible operations,
+selective local
+Create, advisory
+remote updates,
+one user-permitted
+Refresh, recovery,
+continuity and
+an explicitly chosen
+response interaction—
+is not replaced by
+the Claim proof
+chain. A meaningful
+positive program
+must remain usable
+even as malformed
+and unsafe programs
+are rejected. The
+root report exposes
+all admitted claims,
+unresolved boundaries
+and independent
+product evidence
+so that developers,
+release reviewers
+and downstream
+checkers can rely
+on *exactly* the
+guarantees earned
+and no others.

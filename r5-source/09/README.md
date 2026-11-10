@@ -9,10 +9,10 @@ proof rules, identifiers, link targets or whitespace were changed.
 The canonical publication is derived output, not a second source
 to edit independently.
 
-**Review status:** **09.01–09.15 substantively reviewed** against R4,
-Gesso v1622 and accepted Parts I–VIII, with source decisions recorded in
-the numbered preservation audits. Section **09.16** remains for
-substantive review. Whole-part reconciliation and independent Part IX
+**Review status:** **09.01–09.16 substantively reviewed** against R4,
+Gesso v1622 and accepted Parts I–VIII, with individual source decisions
+recorded in all sixteen numbered preservation audits. **Whole-Part-IX
+reconciliation and independent editorial acceptance remain outstanding.** Whole-part reconciliation and independent Part IX
 candidate acceptance remain outstanding. Parts I–VIII are accepted R5.1 design
 candidates; this is not evidence of a completed runtime/proof system.
 
@@ -244,5 +244,17 @@ positive/adversarial conformance pairs and Gesso v1622 independent-oracle
 precursors/nonclaims are documented in the audit. Published Part IX:
 **5696 newline-split lines**, **274982 characters**.
 
-**Next:** Review **09.16 — Developer Workflow and Completion Criteria**
-against R4, all completed 09.01–09.15 contracts and accepted Parts I–VIII.
+**09.16 review:** see `09.16-r4-preservation-audit.md`.
+Retained R5's ordinary source-first Clojure authoring, generated proof and
+certificate bookkeeping, named opaque implementation contracts and exact
+conditional evidence. Recovered R4's valid/malformed/use-site-invalid and
+stale/forged certificate examples, and the complete source-to-host-to-HumanHelp
+compositional invariant. Twelve independently testable milestone obligations,
+source-limited Gesso v1622 evidence and sixteen paired positive/adversarial
+checks are recorded in the source and audit. The published Part IX now has
+**6292 newline-split lines** and **291408 characters**.
+
+**Next:** Perform **whole-Part-IX reconciliation** across 09.01–09.16,
+resolve sectional and cross-Part-VIII joins, confirm R4 preservation and
+structural assembly, and write the whole-part reconciliation record before
+independent editorial reviewed-candidate acceptance.
