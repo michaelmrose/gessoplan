@@ -1,92 +1,366 @@
 ** Semantic model, proof obligations, and conformance evidence
 
-HumanHelp should make its useful semantic rules concrete enough to execute and
-check. The production definition owns operation meaning, dependency declarations,
-transition constructors, outcome interpretation, and explicit opaque premises.
-The application composes that source into the supported relational construction
-and executable semantic core; tests do not independently retype a convenient
-model and then compare it with itself.
+The HumanHelp proving application must make its actual production Request
+rules precise enough for Gesso to assemble, evaluate, challenge and, for
+supported propositions, prove or check. This is not a second HumanHelp
+domain language maintained in =example.*= and not a requirement that an
+application author write TLA+, Quint, Recife or proof scripts. The
+source-owned Request model defines the business meaning; Gesso derives
+admissible semantic subjects and checking obligations from it and from
+explicit, typed dependency and effect contracts.
 
-The independent product contract still supplies expected capabilities and
-outcomes. Deriving model and executor from one source reduces drift, but cannot
-prove that the source expresses the desired HumanHelp policy. Both source
-consistency and policy adequacy need evidence.
+A correct model of the wrong policy is still a wrong application. The
+independent HumanHelp product contract therefore remains an external
+acceptance oracle for required operations, permissions, assignment
+semantics, user-visible behavior and adverse outcomes. Neither model
+generation nor executor agreement with that same source can prove the
+source expresses the intended HumanHelp rule. Conversely, a product
+test cannot by itself prove all legal traces or complete physical
+writer correspondence.
 
-*** Useful invariant and obligation families
+*** Production ownership and the checked semantic subject
 
-| Family | Required meaning and important boundary |
-|--------+-----------------------------------------|
-| Entity and association validity | Requests, assignments, Organization/Location relationships, and referenced public identities obey the production model's declared schema and relationship rules. |
-| Primary assignment uniqueness | There is at most one active primary assignment for a Request where that relation is defined; collaborator assignments are not falsely counted as additional primary owners. |
-| Lifecycle/assignment correspondence | Production state and assignment history satisfy the selected lifecycle rules, including required closure on completion/cancellation. |
-| Commit-time eligibility | A new command's actual protected prestate satisfies the actor, target-helper, Membership, Organization, and Request conditions used by its rule. |
-| Command exclusion and replay | Compatible repeats do not reincorporate; incompatible binding reuse cannot obtain the old result or mutate under the old identity. |
-| Observation and disclosure | Read evidence has its actual scope/basis and is disclosed only under the declared access policy. |
-| Selective adoption | A local result or presentation operation cannot import unrelated remote membership or discharge unrelated adoption debt. |
-| Resource and installation ownership | Retired executions, requests, targets, subscriptions, and continuity slots cannot perform protected successor effects. |
+The protected aggregate comprises Request and its separate
+RequestAssignment history, scoped to Organization and Location and
+dependent on User, Membership and Organization-owned authority.
+Request's public model boundary owns domain transitions and outcomes;
+its graph/FX implementations own the actual relevant dependency
+acquisition, guarded planning and authoritative transaction assembly.
+Request Choreo binds the *public* operations and their distributed
+presentations without reimplementing Claim, Unclaim, Mark on the way,
+Complete, Cancel or Reassign eligibility in the browser or example UI.
 
-Commit-time eligibility is not automatically a permanent state invariant. If a
-helper loses Membership after legitimately claiming a Request, the model must
-state whether existing assignments remain, become unavailable, or require a
-separate revocation transition. It is incorrect to prove “all current assignments
-always have currently eligible helpers” while omitting Membership revocation from
-the operation catalog or silently assuming it cannot occur.
+The Gesso semantic subject identifies the original production source
+and version, declared state and relationship types, operations,
+actor/target arguments, transition constructors, frames, observable
+outcomes, initial-state predicates, invariant propositions,
+external dependencies and explicitly opaque host effects. A
+projection of these declarations into a finite transition system is
+not a second editable operation registry. A changed source, effect
+footprint, model policy, schema or dependency invalidates the
+applicability of evidence derived from its former identity.
 
-The same distinction applies to Organization policy changes, user removal,
-Location moves, and administration. They either preserve the invariant, perform
-a valid repair transition, or are explicit external premises of a narrower claim.
-A Live invalidation does not repair the authoritative invariant by itself.
+There are independent closure questions:
 
-*** Finite exploration and non-vacuity
+| Question | Required evidence |
+|----------+-------------------|
+| Is the declared model well formed? | Typed, closed source and effect/role/transition construction for the selected language |
+| Does the model capture intended HumanHelp behavior? | Independently supplied positive and negative product requirements, including policies not inferred from current UI exposure |
+| Does the abstract machine preserve its claims? | Exact finite exploration or a separately checked initialization/preservation derivation under its admitted assumptions |
+| Does issued Clojure execution correspond? | Original-source-to-executor binding, admitted input/frame/guard correspondence, with opaque portions named |
+| Does actual XTDB/host execution refine that model? | Qualified transaction, readback, actual writer/guard and state-representation evidence with temporal and trust scope |
+| Does the running browser/app exhibit required behavior? | Installed route, generated artifact, real HTMX/DOM and authoritative outcome evidence, plus independent user-level acceptance |
 
-Finite families include at least the following shapes, with the exact domains
-and bounds recorded in the report:
+No one row is silently inferred from another. Structural admission, finite
+model checking, conditional induction, runtime guard enforcement,
+observed physical agreement and end-to-end conformance are distinct
+judgments, not a numeric ladder whose higher rung automatically proves
+all lower ones.
 
-- two eligible helpers competing for one Request;
-- a requestor, an authorized manager, and a distinct replacement helper;
-- multiple Organizations/Locations to exercise cross-scope rejection;
-- active and inactive Membership and relevant policy alternatives;
-- open, assigned, on-the-way, and terminal Request states;
-- distinct commands, compatible repeats, and incompatible binding reuse;
-- known commit, authoritative rejection, and participant uncertainty branches;
-- one board with an unrelated remote change and a selective local result.
+*** HumanHelp invariant and obligation families
 
-Not every shape must be one enormous Cartesian model. Separate bounded families
-can discharge named obligations, provided their scopes and omissions remain
-visible and their composition is justified where a stronger claim is made.
+The admitted Request application declares at least these property
+families, with ownership, scope, assumptions and counterexample
+conditions visible:
 
-Admission checks declared rule exercise and required operation attempts/outcomes
-rather than accepting a green invariant that no enabled operation ever challenged.
-A rule that never matches a source state or an operation that is always disabled
-is reported accordingly. Deleting Reassign from both source and model must still
-fail the independent capability requirement.
+| Property family | Precise intended contract |
+|-----------------+---------------------------|
+| Entity and relationship validity | The public Request, RequestAssignment, Organization/Location, Membership and User references obey their declared entity schemas and qualified referential rules; valid IDs alone do not establish the existence or eligibility of referenced facts |
+| Primary assignment uniqueness | For a Request there is *at most one* active primary RequestAssignment under the declared aggregate semantics; permitted collaborators are not counted as additional primary helpers |
+| State/assignment correspondence | A Request in the relevant assigned states has the required active primary assignment; Unclaim, Complete and Cancel close or retain assignments according to their actual model transitions, not a UI status guess |
+| Command eligibility | A new Claim/Reassign/other command passes the current trusted actor, Request state, Organization/Location and helper Membership/role/skill requirements when the protected transition commits |
+| Guarded aggregate atomicity | Request and affected assignment writes, exclusion/absence checks and dependency versions either commit together or leave no partially admitted new aggregate state |
+| Transition/frame safety | Each operation changes only the admitted Request/assignment and declared associated fields/effects, preserving unaffected facts unless the model explicitly permits them to change |
+| Command exclusion and historical result | Exact-binding replay cannot reincorporate; incompatible reuse cannot mutate or disclose another command's outcome; unknown delivery cannot be reclassified by local timeout |
+| Read, absence and disclosure | A read's scope and completeness, authoritative basis, access policy and interpretation of missing entities justify only the observation actually obtained |
+| Local and remote knowledge | Creator-local correlated adoption and remote advisory/one-use Refresh obey their distinct permissions; an unrelated remote row does not become locally adopted by association |
+| Browser/physical ownership | Retired E42, target T1, subscriptions and provisional generations cannot actuate protected effects, restore obsolete DOM or discharge independent command/Refresh obligations |
+| Source and writer coverage | Every declared model writer and physically reachable protected writer is classified and either covered under the selected assurance policy or explicitly open/unsupported |
 
-Finite exploration establishes only the explored claim. Conditional induction
-requires the stated initialization and transition-preservation argument. Abstract
-successors must be bound to the issued implementation and actual effect gateway
-before they support a physical correspondence claim.
+The *at most one* primary assignment rule does not by itself prove
+that every claimed Request has one; the latter is a separate existence
+and state-correspondence obligation. The existence/uniqueness of an
+active primary must also be distinguished from historic or collaborator
+assignments. An action's protected prestate may contain Request R17
+and a complete guarded absence of active primary assignment; a
+snapshot of one returned assignment alone is not such an absence
+proof unless the query and exclusion contract establish completeness.
 
-*** Host functions and physical evidence
+A helper's current Membership eligibility is normally a
+*commit-time precondition*, not automatically a permanent invariant.
+If Membership expires after a valid Claim, the policy must choose
+whether the old assignment remains historically valid, becomes
+operationally ineffective, or triggers a model-owned reassignment
+or revocation. The proof must not assert that every existing
+assignment is presently eligible while omitting Membership
+revocation, Organization policy changes, Location moves, User
+deactivation, administrative edits and external writers. Such
+operations either preserve the claimed invariant, perform a
+specified repair transition, or remain explicit premises of a
+properly narrower result. Live publication cannot repair
+a violated database invariant.
 
-An opaque guard, query, constructor, or serializer can participate through its
-explicit contract. Passing sample tests does not prove every possible host-language
-execution satisfies that contract. The proof result retains the assumption and
-the application policy identifies why it is accepted.
+*** Closure, induction and cross-model interference
 
-Runtime validation can establish concrete instance facts such as an output schema,
-command binding, actual provider receipt, or required guard coverage when the
-boundary exposes them. It cannot infer the behavior of an arbitrary callback from
-its name or metadata. A supplied observation of physical execution also retains
-the trust and coverage limits of the mechanism that captured it.
+For an invariant I and the named admitted transition relation T,
+the ordinary abstract safety obligation has the shape:
 
-Comparison traces must bind operation, inputs, source/executor identity, admitted
-predecessor state, actual submission/outcome evidence, and relevant successor
-observation. A caller-supplied sequence is not automatically observed physical
-chronology. A list of individually compatible transitions is not automatically
-one adjacent execution history.
+#+begin_example
+Initial(s) => I(s)
 
-The application records which writer inventory was actually inspected, including
-non-route ingress. “No unclassified entries in this supplied inventory” is useful
-but weaker than “all physical writers are covered”. The evidence report must
-retain that difference, including unknown inventory or unverified host adoption.
+I(s) and T(s, operation, s') => I(s')
+  for every admitted operation and its required environment step
+#+end_example
+
+The initial condition includes more than "the test database was
+seeded without errors": it identifies permitted initial Request,
+assignment and dependency configurations, including legal empty
+states, and why real initialization/legacy import reaches them.
+An induction argument must show preservation by *every member*
+of the complete relevant transition catalog; checking Claim alone
+cannot certify Unclaim, Reassign, policy changes or a background
+assignment writer. For a nonclosed environment the claim remains
+conditional on an explicit interference assumption. A source-bound
+catalog report is not proof that no undeclared physical mutation path
+exists.
+
+Guarded transition generation is required to expose actual read
+dependencies and protected write footprints. If an Organization
+policy or Membership predicate is implemented by an opaque Clojure
+function or backed by a query with an unproven exclusion guarantee,
+the abstract argument records that premise. It must not replace
+the function with a hand-authored conveniently matching predicate
+and describe the agreement as implementation correspondence.
+
+Application-defined transition preservation includes concurrent
+interference: two helpers competing for the same R17; manager
+Reassign racing Membership revocation; Complete/Cancel racing an
+assignment change; initialization/import racing ordinary claims;
+and non-Choreo mutations affecting the same protected relation.
+The chosen qualified XTDB guard/transaction semantics must exclude
+forbidden joint outcomes at the physical boundary. A proof of serial
+atomic *reference* steps does not establish that the deployed
+backend executes only those steps.
+
+A conditional inductive result identifies its original source,
+proposition, initial-state coverage, per-operation proof
+dependencies, explicit environmental assumptions and independent
+checking mechanism. A report copied from another assembly, a
+digest with matching text, or an in-process admission handle alone
+does not discharge the higher-level physical/assumption obligations.
+
+*** Finite state families and non-vacuous exploration
+
+Finite exploration exercises a deliberately bounded subset of
+the HumanHelp state and command space. Required example families
+include:
+
+- two eligible helpers contending for one open Request and a third
+  authorized actor attempting a later Reassign;
+- two distinct Organizations/Locations, permitted and forbidden
+  cross-scope reads, and incompatible actor/target-helper identities;
+- active, expired, absent and role/skill-ineligible Membership,
+  including changed policy between preparation and submission;
+- Request states =:open=, =:claimed=, =:on-the-way=,
+  =:done= and =:cancelled= with active, ended and historic primary
+  and collaborator assignments;
+- Claim, Unclaim, Mark on the way, Complete, Cancel, Reassign and
+  Create, including invalid attempts and valid eligible positives;
+- unique C42/C43 commands, compatible duplicate C42, incompatible
+  command rebinding, lost settlement and post-commit uncertainty;
+- local Create S after remote unadopted R, with local selective
+  adoption and outstanding Refresh debt;
+- source and host changes that alter dependencies, writer sets,
+  application generation and read/disclosure permission.
+
+Not all families must form one giant Cartesian product. Small
+independently checked families are legitimate when each obligation
+identifies its own state universe, command/actor/argument domains,
+initializers, number of attempts, bounds, checker configuration,
+transition-preparation strategy, coverage and omitted interference.
+If a stronger joined claim requires interaction between families,
+that composition itself needs a checked or explicitly assumed
+argument. A prepared-plan permutation explores precomputed
+choices against a selected initial state; it is not equivalent to
+rebuilding every operation after each successor state. A
+state-dependent reachable checker must cover changing enablement
+where the obligation relies on it.
+
+Non-vacuity is an admission requirement. For each required
+independent capability there is an actual eligible source state,
+a successful attempt, a meaningful denied/current-policy attempt
+and the applicable retry/concurrency branch under the selected
+scope. A universally true invariant over a model in which no
+Request can be created or no Claim is ever enabled does not meet
+the HumanHelp capability contract. A source rule never matched by
+any selected state is reported unexercised, not silently checked.
+Removing Reassign from both the production declaration and the
+derived formal subject still fails the independently specified
+HumanHelp positive capability gate.
+
+Where finite search finds a counterexample, the report exposes
+the smallest available typed, reproducible operation/state trace
+under the selected model and its assumptions, without disclosing
+protected tenant facts to a browser. Finiteness and lack of a
+counterexample mean only "none in this checked subject"; they
+do not establish an unbounded theorem, a sound compiler, or an
+XTDB/HTMX physical result.
+
+*** Host functions, proof premises and policy adequacy
+
+Supported pure Clojure rules, typed operations and finite data
+constructors may be interpreted or translated for model checking,
+provided the transformation's semantic-preservation argument is
+visible. Opaque predicates, callbacks, time providers, database
+queries, serializers and side effects participate only through
+declared contracts. Sample tests of a function and its printable
+name do not prove its behavior for all admissible states.
+
+Host/FX capabilities are explicit inputs, not hidden powers.
+Current authenticated principal, current time, transaction
+identity, random/seed generation, external provider results and
+authoritative observation are separate premises. Trusted runtime
+validation can establish concrete input/output schemas, exact
+command binding, observed version, permitted read or verified
+effect call at a named boundary; it cannot prove the function
+unconditionally pure, the backend fully serializable or the
+external world compliant. If the selected assurance policy
+requires a stronger contract than the chosen host can supply,
+the protected operation is not certified/admitted under that
+policy; it is not granted a fictitious weaker proof.
+
+Independent policy adequacy is illustrated by Reassign: a
+generated transition and its executor may agree while omitting
+the essential authorized target-helper selection, or while
+misinterpreting collaborator history as primary ownership.
+The separate product oracle must reject that deficient design.
+A model with only the presently rendered Claim action also fails
+independent Unclaim, Mark on the way, Complete, Cancel and
+Reassign requirements even if the reduced machine is internally
+consistent.
+
+*** Actual execution and refinement evidence
+
+An abstract successor and a trusted XTDB transition are different
+objects. Source-to-physical correspondence requires a declared
+representation relation between abstract Request/assignment/
+dependency state and actual stored documents, plus evidence for
+the guard/prestate seen at the *transaction boundary*. A read
+taken before submission and a post-commit document read are not
+automatically the transaction's internal prestate and successor.
+Command-record readback, transaction ID, externally supplied
+status and displayed outcome must retain their precise provenance
+and trust scopes.
+
+A meaningful observed-step report correlates at least:
+- the admitted source, operation, typed arguments and exact
+  issued executor/route/actor binding;
+- the selected initial/abstract state and qualified physical
+  prestate, including relevant checked absences and dependency
+  versions;
+- the actual submitted guard/write footprint and backend
+  transaction identity or a clearly delimited observation gap;
+- qualified incorporation, rejection or unresolved submission
+  outcome with separately disclosed command-specific evidence;
+- the relevant complete/partial poststate read, basis and observed
+  representation relation;
+- the actual independently observed physical writer and
+  installed host/asset generation where the claimed scope
+  includes them.
+
+These are not automatically one adjacent execution history.
+A caller may supply a sequence of individually matching states
+from unrelated XTDB snapshots. The checker must establish the
+needed chronology, exclusivity/interference frame, correlated
+transition lineage and observation completeness before claiming
+a particular path refinement. A successful read of a complete
+canonical command record following one submitted write is useful
+bounded co-observation; it does not, without stronger origin
+proof, establish the identity of every writer or that this
+command caused the observed state.
+
+Protected physical writer coverage includes real HTTP handlers,
+public model calls, raw XTDB access, initialization, repair,
+imports, background work, external processes and privileged
+administrative paths. A host-observed list of registered writers
+is evidence about that *enumerator* and its inspected runtime;
+it is not by itself evidence that the enumerator saw every
+process, that all write capabilities are restricted, or that
+the deployed router uses the checked handler. Unknown inventory
+is an open coverage obligation, never an empty set by default.
+
+A qualified backend can establish particular guard/write,
+unique-primary, command-exclusion, query/absence, progression
+and visibility properties for its named XTDB version and
+configuration. Version or configuration changes reopen affected
+obligations. This is not a claim that one integration test
+proves all physical XTDB executions or every database behavior.
+
+*** Assurance report and joined acceptance
+
+The HumanHelp assurance explanation reports each precise
+proposition with its subject, source identities, checked
+transition families, observed operation coverage, writer
+inventory scope, evidence mechanism, proof dependencies,
+versioned physical assumptions, untested cases, applicability
+and status. It separates a verified finite statement, a
+conditional abstract theorem, an enforced runtime guard, a
+bounded concrete observation, an opaque host assertion and
+an independently exercised product requirement. An unadmitted
+candidate, copyable ledger or structural handle is never itself
+a release certificate or grant of transaction authority.
+
+#+begin_example
+Positive — competing Claim under a qualified guard:
+  A and B are eligible for open R17 with no primary helper.
+  Both submit through the real guarded production operation.
+  The finite semantic subject forbids two new active primaries.
+  A qualified backend test forces an actual conflicting
+  guarded submission; at most one is incorporated.
+  The other receives its actual supported outcome.
+  Fresh Request/assignment reads agree with that result.
+#+end_example
+
+#+begin_example
+Adversarial — missing Membership revocation writer:
+  The abstract Claim-only catalog preserves a predicate
+  that every active primary helper is currently eligible.
+  Membership is revoked through a real administrative path.
+  The property no longer follows. The plan must cover that
+  writer and repair transition, narrow the proposition or
+  retain an explicit external assumption; "checked" is not
+  a valid full-application answer.
+#+end_example
+
+#+begin_example
+Adversarial — false physical trace stitching:
+  A test reads prestate P, executes another actor's command,
+  then supplies a later unrelated snapshot Q and a copied
+  C42 result label to a comparison checker.
+  Agreement of isolated values is not transaction causality
+  or a contiguous trace without the required lineage.
+#+end_example
+
+#+begin_example
+Adversarial — vacuous operation catalog:
+  An implementation deletes Reassign and its formal plan.
+  Every remaining checked transition preserves uniqueness.
+  The independent product oracle still requires an eligible
+  Reassign and rejects the deficient application.
+#+end_example
+
+Concrete HumanHelp acceptance includes (1) positive Request
+creation and each required lifecycle operation through public
+model semantics, (2) invalid actor/target and competing-state
+rejections, (3) relevant Membership/Organization/Location and
+other writer interference, (4) compatible/incompatible command
+replay and truthful unknown delivery, (5) qualified real XTDB
+guard/assignment/readback evidence, (6) application and browser
+installation/continuity/advisory evidence, and (7) explicit
+assumption and coverage-failure rejection cases. Part VIII's
+following test architecture states how these are exercised.
+Part IX owns compositional certificate policy, Part X the
+stronger proof-kernel/refinement and physical correspondence
+arguments. Their open work is not preemptively declared done
+by this sectional review.
 
