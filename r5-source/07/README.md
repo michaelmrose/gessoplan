@@ -2,9 +2,9 @@
 
 **Disposition:** The preferred R5 Part VII was initially split losslessly
 into fifteen natural Org units. That initial source/publication matched
-Git blob `55c0c46f8ccf97b2ed6d61a3a7e1aeeca876f6a7`. Sections **07.01–07.11** have completed substantive R4-preservation
+Git blob `55c0c46f8ccf97b2ed6d61a3a7e1aeeca876f6a7`. Sections **07.01–07.12** have completed substantive R4-preservation
 and Gesso-source correspondence review, recorded in their numbered audits.
-Sections 07.12–07.15, whole-Part-VII reconciliation, and independent
+Sections 07.13–07.15, whole-Part-VII reconciliation, and independent
 candidate acceptance **remain outstanding**. All nine original Part VII
 `CUSTOM_ID` anchors remain unchanged.
 
@@ -46,7 +46,7 @@ no internal `***` section, table, code block, quote or requirement
 anchor was split. The smallest source is 35 original lines and the
 largest 191; those counts describe the **initial split**, not subsequent
 revisions. The current fifteen units reconstruct the
-**233,623-character**, **3,481-line**
+**248,123-character**, **3,696-line**
 Part VII publication exactly, retaining all nine original anchors.
 
 ## Assembly and verification
@@ -153,5 +153,10 @@ production seams, real browser/XTDB/host evidence scopes, guard-removal
 fault injection, nonvacuous HumanHelp capabilities, and twenty-two
 positive/adversarial histories distinguish prevention, observation and proof.
 
-**Next:** review **07.12 — Application Explanation and Semantic Audit**,
-including source-derived policy views and exact evidence classification.
+**07.12 review:** see `07.12-r4-preservation-audit.md`. Source-owned
+rule/operation audit views, known-versus-unknown inventory, proposition-specific
+assurance, dependency impact, opaque callbacks, read-only disclosure and
+sixteen positive/adversarial histories distinguish inspectable policy from proof.
+
+**Next:** review **07.13 — Structured Diagnostics and Repair**,
+including stable obligation identities, source-local repair and safe disclosure.
