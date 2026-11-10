@@ -9,11 +9,11 @@ No normative wording, operation contract, example, heading, table,
 
 **Review status:** **08.01–08.15 have completed substantive R4-preservation
 and Gesso/HumanHelp source-correspondence review**, recorded in their
-numbered audits. All fifteen numbered sectional reviews and **whole-Part-VIII editorial
-reconciliation** are complete. Independent Part VIII candidate acceptance
-remains outstanding. Parts I–VII
-are accepted reviewed R5.1 candidates; Parts VIII–XII and full-plan
-acceptance remain open.
+numbered audits. All fifteen numbered sectional reviews, **whole-Part-VIII editorial
+reconciliation**, and **independent reviewed-candidate acceptance** are
+complete. Parts I–VIII are accepted R5.1 normative design candidates;
+Parts IX–XII and full-plan acceptance remain open. This decision does
+not certify Gesso/HumanHelp implementation or full product acceptance.
 
 The **R4 preservation baseline** is `main` Part VIII,
 **5,372 newline-split lines** and 29 second-level headings.
@@ -261,5 +261,12 @@ leakage into the existing audits, preserved the selected remote advisory-only
 policy and still-open response-flow contract, and checked Part VIII anchors,
 Org structure and twelve-part links. This is not implementation certification.
 
-**Next:** independent whole-Part-VIII reviewed-candidate acceptance or
-specific corrective revision; Parts IX–XII remain outstanding.
+**Independent Part VIII reviewed-candidate acceptance:** see
+`PART-VIII-cross-section-acceptance.md`. The review accepted Part VIII as a
+coherent timeless normative target, while preserving the independently
+unselected HumanHelp response-flow experience and all unproved physical
+implementation/assurance obligations as explicit product and runtime gates.
+
+**Next:** Begin Part IX, *Compositional Certification*, with a lossless
+sectional split of the preferred R5 text before R4/Gesso-informed review.
+Parts IX–XII and complete twelve-part candidate acceptance remain open.
