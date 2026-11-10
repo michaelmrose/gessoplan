@@ -1,9 +1,9 @@
 # R5.1 sectional source — Part V, Provisional State and Executable Presentation
 
 **Disposition:** lossless structural preparation of preferred R5
-Part V is complete. Sections 05.01–05.04 have received substantive
+Part V is complete. Sections 05.01–05.05 have received substantive
 R4-preservation and Gesso-correspondence reviews, recorded in their
-respective `05.xx-r4-preservation-audit.md` files. 05.05–05.13
+respective `05.xx-r4-preservation-audit.md` files. 05.06–05.13
 remain unreviewed.
 The thirteen source units reconstruct
 `gesso-unified-design-canonical-r4-05-provisional-state-and-executable-presentation.org` byte for byte. **Whole-Part-V reconciliation
@@ -111,6 +111,14 @@ explicit, excludes protected inputs from generic capture, qualifies element
 identity, and distinguishes HumanHelp's local board filtering from an
 authoritative server-side query and its adoption/Refresh obligations.
 
-**Next:** audit and revise `05.05-continuity-board-replacement-and-cleanup.org`
-against R4, reviewed 05.01–05.04, Part IV adoption semantics and Gesso's
-physical continuity/HTMX lifecycle. One `next` remains one revision.
+**05.05 review:** see `05.05-r4-preservation-audit.md`.
+The HumanHelp board example now distinguishes the authoritative cohort from
+local text search, qualifies owner and target at actual installation, retains
+independently newer local card/Refresh obligations, and rejects CSS-value
+coincidence as evidence for safe height-lock cleanup. Six paired histories
+exercise actual physical installation and optional continuity failure.
+
+**Next:** audit and revise `05.06-views-binding-and-availability.org`
+against R4, accepted Parts I–IV, reviewed 05.01–05.05, the HumanHelp
+action catalog and Gesso's real view/action preparation. One `next`
+remains one bounded revision.

@@ -1,8 +1,18 @@
 *** Worked example: replacing a HumanHelp board
 
-Bob has applied search =cabinet=, opened Request R17, focused Refresh, and
-scrolled partway down the board. A refresh acquires a complete authorized board
-observation for that same applied query at X31.
+Bob has locally filtered his adopted HumanHelp Request board by the text
+=cabinet=, opened Request R17, focused Refresh, and scrolled partway down.
+His *authoritative* board query identifies the admitted Organization/Location,
+principal/visibility policy, projection version, temporal scope and complete
+collection cohort, not that local text filter. A separately granted Refresh
+acquires a complete authorized board observation for that same authoritative
+query at X31. The example assumes a qualified provider comparison establishing
+the relevant progression; X31 is a symbolic basis, not an ordered number.
+
+If the product instead implements =cabinet= as a *server-side* authoritative
+search selector, that selector belongs in the acquisition identity and the
+query must be revalidated when the user changes it. Continuity cannot
+silently reinterpret one fetched cohort as the result of another server query.
 
 An inspection view of a continuity capture is:
 
@@ -23,20 +33,25 @@ An inspection view of a continuity capture is:
 #+end_src
 
 The actual resource can be opaque and include implementation-specific physical
-handles. The context prevents a draft restore from misrepresenting the applied
-query or overwriting newer edits. Neither =board-query-ref= nor X31 is admitted
-merely by appearing in this inspection map.
+handles. Here =board-query-ref= denotes the *authoritative cohort selector*;
+=:search-draft= records an independently mutable local filter. The capture's
+edit identity must be checked against a later user edit at the actual restore
+point, not merely compared once while preparing the swap. The context prevents
+a draft restore from misrepresenting the applied query or overwriting newer
+edits. Neither =board-query-ref= nor X31 is admitted merely by appearing
+in this inspection map. The capture cannot issue another Refresh grant,
+change Bob's authorized visibility or supply its own adoption evidence.
 
 A replacement follows these phases:
 
 | Phase | Required behavior |
 |-------+-------------------|
-| Prepare | Check the observation and proposed target; establish the replacement owner and its effect identity. |
-| Capture | Capture permitted local state under that owner; optional box failures remain local diagnostics. |
-| Install | Recheck current owner, target instance, scope, and progression at the mutation boundary; perform the permitted update. |
-| Admit completion | Record actual installation success, failure, or partial/indeterminate realization under the effect contract. |
-| Restore | Restore only still-applicable local state, checking ownership at every deferred mutation boundary. |
-| Release | Retire the capture and release physical resources without disturbing newer ownership. |
+| Prepare | Admit the observation, authorized authoritative query and proposed target; establish the current replacement owner, target incarnation and effect identity. Do not mistake preparation for an installation grant with unlimited lifetime. |
+| Capture | Capture only locally permitted state under that owner; optional box failures remain local diagnostics, not authorization errors or reasons to discard the authoritative operation. |
+| Install | Recheck current owner, target instance, visibility, scoped progression and any independently newer adopted card/membership at the actual mutation boundary; perform only the permitted replacement footprint. |
+| Admit completion | Correlate the host's physical outcome to the issued installation effect; record completed, failed, partial or indeterminate coverage, and discharge only covered acquire-and-adopt debt. A permitted swap or a response body does not itself prove completion. |
+| Restore | Restore only still-applicable local state after installation, checking owner, target instance, surviving controls and post-capture user edits at each deferred mutation boundary. The result is a separate optional interaction-quality judgment. |
+| Release | Revoke the exact capture's restoration rights before idempotent physical cleanup; never release a newer owner's capture, focus, style lock or continuation. |
 
 If installation succeeds but Refresh is absent, focus restoration may fail
 while the new board remains adopted. The result distinguishes installation from
@@ -55,13 +70,23 @@ optional continuity:
 
 This inspection result is not a browser-issued credential. The admitted shell
 completion supplies the evidence the semantic owner needs. It must not be
-converted into a generic failed swap which triggers stale rollback.
+converted into a generic failed swap which triggers stale rollback. The
+completed installation records only its justified target/scope and does not
+clear independent newer Live requirements or another actor's Refresh debt.
+If a separately newer self-action card or membership has already been adopted,
+the whole-board replacement must preserve it through a declared reconciliation
+or decline the conflicting footprint, rather than treating the broad board
+response as permission to overwrite it.
 
 Now replacement O2 captures I2 while I1 still awaits layout. O2 owns the current
 board instance, and Bob has typed =cabinet hinge=. I1's delayed callback must
 not restore =cabinet=, consume I2, move focus back, or reset O2's scroll state.
 Checking ownership only when scheduling the callback is insufficient; it is
-checked again immediately before the delayed mutation.
+checked again immediately before the delayed mutation. A callback that
+retrieves the same logical target or matches the same DOM key can nevertheless
+belong to an obsolete physical target incarnation. A new actor/tab, principal
+scope, query selector, or unrelated replacement cannot inherit I1's rights
+merely by using the same visible target name.
 
 Even without O2, a user edit after I1's capture may make restoration stale.
 The policy compares the relevant local edit instance or equivalent ownership
@@ -85,7 +110,20 @@ failure.
 If installation itself partially applies, the result must preserve that
 uncertainty and follow the repair contract. Neither the semantic state nor the
 UI may pretend the entire fragment is installed. Continuity success cannot
-compensate for missing installation evidence.
+compensate for missing installation evidence. If the host can prove complete
+installation for one independently scoped target but not another, only that
+target's required coverage is discharged. Where the declared operation
+promises all-or-nothing board replacement, it must provide a real physical
+atomicity mechanism or a stated compensation/recovery protocol; an HTMX
+callback sequence alone supplies no general multi-target atomicity.
+
+The result of optional continuity failure after a completed installation
+cannot reclassify the prior model operation as rejected, revoke the installed
+observation, or consume another replacement's pending repair. A declared
+*mandatory* user interaction (such as a user-confirmed unsaved-draft barrier)
+belongs to its own preparation/permission contract; it may block a still
+unissued replacement where authorized, but does not retroactively cancel
+a completed authoritative command or installation.
 
 Semantic retirement revokes restoration rights before best-effort physical
 cleanup. Failed cleanup is diagnostic/resource debt, not authority for an old
@@ -94,12 +132,38 @@ resource instance it owns.
 
 A style lock illustrates the requirement. Seeing the same min-height value that
 an old effect once wrote does not necessarily prove it still owns that value;
-a newer effect might have written the same value. Cleanup must use the resource
-ownership contract or a justified equivalent, rather than rely solely on
-same-shaped physical state. It must not undo a newer lock.
+a newer effect might have written the *same* value. Compare-and-restore based
+solely on CSS value equality is therefore not an ownership check. Cleanup must
+use the resource-instance ownership contract or a justified equivalent:
+release may restore a previous style only when it still owns the affected
+property/lock and the restoration cannot undo a later owner's write. A later
+owner's equal-value write must remain protected just like a distinct-value
+write. If ownership cannot be established, omit the risky local cleanup,
+report retained physical resource debt, and never regain semantic rights.
+An idempotent repeated release of a retired handle must not mutate any
+current owner's state.
 
 Physical resource lifetime may outlast semantic ownership. In that case the
 remaining handle is powerless cleanup debt. Portable Choreo needs only the
 contracted installation/effect outcome; browser diagnostics may report the
 failed optional focus, scroll, or capture operation separately.
 
+*** Board replacement and cleanup conformance pairs
+
+The complete positive path is an authorized, adequately scoped and permitted
+X31 board observation, the real physical installation result, a separately
+current continuity restore, and the exact resource release. Tests must not
+skip the host mutation boundary by supplying a completed-looking result map.
+
+| Positive physical history | Adverse or ambiguous history | Required result |
+|---------------------------+------------------------------+-----------------|
+| Bob filters the adopted authorized board locally by =cabinet=, Refresh installs the same authoritative cohort at qualified X31, and unchanged local inputs survive. | The client treats the restored text as a new server query, or a server-filtered response is misidentified as the complete Organization board. | Retain the real acquisition selector and separate local filtering; no invented coverage, visibility or Refresh grant. |
+| O1's board installation completes; its optional focus restore fails because Refresh is absent. | The failed focus callback marks the canonical swap failed or reintroduces the old board. | Keep actual authoritative installation/adoption and isolate local interaction diagnostics; no stale rollback. |
+| O2 supersedes O1 and I2 restores a still-current edit. | I1 runs after O2, or after a same-slot user edit without O2, and rewrites the newer draft/focus/scroll. | Gate each physical mutation by current owner, target and edit identity; stale callbacks have no restoration rights. |
+| X31 board installation is permitted while a separately newer self-action card exists. | Whole-board replacement overwrites the independently adopted card or clears later unfulfilled board requirements. | Preserve the independently qualified local facts or refuse/reconcile the conflicting footprint; discharge only installed covered obligations. |
+| A continuity height lock L1 is released while no successor owns that style. | L2 subsequently writes the *same* CSS value as L1, then L1 cleanup restores its old prior value. | Use actual property/lock ownership, not value coincidence; stale L1 cannot overwrite L2. |
+| A fragment install succeeds and a later optional restore Promise rejects, followed by a permitted new refresh. | A rejected Promise strands the slot, poisons the next refresh or grants a callback from the retired capture. | Retire the resource and isolate local failure while allowing fresh acquisition/installation, under the next owner's rights. |
+
+These are finished-system obligations. The scoped source inspection of a
+particular browser realization does not prove these cases for every custom
+continuity box, HTMX version, server query mode or deployment.
