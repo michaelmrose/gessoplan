@@ -9,9 +9,9 @@ proof rules, identifiers, link targets or whitespace were changed.
 The canonical publication is derived output, not a second source
 to edit independently.
 
-**Review status:** **09.01–09.13 substantively reviewed** against R4,
+**Review status:** **09.01–09.14 substantively reviewed** against R4,
 Gesso v1622 and accepted Parts I–VIII, with source decisions recorded in
-the numbered preservation audits. Sections **09.14–09.16** remain for
+the numbered preservation audits. Sections **09.15–09.16** remain for
 substantive review. Whole-part reconciliation and independent Part IX
 candidate acceptance remain outstanding. Parts I–VIII are accepted R5.1 design
 candidates; this is not evidence of a completed runtime/proof system.
@@ -223,6 +223,16 @@ positive/adversarial obligations and Gesso v1622 nonclaims are recorded in
 the audit. Published Part IX: **4659 newline-split lines**,
 **243083 characters**.
 
-**Next:** Review **09.14 — Profiles, Diagnostics, and Policy Review**
-against R4, completed 09.01–09.13 claim/evidence categories, and actual
-Gesso policy/preflight diagnostics and semantic-policy escape coverage.
+**09.14 review:** see `09.14-r4-preservation-audit.md`.
+Reconciled versioned proposition-specific assurance profiles and distinct
+source, proof, installed realization and positive product gates; stable
+first-blocker diagnostics, private-safe explanation, formal counterexamples
+versus coherent product-wrong policy, human/heuristic intent review, semantic
+compression and scope-honest detected policy escapes. Preserved R4 examples,
+Gesso v1622 diagnostic/preflight/opaque source limitations, and twenty
+positive/adversarial conformance pairs in the audit. Published Part IX:
+**5199 newline-split lines**, **258903 characters**.
+
+**Next:** Review **09.15 — Systematic Mutation and Conformance Corpus**
+against R4, reviewed sections 09.01–09.14, Gesso source- and runtime-checking
+oracles, and the independent product acceptance boundaries of Part VIII.
