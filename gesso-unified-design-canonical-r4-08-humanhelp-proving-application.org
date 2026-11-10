@@ -1248,6 +1248,36 @@ authorized Organization/Location, content validation, command binding, atomic
 incorporation, and post-commit recovery. Client validation improves feedback but
 does not replace public-boundary or transaction checks.
 
+ 
+*** Trusted Create authority and preflight before the form is used
+
+The rendered dialog collects editable Request content. The trusted server
+resolves the authenticated production User and selected authorized
+Organization/Location, not a posted requestor ID or a fixed fixture value
+promoted into authority. The public
+=net.humanhelp.site.model.request.core/create= operation owns content
+normalization, active-user and operational-Location dependencies, command
+construction and atomic Request incorporation. The reference application
+may set a fixed example Location as a declared *fixture scope*, but it
+must not infer tenant or Membership permission from that constant.
+
+Model planning needs real current-time, generated-ID/seed, transaction
+and XTDB capability inputs with the correct trust and lifetime. The
+canonical Biff/Gesso assembly checks their required provider contracts
+and actual handler adoption where knowable. A missing
+=:biff.fx/now=, =:biff.fx/seed= or production commit dependency that
+can be established before protected service is an admission defect,
+not a surprise error after a user has filled the dialog. The exact
+Biff FX provider mechanism is a physical host contract, not a
+browser-supplied clock or a stand-in demo function.
+
+Validation failure is *pre-effect*: preserve the user's submitted
+title/details/location-detail, render source-owned field errors
+without creating a Request, and preserve the current board and
+its advisory/option state. A submit interrupted after the effect
+may have occurred is *not* a validation failure. It follows the
+stable command and unknown-outcome recovery contract.
+
 On known successful creation, the user's own Request is acquired and installed
 through a correlated result path. That path can adopt the new Request into the
 current cohort only when it establishes the selected scope's membership
@@ -1279,6 +1309,28 @@ closing it affects only that presentation. Prior creations remain in the adopted
 cohort when eligible. A pending or unknown creation retains its independent
 command recovery state and is not discarded by a later successful creation.
 
+ 
+The result area has a stable, permitted installation owner and accessible
+success/uncertainty message. Its “Reveal in board” action changes only
+local search, ordering or terminal visibility when that is sufficient;
+it does not issue an implicit new domain acquisition. When S is
+actually outside the selected Location, page/window or authorization
+scope, the area labels that difference and requires an explicit
+navigation/new acquisition. Closing a success result cannot silently
+discard S's admitted cohort membership, and rendering a second success
+must not erase an earlier unresolved command's recovery reference.
+
+The result area is a normative finished-product design choice.
+The present example renders a success toast and replaces the
+toolbar/list; it does not yet demonstrate a separately owned
+“Your new Request” surface that remains visible when a current
+search filter excludes the new Request. The positive acceptance
+test must type the excluding search *before* creating S, then
+verify S's committed result and visible confirmation *before*
+any filter reset. A dialog closing or a “Request created”
+toast alone does not prove that the filtered-out Request
+is visible as a usable authoritative result.
+
 If creation succeeds outside the current cohort's declared bounds, the result
 area can still show the permitted result under its own scope. It must label the
 scope difference and offer an explicit navigation/acquisition action rather
@@ -1288,6 +1340,56 @@ Prompt visibility means that the confirmed result is usable after the declared
 result installation completes. A provisional card before confirmation is allowed
 but is visibly pending and owned by the creation execution. No toast, modal
 closure, or speculative row by itself proves successful incorporation.
+
+ 
+*** Commit, response, advisory and historical recovery are distinct
+
+The production model's =:commit/status :committed= and scoped
+=:progression= justify an authoritative incorporation/read
+claim within their proven physical meaning. The stronger
+Part IV same-command replay result, permitted historical
+disclosure and browser =:accepted= presentation need
+their own typed evidence. A generated Request UUID,
+a visible toast or a current postcommit card does not
+by itself prove the historical outcome for original
+command C19.
+
+The creator response and remote notification are separate
+postcommit responsibilities. The current source intentionally
+constructs the creator's response before calling
+=send-new-request-advisory-best-effort!=, excludes the
+authenticated creator from the other-client broadcast,
+and logs advisory fanout failure without changing
+committed authority into an HTTP rejection. This is a
+valuable concrete prevention of false retries *when
+response construction succeeds*.
+
+There are additional histories to qualify. If Request
+incorporation succeeds but creator-response rendering
+throws before the advisory helper is called, the mutation
+is still committed, neither creator installation nor remote
+advisory delivery is established, and the participant
+needs correlated recovery. If the response was constructed
+but transport or OOB installation fails, the server
+cannot infer that the creator saw S. If advisory delivery
+fails after response construction, the creator's success
+need not be revoked, but the other participants'
+notification/reconnect obligations must have a declared
+durable or otherwise honestly weaker recovery policy.
+The existing best-effort log is not evidence of universal
+eventual remote delivery.
+
+An application with reliable postcommit delivery
+records the necessary publication intent and
+command recovery debt under the selected atomicity/
+retention premise. It must not claim two-phase
+commit or cross-client exactly-once effects merely
+because a single Node/XTDB transaction was
+committed. Retried Create with the original
+stable binding is resolved before re-incorporation;
+an unqualified implementation without such
+deduplication keeps the outcome uncertain and
+does not blindly regenerate S.
 
 *** Worked example: remote R and local S
 
@@ -1311,6 +1413,23 @@ It must also wait for observable advisory delivery before asserting continued
 absence of R, so that an assertion made before the remote event cannot pass
 vacuously.
 
+ 
+The test also checks Bob's pre-Refresh cohort identity and current
+local options, one permitted Create result for S, requestor identity,
+production persisted Request state, retained pending R obligation,
+and physical installation of the dedicated S result area. A card
+for R appearing merely because the Create success response queried
+all new Requests is a failure, even if R's contents are accurate.
+If the R advisory arrives after S's result, the absence requirement
+is still meaningful; the test explicitly synchronizes that
+notification and verifies that S's local result did not
+consume it retroactively.
+
+The R4 example is a *logical history*, not an instruction to compare
+the decimal portions of P18 and P19. The provider defines which
+basis/coverage statements may be composed. Local search and sort
+must not silently query the newest database as a workaround.
+
 *** Correlation is narrower than global adoption
 
 A command result can justify updating its affected card and, where declared,
@@ -1318,10 +1437,87 @@ selectively adding/removing a member. It does not adopt every Request mentioned
 in an unrelated response, every row from an incidental reread, or every change
 before its progression position.
 
+ 
+*** A correlated result is narrower than a recomputed board
+
+For an admitted creator-local insertion, the settled result identifies
+the newly committed Request and its original command/execution binding.
+The trusted authority establishes its requestor and scope, the relevant
+transaction/progression and a permitted Request/assignment/User display
+projection. A successful HTTP status or submitted title alone does not
+justify that new member or its physical DOM.
+
+The implementation may acquire a single affected Request/card with
+sufficient progression, or install the admitted complete result of a
+separately granted board acquisition. It may *not* reuse Create success
+as permission for an unrestricted =requests-for-location= reread
+whose resulting toolbar/list quietly imports remote Requests that
+the user had not chosen to adopt. A committed basis P19 can justify
+the creator's S read while membership for unrelated R remains Q17.
+
+The current HumanHelp example takes a meaningful but **different**
+path: =example.app/create-request!= calls production
+=request.core/create=, composes its committed progression,
+then =create-request-success-response= recomputes
+=board-fragments= and returns toolbar/list OOB replacements
+through =views/create-request-success=. This demonstrates
+production-backed read-your-writes and a visible successful
+Create response in selected HTTP integration tests. It
+does **not** independently establish selective *single-member*
+adoption: the fresh whole-board query can include an unrelated
+remote R. The target design must introduce admitted selective
+membership or a separately authorized full-board grant,
+rather than labelling the existing response as complete
+compliance.
+
+A board fragment and toolbar may need different membership/count
+evidence. A newer card for S does not make the toolbar's total,
+open count or other cards current. The UI reports a mixed
+cohort truthfully and preserves any pending remote advisory.
+
 Advisory debt is discharged by the relevant observation and installation scope.
 The application cannot clear “Updates available” simply because it received a
 newer local result. Two obligations with different scopes or required stages may
 need different evidence even when their provider positions are comparable.
+
+ 
+*** Positive and adversarial Create acceptance histories
+
+The actual `/app` Create dialog, public production Request model,
+source-bound server response, managed browser assets, Live advisory
+and physical DOM have distinct test witnesses. Required eligible
+success must be observed, not inferred from negative-case checks
+or a fabricated test-only Create result.
+
+| History | Required result and scope |
+|---------+---------------------------|
+| An eligible signed-in user submits valid Request content. | Production Create incorporates one Request with authenticated requestor, permitted Organization/Location, stable identity and commit progression. |
+| Client-side validation passes but trusted Request content validation rejects the title. | No protected effect; keep submitted values and show authoritative field errors. |
+| Mandatory Biff =:now= or =:seed= provider is structurally missing. | Fail application/operation admission before protected service where knowable; never take the user through an impossible dialog path. |
+| A forged form posts another requestor or an unauthorized Location. | Trusted context/model determines actor and scope; reject incompatible or unauthorized intent. |
+| S commits with a matching filter and valid cohort scope. | Install its permitted authoritative card into the admitted cohort without duplicate live target. |
+| S commits but the active search excludes it. | Keep the filter and visibly show “Your new Request” with S's authorized card and reveal control, before the user changes search. |
+| S commits outside the current board's window or Location. | Show a separately scoped permitted result and explicit navigation/acquisition, not fabricated cohort membership. |
+| Bob has Q17, Alice creates remote R, then Bob creates S locally at P19. | Bob sees S and retains R's advisory/nonmembership; local Create does not adopt the latest complete database query. |
+| Bob searches for remote R after its advisory but before explicit Refresh. | Do not acquire R by changing the local query; preserve advisory debt. |
+| S is successfully read at P19 while the board membership and toolbar counts remain Q17. | Preserve scoped evidence and truthful distinct counts; do not claim the whole board advanced to P19. |
+| The success response includes a full, newly queried toolbar/list that now contains remote R. | Classify as an unintended board acquisition under the selected policy; passing read-your-writes alone is insufficient. |
+| The Create response builds correctly, then the advisory fanout throws. | Keep committed creator result and log/retain remote notification debt under the selected delivery policy; no false rollback/HTTP failure. |
+| Model commit succeeds but creator-response rendering fails before advisory dispatch. | Preserve committed authority and both unresolved local delivery and remote notification obligations; do not infer rejection or successful adoption. |
+| Server writes a 200/HTML success, but HTMX OOB fragment installation is rejected or fails. | Participant still lacks adopted S until physical installation or authorized recovery; server-side response construction is insufficient. |
+| Duplicate transport retry carries original Create command C19 after unknown response. | Resolve disclosed historical incorporation without making duplicate Request S under the qualified command-record contract; if unqualified, report unknown/manual reconciliation. |
+| An unrelated remote advisory arrives while S's local result installs. | Retain that obligation, even if the provider-issued position is older or not directly comparable with S's local read. |
+| A second successful local Create T replaces the result area's display of S. | Keep eligible S in adopted membership and its prior history, and retain any independent unresolved command records. |
+| A stale callback from S's retired result target arrives after current board owner changed. | Refuse old resource installation rights; request identity alone cannot revive stale effects. |
+| A current permission change makes S's details inaccessible to the creator. | Do not continue unauthorized disclosure merely because S was previously adopted; report a policy-appropriate non-disclosing state. |
+| A test starts with search matching remote R, then clears it before creating S. | Do not count this as the filtered-local-result positive case; the test must preserve the excluding filter through S's confirmation. |
+| Remote Browser B has no advisory yet because fanout was lost. | Do not claim no-gap eventual notification from a best-effort sender; require the selected reconnect/replay or explicitly weaker delivery guarantee. |
+
+Section 08.04 owns the baseline cohort and disclosure scope;
+08.06 owns remote lifecycle advisories, Refresh grants and
+reconnect rules; 08.07 owns details and option interaction.
+Create does not acquire an extra broad authorization merely
+because the current example route happens to redraw the full board.
 
 ** Remote lifecycle adoption policy
 :PROPERTIES:

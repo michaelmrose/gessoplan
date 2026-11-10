@@ -7,9 +7,9 @@ published Part VIII and `r5` publication had the **same Git blob**
 No normative wording, operation contract, example, heading, table,
 `CUSTOM_ID` or cross-part link was changed.
 
-**Review status:** **08.01–08.04 have completed substantive R4-preservation
+**Review status:** **08.01–08.05 have completed substantive R4-preservation
 and Gesso/HumanHelp source-correspondence review**, recorded in their
-numbered audits. Sections **08.05–08.15**, whole-Part-VIII reconciliation
+numbered audits. Sections **08.06–08.15**, whole-Part-VIII reconciliation
 and independent Part VIII acceptance remain outstanding. Parts I–VII
 are accepted reviewed R5.1 candidates; Parts VIII–XII and full-plan
 acceptance remain open.
@@ -19,7 +19,7 @@ The **R4 preservation baseline** is `main` Part VIII,
 The preferred **R5 architectural predecessor** had
 **1,468 newline-split lines**, 21 second-level headings and
 **92,955 decoded characters** before substantive revision.
-The current fifteen sources reconstruct the **2,236-line**, **138,476-character** Part VIII publication exactly. Length is not
+The current fifteen sources reconstruct the **2,432-line**, **151,397-character** Part VIII publication exactly. Length is not
 evidence that all R4 obligations survive; each numbered
 review must make its own R4/Gesso/HumanHelp comparison.
 
@@ -175,6 +175,13 @@ resource/DOM ownership, retained snapshot versus fresh HTMX query,
 user-field disclosure, and twenty-one positive/adversarial board histories
 have been compared with R4 and current HumanHelp/Gesso source.
 
-**Next:** Review **08.05 — Creation and Immediate Local Visibility**,
-including filtered creator results, local S versus remote R, postcommit
-advisory, command correlation and physical installation.
+**08.05 review:** see `08.05-r4-preservation-audit.md`.
+Trusted Create and preflight FX prerequisites, the current full-board
+OOB response versus required selective local result, filtered-out
+“Your new Request” confirmation, postcommit rendering/advisory
+uncertainty, original R/local S, and twenty-one positive/adversarial
+Create histories were reconciled with R4 and HumanHelp/Gesso sources.
+
+**Next:** Review **08.06 — Remote Lifecycle and Refresh**,
+including advisory-only remote lifecycle, single-user acquisition grants,
+refresh/read/DOM stages and races with local committed results.
