@@ -2,9 +2,9 @@
 
 **Disposition:** The preferred R5 Part VII was initially split losslessly
 into fifteen natural Org units. That initial source/publication matched
-Git blob `55c0c46f8ccf97b2ed6d61a3a7e1aeeca876f6a7`. Sections **07.01–07.08** have completed substantive R4-preservation
+Git blob `55c0c46f8ccf97b2ed6d61a3a7e1aeeca876f6a7`. Sections **07.01–07.09** have completed substantive R4-preservation
 and Gesso-source correspondence review, recorded in their numbered audits.
-Sections 07.09–07.15, whole-Part-VII reconciliation, and independent
+Sections 07.10–07.15, whole-Part-VII reconciliation, and independent
 candidate acceptance **remain outstanding**. All nine original Part VII
 `CUSTOM_ID` anchors remain unchanged.
 
@@ -46,7 +46,7 @@ no internal `***` section, table, code block, quote or requirement
 anchor was split. The smallest source is 35 original lines and the
 largest 191; those counts describe the **initial split**, not subsequent
 revisions. The current fifteen units reconstruct the
-**193,630-character**, **2,879-line**
+**206,144-character**, **3,054-line**
 Part VII publication exactly, retaining all nine original anchors.
 
 ## Assembly and verification
@@ -138,5 +138,10 @@ outcomes and disclosure, resolver ownership, typed progression and physical
 adoption, publication durability, initial Live/subscription gaps and qualified
 multi-node interest continuity now have eighteen positive/adversarial histories.
 
-**Next:** review **07.09 — Static Preflight and Required Dynamic Handling**,
-including actual recovery edges, nonvacuous failure handling and correct gates.
+**07.09 review:** see `07.09-r4-preservation-audit.md`. Mandatory managed
+preflight, source-owned condition/continuation coverage, typed uncertainty,
+resource budgets, and sixteen positive/adversarial failure histories are now
+explicit about structural checks versus production enforcement.
+
+**Next:** review **07.10 — Lifecycle, Installation, and Supported Startup**,
+including real module ordering, physical handler adoption and activation.
