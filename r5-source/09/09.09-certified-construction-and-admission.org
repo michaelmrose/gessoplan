@@ -1,0 +1,100 @@
+** Certified construction and certificate admission
+
+The supported constructor performs one coherent operation over a stable source
+closure. It may use internal stages and caches, but cannot let source/dependency
+substitution occur between checking a claim and issuing its admitted product.
+
+| Stage | Required result |
+|-------+-----------------|
+| Source admission | Validate source categories and retain origin/provenance without executing untrusted proof input. |
+| Normalization | Produce the exact canonical subject under the named preservation/interpretation contract. |
+| Elaboration | Resolve semantic names and types; propose explicit terms, dependencies, and derivations. |
+| Obligation derivation | Determine required judgments from the actual subject and requested claim/profile. |
+| Evidence checking | Validate derivations or dedicated-checker results at their proper boundaries. |
+| Dependency closure | Verify both structural graph validity and the required source-derived edge set. |
+| Premise accounting | Compute inherited premises, checked discharges, applicability, and policy acceptance. |
+| Issuance | Create the admitted product only after the profile's mandatory obligations pass. |
+| Consumption | Confirm the product matches the consumer's subject, dependencies, policy, and current implementation context where applicable. |
+
+*** No report-to-certificate promotion
+
+The issuer must not accept a caller-supplied =:checked-result= map as the evidence
+that a checker ran. It either reruns the required checking from original source
+or consumes a checker-issued internal result whose identity and exact source/
+context binding it controls. Serialization loses any purely process-local
+admission status and re-enters through checking.
+
+The ordinary public construction API can accept source and requested policy,
+derive the rest, and return the admitted artifact plus a readable report. The
+caller should not manually build an expected proof graph or copy semantic IDs
+between namespaces.
+
+The conceptual boundary is:
+
+#+begin_src clojure
+(certify! {:source application-owned-source
+           :requested-profile selected-profile
+           :dependencies admitted-dependencies})
+#+end_src
+
+This call name is illustrative. Its contract requires the constructor to derive
+the actual subject, obligations, and dependency requirements. No optional input
+such as =:verified?=, =:discharged?=, or a precomputed success report bypasses them.
+
+A partial diagnostic can explain progress when certification fails. It is a
+different artifact category and cannot satisfy an API requiring the missing
+certificate. A conditional admitted certificate is not “partial” merely because
+its profile explicitly permits named premises; the mandatory local judgments
+must still all hold.
+
+*** Process-local handles and durable packages
+
+The default JVM realization uses opaque handles registered by identity only after
+successful admission. The registry binds a handle to its original checked source,
+claim/profile, dependency closure, premises, and applicable implementation context.
+A manually constructed object of the same type or a copied map is unregistered
+and rejected.
+
+A process-local handle is not a signature, durable credential, browser capability,
+or portable proof. Weak references may prevent the registry alone from retaining
+dead objects; they do not define revocation, currentness, or resource cleanup.
+Those need explicit lifecycle rules and synchronization around registry access.
+
+A durable package contains the normalized/source terms and required evidence,
+semantic versions, dependency references, and integrity information sufficient
+for rechecking. On load, the constructor validates the package, resolves its
+trusted/current dependencies, and re-establishes the requested judgment. It
+rejects unsupported versions, malformed references, missing evidence, cycles,
+resource exhaustion, and false status fields.
+
+A signature authenticates bytes or an issuer under a key policy; it does not prove
+the signed proposition. Local unsigned cache entries may be usable after complete
+required rechecking. Signing infrastructure is not mandatory when it contributes
+no necessary assurance.
+
+The supported in-process boundary protects cooperating application construction
+from accidental substitution and specified report forgery. It does not defend
+against arbitrary hostile reflection, classpath replacement, or equivalent
+privilege over the trusted JVM. External untrusted data must be decoded into
+inert bounded data before the checker traverses it; custom collection accessors,
+tagged readers, or reader evaluation must not execute hidden code.
+
+*** Rechecking without needless repeated work
+
+Correctness requires binding checks to immutable subjects, not reparsing the
+entire proof DAG on every browser click. Once a closure is admitted, consumers
+may use the registered immutable result under a compatible trust and lifecycle
+contract. Cache keys include the subject, dependencies, checker/rule semantics,
+profile, and all claim-relevant premises/bindings.
+
+Changes to source, live dependencies, callable bindings, checker policy, or
+applicability must invalidate affected reuse or force re-admission. A deployment
+can retain one immutable admitted closure and create a replacement candidate on
+reload, rather than repeatedly reading mutable Vars and hoping they still name
+the checked implementation.
+
+Runtime facts still need runtime checks. Caching a structural certificate is
+legitimate; caching “Alice is currently authorized” for every later command is
+not. The profile states which validity checks are per-build, per-installation,
+per-invocation, and per-effect.
+

@@ -1,0 +1,68 @@
+*** Path-sensitive presence and null refinement
+
+The type judgment carries a reader-type environment and refinements for the
+current expression path. Refinements refer to the same binding identity and
+observation context; they cannot migrate to another entity or replacement read.
+
+For sequential conjunction, later operands receive facts established when earlier
+operands were true. For disjunction, later operands receive facts established
+when earlier operands were false. Rule-level implication checks its consequent
+under facts established by a true antecedent. Negation reverses the relevant
+truth condition. At a control-flow join, retain only facts justified for every
+incoming path unless an explicit rule establishes more.
+
+For an optional nullable score, this order is safe:
+
+#+begin_src clojure
+{:readers #{:case/score}
+ :expression
+ [:and
+  [:present [:read :case/score]]
+  [:not= [:read :case/score] [:literal nil]]
+  [:>= [:read :case/score] [:literal 10]]]}
+#+end_src
+
+The presence test does not prove non-nil. Moving the comparison before either
+needed refinement is rejected. Replacing the presence test by ordinary truthiness
+is incorrect for present false or nil values. The conformance corpus covers
+absence, present nil, and each permitted scalar case separately.
+
+*** Conservative normalization
+
+Canonicalization preserves every distinction on which typing, evaluation, or
+proof identity depends. The baseline may normalize map/set insertion order,
+equivalent mathematical integer representations, and explicit default-false type
+flags. It preserves operator and operand order, nominal enum names/domains,
+optional versus nullable, and the distinction between absence and nil.
+
+Do not sort, flatten, commute, fold, or rewrite short-circuit expressions merely
+because their Boolean truth tables look equivalent. Such transformations can
+change safe read order, refinement validity, error behavior, or source coverage.
+A stronger normalization rule needs a specified preservation theorem or an
+explicitly qualified trusted transformation with its actual assurance class.
+
+Identity includes relevant language, type, evaluation, normalization, and encoding
+versions. A fingerprint names a normalized interpretation; it is not a logical-
+equivalence decision or a proof of its truth.
+
+*** Opaque policy and relational extensions
+
+Production policy may be richer than the baseline AST. A named Organization
+policy function can be invoked outside the pure rule interpreter through an
+admitted contract. Its Boolean result can enter the guard as a typed reader,
+with provenance and dependency metadata binding that result to its actual inputs,
+implementation, and protected evaluation context.
+
+This does not make the policy true because a browser supplied =true=. It also
+does not make the policy function pure or complete because its result is Boolean.
+The operation's atomic dependency set includes every declared authoritative input
+on which that policy result depends, or the function is recomputed at an equivalent
+protected boundary. Hidden effects or unknown dependencies remain an explicit
+implementation-contract risk accepted or rejected by the profile.
+
+Relational schemas, quantified relationship constraints, finite family rules,
+and richer transition constructors may use dedicated interpreters. Each registers
+its syntax, typed environments, evaluation/transition meaning, obligations,
+normalization, evidence class, and bridge to dependent judgments. A familiar
+keyword such as =:relationship/valid= is not itself an inference rule.
+

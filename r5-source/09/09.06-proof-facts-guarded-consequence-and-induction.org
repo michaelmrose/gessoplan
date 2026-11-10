@@ -1,0 +1,97 @@
+*** Facts are not linear capabilities
+
+Ordinary propositional facts can be reused in derivations. A runtime authority
+capability, effect lease, resource ownership token, or one-use installation permit
+cannot therefore be duplicated by conjunction introduction or repeated premise
+use. Logical statements about such resources are distinct from the resources.
+
+Resource judgments carry their own ownership context and consumption/retirement
+rules. A bridge from a checked resource proposition to a permitted runtime act
+must still pass the actual authority and lifecycle boundary. A proof of “the
+plan requires a current permit” does not produce that permit.
+
+*** Guarded-transition consequence language
+
+The baseline abstract transition has a typed state projection, disjoint typed
+inputs, a Boolean guard, exact read/write declarations, and simultaneous
+assignments. Each assignment initially supports a scalar literal or a required
+prestate/input reader. Unwritten declared state fields are framed unchanged,
+including their presence as well as their value.
+
+Its meaning is a relation T(s, x, s'):
+
+- s and x satisfy the declared domains;
+- the guard holds in s and x;
+- every assigned poststate field has its specified value computed from s and x;
+- every framed field preserves its declared value and presence;
+- s' satisfies the declared state domain.
+
+There is no implicit sequencing between assignments. Reading a field on an
+assignment's right side reads the prestate, not an earlier assignment's output.
+Deletion, fresh allocation, relational updates, arithmetic expressions, external
+effects, and opaque transforms need their own specified transition constructors.
+The baseline must reject them rather than pretending a scalar assignment model
+covers them.
+
+The consequence checker can derive:
+
+| Rule family | Established conclusion under the matching-relation premise |
+|-------------+-----------------------------------------------------------|
+| Guard | The transition's exact guard held in the protected abstract prestate/input. |
+| Assignment | The specified poststate field equals its literal or prestate/input source. |
+| Frame | An unwritten declared field preserves value and presence. |
+| Conjunction introduction/elimination | Compose or select conclusions for the same relation and bound context. |
+| Equality substitution | Replace a whole equality operand using an earlier checked equality with compatible types and pre/input/post identities. |
+
+A consequence is conditional on T matching. It does not establish that an actual
+XTDB transaction executed T. Optional prestate/input fields are not total value
+terms without the required refinement. A written optional poststate field can
+be a total term when the assignment establishes its presence. Framing an absent
+optional field must preserve absence, not coerce it into present nil.
+
+The frame covers only the declared projection. It says nothing about unmodeled
+database fields until a separate physical footprint/correspondence argument
+establishes that relationship.
+
+*** Invariant preservation and conditional induction
+
+An operation catalog declares one state interpretation, one initial condition,
+one invariant set, and an exact set of abstract operations. It does not duplicate
+the invariant independently in each operation's proof input. The checker derives
+the required base and preservation obligations from the catalog.
+
+For each invariant I, the argument requires:
+
+#+begin_example
+Base:          every declared initial state satisfies I.
+Preservation:  for each declared operation T,
+               I(s) and T(s, x, s') imply I(s').
+Conclusion:    I holds in every state reached by a finite sequence
+               of those declared transitions from a declared initial state.
+#+end_example
+
+Every invariant and every operation must be accounted for. An unsupported base
+case or one unsupported preservation case leaves that invariant's induction
+claim open. A conjunction of unrelated successes is not a whole-invariant proof.
+
+Useful preservation constructors include unchanged-frame reasoning, literal
+postcondition reasoning, typed conjunction, and same-origin copy equality.
+Evidence from different constructors may be combined only by an explicit checked
+composition rule over the exact same transition, invariant clauses, variables,
+and remaining premises. Unioning two success sets is not such a rule. Conversely,
+there is no architectural reason to forbid a sound conjunction proof merely
+because its children were established by different dedicated checkers.
+
+The induction conclusion is about the declared abstract machine. Applying it to
+production additionally requires initialization coverage, relevant physical writer
+coverage, and a correspondence relation for actual transitions. Those premises
+remain explicit. Membership revocation, imports, administrative writes, and
+background jobs cannot be omitted because they lack a browser control.
+
+The mathematical induction argument does not by itself require an inhabited
+initial predicate, but an empty initial state set yields a vacuous result. Reports
+must expose satisfiability/existence evidence separately, and useful application
+completion requires appropriate positive initialization and enabled-operation
+scenarios. Safety induction also does not establish termination, fairness, or
+eventual user Refresh.
+

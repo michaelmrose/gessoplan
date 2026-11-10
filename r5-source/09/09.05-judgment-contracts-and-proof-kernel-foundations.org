@@ -1,0 +1,121 @@
+** Executable judgment contracts
+
+The design requires executable definitions for the following judgment families.
+The notation is descriptive; production terms use closed, versioned data schemas.
+Their implementation may be split among focused checkers, but their meaning and
+admission result cannot be left to each caller's interpretation.
+
+| Judgment | Inputs and conclusion | Required coverage |
+|----------+-----------------------+-------------------|
+| Rule typing | Reader types and path refinements establish a Boolean expression with safe reads. | Every expression node, actual reader, operator, and refinement use. |
+| Rule evaluation | A valid typed rule and admitted binding snapshot produce its Boolean value. | Exact interpreter semantics and binding domain; no claim about unknown input origin. |
+| Propositional derivation | A fixed subject/context and named premises entail the exact goal. | Every reachable proof step, rule side condition, and inherited premise. |
+| Guarded-transition consequence | The declared relation matching pre/input/post entails the exact transition conclusion. | Guard, simultaneous assignments, read/write/frame interpretation, and proof steps. |
+| Invariant preservation/induction | Initialization and every declared transition establish and preserve the invariant. | Every invariant and every operation in the declared catalog. |
+| Distributed admissibility | A rule/action is permitted at the specified role and program point. | Knowledge, provenance, authority placement, refinements, observation scope, and relevant resource/continuation cases. |
+| Projection/lowering correspondence | The actual projected/lowered subject satisfies the named correspondence relation. | All required behaviors/observables under the declared communication and runtime semantics. |
+| Certificate composition | Checked evidence establishes required claims for the actual dependency closure and selected profile. | Both graph validity and source-derived required dependencies/obligations. |
+
+Each judgment has positive, negative, unsupported, and resource-limit conformance
+cases as applicable. Parser rejection, a checker report, certificate admission,
+and runtime authorization remain separate products. The rest of this part fixes
+the baseline proof rules and the composition obligations rather than relying on
+an indefinitely deferred universal judgment calculus.
+
+** Small proof kernel and dedicated proof checkers
+:PROPERTIES:
+:CUSTOM_ID: req-proof-kernel-boundary
+:END:
+
+The proof kernel checks proposed derivations independently of the elaborator's
+claimed success. It accepts original source terms under a closed rule catalog,
+revalidates their subject/type bindings, and computes the conclusion and premise
+dependencies. It does not accept an alleged earlier checking report as a proof.
+
+“Small” refers to a bounded logical responsibility and an inspectable trusted
+implementation. It does not mean one universal checker must contain rule typing,
+all model exploration, database refinement, browser effects, and every future
+theory. Dedicated checkers can establish different judgments and participate
+through explicit bridges.
+
+*** Baseline propositional language
+
+The propositional layer has =true=, =false=, typed Boolean atoms, negation,
+conjunction, disjunction, and implication. Each atom contains an independently
+well-typed rule declaration. The proposition binds one exact semantic subject
+and one nominal variable context; declared variables equal the actual union of
+atom readers in the accepted source.
+
+Propositional connectives express logic. They are not the rule interpreter's
+control-flow operators. In particular, a presence atom in the antecedent of a
+propositional implication does not make an otherwise ill-typed consequent atom
+safe. Put that guarded evaluation inside one well-typed rule atom, or use a
+separately specified refinement-aware proof judgment.
+
+The minimal inference catalog is:
+
+| Rule | Premises | Conclusion and side conditions |
+|------+----------+--------------------------------|
+| Premise | Named P in the declared premise environment. | P, retaining that exact scoped premise as open. |
+| Truth introduction | None. | True. |
+| Implication reflexivity | None. | P implies P, with exactly matching well-formed P. |
+| Conjunction introduction | P1 through Pn. | Their ordered conjunction, with at least two operands. |
+| Conjunction elimination | Conjunction P1 through Pn. | The child at a checked index. |
+| Implication elimination | P implies Q, and P. | Q, with exact antecedent matching. |
+| Disjunction introduction | P. | A well-formed disjunction whose checked indexed child is exactly P. |
+
+Proof steps have unique identities and can reference only earlier steps. The
+final checked step must establish the exact goal. Premise dependencies are
+computed through the used steps. The baseline rejects unused proof steps and
+unused declared premises, making an allegedly relevant premise or hidden dead
+proof fragment visible rather than silently carrying it along.
+
+This catalog has no arbitrary atomic-truth rule, no arithmetic solver, no
+hypothetical-context discharge, and no rewriting by an unproved equivalence.
+Additional rules require explicit source schemas, interpretation, side conditions,
+soundness obligations, and conformance cases. They cannot be installed through
+an application-supplied “trusted inference” callback.
+
+*** A concrete conditional derivation
+
+The following source states a deliberately small conditional claim. The variables
+are abstract Boolean inputs; they are not authoritative HumanHelp facts.
+
+#+begin_src clojure
+(let [p [:atom {:readers #{:example/eligible?}
+                :expression [:read :example/eligible?]}]
+      q [:atom {:readers #{:example/allowed?}
+                :expression [:read :example/allowed?]}]]
+  {:subject {:kind :operation
+             :id :example/conditional-rule
+             :interface {:operation :example/conditional-rule}}
+   :variables {:example/eligible? {:type :boolean}
+               :example/allowed? {:type :boolean}}
+   :premises {:example/eligibility p
+              :example/policy [:implies p q]}
+   :steps [{:id :step/policy
+            :rule :premise
+            :premise :example/policy
+            :conclusion [:implies p q]}
+           {:id :step/eligibility
+            :rule :premise
+            :premise :example/eligibility
+            :conclusion p}
+           {:id :step/result
+            :rule :implication-elimination
+            :from [:step/policy :step/eligibility]
+            :conclusion q}]
+   :goal q})
+#+end_src
+
+The conclusion is Q under the two named premises. The derivation does not prove
+that eligibility holds, that the policy implication is the right product rule,
+or that either is satisfied by a particular request. Removing the eligibility
+step, changing its subject, changing the policy antecedent, or relabelling the
+goal must fail the appropriate check.
+
+An atom whose rule compares an integer with 7 remains an atom to this kernel.
+The kernel cannot infer that =x > 7= entails =x >= 7= merely because a human sees
+the arithmetic relationship. A dedicated arithmetic/typed-semantic judgment can
+establish that implication under its own explicit scope and bridge contract.
+

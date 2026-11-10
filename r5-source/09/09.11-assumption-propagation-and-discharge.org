@@ -1,0 +1,98 @@
+** Assumption propagation and genuine discharge
+:PROPERTIES:
+:CUSTOM_ID: req-certificate-assumption-propagation
+:END:
+
+An assumption is identified by its proposition and scope, not just its label.
+Its record includes the subject, parameters, semantic context, dependencies,
+origin, applicable implementation/enforcement boundary, and policy owner where
+appropriate. Two assumptions named “current Membership” for different principals,
+Requests, Organizations, or invocations cannot be merged.
+
+For every exported claim, the checker computes the premises actually used by its
+selected justification. A shared upstream artifact may carry other claims with
+other premises; the report must not either erase required premises or inflate
+one claim's dependency list with unrelated assumptions. Alternative evidence paths
+can coexist, but the selected path and its premises remain reconstructible.
+
+*** A discharge rule
+
+To replace an open premise P with evidence E, composition must establish that:
+
+1. E has crossed its required checking/admission boundary.
+2. E establishes exactly P or a proposition that entails P through an admitted
+   rule, under an explicit type-correct, capture-avoiding substitution.
+3. Subject, parameters, authority domain, semantic context, scope, and temporal/
+   runtime applicability match the required premise.
+4. E's own premises and dependency edges are inherited by the dependent claim.
+5. The substitution and resulting dependency graph remain acyclic and preserve
+   the selected profile's mandatory obligations.
+
+The original premise and discharge record remain visible in the ledger. It may
+leave the open-premise set only because this checked replacement establishes it.
+Copying the premise into another certificate, changing =:open= to =:discharged=,
+accepting a matching assertion, or running a test does not perform that discharge.
+
+The baseline propositional kernel does not implement arbitrary hypothetical
+assumption discharge. Certificate-level substitution of accepted evidence is a
+separate checked composition judgment. Any richer logical discharge rule needs
+its own bound-variable/context semantics and cannot be inferred from the word
+“certificate”.
+
+*** Example: implementing an Organization policy
+
+A Claim proof can depend on an opaque contract that the selected Organization
+policy callable implements the declared predicate on specified inputs without
+undeclared effects relevant to the claim. Admission binds that premise to the
+actual callable/realization and its dependency context.
+
+A successful unit test is supporting evidence, not discharge of universal
+implementation conformance. A checked implementation argument may replace that
+premise for the exact supported subset and binding; its own primitive/library
+assumptions remain. Changing the callable invalidates that implementation evidence
+even when the public policy interface stays unchanged.
+
+Separately, a real Claim invocation needs current Request, Membership, association,
+and policy facts protected at the atomic boundary. A static policy implementation
+proof does not establish their values. A runtime check for one invocation can
+establish an instance-specific premise, but cannot become a proof for all future
+commands or another principal.
+
+*** Premise acceptance and contradictions
+
+Each profile defines which obligations must be checked, which premise classes
+may remain, and which runtime boundaries must enforce concrete instances. It
+also defines how unsupported/unclassified evidence affects admission. The author
+must explicitly opt into a weaker accepted-premise scope where that is permitted;
+there is no automatic “trust it because proving failed” path.
+
+Detectable contradictions in the supported logic are reported. General consistency
+of arbitrary opaque predicates or business policies is not decidable by this
+system. A conditional result under inconsistent assumptions may be vacuous and
+cannot establish a usable application. Positive scenarios and independently
+specified product capabilities remain separate evidence.
+
+Environmental progress premises retain their precise meaning: eventual service
+availability, fair scheduling, sufficient retention, or a user's eventual Refresh
+action. Declaring a timeout does not prove that clocks advance, callbacks run,
+or the UI survives long enough to observe it. Safety and progress conclusions
+must not exchange these assumptions silently.
+
+*** Qualified external assumptions
+
+An external premise such as XTDB atomic guarded incorporation names the exact
+behavior relied upon, the provider/adapter/configuration applicability envelope,
+and conformance checks capable of exposing relevant violations. It is not one
+indivisible assumption that all of XTDB is correct.
+
+A provider version change outside that envelope makes the deployment-specific
+application of the premise unestablished until qualified. A discovered assumption
+violation invalidates dependent applicability even if the abstract theorem remains
+valid. Tests can detect relevant regressions and support continued qualification;
+they do not prove the provider's universal implementation semantics.
+
+The same discipline applies to HTMX lifecycle/effect behavior, browser primitives,
+authentication, compiler/build behavior, and external services. Reports link a
+failed qualification to the affected claims rather than announcing a generic
+framework proof failure.
+

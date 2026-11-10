@@ -1,0 +1,91 @@
+** Closed typed rule language
+:PROPERTIES:
+:CUSTOM_ID: req-certified-rule-language
+:END:
+
+The baseline rule language is a small data AST with explicit reader declarations,
+nominal type information, strict Boolean behavior, and no embedded host evaluation.
+It is independently useful for guard fragments, invariants, model checks, and
+atoms inside the proof language.
+
+An application may use ordinary functions outside this fragment. The fragment's
+closed syntax exists to make the claims about it precise, not to make unsupported
+application logic impossible.
+
+*** Source shape and baseline operators
+
+A rule declaration has an exact reader set and expression. For example, this is
+only the open-state conjunct of Claim eligibility:
+
+#+begin_src clojure
+(def open-request-rule
+  {:readers #{:request/status}
+   :expression [:= [:read :request/status] [:literal :open]]})
+
+(def open-request-types
+  {:request/status
+   {:type :enum
+    :name :humanhelp/RequestStatus
+    :values #{:open :claimed :on-the-way :done :cancelled}}})
+#+end_src
+
+The actual type declaration is derived from the production public schema. This
+example's =:done= is the HumanHelp terminal state; “completed” is display language,
+not another persisted variant. Checking this conjunct does not check the complete
+Claim policy.
+
+The baseline grammar is:
+
+| Form | Meaning and constraints |
+|------+-------------------------|
+| =[:literal value]= | An admitted scalar or finite homogeneous scalar set under the literal/type profile. |
+| =[:read reader-id]= | Read one declared binding from the same immutable evaluation environment. |
+| =[:present [:read reader-id]]= | Test binding presence without evaluating an absent value. |
+| =[:not e]= | Strict Boolean negation. |
+| =[:and e1 e2 ...]= | At least two Boolean operands, evaluated left to right with short circuit. |
+| =[:or e1 e2 ...]= | At least two Boolean operands, evaluated left to right with short circuit. |
+| =[:implies p q]= | Rule-level conditional evaluation: evaluate q only when p is true. |
+| =[:= a b]= and =[:not= a b]= | Equality/inequality under compatible declared semantic types. |
+| =[:< a b]=, =[:<= a b]=, =[:> a b]=, =[:>= a b]= | Ordering for the explicitly supported ordered type; the baseline numeric domain is integers. |
+| =[:in item finite-set]= | Membership with compatible element type and enum-domain constraints. |
+
+The reader set equals the actual syntactic footprint. Missing and unused reader
+declarations are rejected in this baseline. A declared read footprint is still
+only a footprint over the semantic source; it does not prove the absence of
+hidden reads in an unrelated opaque implementation.
+
+Baseline value types are Boolean, integer, string, keyword, and named closed enum,
+with independent optional and nullable attributes. Relationships, records, UUIDs,
+money, dates, and additional nominal types enter through explicitly specified
+schemas/codecs or later registered extensions. They cannot be silently reduced
+to interchangeable strings/keywords when a proof relies on their distinct meaning.
+
+The language and its literal/set limits are versioned. Empty sets or broader
+collection expressions require defined typing behavior before admission; they
+are not inferred from host coercion. There is no implicit recursion, arbitrary
+function call, query, clock read, random value, or ambient principal lookup.
+
+*** Evaluation and totality
+
+The evaluator consumes a validated binding snapshot containing required readers
+and any present optional readers, with no undeclared bindings. Present nil and
+absent are different. Boolean operators require Boolean values; ordinary Clojure
+truthiness is not the rule language's semantics.
+
+A well-typed rule in this total baseline must evaluate to a Boolean for every
+valid binding in its declared domain, subject to the interpreter/primitive
+correctness premise. Input rejection is separate from evaluating a valid rule
+to false. Resource limits may stop checking/evaluation but cannot yield a
+successful truth result.
+
+The baseline integer meaning is mathematical integer comparison. It does not
+implicitly certify JVM fixed-width arithmetic or JavaScript Number behavior.
+Portable execution chooses a checked representation/range/codec and rejects
+unrepresentable values, or uses a separately qualified exact representation.
+A JVM/CLJS agreement test over small integers cannot prove all integer behavior.
+
+Evaluation to true is a concrete value result. It is neither a universal theorem
+nor authority to commit. The acquisition and transaction boundaries must establish
+where the bindings came from and whether every dependency used by the guard is
+protected at the actual commit.
+

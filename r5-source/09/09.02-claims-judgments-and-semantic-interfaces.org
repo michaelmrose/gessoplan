@@ -1,0 +1,112 @@
+** Claims, judgments, evidence, and applicability
+
+The following distinctions are mandatory throughout construction and reporting.
+
+| Concept | Meaning |
+|---------+---------|
+| Raw declaration | Unadmitted source data, even when its representation passes a shape check. |
+| Semantic subject | The exact normalized object about which a claim is made, with its interpretation and dependency identities. |
+| Proposition | A well-formed statement in an identified logic or contract vocabulary. Well-formedness does not establish truth. |
+| Judgment | The result of a particular checking relation over explicit subjects, environments, premises, and evidence. |
+| Obligation | A required judgment derived for a subject and requested claim/profile. |
+| Derivation | A proposed justification using recognized inference rules and bound premises. |
+| Assumption | A scoped proposition accepted without having been proved by the current construction. |
+| Certificate candidate | Serializable source/evidence offered for checking; its claimed status is untrusted. |
+| Admitted certificate | The result of the required checking and admission boundary for a stated claim and profile. |
+| Report | Copyable explanation of judgments and dependencies; not an admission or execution credential. |
+| Runtime evidence | Evidence about a particular invocation, observation, resource, or effect at its actual boundary. |
+
+A guarantee is a checked conclusion together with its remaining premises. Calling
+it a guarantee does not remove those premises.
+
+*** A judgment identifies more than a Boolean result
+
+Every judgment must identify:
+
+- its kind and semantic interpretation version;
+- the exact subject and relevant input/type/context bindings;
+- the proposition or obligation addressed;
+- the checker, proof rules, or interpretation procedure used;
+- the checked evidence and its scope, including finite bounds where applicable;
+- inherited premises and any checked discharge/substitution;
+- the result and structured reason when the requested judgment is unavailable.
+
+The result vocabulary distinguishes established, conditional, counterexample,
+invalid, unsupported, missing evidence, incomplete/resource-exhausted, and
+inapplicable/stale cases as appropriate to the judgment. These need not all be
+one public enum, but they cannot collapse into one success/failure flag.
+
+A malformed proof is not a counterexample to its conclusion. A timed-out search
+is not a proof that the property is false. A sound conditional theorem can remain
+valid while its premises are not established for this deployment.
+
+*** Evidence classes remain attached to propositions
+
+Use Part I's [[#req-assurance-classification][assurance classifications]]. In
+particular, distinguish checked derivations, exact finite results,
+assembly verification, runtime-enforced instance facts, trusted or
+application-asserted contracts, and test evidence.
+
+A report should express classification, assumptions, and applicability as separate
+axes. “Conditional” is not an excuse to omit which checker established the
+conditional implication. “Runtime enforced” must say whether the evidence is a
+contract requiring enforcement, an installed enforcing mechanism, or an observed
+successful check for one invocation. Those are different propositions.
+
+A static certificate can establish that an admitted receive transition preserves
+a knowledge invariant if its runtime premises hold. It cannot establish that a
+future browser has received a particular observation. A contract for a Claim
+executor can require current authorization; its certificate cannot supply Alice's
+current Membership.
+
+*** An immutable obligation ledger with derived status
+
+Keep original obligations and supplied evidence distinct. The source-derived
+ledger records what the claim requires. Checked evidence records how particular
+obligations are established or which premises remain. A report computes status
+from those bindings instead of deleting inconvenient obligations from the ledger.
+
+Adding a certificate may establish certificate-admission or dependency-accounting
+obligations. It does not automatically discharge implementation correspondence,
+physical writer coverage, or checker soundness. Unknown new obligation categories
+remain visible and unresolved until a profile explicitly classifies them.
+
+The selected policy may accept a named premise, but acceptance is not logical
+discharge. An unresolved mandatory obligation cannot be converted into an accepted
+premise by an elaborator's failure handler.
+
+** Minimal semantic interfaces and ownership
+
+A semantic interface exports the commitments downstream reasoning may use:
+types and variants, relationships, preconditions and postconditions, relevant
+state/effect footprints, outcomes, authority and disclosure requirements,
+observation contracts, and named premises. It does not expose every private
+implementation detail or serialize a namespace for convenience.
+
+The hierarchy follows semantic ownership, not file layout:
+
+| Interface or evidence subject | Typical checked commitment | Boundary retained |
+|-------------------------------+----------------------------+-------------------|
+| Schema/type | Fields, optionality, nominal categories, variants, representation constraints. | Existing database values still require valid acquisition or an explicit data-conformance premise. |
+| Domain/relationship | Well-formed relationships, typed paths, refinements, selected invariants. | Reachability/cardinality declarations are not current authorization or proof of stored data. |
+| Rule | Supported evaluation semantics, Boolean result, safe reads/refinements, declared dependencies. | Intrinsic validity does not establish correct product policy or availability at a distributed point. |
+| Public authoritative operation | Inputs, outcomes, guard/write dependencies, command policy, effect and recovery contract. | Arbitrary implementation conformance and current atomic enforcement need their own evidence. |
+| Choreography | Knowledge, provenance, authority placement, communication, branches, continuations, and resource obligations. | An abstract protocol argument does not prove network or browser behavior. |
+| Projection | The named global/local correspondence property over specified observables. | Local simulation alone does not establish correctness of the composed participants. |
+| Executable plan | Checked lowering/binding to the admitted projection and runtime format. | A copied source identity proves no lowering correctness. |
+| Application assembly | Closure of required declarations and compatible realization bindings. | Installed host adoption and independent product completeness remain separate. |
+| Browser build/served asset | Correspondence under the generated-entrypoint and qualified build/serving contract. | A digest is not a semantic analysis of arbitrary JavaScript. |
+| Concrete render/install | Checks on the actual representation and current physical target/effect. | One accepted render is not a proof about all future renders. |
+
+Public model interfaces remain the cross-model boundary. The certificate graph
+must not reach into Organization's private FX code to obtain authority that its
+public contract does not export. Inspection of implementation source for
+correspondence is permitted, but does not turn private internals into an implicit
+public dependency.
+
+Schemas containing arbitrary Malli predicates do not all become a closed theorem
+language. The supported schema fragment can be translated and checked. Opaque
+predicates retain named validator/implementation contracts. Concrete validation
+of one value proves only the relevant instance result under that validator's
+contract, not universal data validity or the intended business meaning.
+
