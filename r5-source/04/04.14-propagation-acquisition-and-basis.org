@@ -117,6 +117,19 @@ actually attests (for example issuance under a named scope and frontier), not
 that the DOM installation completed or that the same principal remains
 currently authorized.
 
+An authorized Live interest is scoped to its principal, current query and
+visibility context, actor/owner instance and subscription lifetime. Initial
+registration is not unconditional permission to disclose protected content
+forever. Subsequent delivery must follow the declared trusted revalidation,
+bounded grant or revocation policy when Membership, Organization, principal or
+disclosure rights change. A shared SSE connection may carry separately owned
+interests without equating their knowledge or installation rights. Replayed
+advisories after reconnect may restore pending scoped work but cannot prove
+that a different actor installed the same basis or granted Refresh consent.
+Browser callback cleanup is a supported-client behavior, not a substitute
+for server-side security: an adversarial browser can retain already
+disclosed information.
+
 The server must also bound and validate requested consistency behavior. A
 malformed, foreign-incarnation, or unattainable token must not force unbounded
 waiting or silently downgrade to an unconstrained read. A qualified server
@@ -146,5 +159,7 @@ requirements need an explicit compatibility or migration policy.
 | A source-declared impact survives without a commit-time matching interest and a later subscriber's fenced read covers that change. | Only current local-router interests generate invalidation debt; all later interest registration is assumed safe without replay or read fence. | Establish the required impact/reconciliation path or retain a weaker guarantee; no mandatory per-recipient completion ledger. |
 | A local provider-result incorporation creates Order-change propagation work and the notifier crashes before emit. | The publication retry invokes the provider again or interprets local Order notification as a payment receipt. | Recover only the appropriate local propagation debt and keep external provider evidence independent. |
 | A disconnected owner reconnects with an admitted state or cursor and reestablishes the acquisition obligation. | A recycled host, SSE connection or browser resource identity silently transfers old acquisition/adoption rights. | Correlate current owner and incarnation; preserve or retire debt by explicit policy. |
+| Two tabs of the same principal share an SSE connection but only A installed P20. | B treats A's token, delivery and Refresh consent as its own P20 installation. | Preserve each actor's observation, debt and grant independently. |
+| Membership changes after subscription admission, revoking access to the Request scope. | An old signed interest grants continued private event delivery without current checks. | Enforce the selected trusted revalidation, expiry or revocation contract; never treat initial authorization as permanent. |
 | A signed or server-held observation record establishes precisely its declared historical proposition. | Matching browser token or signature is treated as proof of DOM installation or current business permission. | Separate issuance, acquisition, installation, adoption and fresh authorization. |
 | A malformed, unattainable or foreign-incarnation consistency claim is handled with a bounded typed failure or declared recovery. | Server waits indefinitely or silently removes the requested minimum. | Fail closed within the supported protocol and resource bounds. |

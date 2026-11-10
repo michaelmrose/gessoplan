@@ -115,12 +115,16 @@ writer coverage and installed-deployment invalidation.
 
 **Whole-part reconciliation, pass 05:** see
 `PART-IV-cross-section-reconciliation-05-observation-adoption-lineage.md`.
-Closed the acquisition-to-physical-installation gap for complete board
-reads interleaved with independently newer local Request evidence in
-04.12, 04.13, 04.15, 04.16 and 04.17. **Neither sectional completion nor
-these five passes constitutes whole-Part-IV acceptance.**
+Preserved independently newer local Request/card evidence during board
+installation and kept physical adoption separate from acquisition.
 
-**Next:** reconcile principal/authority, role-local knowledge and
-resource-lifetime trust boundaries with Parts II, III and HumanHelp
-Part VIII. Then complete independent cross-part acceptance checks
-in separate bounded revisions.
+**Whole-part reconciliation, pass 06:** see
+`PART-IV-cross-section-reconciliation-06-actor-authority-and-knowledge.md`.
+Distinguished historical command recovery from actor-local knowledge,
+Live subscriber permission, HumanHelp one-Refresh grants and DOM rights,
+and repaired the accidentally joined 04.16 Org heading from pass 05.
+**Whole-Part-IV acceptance remains open.**
+
+**Next:** reconcile branch knowledge and the alternative authoritative
+read or communication paths in Part III with command recovery in
+Part IV, then continue independent cross-part acceptance checks.
