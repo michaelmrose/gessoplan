@@ -21,6 +21,16 @@ Other identities, including deployment and projected-plan compatibility, may be
 needed. They must be named for their purpose; a bare universal =generation=
 coordinate must not stand in for them all.
 
+A nominal identity wrapper or distinct wire tag is useful for preventing
+accidental interchange of =:command-id=, =:execution-id= and
+=:transport-request-id=. Its bytes do not authenticate an actor or prove a
+durable command exists. A new transport exchange or compatible projected-plan
+execution can carry the same command ID; it cannot reuse a retired execution's
+resource/installation authority. Conversely, preserving an ID across a
+deployment does not automatically make an incompatible old projected plan
+safe to resume. Protocol continuation and stored command disposition are
+separately admitted.
+
 *** Command binding and canonical inputs
 
 The admitted command boundary supplies or admits a stable =:gesso/command-id=
@@ -46,6 +56,19 @@ for canonical arguments, the contract identifies its algorithm and accepted
 collision premise; a short convenience hash is not automatically an adequate
 binding.
 
+The public command namespace and the physical lookup/uniqueness key must
+correspond. A model can choose globally unique IDs or IDs local to an
+authority/tenant namespace, but two distinct admitted command identities
+must not silently alias the same durable record. Conversely, a second
+tenant or principal must not gain a foreign outcome by guessing an ID.
+Record identity, full immutable binding, retained disposition and current
+disclosure policy have distinct jobs: the record key locates a candidate;
+it does not authenticate the caller or establish compatibility. A
+canonicalization or interface upgrade must either preserve the admitted
+old binding meaning through a declared compatibility relation or keep the
+old command unresolved/unsupported with its own recovery; reinterpreting
+a retained ID as a new intent is forbidden.
+
 An observed read basis used only as a freshness hint need not be an immutable
 semantic argument. An expected version that the user intentionally conditions
 the command on is an argument. The interface must distinguish the two. Retry
@@ -68,6 +91,17 @@ binding. Repetition after incorporation returns a permitted recorded outcome.
 Distinct command IDs can still conflict on the same Request; command
 deduplication does not replace domain concurrency control.
 
+A fresh Claim must protect *two independent exclusions*: the command
+namespace cannot incorporate the same bound intent twice, and the Request
+cannot acquire two concurrently active primary RequestAssignments.
+Command uniqueness does not prove primary-assignment uniqueness; checking
+only the Request's current revision or a node-local command cache does not
+protect either property in all implementations. The Request, admitted
+primary-assignment change, command record and required durable publication
+intent of the selected Claim profile are one protected effect. Every actual
+writer capable of violating a relied-upon rule must be included in the
+qualified writer/enforcement coverage or treated as an explicit premise.
+
 An operation that intentionally permits repeated independent effects must say
 what constitutes a new semantic command. A new delivery attempt is not, by
 itself, a new intent. If the product supports repeating an action, the admitted
@@ -78,6 +112,17 @@ Its protocol must nevertheless distinguish evidence of incorporation, evidence
 of terminal rejection or closure when promised, and the absence of a definitive
 result. A transient local registry may assist scheduling; it cannot replace a
 durable record where process failure recovery is promised.
+
+The resolution boundary also needs a truthful *acquisition classification*.
+A qualified, complete read finding no command record is an observation of
+absence at its basis, not an exclusion of a concurrent or pending submission.
+An unavailable, stale, unqualified, wrong-namespace or undisclosable
+lookup is not such a read. It cannot safely authorize fresh incorporation
+or be recast as a public =not-found= existence oracle. Existing-record
+disclosure and new-command permission are distinct policy checks:
+a compatible replay need not satisfy the now-false preconditions for
+*new* incorporation, while any returned historical result still requires
+current permission to learn it.
 
 *** Atomic resolve-or-incorporate protocol
 
@@ -107,4 +152,44 @@ callback in the database:
 The implementation may use retries internally. Such retries retain the semantic
 command and must not execute unrepeatable external effects inside a callback
 that the backend may rerun.
+
+The preliminary lookup in step 2 is an optimization, not an atomic
+absence guarantee. Concurrent compatible invocations may both observe no
+record and prepare candidate transitions. The qualified authoritative
+mechanism must ensure that at most the policy-permitted incorporation wins
+for the command namespace; a loser resolves the surviving record under
+its own trusted disclosure conditions, rather than reporting terminal
+business rejection solely because its physical transaction aborted.
+An incompatible competing binding must not overwrite the winner's
+record or enter the old command's authorized replay branch. A distinct
+command ID cannot avoid the independent RequestAssignment concurrency
+rules. A transaction that committed its domain effect without the
+required command record is not a valid realization of this policy.
+
+The same algorithm applies to one or several application nodes sharing
+the qualified logical database. On another node, the command retains its
+canonical identity and public semantics even if its local execution,
+transport request and capability instances differ. A local registry,
+cached negative lookup or lagging reader is never the authority for
+deduplication; any replay or new submission must use a sufficient
+authoritative acquisition/protected incorporation path. Cross-node
+router placement and Live invalidation delivery do not define or
+strengthen the command's business identity.
+
+*** Command identity and incorporation acceptance cases
+
+| Construction | Required judgment |
+|--------------+-------------------|
+| An eligible helper sends one Claim and the transaction protects Request, primary RequestAssignment, command result and selected durable work | Admit the new incorporation under qualified guards; the command record and model effects share the actual boundary |
+| The same compatible command is retried after a lost response or on another web node | Resolve its retained binding and permitted historical result without constructing another domain or durable-work effect |
+| Two same-binding attempts both read an absent command record before one commits | Only the protected incorporation wins; the other attempts compatible resolution and may not report its own abort as terminal command rejection |
+| A concurrent attempt reuses one command ID with different target, principal, tenant or canonical arguments | Do not treat a collision as replay or create effects under the first binding; apply typed incompatible/undisclosable handling |
+| Two tenants use IDs valid in their separately declared namespaces | Preserve both legitimate identities without physical record-key aliasing, while refusing cross-tenant disclosure |
+| Two different command IDs attempt primary Claim for the same open Request | Command deduplication alone is insufficient; the protected RequestAssignment uniqueness/lifecycle policy determines the winner |
+| A stale follower or node-local cache sees no command record despite an in-flight or incorporated transaction | Its absence is not definitive; require sufficient authoritative resolution and atomic uniqueness before any new incorporation |
+| A successful Claim is replayed after its helper loses Membership or after a later Reassign | Do not reapply new-Claim eligibility guards; return only the permitted recorded outcome, distinct from current RequestAssignment state |
+| An old record exists but the caller cannot disclose it or invokes an incompatible projected plan | Preserve command disposition without revealing protected data or reviving retired protocol resources; use the declared reconciliation/upgrade path |
+| A canonicalizer upgrade changes argument meaning while an old command record remains retained | Require an explicit versioned compatibility judgment; neither silently recast an old binding as a new one nor fabricate a rejection |
+| A command is durably recorded only after its domain write, or a direct writer bypasses protected uniqueness | Reject the stronger exactly-once/atomic correspondence or retain the identified writer premise; a successful test of one wrapper does not close the global writer set |
+
 
