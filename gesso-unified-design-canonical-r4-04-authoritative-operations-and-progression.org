@@ -1540,6 +1540,18 @@ provider evidence. That operation protects the payment intent and current Order
 state, records the accepted receipt, makes the permitted domain transition, and
 updates durable work in the same local atomic boundary.
 
+This local result-incorporation operation is itself a new authoritative
+transition, distinct from the original place-intent command and the remote
+provider attempt. Its current guards, provider receipt identity, local command
+binding where required, and work-state changes are protected together. If the
+result changes an Order projection whose Live freshness is promised, it also
+records the corresponding recoverable *publication impact* or qualifies an
+equivalent discovery path. Completing the original payment-authorization work
+does not establish that the new domain transition's observers were notified.
+Conversely, a successfully delivered Live invalidation cannot establish that
+the payment provider authorized, captured or settled money. Provider work and
+publication work have separate identities, premises and completion criteria.
+
 | Current local state and admitted evidence | Required treatment |
 |------------------------------------------+--------------------|
 | Payment pending; matching authorization succeeds. | Record authorization and advance according to the placement policy. |
@@ -1574,6 +1586,16 @@ This history differs from a payment that never reached the provider and from
 one whose local authorization receipt was already incorporated. The model and
 its diagnostic result must not collapse the three cases merely because all
 three can appear as a pending Order to a particular browser.
+
+There is another distinct crash window *after* a qualified provider receipt
+is incorporated locally but *before* the resulting Order-change invalidation
+is delivered. Recovery here must not call the provider again to regenerate
+the publication. The original provider attempt is already reconciled; the
+new work is to deliver or reconcile the authoritative local Order change
+under its own propagation contract. The application may avoid replaying
+individual advisories when a qualified complete authoritative reread covers
+the affected scope and frontier. A payment worker's completed flag and an
+SSE emitter's successful enqueue are not interchangeable settlement evidence.
 
 Workers may use leases or fencing to prevent stale local writes. Such mechanisms
 do not retroactively stop a remote call already issued by an old worker. Late
@@ -1611,6 +1633,7 @@ lease expiry, and model work completion require a declared relationship.
 | Duplicate compatible provider callbacks race to incorporate one result. | Conflicting, reordered, or late receipts target changed Order state. | Protect local incorporation and retain the real external history; local idempotence cannot imply remote exactly-once execution. |
 | Cancellation and late provider success follow declared void/compensation policy. | Cancellation erases a real authorization or treats compensation as transaction rollback. | Admit the appropriate new transition and outstanding work; reject false historical erasure. |
 | Durable work is discoverable after worker or node loss. | Queue acknowledgment precedes durable settlement and removes the only recovery owner. | Preserve replayable work or an equivalently qualified discovery guarantee. |
+| Provider authorization is locally incorporated and its separate required Order-projection publication is recoverable. | The worker dies after local receipt incorporation, and replay incorrectly charges the provider again or treats a sent SSE frame as proof of payment. | Resume only the outstanding publication/acquisition obligation; keep provider-effect settlement distinct from Live delivery. |
 | Resolution is conditional on provider availability and admitted reconciliation. | The system asserts unconditional eventual completion with no provider or human-progress premise. | State the liveness assumptions; unsupported completion is not a successful check. |
 ** FX value flow and lifecycle
 
@@ -1725,7 +1748,14 @@ permanent gap if the process dies between those actions.
 The intent binds the authoritative effect, relevant subject/query impact,
 progression requirement, and stable delivery/work identity. It need not capture
 every currently connected subscriber. A durable change log or outbox can feed
-later routing and interest matching. Delivery semantics must state whether
+later routing and interest matching. The required impact must be derivable from
+admitted source-owned change meaning and the selected application contract,
+not solely from the subscribers known to one process at commit time. Matching
+later-installed interests to that retained impact, or instead closing the
+initial-read/subscription gap through a qualified acquisition fence, must
+satisfy the promised awareness and recovery scope. This does not require
+persisting a per-subscriber acknowledgment for every broadcast or retaining
+every unrelated database change forever. Delivery semantics must state whether
 duplicates are possible and how consumers recognize compatible repetition.
 
 An in-memory list of local interests is not proof that all affected participants
@@ -1747,7 +1777,13 @@ claim is explicitly conditional on that action.
 Publication completion also has a scope: queued, durably recorded, accepted by a
 broker, delivered to a connection, admitted by a participant, and adopted by a
 projection are distinct milestones. The contract names the milestone it can
-observe and retains downstream obligations where required.
+observe and retains downstream obligations where required. A work item may be
+retired at a narrower milestone *only if* remaining promised obligations have
+qualified independent owners, coverage or recovery. Replaying a publication
+work item must not repeat the domain transaction whose impact it announces.
+The same rule applies to a provider-result incorporation that creates new
+publication impact: payment-work completion, local receipt incorporation and
+Order-view dissemination are distinct settlements.
 
 Recovery failure may leave debt visible and unresolved. It must not manufacture
 success, discard the command record, or turn the committed domain operation
@@ -1764,6 +1800,8 @@ the resulting weaker guarantee must be part of the public contract.
 | Effect sequencing waits for the declared completion boundary. | A vector-valued argument is executed as a sequence, or enqueue is reported as authoritative completion. | Enforce the registered effect interpreter's actual ordering and completion semantics. |
 | Submission fails before any possible incorporation, or an ambiguous submission is reconciled. | All thrown exceptions are mapped to durable business rejection or trigger blind resubmission. | Distinguish local attempt failure, unknown command disposition and admitted authoritative evidence. |
 | Commit succeeds and a subsequent publication fails; the original command result is retained. | A catch rolls back the reported command truth, retries the domain mutation, or discards necessary propagation. | Classify post-commit delivery debt independently and recover only the appropriate effect. |
+| A required scoped change intent survives process loss before any in-memory invalidation emit, and a successor or qualified reader reconciles it. | A successful domain commit relies solely on a later unprotected async dispatch, so crash erases the only recovery path. | Admit an atomic work intent or equivalent discovery/fencing guarantee; a post-commit error tag by itself is not durable debt. |
+| A source-owned change impact is recoverable for a late or remote subscriber under the declared guarantee. | The commit-time emitter generates work only for interests visible at one router, omitting all late or remote interests without a read/subscription fence. | Cover the late-interest gap or weaken the stated awareness promise; do not demand per-recipient broadcast acknowledgments as the only design. |
 | A disconnected participant returns through qualified acquisition or its declared Refresh path. | A missed SSE notification is assumed to arrive eventually with no retained work, inception coverage or recovery trigger. | Admit precisely the supported eventual-freshness claim; reject unconditional convergence. |
 ** Authoritative basis and XTDB
 
@@ -2301,15 +2339,21 @@ retain the necessary scope and requirements without weakening authority.
 | One Request card at P19 is displayed alongside board membership from P17 with separate provenance. | The card advance relabels the entire board current or automatically adopts new membership. | Preserve mixed-scope knowledge and the authorized adoption policy. |
 *** Progression flows through propagation
 
-When an authoritative change creates a required invalidation, the propagation
-path preserves enough information for the resulting reread to include that
-change. The sequence is:
+When an authoritative change carries a source-declared impact whose
+freshness is promised to an eligible participant, the propagation contract
+must preserve enough information for a resulting authorized reread to include
+that change. Current connected interest is one possible routing input, not
+necessarily the source of the impact obligation. An invalidation is an
+advisory derived from a relevant authoritative change; not every database
+write has to become a broadcast. The logical sequence is:
 
 1. Qualified outcome evidence establishes the authoritative change.
 2. Recoverable change/publication evidence carries an admitted progression
    requirement and affected scope information. A durable record, qualified
    change frontier, replayable source or equivalent reconciliation path can
-   establish this under the declared delivery guarantee.
+   establish this under the declared delivery guarantee. The mechanism
+   explains how the impact remains discoverable if no compatible interest was
+   registered on the writer's local router at the instant of incorporation.
 3. Routing delivers an advisory to a relevant participant under its transport
    and recovery contract.
 4. The participant's acquisition requests a scope and progression sufficient
@@ -2367,7 +2411,13 @@ A periodic authoritative refresh may provide a weaker eventual-awareness
 strategy under explicit scheduling and availability assumptions. It does not
 prove delivery of every invalidation. A router's successful local subscription
 does not by itself prove that no relevant upstream change was lost before its
-interest became visible.
+interest became visible. A new subscription can be justified without replaying
+every earlier event if a post-registration authoritative acquisition is fenced
+to include all relevant changes through a qualified frontier. That mechanism
+can also cover router failover by conservatively triggering redundant
+invalidations or acquisitions. It cannot infer a covering frontier merely
+from the fact that all surviving routers report healthy or from a fresh
+connection's existence.
 
 *** Worked gap: read before interest registration
 
@@ -2378,7 +2428,12 @@ read excludes that change. If publication uses only the interests visible at
 write time, and the subscription starts after the change without replay or a
 new read fence, the browser can remain indefinitely at P17 despite a healthy
 SSE connection. Neither a later keepalive nor successful router registration
-repairs that history by itself.
+repairs that history by itself. The failure exists even when all local
+broadcast attempts reported success: the relevant interest was not yet
+visible at the publisher's matching boundary. Recoverable source impact
+plus qualified replay or a new subscribed-read fence can close the gap;
+a durable per-recipient send ledger is one possible mechanism, not a
+necessary semantic requirement.
 
 An admitted implementation may instead register and buffer the interest before
 the initial read, replay changes since a durable cursor, acquire a new qualified
@@ -2427,6 +2482,8 @@ requirements need an explicit compatibility or migration policy.
 | Initial authorized projection is acquired or an explicit first-acquisition path exists. | Managed empty target has only SSE subscription with no initial content or acquisition. | Admit managed bootstrap closure only with a qualifying path. |
 | Subscription registration is covered by replay, buffer, fence or reconciled read across the initial gap. | Q is read at P17, changes at P18 before interest registration, and remains stale despite a healthy stream. | Reject an unconditional eventual-awareness claim until recovery covers the gap. |
 | One router disappears and an admitted failover path reacquires or conservatively redelivers possibly lost invalidations. | The replacement router assumes its newly learned interests prove there were no prior missed changes. | Require scoped recovery evidence; extra safe redelivery is allowed. |
+| A source-declared impact survives without a commit-time matching interest and a later subscriber's fenced read covers that change. | Only current local-router interests generate invalidation debt; all later interest registration is assumed safe without replay or read fence. | Establish the required impact/reconciliation path or retain a weaker guarantee; no mandatory per-recipient completion ledger. |
+| A local provider-result incorporation creates Order-change propagation work and the notifier crashes before emit. | The publication retry invokes the provider again or interprets local Order notification as a payment receipt. | Recover only the appropriate local propagation debt and keep external provider evidence independent. |
 | A disconnected owner reconnects with an admitted state or cursor and reestablishes the acquisition obligation. | A recycled host, SSE connection or browser resource identity silently transfers old acquisition/adoption rights. | Correlate current owner and incarnation; preserve or retire debt by explicit policy. |
 | A signed or server-held observation record establishes precisely its declared historical proposition. | Matching browser token or signature is treated as proof of DOM installation or current business permission. | Separate issuance, acquisition, installation, adoption and fresh authorization. |
 | A malformed, unattainable or foreign-incarnation consistency claim is handled with a bounded typed failure or declared recovery. | Server waits indefinitely or silently removes the requested minimum. | Fail closed within the supported protocol and resource bounds. |
@@ -2852,6 +2909,9 @@ behavior.
 | Opaque code | A full-language callback uses an asserted effect contract. | Supported execution remains possible, with the assertion retained in the assurance report. |
 | External intent | Provider evidence changes account, operation, amount, currency, or intent identity. | It cannot authorize the expected payment transition. |
 | External uncertainty | Provider request times out and later succeeds. | No blind new-key retry; the effect remains recoverable under the provider contract. |
+| Provider result versus publication | Authorization is locally incorporated, but the notifier crashes before its Order change can reach Live. | Preserve the real provider result and separately recover scoped local publication; do not reauthorize payment to regenerate an advisory. |
+| Commit-to-publish crash | A qualified domain/command/work transition commits and its process dies before async invalidation submission. | A declared durable intent or equivalent recoverable source closes the promised delivery gap; classification of post-commit failure alone is insufficient. |
+| Late interest discovery | A relevant authoritative change commits while no interest is known to the writer's router; another router then registers an interested participant. | The read/subscription fence, retained impact or other declared recovery covers the earlier change when eventual awareness is claimed. |
 | Cancellation race | Authorization arrives after cancellation was requested. | The actual effect enters the declared void, compensation, or review path. |
 | Scope | A newer Hotel or single-card observation is offered for a Flight or complete-board obligation. | The unrelated or narrower scope does not discharge the obligation. |
 | Temporal context | Token bytes match but incarnation, valid time, query, or visibility context differs. | Compatibility is established explicitly or the substitution is rejected. |
@@ -2883,6 +2943,8 @@ These cases cannot all be replaced by a stub that returns =:unsupported=.
 | A complete submitted domain transition and command-result footprint is present under the qualified backend. | A prepared checked fragment is altered, an extra writer is appended, or a result is copied from another invocation. | Compare actual submitted effect, bound return and scoped physical readback; do not infer causality from mere co-observation. |
 | A command times out after possibly committing and is reconciled with authentic command-specific evidence. | Timeout is treated as durable rejection or produces a fresh unqualified command. | Preserve unknown until admitted settlement; observe absence of an unauthorized duplicate effect. |
 | A valid payment intent is submitted after durable work registration and recovered with matching provider evidence. | Provider succeeds before local incorporation, response vanishes, or deduplication retention lapses. | Check qualified external receipts and recovery debt; no blind new-key retry or false atomicity. |
+| A provider result is recorded under current local Order guards with separate, recoverable change-publication work. | Receipt incorporation succeeds but process dies before Live publication; a retry resends provider authorization or discards Order change debt. | Verify the original provider work is not duplicated and the qualifying Order reread/notification remains recoverable. |
+| A required change is committed with retrievable source impact and its interested browser later acquires a fenced view. | No current local router knows the eventual interest when the commit happens; a merely healthy SSE stream is treated as proof no impact was missed. | Inject the registration/failover race; verify an authorized covering read or declared weaker contract without fabricating exact delivery. |
 | A permitted full-board read has complete scope and admitted progression through its required frontier. | A newer card, partial page, wrong tenant/time or shape-valid witness is substituted. | Verify read coverage and provider relation independently; retain the unmet board obligation. |
 | A managed initial projection has an admitted acquisition/subscription continuity fence. | The board changes after read but before interest registration or router failover. | Replay, reacquire or report the weaker awareness contract; a healthy SSE connection alone does not pass. |
 | O1/P18 acquisition installs while later O2/P20 remains, under one authorized HumanHelp Refresh grant. | A stale callback erases O2 or automatic queued reads exceed the user's grant. | Observe current debt and actual authorized acquisitions; one in-flight limit does not prove consent. |

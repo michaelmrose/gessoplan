@@ -1,14 +1,20 @@
 *** Progression flows through propagation
 
-When an authoritative change creates a required invalidation, the propagation
-path preserves enough information for the resulting reread to include that
-change. The sequence is:
+When an authoritative change carries a source-declared impact whose
+freshness is promised to an eligible participant, the propagation contract
+must preserve enough information for a resulting authorized reread to include
+that change. Current connected interest is one possible routing input, not
+necessarily the source of the impact obligation. An invalidation is an
+advisory derived from a relevant authoritative change; not every database
+write has to become a broadcast. The logical sequence is:
 
 1. Qualified outcome evidence establishes the authoritative change.
 2. Recoverable change/publication evidence carries an admitted progression
    requirement and affected scope information. A durable record, qualified
    change frontier, replayable source or equivalent reconciliation path can
-   establish this under the declared delivery guarantee.
+   establish this under the declared delivery guarantee. The mechanism
+   explains how the impact remains discoverable if no compatible interest was
+   registered on the writer's local router at the instant of incorporation.
 3. Routing delivers an advisory to a relevant participant under its transport
    and recovery contract.
 4. The participant's acquisition requests a scope and progression sufficient
@@ -66,7 +72,13 @@ A periodic authoritative refresh may provide a weaker eventual-awareness
 strategy under explicit scheduling and availability assumptions. It does not
 prove delivery of every invalidation. A router's successful local subscription
 does not by itself prove that no relevant upstream change was lost before its
-interest became visible.
+interest became visible. A new subscription can be justified without replaying
+every earlier event if a post-registration authoritative acquisition is fenced
+to include all relevant changes through a qualified frontier. That mechanism
+can also cover router failover by conservatively triggering redundant
+invalidations or acquisitions. It cannot infer a covering frontier merely
+from the fact that all surviving routers report healthy or from a fresh
+connection's existence.
 
 *** Worked gap: read before interest registration
 
@@ -77,7 +89,12 @@ read excludes that change. If publication uses only the interests visible at
 write time, and the subscription starts after the change without replay or a
 new read fence, the browser can remain indefinitely at P17 despite a healthy
 SSE connection. Neither a later keepalive nor successful router registration
-repairs that history by itself.
+repairs that history by itself. The failure exists even when all local
+broadcast attempts reported success: the relevant interest was not yet
+visible at the publisher's matching boundary. Recoverable source impact
+plus qualified replay or a new subscribed-read fence can close the gap;
+a durable per-recipient send ledger is one possible mechanism, not a
+necessary semantic requirement.
 
 An admitted implementation may instead register and buffer the interest before
 the initial read, replay changes since a durable cursor, acquire a new qualified
@@ -126,6 +143,8 @@ requirements need an explicit compatibility or migration policy.
 | Initial authorized projection is acquired or an explicit first-acquisition path exists. | Managed empty target has only SSE subscription with no initial content or acquisition. | Admit managed bootstrap closure only with a qualifying path. |
 | Subscription registration is covered by replay, buffer, fence or reconciled read across the initial gap. | Q is read at P17, changes at P18 before interest registration, and remains stale despite a healthy stream. | Reject an unconditional eventual-awareness claim until recovery covers the gap. |
 | One router disappears and an admitted failover path reacquires or conservatively redelivers possibly lost invalidations. | The replacement router assumes its newly learned interests prove there were no prior missed changes. | Require scoped recovery evidence; extra safe redelivery is allowed. |
+| A source-declared impact survives without a commit-time matching interest and a later subscriber's fenced read covers that change. | Only current local-router interests generate invalidation debt; all later interest registration is assumed safe without replay or read fence. | Establish the required impact/reconciliation path or retain a weaker guarantee; no mandatory per-recipient completion ledger. |
+| A local provider-result incorporation creates Order-change propagation work and the notifier crashes before emit. | The publication retry invokes the provider again or interprets local Order notification as a payment receipt. | Recover only the appropriate local propagation debt and keep external provider evidence independent. |
 | A disconnected owner reconnects with an admitted state or cursor and reestablishes the acquisition obligation. | A recycled host, SSE connection or browser resource identity silently transfers old acquisition/adoption rights. | Correlate current owner and incarnation; preserve or retire debt by explicit policy. |
 | A signed or server-held observation record establishes precisely its declared historical proposition. | Matching browser token or signature is treated as proof of DOM installation or current business permission. | Separate issuance, acquisition, installation, adoption and fresh authorization. |
 | A malformed, unattainable or foreign-incarnation consistency claim is handled with a bounded typed failure or declared recovery. | Server waits indefinitely or silently removes the requested minimum. | Fail closed within the supported protocol and resource bounds. |

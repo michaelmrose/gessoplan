@@ -95,6 +95,18 @@ provider evidence. That operation protects the payment intent and current Order
 state, records the accepted receipt, makes the permitted domain transition, and
 updates durable work in the same local atomic boundary.
 
+This local result-incorporation operation is itself a new authoritative
+transition, distinct from the original place-intent command and the remote
+provider attempt. Its current guards, provider receipt identity, local command
+binding where required, and work-state changes are protected together. If the
+result changes an Order projection whose Live freshness is promised, it also
+records the corresponding recoverable *publication impact* or qualifies an
+equivalent discovery path. Completing the original payment-authorization work
+does not establish that the new domain transition's observers were notified.
+Conversely, a successfully delivered Live invalidation cannot establish that
+the payment provider authorized, captured or settled money. Provider work and
+publication work have separate identities, premises and completion criteria.
+
 | Current local state and admitted evidence | Required treatment |
 |------------------------------------------+--------------------|
 | Payment pending; matching authorization succeeds. | Record authorization and advance according to the placement policy. |
@@ -129,6 +141,16 @@ This history differs from a payment that never reached the provider and from
 one whose local authorization receipt was already incorporated. The model and
 its diagnostic result must not collapse the three cases merely because all
 three can appear as a pending Order to a particular browser.
+
+There is another distinct crash window *after* a qualified provider receipt
+is incorporated locally but *before* the resulting Order-change invalidation
+is delivered. Recovery here must not call the provider again to regenerate
+the publication. The original provider attempt is already reconciled; the
+new work is to deliver or reconcile the authoritative local Order change
+under its own propagation contract. The application may avoid replaying
+individual advisories when a qualified complete authoritative reread covers
+the affected scope and frontier. A payment worker's completed flag and an
+SSE emitter's successful enqueue are not interchangeable settlement evidence.
 
 Workers may use leases or fencing to prevent stale local writes. Such mechanisms
 do not retroactively stop a remote call already issued by an old worker. Late
@@ -166,4 +188,5 @@ lease expiry, and model work completion require a declared relationship.
 | Duplicate compatible provider callbacks race to incorporate one result. | Conflicting, reordered, or late receipts target changed Order state. | Protect local incorporation and retain the real external history; local idempotence cannot imply remote exactly-once execution. |
 | Cancellation and late provider success follow declared void/compensation policy. | Cancellation erases a real authorization or treats compensation as transaction rollback. | Admit the appropriate new transition and outstanding work; reject false historical erasure. |
 | Durable work is discoverable after worker or node loss. | Queue acknowledgment precedes durable settlement and removes the only recovery owner. | Preserve replayable work or an equivalently qualified discovery guarantee. |
+| Provider authorization is locally incorporated and its separate required Order-projection publication is recoverable. | The worker dies after local receipt incorporation, and replay incorrectly charges the provider again or treats a sent SSE frame as proof of payment. | Resume only the outstanding publication/acquisition obligation; keep provider-effect settlement distinct from Live delivery. |
 | Resolution is conditional on provider availability and admitted reconciliation. | The system asserts unconditional eventual completion with no provider or human-progress premise. | State the liveness assumptions; unsupported completion is not a successful check. |

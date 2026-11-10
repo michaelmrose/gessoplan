@@ -101,10 +101,17 @@ in 04.12, 04.15 and 04.16.
 `PART-IV-cross-section-reconciliation-02-command-outcomes.md`.
 Clarified attempt-specific incorporation evidence, historical command
 replay, terminal rejection and complete-submission correspondence in
-04.03, 04.06, 04.08, 04.11 and 04.17. Neither pass is acceptance.
+04.03, 04.06, 04.08, 04.11 and 04.17.
 
-**Next:** reconcile durable provider work and postcommit Live
-publication/recovery across 04.03–04.10 and 04.14–04.17, then the
-remaining backend, browser and Parts I–III/VIII joins. Continue
-one bounded revision per `next`; do not grant reviewed-candidate
-status before the whole-part coherence audit is complete.
+**Whole-part reconciliation, pass 03:** see
+`PART-IV-cross-section-reconciliation-03-durable-work-and-publication.md`.
+Reconciled payment-provider intent/result ownership, postcommit Live
+publication debt, late interest discovery, subscriber bootstrap and
+failure-window recovery in 04.09, 04.10, 04.14 and 04.17. None of
+these passes constitutes whole-part acceptance.
+
+**Next:** reconcile backend/FX effect qualification and full installed
+writer/worker/route coverage with the downstream acquisition and
+adoption guarantees, including Part III's durable workers and Part
+VIII's HumanHelp policy. Continue one bounded revision per `next`
+without premature whole-part candidate acceptance.

@@ -111,7 +111,14 @@ permanent gap if the process dies between those actions.
 The intent binds the authoritative effect, relevant subject/query impact,
 progression requirement, and stable delivery/work identity. It need not capture
 every currently connected subscriber. A durable change log or outbox can feed
-later routing and interest matching. Delivery semantics must state whether
+later routing and interest matching. The required impact must be derivable from
+admitted source-owned change meaning and the selected application contract,
+not solely from the subscribers known to one process at commit time. Matching
+later-installed interests to that retained impact, or instead closing the
+initial-read/subscription gap through a qualified acquisition fence, must
+satisfy the promised awareness and recovery scope. This does not require
+persisting a per-subscriber acknowledgment for every broadcast or retaining
+every unrelated database change forever. Delivery semantics must state whether
 duplicates are possible and how consumers recognize compatible repetition.
 
 An in-memory list of local interests is not proof that all affected participants
@@ -133,7 +140,13 @@ claim is explicitly conditional on that action.
 Publication completion also has a scope: queued, durably recorded, accepted by a
 broker, delivered to a connection, admitted by a participant, and adopted by a
 projection are distinct milestones. The contract names the milestone it can
-observe and retains downstream obligations where required.
+observe and retains downstream obligations where required. A work item may be
+retired at a narrower milestone *only if* remaining promised obligations have
+qualified independent owners, coverage or recovery. Replaying a publication
+work item must not repeat the domain transaction whose impact it announces.
+The same rule applies to a provider-result incorporation that creates new
+publication impact: payment-work completion, local receipt incorporation and
+Order-view dissemination are distinct settlements.
 
 Recovery failure may leave debt visible and unresolved. It must not manufacture
 success, discard the command record, or turn the committed domain operation
@@ -150,4 +163,6 @@ the resulting weaker guarantee must be part of the public contract.
 | Effect sequencing waits for the declared completion boundary. | A vector-valued argument is executed as a sequence, or enqueue is reported as authoritative completion. | Enforce the registered effect interpreter's actual ordering and completion semantics. |
 | Submission fails before any possible incorporation, or an ambiguous submission is reconciled. | All thrown exceptions are mapped to durable business rejection or trigger blind resubmission. | Distinguish local attempt failure, unknown command disposition and admitted authoritative evidence. |
 | Commit succeeds and a subsequent publication fails; the original command result is retained. | A catch rolls back the reported command truth, retries the domain mutation, or discards necessary propagation. | Classify post-commit delivery debt independently and recover only the appropriate effect. |
+| A required scoped change intent survives process loss before any in-memory invalidation emit, and a successor or qualified reader reconciles it. | A successful domain commit relies solely on a later unprotected async dispatch, so crash erases the only recovery path. | Admit an atomic work intent or equivalent discovery/fencing guarantee; a post-commit error tag by itself is not durable debt. |
+| A source-owned change impact is recoverable for a late or remote subscriber under the declared guarantee. | The commit-time emitter generates work only for interests visible at one router, omitting all late or remote interests without a read/subscription fence. | Cover the late-interest gap or weaken the stated awareness promise; do not demand per-recipient broadcast acknowledgments as the only design. |
 | A disconnected participant returns through qualified acquisition or its declared Refresh path. | A missed SSE notification is assumed to arrive eventually with no retained work, inception coverage or recovery trigger. | Admit precisely the supported eventual-freshness claim; reject unconditional convergence. |
