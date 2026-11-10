@@ -1,0 +1,160 @@
+** Rendered affordances and concrete response closure
+
+*** Minimal semantic intent in views
+
+The view selects an admitted operation, supplies concrete arguments and required
+observations, and chooses presentation/availability. Prepared bindings from Part
+V derive the plan, transport, encoding, and other realization details from the
+assembly. A view should not manually copy browser registries, authority roles,
+command envelope formats, or artifact digests.
+
+A prepared action is not current authorization. The trusted model boundary still
+checks the principal, Request, Membership, Organization policy, and other
+commit-time dependencies. Rendering an action establishes neither a permanent
+permission nor a promise that a later attempt will succeed.
+
+An action can be deliberately unavailable under its UI contract. Its semantic
+identity and reason remain inspectable, and no effective transport survives that
+unavailability. A missing required basis cannot be repaired by discarding semantic
+metadata or forging a browser observation record.
+
+*** Check the effective action, not one attribute
+
+The render profile defines the HTML/HTMX subset whose effective behavior can be
+checked. It accounts for all supported request sources and their composition,
+including:
+
+- generated semantic bindings and ordinary explicit request attributes;
+- form action/method and submitter overrides;
+- form association, including detached controls;
+- applicable inherited attributes and explicit inheritance controls;
+- relevant defaults, relative URLs, document/base context, and current path;
+- supported boosting, extensions, response triggers, and navigation behavior;
+- string/keyword or other attribute spellings that the serializer treats alike;
+- conflicts between authored and generated transport, target, and protocol fields.
+
+The profile must follow the actual selected browser/library behavior. It cannot
+assume every attribute inherits, ignore a supported default action, or accept
+silent last-write-wins merging where effective dispatch becomes ambiguous.
+Duplicate IDs, invalid nested forms, conflicting attribute spellings, and browser
+repair of malformed markup are rejected or explicitly handled where they affect
+the claim.
+
+A fragment can depend on a form or inherited context outside the returned tree.
+Its assembly/rendering contract supplies the necessary host context or constrains
+it to a self-contained composition. If required context is unknown, the checker
+reports unsupported/unestablished behavior; it does not declare the fragment
+complete because the missing ancestor was outside its scan.
+
+An ordinary effective action targeting an assembled semantic route must carry
+that route's required semantic realization. Moving the action to an ancestor or
+substituting concrete path parameters does not make an anonymous semantic request
+legal. Conversely, an ordinary read/search route remains ordinary when it meets
+its declared acquisition and effect contracts without a command choreography.
+
+Arbitrary client JavaScript can alter the DOM or send requests directly. Render
+checking establishes the trusted output's supported realization, not honesty of
+a hostile browser. Server admission remains independent. Effects of ordinary
+scripts within protected browser footprints follow Part VI's ownership and
+noninterference contract.
+
+*** The final structured value is the checked value
+
+Dynamic rendering is checked after the application has produced the concrete
+structured output and before prohibited output is delivered. Checking a prepared
+view model and then running an unchecked renderer is insufficient: the renderer
+can introduce a malformed control after the check.
+
+The normal response path is:
+
+1. retain the request's admitted assembly and response-context binding;
+2. perform view preparation and component expansion under their declared contracts;
+3. materialize the concrete structured tree and effective-action context;
+4. validate semantic bindings and all supported effective actions against that
+   assembly;
+5. serialize that same checked value through the admitted serializer;
+6. apply only response transformations whose correspondence contract preserves
+   the checked properties, or recheck after a relevant transformation;
+7. release the response through the admitted delivery boundary.
+
+Lazy values, component callbacks, mutable references, and serializer-time code
+must not be evaluated once during checking and again with different results during
+serialization. A supported implementation can materialize a bounded immutable
+tree first, or use a serializer with an equivalent checked occurrence protocol.
+It must state the actual mechanism and resource/failure limits.
+
+This is structural/effective-action checking, not automatic HTML sanitization or
+proof of arbitrary renderer purity. Content safety and active-content policy are
+separate contracts, as in Part VI. A renderer that has already performed an
+external side effect cannot have that effect undone by rejecting its output.
+
+*** Systemic enforcement covers deferred and alternate responses
+
+The canonical application handler installs the guard once for all supported
+structured responses. Nested guards compose without disabling the outer guard.
+Application authors need not remember a manual validation call at every render.
+
+A dynamically scoped guard can implement the synchronous path, but an asynchronous
+response may be completed after that dynamic scope has ended or on another
+thread. The response completion carries an explicit assembly/guard context or
+uses another qualified propagation mechanism. Absence of the required guard at
+a managed serialization boundary is a failure, not a silent return to legacy
+unchecked behavior.
+
+The supported response profile covers or explicitly classifies:
+
+| Response path | Required treatment |
+|---------------+--------------------|
+| Ordinary structured page/fragment | Check the actual final structured occurrence before serialization/delivery. |
+| Deferred/asynchronous response | Preserve the admitted assembly and guard through completion, timeout, cancellation, and error handling. |
+| Streaming output | Check each delivered managed portion under a compositional context or buffer the required scope; acknowledge that already-sent bytes cannot be withdrawn. |
+| Cached structured fragment | Preserve semantic binding and applicability; check the concrete occurrence in its current context where needed. |
+| Cached/pre-serialized HTML | Establish a separate admitted output correspondence and context/authority policy; a previous check does not authorize disclosure to another principal. |
+| Error response after handler failure | Use the same supported output boundary or an explicitly admitted minimal error protocol. |
+| Redirect/navigation/secondary-target response | Check its declared effect and target/protocol behavior, not only the main HTML body. |
+| Raw HTML/custom renderer | Admit a separate realization contract or exclude it from the specific structured-output claim. |
+
+Naming an escape hatch does not satisfy a requirement that all application
+managed surfaces are covered. A policy requiring that coverage rejects an
+uncovered managed path. Static assets or truly unmanaged output can be explicitly
+outside that claim, provided their effects do not invalidate its premises.
+
+A response cache key is not just a URL when its contents depend on tenant,
+authorization, query, semantic contract, or assembly instance. The cache contract
+states the partition, freshness, revocation, and revalidation behavior needed for
+its claims. Returning a cached checked card to an unauthorized user is still a
+disclosure failure.
+
+*** Worked example: a render-time defect after a valid Claim
+
+Startup admits the Claim operation and its return path. For a particular request,
+the trusted model incorporates command C42 successfully. While preparing the
+resulting card, a bug creates a Cancel affordance without its required Request
+argument.
+
+The output guard rejects that concrete card before delivery. It does not change
+the authoritative Claim outcome to rejected. The trusted request boundary retains
+its known result and follows the admitted response-failure protocol.
+
+| Evidence available to the participant | Required treatment |
+|---------------------------------------+--------------------|
+| A permitted, correlated committed outcome is delivered through the supported error/settlement channel. | Preserve known incorporation; present response/installation failure separately and offer the authorized recovery path. |
+| The server knows incorporation, but its response is lost or the browser cannot admit the payload. | The browser remains unknown until its resolver supplies admissible evidence. |
+| A later card read shows the current claimant without command attribution. | It can establish current state at its scope; it does not by itself resolve C42. |
+| The malformed response concerns an operation rejected before submission. | Preserve that actual disposition; do not route all response failures through a committed-only handler. |
+
+The error protocol defines the actual HTTP/transport representation and the
+browser hook that can decode it, including non-success status handling where
+used. A map containing settlement metadata is not enough if the selected HTMX
+profile never exposes that metadata to the runtime.
+
+The fallback response itself must be valid and bounded. It must not recursively
+invoke the same failing renderer forever or expose privileged diagnostics. A
+minimal typed response or a later authenticated resolver may be more reliable
+than trying to render the full card again inside the error handler.
+
+Tests distinguish no malformed output was delivered from no protected mutation
+occurred. The former is the render guard's responsibility; the latter requires
+an earlier command/model gate. Both need a positive control showing that valid
+requests remain usable.
+

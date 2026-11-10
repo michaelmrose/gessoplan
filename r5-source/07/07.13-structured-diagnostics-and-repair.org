@@ -1,0 +1,64 @@
+** Structured diagnostics and repair
+
+Diagnostics identify the failed obligation and its actual owner. Human-readable
+messages are rendered from stable structured data; tools should not parse prose
+to discover whether the missing edge was a route, provider, asset, or recovery
+continuation.
+
+A diagnostic includes, where applicable:
+
+- the error kind and detecting phase;
+- operation, projection, route, resource, or claim subject;
+- assembly/installation and relevant executable/artifact identities;
+- source location that introduced the obligation and source responsible for supply;
+- expected relation and actual observed/bound values, within disclosure limits;
+- rejected, unsupported, inconclusive, contradicted, or inapplicable status;
+- remaining premises and whether any protected effect already occurred;
+- mechanically known repair alternatives without automatic substitution.
+
+An illustrative provider error is:
+
+#+begin_src clojure
+{:error/kind :incompatible-capability-provider
+ :phase :assembly/admission
+ :assembly-instance/id candidate-id
+ :operation/id :request/claim
+ :obligation/id :claim/commit-time-input
+ :introduced-by claim-source-ref
+ :supplied-by server-binding-source-ref
+ :expected {:input-path [:execution-context :biff.fx/now]
+            :value-contract :time/instant}
+ :actual {:input-path [:execution-context :clock]
+          :value-contract :clock/zero-argument-function}
+ :suggestions [{:kind :explicit-binding-adapter
+                :contract/ref sampled-invocation-time-ref}]}
+#+end_src
+
+The suggestion does not install that adapter. Source correction and admission
+establish the new binding. Likewise, an unknown =:request/claime= may suggest
+=:request/claim= diagnostically but must never be corrected automatically for
+execution.
+
+*** Stable diagnostic families
+
+| Family | Representative distinctions |
+|--------+-----------------------------|
+| Semantic construction | Unknown operation, duplicate identity, invalid interface, contradictory transition, incompatible realization. |
+| Plan/build | Missing plan, wrong plan/operation, stale manifest, asset-byte mismatch, incomplete asset set, unestablished build correspondence. |
+| Dispatch/execution | Missing/ambiguous route, selector conflict, wrong issued executor, unsupported route semantics, unclassified writer. |
+| Provider/effect | Missing provider, incompatible value or origin, invalid actual candidate, wrong target, unsupported lifetime. |
+| Rendering | Missing arguments/basis, anonymous semantic route, implicit downgrade, conflicting attributes, unknown effective context, unchecked response path. |
+| Recovery | Missing continuation, incompatible outcome mapping, absent owner/trigger, unsupported retained command contract, unmet acquisition/installation requirement. |
+| Installation/lifecycle | Missing gate, wrong actual handler, premature exposure, assembly-instance mismatch, invalid dependency, failed activation/cleanup. |
+| Assurance | Unsupported fragment, inconclusive budget, counterexample, inapplicable evidence, unaccepted premise, insufficient coverage. |
+
+These families need stable public identities without requiring this document's
+exact keyword spellings. A missing resource and an existing incompatible resource
+should not be indistinguishable. Dynamic authorization denial retains its model
+outcome and privacy policy; it is not reported as a corrupt assembly.
+
+A diagnostic must not claim semantic verification succeeded merely because it
+reached a later code path. It reports only established evidence. Source summaries,
+artifact stamps, and provider declarations can be useful repair facts without
+being proofs of their implementations.
+

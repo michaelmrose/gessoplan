@@ -1,0 +1,135 @@
+** Transport, installed routes, and trusted execution
+
+*** Preserve operation identity through physical realization
+
+Once an action is declared to mean a semantic operation, later bindings preserve
+that identity. Missing observation basis, plan, transport, or handler causes a
+construction/rendering rejection or an explicitly unavailable action under its
+UI contract. The system cannot erase the semantic tag and emit an ordinary POST
+to keep the control clickable.
+
+Alternate realizations are legal when each is independently declared and checked
+for the same operation, and the selection rule is explicit. An optimistic path,
+a non-optimistic command path, and a server-only path may have different
+requirements. Choosing one is not permission to invent a weaker interpretation
+at runtime.
+
+An unavailable rendering preserves the operation and reason while suppressing
+its effective executable paths, including form-level and inherited actions.
+Styling alone does not disable a transport. A permanently unavailable required
+capability still fails independent product acceptance.
+
+*** Dispatch and checking share route semantics
+
+The route constructor supplies both the installed dispatcher and the checker
+projection, or establishes their correspondence through a qualified integration.
+The checker must use the actual method/path interpretation, parameter decoding,
+base path, route precedence, and discriminator rules that select the handler.
+A guessed regular expression over a URL is insufficient if it disagrees with
+real dispatch.
+
+A supported routing profile declares its analyzable subset. Literal paths and
+simple segment parameters are a useful initial subset. Unsupported patterns,
+rewrites, wildcard dispatch, or content-based selection are explicitly rejected
+for that profile or admitted through another qualified contract. Prototype
+restrictions do not define the whole framework's eventual route language.
+
+Overlapping routes are either rejected or have a deterministic precedence relation
+that both checking and dispatch use. Merely forbidding every overlap is one
+possible narrow profile, not a universal requirement. Routes serving several
+operations use an admitted discriminator and closed registry; they do not execute
+browser-supplied machine state or select by fuzzy names.
+
+Method/path matching uses the effective request after the declared trusted
+normalization chain. Proxy rewriting, host/base-URL rules, query selectors,
+method overrides, and content negotiation are included where relevant. Unknown
+or conflicting selectors fail explicitly rather than allowing one layer to
+silently override another.
+
+*** The installed callable is the checked callable
+
+The construction should issue or compose the actual route handlers and dispatcher,
+then install those products. A separate map claiming that route R uses executor E
+is weaker evidence than constructing R to invoke E and checking the actual
+installation's binding.
+
+The installation check distinguishes:
+
+- a declaration naming a handler;
+- a constructed dispatcher bound to that callable;
+- a system map holding the wrapped dispatcher;
+- the actual server instance accepting requests through that wrapped dispatcher.
+
+Each is a different evidence boundary. Inspecting a caller-selected system map
+does not prove what a running server captured earlier. The supported server
+constructor must consume the admitted handler directly or establish its actual
+adoption through an equivalent qualified mechanism.
+
+Ordinary middleware remains possible. Its composition preserves the required
+routing, principal, request, response, and effect contracts. A middleware stage
+that rewrites an operation selector or replaces the handler changes the relevant
+binding and cannot inherit the previous report without checking.
+
+*** Trusted command admission
+
+The transport contract defines the real wire field/encoding, supported protocol,
+operation/interface identity, command binding, argument codecs, and outcome
+channel. The browser transports the stable command ID before any possible send.
+=:transport-request-id= identifies an attempt and is not the domain Request ID.
+
+At the trusted ingress boundary:
+
+1. decode and validate the actual supported envelope and typed arguments;
+2. resolve the operation through the admitted server registry;
+3. require agreement between operation and subject selectors in the route,
+   envelope, query, and trusted dispatch context where the contract duplicates them;
+4. obtain principal/tenant context from its trusted provider;
+5. bind the current invocation to the admitted public model operation;
+6. enforce command repetition, disclosure, and atomic current-state guards as
+   specified in Part IV;
+7. encode only the permitted result and observation evidence.
+
+Browser-supplied principal IDs, role labels, basis tokens, plan references,
+certificates, or assembly IDs do not grant current authority. A basis carried by
+a browser is protocol context unless its particular provenance/use contract
+establishes more. Part II's observation-evidence distinction applies.
+
+Where cookie-based or comparable ambient credentials make cross-site invocation
+relevant, the selected transport/authentication profile includes the required
+origin/request-integrity defenses. Structural route closure and typed decoding
+do not substitute for that security contract.
+
+*** Required execution providers are typed bindings
+
+A requirement is more precise than a member of a set such as =#{:clock :db}=.
+It identifies the input/output contract, origin, invocation scope, lifetime,
+ordering/dependency constraints, and supported failure outcomes of the provider.
+
+For example, a Claim executor may consume a sampled instant under
+=:biff.fx/now=. A zero-argument clock function under another key does not satisfy
+that requirement until a declared adapter samples and binds it at the intended
+boundary.
+
+#+begin_src clojure
+{:requirement/id :claim/commit-time-input
+ :consumer {:operation/id :request/claim
+            :input-path [:execution-context :biff.fx/now]}
+ :value-contract :time/instant
+ :provider/ref trusted-clock-provider-ref
+ :binding-adapter/ref sampled-invocation-time-ref
+ :lifetime :invocation
+ :failure-continuation/ref time-unavailable-ref}
+#+end_src
+
+The example is a construction binding, not proof that a clock is accurate or
+that the value is transaction time. The operation names the temporal meaning it
+requires. Retry semantics state whether a sampled value is preserved or replaced
+and how that affects command binding and guards.
+
+Providers include authentication, transaction execution, authoritative reads,
+progression comparison, clocks, identity generation, publication, and external
+services as needed. Missing, ambiguous, incompatible, or wrongly sourced supply
+is rejected where statically knowable. Runtime unavailability follows its
+required declared handling path. Having a transaction capability does not
+authorize the transaction's business operation.
+

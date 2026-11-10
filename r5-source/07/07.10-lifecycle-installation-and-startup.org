@@ -1,0 +1,143 @@
+** Lifecycle, installation, and supported startup
+:PROPERTIES:
+:CUSTOM_ID: req-application-lifecycle
+:END:
+
+The supported application startup path composes native lifecycle modules under a
+qualified integration contract. For a Biff application, that contract names the
+selected Biff module/system behavior and the server's handler adoption behavior.
+The design does not depend on an unspecified future release automatically
+performing Gesso's checks.
+
+Every lifecycle owner has a stable qualified identity, dependencies, start/init
+semantics, owned resources, and cleanup behavior. Duplicate IDs, unknown required
+IDs, incompatible shared ownership, and required dependency cycles are rejected.
+A module is not accepted merely because it uses the expected ID while replacing
+the required implementation with a different function.
+
+*** Preflight and installation precede application exposure
+
+The required partial order is:
+
+1. obtain and validate the source/configuration and private resources needed for
+   construction;
+2. close semantic, build, provider, and selected assurance obligations;
+3. construct/install the admitted router, response guard, execution/provider
+   bindings, workers, and asset references;
+4. check their actual required installation relationships;
+5. activate the application-serving boundary.
+
+A particular framework may have separate init and start phases. All phases must
+respect the exposure rule. Starting an application listener during an earlier
+init callback cannot be excused because the named preflight module later appears
+first in a start-order list.
+
+There is no universal requirement that preflight be the first module in every
+system. Its real dependencies may need private initialization. There is a universal
+requirement that no managed application operation is externally available before
+its required admission and enforcement bindings are ready.
+
+Health or administration endpoints can have separately admitted scope. They
+must not expose unchecked application behavior under a health-check exception.
+A listener bound privately or returning only a separately admitted unavailable
+response is different from a ready application listener; the profile states its
+observable behavior precisely.
+
+*** The ordinary constructor installs the guarded handler
+
+The application start function derives or enforces the required modules and
+ordering. Application authors do not manually remember a preflight ID, wrap one
+test handler, or maintain separate checked-dev and unchecked-production entrypoints.
+
+A schematic API sequence is:
+
+#+begin_src clojure
+(let [definition (application-definition config)
+      candidate (application/prepare! definition)
+      installation (application/install-private! candidate host-profile)]
+  (application/activate! installation))
+#+end_src
+
+The contracts of these calls are substantive:
+
+- =prepare!= admits the semantic/build candidate under its policy; it does not
+  report that a server has started.
+- =install-private!= consumes that candidate, constructs the actual bindings,
+  records owned resources, and runs the relevant installation checks without
+  exposing unchecked application operations.
+- =activate!= consumes the genuine current installation and completes the declared
+  exposure transition; it does not trust a caller-edited accepted flag.
+
+Implementations can combine these calls behind a smaller public interface.
+Their phase obligations still hold. A constructor that merely returns an accepted
+map without installing the required path does not satisfy the contract.
+
+The final server receives the exact admitted wrapped handler, or a qualified
+wrapper composition preserving its contracts. The application can inspect the
+actual server/installation relationship to the extent promised by the profile.
+Local system-map adoption, observed invocation, and deployed-service adoption
+remain separately scoped evidence.
+
+*** Request lifetime spans asynchronous completion
+
+At entry, an invocation captures its assembly instance and concrete context. It
+resolves route, executor, providers, outcome encoding, render guard, and assets
+through those compatible bindings. Asynchronous completion carries this context
+explicitly rather than consulting whichever registry became current meanwhile.
+
+An invocation's completion, cancellation, timeout, and transferred work determine
+when its assembly/resource references can be released. A handler returning a
+future is not necessarily a completed invocation. Streams and workers have
+separate declared lifetimes.
+
+Old assembly bindings do not freeze current business authority. Each operation
+still checks the current trusted model/authentication premises required by its
+contract. If an old assembly or provider profile is revoked, its continued use
+requires the declared retirement/compatibility policy, not indefinite reliance
+on the fact that a request once acquired a reference.
+
+*** Reload builds a candidate before activation
+
+Development reload and deployment use the same coherence rule. A candidate is
+constructed and checked separately from the current admitted assembly. Activation
+switches the appropriate new-entry bindings as one admitted transition, using a
+compare-and-activate or equivalent mechanism that prevents concurrent reloads
+from replacing a newer instance with an older candidate.
+
+The transition covers routes, issued executors, providers, assurance policy,
+render checking, asset references, and other relevant realization bindings. It
+cannot expose new routes with stale browser assets and an unrelated old report.
+
+In-flight work remains bound to its still-valid assembly or follows an explicit
+checked transfer. New invocations use the new instance. Old assets and resolver
+contracts remain available for the lifetimes promised by the compatibility and
+recovery policy; reference counts alone do not account for sleeping browsers that
+are no longer represented by a live server request.
+
+A rejected candidate may leave the prior instance serving only while that instance
+remains valid. If a security, backend, or semantic premise has invalidated the old
+instance, failed replacement is not permission to keep using it. The application
+suspends affected work or follows a declared restricted mode.
+
+Relevant change invalidates dependent evidence. An incremental implementation
+can reuse unchanged checked subgraphs and artifacts, but must recheck their joins
+into the new root. Cache reuse is justified by complete dependency/applicability
+bindings; it is not an assertion that the source looks similar.
+
+*** Cleanup preserves ownership and primary failure
+
+Each lifecycle module owns the resources it acquires and any explicitly shared
+references. Failed startup retires completed private installations and accounts
+for partial acquisition, in dependency-safe order. Cleanup errors are retained
+as secondary diagnostics; they do not replace the primary admission failure.
+
+No failed candidate leaves an unchecked application listener or worker active.
+Work already transferred to a durable admitted owner remains governed by its
+contract. Cleanup cannot erase a committed transaction, acknowledge unfinished
+durable work as complete, or cancel a replacement assembly's shared resources.
+
+Shutdown and replacement preserve uncertain command/work obligations through
+admitted transfer or durable recovery. Best-effort physical stop follows semantic
+retirement; failure to close a socket or release a registry handle does not retain
+the old owner's authority to initiate work.
+

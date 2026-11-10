@@ -1,0 +1,103 @@
+** Browser assembly manifest and physical artifacts
+:PROPERTIES:
+:CUSTOM_ID: req-browser-assembly-manifest
+:END:
+
+The browser build consumes the admitted semantic/build inputs of the same
+application definition. Its manifest identifies the exact admitted plan set,
+operation-to-plan correspondence, executable identities, interpretation/profile
+contracts, required physical handlers, and relevant implementation/toolchain
+inputs. It does not contain a digest of bytes that do not yet exist.
+
+The admitted plan inventory must cover every required operation realization and
+identify any deliberately included shared or currently unused plans. Missing,
+duplicate, incompatible, or undeclared executable entries fail the applicable
+inventory contract. Bundling an explicitly admitted extra plan is not intrinsically
+wrong; letting an unexamined executable enter the claimed closed registry is.
+
+*** A concrete generated-entrypoint construction
+
+The normal build uses a Gesso-owned generated bootstrap source. It embeds or
+imports the exact admitted manifest/plan payloads and invokes the canonical
+runtime bootstrap. Application code supplies typed physical realization options;
+it cannot replace the manifest-owned operation registry or plan resolver through
+those options.
+
+A concrete build sequence is:
+
+1. Resolve the application definition once into the candidate semantic inputs and
+   selected browser realization.
+2. Derive the manifest and exact executable payloads from that construction.
+3. Generate the bootstrap entrypoint and explicit imports for the admitted
+   physical realization implementations.
+4. Compile with the declared toolchain, dependency versions, options, and inputs.
+5. Record the generated-input correspondence and digest the actual emitted assets.
+6. Verify the staged manifest/receipt/asset set before publication.
+7. Admit an immutable asset location set and bind it to the candidate assembly.
+
+A low-level emitter accepting arbitrary JavaScript plus a copied manifest is not
+equivalent to this construction. It may remain a testing or integration API with
+a narrower guarantee.
+
+There is no requirement for a magical parser that extracts all semantic plans
+from arbitrary optimized JavaScript. Source-generation correspondence, compiler
+fidelity under a named premise, and exact emitted-byte binding provide a concrete
+argument. Stronger independently checked compiler/artifact correspondence can
+replace the relevant premise when available. A runtime registry probe can add
+conformance evidence, but a self-reported registry is not independent proof of
+all code executed by the bundle.
+
+*** Receipts bind provenance and bytes separately
+
+A detached build receipt records the manifest identity, generated input/plan
+identities, compiler/runtime/implementation closure, relevant build options, and
+the exact digest/size/location of each emitted asset. Its evidentiary value depends
+on provenance from the admitted build/checking boundary, not on the receipt's
+own claims. It conveys no permission to perform a domain operation.
+
+Verifying a digest establishes equality with recorded bytes under the digest
+premise. It does not establish that those bytes implement the intended semantics.
+Conversely, trusted compilation from the correct source does not establish that
+the server later serves those same bytes. Both relationships belong in closure.
+
+The asset set includes dynamic chunks, workers, imported runtime libraries, and
+other resources whose behavior affects the claim. Relevant CSS or configuration
+that can suppress or redirect an affordance also has a declared dependency or
+qualification role. Diagnostic-only sidecars retain their separate noninterference
+contract from Part V; they do not become executable semantic inputs.
+
+Build inputs include opaque physical implementation changes where their behavior
+matters. Reusing the same named =current= toolchain/runtime label across changed
+implementations cannot preserve evidence applicability. Deterministic compilation
+is useful but not a prerequisite for naming actual emitted bytes: a receipt can
+bind one actual output even when another valid build yields different bytes.
+
+*** Publication and serving preserve the checked binding
+
+Candidate builds use isolated staging locations. A failed build or rejected
+candidate cannot overwrite assets still served by an admitted assembly. Atomic
+replacement of one file is insufficient if readers can observe a new bundle with
+an old receipt or a mixture of old and new chunks. Publish a verified immutable
+asset set, then switch the admitted serving reference.
+
+The concrete serving strategy must prevent or detect substitution between check
+and use. Content-addressed/versioned immutable assets are a useful default. An
+open immutable resource handle, qualified store, or equivalent serving contract
+can also work. Reading a mutable file once at startup and trusting its path
+forever is not exact serving correspondence.
+
+A page generated under assembly A must reference assets bound to A even if
+assembly B activates before the browser requests them. A mutable logical URL that
+now serves B can break that relationship. Versioned URLs or a qualified
+assembly-specific asset selection protocol close it. Cache, CDN, service-worker,
+and old-client behavior follow the selected deployment/profile contract.
+
+The currentness check asks whether the assets intended for this admitted assembly
+match its required build. It does not demand that every sleeping browser already
+runs the newest deployment. Older continuations follow Part VI's compatibility
+and recovery rules, including retained command resolution.
+
+Tests of startup/currentness use the same verification mechanism and actual
+artifact path as production. Synthetic stamped files can test a narrow checker,
+but cannot stand in for the real generated runtime in application acceptance.
+

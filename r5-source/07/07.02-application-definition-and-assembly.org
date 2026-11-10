@@ -1,0 +1,180 @@
+** Application definition and ApplicationAssembly
+:PROPERTIES:
+:CUSTOM_ID: req-application-assembly
+:END:
+
+One source-owned application definition composes the declarations that their real
+owners export. Its normalized realization is the conceptual
+=ApplicationAssembly=. It is a graph of typed subjects, bindings, obligations,
+and evidence, not a collection of unrelated success flags.
+
+The public authoring surface should remain small. Source owners declare genuine
+choices once; construction derives repeated identities and verifies independently
+chosen physical correspondences. Applications should not maintain separate
+operation registries for browser compilation, preflight, startup, rendering,
+model checking, and tests.
+
+*** Source ownership and derivation
+
+| Source owner | Authored facts | Derived or checked products |
+|--------------+----------------+-----------------------------|
+| Domain/model module | Typed operation meaning, guards, dependencies, transitions, outcomes, command/recovery contract, opaque premises. | Model interfaces, candidate obligations, operation catalog, rule/audit views. |
+| Choreography module | Distributed roles, permitted knowledge flow, coordination, local recovery choices. | Role-local plans and compiler correspondence. |
+| View/component | Selected operation, concrete arguments/observations, presentation, availability choice. | Prepared action binding, effective transport annotation, render obligations. |
+| Route/ingress module | Supported physical dispatch and input mapping. | Installed dispatcher, route index, selector-consistency checks. |
+| Trusted execution adapter | Public model delegation and actual implementation/provider binding. | Issued callable, invocation gate, outcome encoder. |
+| Acquisition/Live module | Projection/query scope, observation contract, subscription and refresh policy. | Acquisition bindings, coordinator requirements, advisory/recovery edges. |
+| Runtime/build profile | Compiler/runtime, physical handlers, assets, supported host behavior. | Browser manifest, generated bootstrap, build receipt, qualification obligations. |
+| Application composition | Selected modules, configuration, assurance policy, lifecycle/deployment profile. | One admitted application and its explanation. |
+
+An exported declaration is not accepted solely because it came from a namespace
+with the right name. Construction validates its semantic category and required
+source/implementation correspondence. A raw declaration, an admitted operation,
+an issued executor, and a copyable report can use similar host representations
+without being interchangeable.
+
+A schematic composition might be:
+
+#+begin_src clojure
+(defn application-definition [config]
+  {:application/id :humanhelp/example
+   :domains [request/definition
+             organization/definition]
+   :flows [request-flow/definition]
+   :surfaces [request-card/definition request-board/definition]
+   :ingress (routes/definitions config)
+   :execution (server/execution-bindings config)
+   :acquisitions (live/acquisition-definitions config)
+   :providers (server/provider-bindings config)
+   :browser-profile browser/profile
+   :lifecycle (system/lifecycle-definition config)
+   :assurance-policy assurance/managed-application-policy})
+#+end_src
+
+Each referenced module exports its actual owned declarations; the example does
+not stand in for omitted definitions. The composition does not retype operation
+IDs, argument schemas, settlement variants, or plan digests already determined by
+those declarations. Independent physical route selection and provider selection
+remain real choices that must be checked.
+
+Tests instantiate this constructor with declared fixture configuration. They can
+replace a clock or storage provider for a scoped test, but must identify that
+substitution and avoid transferring its evidence to an unexamined production
+provider. A hand-built shadow assembly is not production-closure evidence.
+
+*** Checked construction supports opaque application code
+
+An ordinary Clojure function can implement a rule, renderer, projection, candidate
+builder, or input conversion behind a declared interface. Construction establishes
+what can be checked and retains a named premise for the rest, under
+[[#req-admission-assurance-policy][the admission policy]].
+
+For a candidate builder, the actual returned targets, assignments, frame,
+command binding, and supported effect footprint can be checked before submission.
+That instance check does not prove that the builder had no hidden earlier effect
+or that it produces valid candidates for every input. Effect containment and
+functional conformance remain separate enforcement or assumption obligations.
+
+Normalization must not silently execute arbitrary application work to discover
+its meaning. Functions invoked during construction have an explicit purity,
+determinism, totality/failure, and resource contract. Compilation, dependency
+resolution, and model exploration use their declared budgets. An effectful
+builder cannot be called repeatedly by inspection or diagnostics as though it
+were inert data.
+
+A canonical admitted construction should derive execution and checking products
+from the same semantic subject wherever possible. An independently supplied
+reference model remains useful, but its relation to the production operation is
+an explicit obligation. Agreement between two copies of the same mistaken policy
+is not evidence that the intended business rule was correct.
+
+*** Closed registries and explicit extension boundaries
+
+Registries declared closed reject unknown, duplicate, ambiguous, or incompatible
+members before use. Extension points identify how new modules, routes, operations,
+or providers become a newly admitted construction. Dynamically loading a plugin
+must not mutate an admitted registry while retaining old closure evidence.
+
+Unused declarations can be available for composition without being exposed or
+active. They are labeled accordingly. A generated executable or installed writer
+that claims a role in the active application must have a corresponding source
+and coverage classification; it cannot disappear from the graph as unused merely
+because no UI currently invokes it.
+
+*** Construction phases and admitted assembly identity
+:PROPERTIES:
+:CUSTOM_ID: req-assembly-construction-phases
+:END:
+
+Construction has an acyclic dependency order. It may expose several internal
+products without asking application authors to maintain several definitions.
+
+| Phase | Product and admission responsibility |
+|-------+--------------------------------------|
+| Normalize | Resolve source-owned semantic declarations, physical choices, configuration, and explicit opaque contracts. |
+| Derive | Produce required role plans, interfaces, closure graph, proof obligations, and the browser build manifest. |
+| Build/check | Generate assets and correspondence products; run applicable semantic, closure, qualification, and assurance checks. |
+| Admit candidate | Bind accepted evidence and retained premises to an immutable candidate realization under the selected policy. |
+| Install | Construct actual router, wrapped handler, providers, worker entrypoints, and asset serving from that candidate. |
+| Activate | Verify the required installation relationships and permit external application service. |
+| Retire | Revoke or transfer owned rights/work, drain permitted users, and release resources under the lifetime contract. |
+
+Some installation facts cannot exist before installation. The lifecycle therefore
+allows private preparation and a final activation gate, while preventing unchecked
+application operations from becoming externally available. A report saying a
+candidate is structurally closed is not a report that its server was activated.
+
+The identities used in these phases identify different objects:
+
+- normalized semantic/realization input identity;
+- concrete implementation closure and qualification-profile identity;
+- exact executable plan identity;
+- browser manifest identity;
+- emitted asset content identity;
+- checker result/evidence identity with its applicability;
+- admitted assembly instance, optionally described as an assembly generation;
+- deployment instance/placement identity.
+
+An assembly generation is a scoped application-construction lifetime. It is not
+a universal freshness number, browser execution ID, resource incarnation, command
+ID, or database progression token. Examples use =:assembly-instance/id= when
+referring to that admitted lifetime.
+
+A digest recipe specifies the object, canonical encoding, schema, relevant
+compiler/provider dependencies, excluded self-identifying fields, and collision
+premise. Formatting-only source changes need not alter semantic identity, but a
+changed opaque implementation can invalidate implementation evidence even when
+its public contract is unchanged. Part V's exact plan and asset distinctions
+apply here.
+
+The final asset digest cannot be an input to the same bytes containing that
+digest without an explicit cycle-breaking construction. Detached receipts and
+content-addressed asset locations provide a straightforward solution.
+
+*** Immutable admitted bindings and scoped revalidation
+
+An admitted assembly binds the actual implementations, providers, policy,
+qualification profiles, route semantics, rendering contract, and artifact set
+on which its claims depend. A request captures that assembly instance at entry.
+Its later callbacks, rendering, and response completion preserve that reference.
+
+An immutable map containing mutable Vars or registries is not automatically an
+immutable realization. The supported construction captures applicable callable
+bindings, uses assembly-owned registries, or detects and re-admits relevant
+replacement before dependent use. An ordinary reload is a declared construction
+transition, not an arbitrary mutation excused by development mode.
+
+Construction evidence may be cached by its complete dependency identity and
+applicability conditions. There is no requirement to recompile plans, explore a
+finite model, or hash every asset on every response. The runtime must preserve
+or re-establish the relevant binding at the boundary where it is used. A mutable
+asset path or live registry needs a concrete stability/invalidation mechanism;
+a cached green report cannot supply one.
+
+Admission handles can be opaque process-local values; explanatory reports remain
+copyable data. A private issuance registry can prevent accidental substitution of
+a copied map for an issued executor. Object identity alone is not durable proof,
+remote attestation, or a sandbox against hostile code sharing the JVM. Process
+restart reconstructs local admissions from their actual sources and any
+independently checkable durable evidence.
+
