@@ -1,11 +1,13 @@
 # R5.1 sectional source — Part V, Provisional State and Executable Presentation
 
-**Disposition:** lossless *structural preparation only* of the preferred
-R5 Part V. The thirteen numbered source units below reconstruct
-`gesso-unified-design-canonical-r4-05-provisional-state-and-executable-presentation.org` byte for byte. **No Part V section has yet
-completed the substantive R4 preservation audit; whole-Part-V
-reconciliation and acceptance have not begun.** Parts I–IV remain
-reviewed R5.1 candidates. The twelve-part plan remains a draft.
+**Disposition:** lossless structural preparation of preferred R5
+Part V is complete. Section 05.01 has now received its first substantive
+R4-preservation and Gesso-correspondence review, recorded in
+`05.01-r4-preservation-audit.md`; 05.02–05.13 remain unreviewed.
+The thirteen source units reconstruct
+`gesso-unified-design-canonical-r4-05-provisional-state-and-executable-presentation.org` byte for byte. **Whole-Part-V reconciliation
+and acceptance have not begun.** Parts I–IV remain reviewed R5.1
+candidates. The twelve-part plan remains a draft.
 
 R4 `main` is the preservation baseline; R5 `r5` is the preferred
 architectural starting point, updated during R5.1 review where warranted
@@ -21,7 +23,7 @@ Concatenate these files in the order listed. The listed source ranges
 are from the *unchanged initial R5 candidate*, not permanent line
 numbers after subsequent revisions.
 
-| Unit | Editable Org source | Original R5 lines | Split lines |
+| Unit | Editable Org source | Original R5 lines | Initial split lines |
 |------|---------------------|------------------:|------------:|
 | 05.01 | `05.01-provisional-foundations-and-presentation-status.org` | 1–130 | 130 |
 | 05.02 | `05.02-optimistic-authority-and-claim-histories.org` | 131–290 | 160 |
@@ -81,7 +83,12 @@ Python script has not been executed in a repository checkout during
 this GitHub-only edit; this is a documentary check, **not** a Gesso
 runtime, XTDB, browser or formal proof test.
 
-**Next:** audit and revise `05.01-provisional-foundations-and-presentation-status.org`
-against R4 and Gesso's current browser model. Work one bounded
-substantive revision at a time; acceptance is a later independent
-whole-part decision.
+**05.01 review:** see `05.01-r4-preservation-audit.md`.
+The revised opening now distinguishes observation evidence, command knowledge,
+local provisional rendering and authoritative physical adoption, and provides
+paired valid/adverse Claim and creation scenarios. The section's accepted
+scope remains editorial rather than a deployed Gesso certificate.
+
+**Next:** audit and revise `05.02-optimistic-authority-and-claim-histories.org`
+against R4, accepted Parts I–IV, the reviewed 05.01 contract and Gesso's
+browser/HTMX realization. Work one bounded substantive revision at a time.
