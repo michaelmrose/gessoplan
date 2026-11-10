@@ -8,9 +8,9 @@ proof examples, identities, links or Org delimiters were modified.
 `gesso-unified-design-canonical-r4-10-formal-correspondence-and-system-boundaries.org`
 is derived output, not an independent second source.
 
-**Review status:** **10.01–10.17 substantively reviewed** against R4,
+**Review status:** **10.01–10.18 substantively reviewed** against R4,
 accepted Parts I–IX and Gesso v1622, with numbered preservation audits.
-Sections **10.18–10.20** remain for substantive review. Whole-Part-X
+Sections **10.19–10.20** remain for substantive review. Whole-Part-X
 reconciliation and independent editorial acceptance remain outstanding.
 No current Gesso/HumanHelp implementation certificate is implied.
 
@@ -327,5 +327,20 @@ are recorded. Published Part X contains
 **7438 newline-split lines** and
 **332064 characters**.
 
-**Next:** Review **10.18 — HumanHelp Refresh and Two-host Failures**,
-then 10.19–10.20 and whole-Part-X reconciliation.
+**10.18 review:** see `10.18-r4-preservation-audit.md`.
+Reconciled R4's Alice/A-to-Bob/C Claim/Refresh example with
+Part VIII's selected explicit Refresh for both remote Create and
+changes to already-visible Requests. Distinguished own-result,
+affected-card conflict recovery, one-use Refresh, in-flight
+advisory debt, coherent Request/assignment/User read,
+nonregressing HTMX OOB batch adoption and immediate retirement
+on auth/scope loss. Retained C42 historical attribution and
+current Request state as distinct cross-host facts, and specified
+physical negative failure cuts without claiming tested multi-node
+HumanHelp. Thirty preservation decisions and sixteen paired
+acceptance cases are recorded against Gesso v1622's bounds.
+Published Part X now contains **7621 newline-split lines**
+and **342064 characters**.
+
+**Next:** Review **10.19 — Direct Routing and Multi-node Acceptance**,
+then 10.20 and whole-Part-X reconciliation.
