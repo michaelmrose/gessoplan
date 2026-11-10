@@ -9,9 +9,9 @@ proof rules, identifiers, link targets or whitespace were changed.
 The canonical publication is derived output, not a second source
 to edit independently.
 
-**Review status:** **09.01–09.05 substantively reviewed** against R4,
+**Review status:** **09.01–09.06 substantively reviewed** against R4,
 Gesso v1622 and accepted Parts I–VIII, with source decisions recorded in
-the numbered preservation audits. Sections **09.06–09.16** remain for
+the numbered preservation audits. Sections **09.07–09.16** remain for
 substantive review. Whole-part reconciliation and independent Part IX
 candidate acceptance remain outstanding. Parts I–VIII are accepted R5.1 design
 candidates; this is not evidence of a completed runtime/proof system.
@@ -121,7 +121,7 @@ non-discharge, public model-interface ownership, exact versus implementation
 identity, and original-source report/certificate trust boundaries.
 Fourteen positive/adversarial scenarios and current Gesso precursor scopes
 are recorded separately from the timeless normative requirements.
-The published Part IX now has **2,548 lines** and **140,789 characters**.
+The published Part IX now has **2,797 lines** and **150,274 characters**.
 
 **09.03 review:** see `09.03-r4-preservation-audit.md`.
 Preserved the strict data-only AST, exact nominal reader/type footprints,
@@ -147,5 +147,14 @@ DAG/premise discipline, and three different elaborator/coverage/lowering
 fault-containment failures. Eighteen positive/adversarial challenges and
 Gesso source correspondence are retained in the audit.
 
-**Next:** Review **09.06 — Proof Facts, Guarded Consequence and Induction**
-against R4 and Gesso's abstract transition and induction implementations.
+**09.06 review:** see `09.06-r4-preservation-audit.md`.
+Reconciled reusable proof facts versus one-use resource rights,
+conditional guarded transition/frame facts and total terms,
+source-owned simultaneous invariant induction, complete
+operation-and-invariant case coverage, qualified XTDB writer
+correspondence, non-vacuous initialization and safety-versus-
+liveness boundaries. Twenty positive/adversarial obligations
+and real Gesso v1622 precursor/limits are documented in the audit.
+
+**Next:** Review **09.07 — Exact Finite Checking and Trusted Checker
+Boundaries**, including independent soundness and exhaustive-scope limits.

@@ -1,5 +1,38 @@
 *** Facts are not linear capabilities
 
+Logical facts and concrete resources have different structural rules.
+A reusable assertion can be cited twice in a proof. A current
+one-use Refresh grant, command-attempt authorization, browser
+target lease, transaction capability or cleanup obligation
+cannot be copied, widened, consumed or transferred by an
+inference rule that mentions its name. The actual resource
+has a trusted issuer, owner, scope, generation, live
+instance and permitted effect set. The execution layer
+checks all those conditions at use.
+
+A resource-sensitive checker may employ separately typed
+linear/affine/ownership contexts with explicit rules for
+issuance, transfer, split, join, consumption and retirement.
+An affine resource may permit discard where a linear one
+requires accounting; neither is freely duplicable.
+An abandoned request may transfer a recovery obligation
+without preserving permission for its retired callback
+to install DOM. The proof's claim about such a rule
+does not issue any token or establish its physical use.
+
+#+begin_example
+Logical fact: "G7 permits at most one scoped Refresh read."
+Actual G7: issued to Alice, cohort C, execution E2
+  first qualified read consumes its read authorization
+  later SSE advisory cannot reuse G7
+  retired E2 cannot reinstall a stale response
+  any remaining repair obligation has an explicit owner
+#+end_example
+
+The logical kernel can establish conditional propositions about
+resources; actual authority issuance, one-use enforcement and
+physical effect cleanup are separate runtime judgments.
+
 Ordinary propositional facts can be reused in derivations. A runtime authority
 capability, effect lease, resource ownership token, or one-use installation permit
 cannot therefore be duplicated by conjunction introduction or repeated premise
@@ -11,6 +44,17 @@ must still pass the actual authority and lifecycle boundary. A proof of “the
 plan requires a current permit” does not produce that permit.
 
 *** Guarded-transition consequence language
+
+This is an explicitly versioned abstract relation, not a
+second production interpreter. Its exact subject includes
+nominal state/input schemas, guard, read/write sets,
+assignment source and frame complement. The abstract state
+is a selected *projection* of application data; it is not
+automatically the whole database or all active writers.
+A transition descriptor checked for shape is not yet
+a universally valid consequence theorem, much less
+an admitted physical XTDB operation.
+
 
 The baseline abstract transition has a typed state projection, disjoint typed
 inputs, a Boolean guard, exact read/write declarations, and simultaneous
@@ -53,7 +97,94 @@ The frame covers only the declared projection. It says nothing about unmodeled
 database fields until a separate physical footprint/correspondence argument
 establishes that relationship.
 
+*** Original-source, total-term and physical boundaries
+
+A consequence judgment has the form:
+
+#+begin_example
+For all compatible s,x,s':
+  T(s,x,s') => Consequence(s,x,s')
+#+end_example
+
+An accepted =:guard= fact asserts the abstract guard only
+*assuming* the triple satisfies T. It does not prove
+that the current Request is claimable, the actor is
+authorized or the real transaction committed. An
+assignment conclusion refers to an explicitly written
+poststate field; a frame conclusion preserves both
+presence and value for an unwritten state field.
+Equality substitution uses a prior checked same-type,
+same-phase whole-operand equality, not arbitrary
+predicate rewriting, numeric solving or a fresh
+authoritative observation.
+
+Optional prestate/input fields are partial terms
+without an applicable checked presence refinement.
+Written optional poststate fields may be total when
+the assignment establishes their presence. An
+unwritten optional field retains absent versus
+present-nil identity under the frame, even when
+both might appear as nil after an unsafe Clojure
+lookup. Readers cannot borrow refinements from
+a different Request, actor, basis or transaction.
+
+The checker re-parses original source, verifies
+actual source-bound proof steps and final goal,
+and retains the matching-relation premise.
+Proof reports and structural fingerprints
+remain copyable descriptions; stronger
+certificate admission independently rechecks
+its source and premises. A valid finite witness
+for one transition is not a universal proof.
+
+The closed scalar baseline does not model
+deletion, allocation, relational cardinality,
+arithmetic state updates, multi-document writes
+or external effects. Adding these requires
+distinct typed transition constructors,
+sound consequence rules, declared
+read/write/frame relationships and
+source-to-executor correspondence. Actual
+HumanHelp Claim/Reassign can involve guarded
+Request *and* RequestAssignment documents;
+a proof over RequestStatus alone cannot
+establish unique active primary assignments.
+
+Positive cases for guard, literal assignment,
+prestate copy, frame equality and same-field
+optional absence accompany negative cases
+for forged guard, wrong post literal, a
+written field called framed, absent input
+treated as a total equality, mixed nominal
+phases, unsupported proof rule and stale
+source. Rejection occurs at the first
+responsible checker and cannot be credited
+as a proven unsafe real database state.
+
 *** Invariant preservation and conditional induction
+
+Let =Inv(s)= denote the conjunction of all
+declared invariants =I_j=. The per-operation
+preservation judgment for =I_j= may rely on
+*every* =I_k= holding in the common prestate:
+
+#+begin_example
+Initial(s)             => I_j(s)       for each j
+Inv(s) and T_i(s,x,s') => I_j(s')      for every i,j
+#+end_example
+
+This is a *simultaneous inductive invariant*:
+it is not automatically a proof that each
+clause preserves itself in isolation.
+The checker derives the required base cases
+and full operation-by-invariant cross-product
+from the original common catalog rather
+than trusting a volunteered list.
+A catalog's closedness is relative to
+the declared source, not evidence that
+every production writer or required
+HumanHelp capability was included.
+
 
 An operation catalog declares one state interpretation, one initial condition,
 one invariant set, and an exact set of abstract operations. It does not duplicate
@@ -82,6 +213,26 @@ and remaining premises. Unioning two success sets is not such a rule. Conversely
 there is no architectural reason to forbid a sound conjunction proof merely
 because its children were established by different dedicated checkers.
 
+To establish a mixed invariant from different
+families, a new checked composition rule must
+bind all constituent judgments to the same
+transition, invariant clauses, typed pre/input/post
+identities and remaining premises. Merely
+unioning source-family success sets is unsound.
+Likewise a checker cannot make a missing
+operation disappear from the independent
+required-capability ledger. A supported
+narrow family may succeed while the wider
+invariant stays open.
+
+The original source-derived obligation
+ledger remains intact: conditional proof
+checking does not rewrite open initial-state
+existence, complete operation coverage,
+source correctness, checker soundness,
+authorization or physical refinement
+obligations into discharged facts.
+
 The induction conclusion is about the declared abstract machine. Applying it to
 production additionally requires initialization coverage, relevant physical writer
 coverage, and a correspondence relation for actual transitions. Those premises
@@ -94,4 +245,102 @@ must expose satisfiability/existence evidence separately, and useful application
 completion requires appropriate positive initialization and enabled-operation
 scenarios. Safety induction also does not establish termination, fairness, or
 eventual user Refresh.
+
+*** Non-vacuity, physical writer correspondence and product scope
+
+An empty initial-state class makes a universal
+base implication formally vacuous. The report
+must separately expose initial-state
+satisfiability, at least one legitimate
+initializer, actual production initialization
+coverage and eligible enabled-operation
+histories. A checker that recognizes literal
+false may reject that obvious case; failing
+to detect a subtler contradiction is not
+evidence of existence. A mathematically
+correct safety proof does not itself provide
+user-visible progress or live resources.
+
+For transfer to real Gesso/HumanHelp executions,
+the application must qualify an abstraction
+from actual Request, RequestAssignment,
+Membership/Organization and other relevant
+data into the declared abstract state.
+The selected XTDB version's transaction
+isolation, guard, absence, atomicity and
+current prestate conditions, along with
+every writer that could affect the invariant,
+must match a modeled transition or be
+independently proved irrelevant.
+Background repair, imports, administrative
+writes and raw external XTDB access matter
+even without a browser control.
+An unknown/unobserved writer is an open
+coverage premise, not permission to certify
+the entire production application.
+
+“At most one active primary assignment
+per Request” is a different invariant
+from “exactly one when the Request is
+claimed.” The latter additionally requires
+conditional existence and status-to-
+assignment consistency. Declaring an
+enum invariant over RequestStatus proves
+neither active primary uniqueness nor
+absence of concurrently committed competing
+assignments. A meaningful dual-Claim test
+challenges the real guarded transaction;
+a Reassign test separates authorized actor
+from eligible target. Those physical tests
+support correspondence but cannot prove
+unbounded abstract induction.
+
+A completed abstract safety induction
+also does not imply termination, fairness,
+eventual notification or inevitable user
+Refresh. Under the selected advisory-only
+remote adoption policy, a user who never
+Refreshes may safely retain older adopted
+content. Claims of eventual command
+reconciliation, outbox work or resource
+cleanup need their own qualified availability,
+retention, scheduling and recovery premises.
+
+#+begin_example
+Admitted abstract conclusion:
+  all declared reachable states satisfy I
+
+Still separate:
+  a valid initial state actually exists
+  all required user operations are declared
+  all relevant physical writers are covered
+  concrete XTDB updates refine T
+  implementation/checker rules are sound
+  browser effects and recovery are current
+  user eventually invokes Refresh
+#+end_example
+
+*** Positive and adversarial checks
+
+Genuine accepted cases include frame
+preservation, literal postcondition,
+same-origin equality, one supported
+mixed-clause invariant, a valid initial
+consequence, and complete declared
+conditional induction. Malformed or open
+cases include missing base, one unproved
+operation, changed shared invariant,
+shrunk operation catalog, impossible
+initial class, forged conditional status,
+mixed-family proof-ID union, invalid
+optional frame, wrong state subject,
+unmodeled primary-assignment writer,
+and a Request-only status proof asserted
+as a RequestAssignment uniqueness
+certificate. Every rejection records
+its actual first boundary and keeps a
+nearby valid positive. Unsupported
+proof constructors remain open rather
+than falsely proving or refuting the
+claim; reject-all is not certification.
 
