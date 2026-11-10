@@ -8,9 +8,9 @@ proof examples, identities, links or Org delimiters were modified.
 `gesso-unified-design-canonical-r4-10-formal-correspondence-and-system-boundaries.org`
 is derived output, not an independent second source.
 
-**Review status:** **10.01–10.10 substantively reviewed** against R4,
+**Review status:** **10.01–10.11 substantively reviewed** against R4,
 accepted Parts I–IX and Gesso v1622, with numbered preservation audits.
-Sections **10.11–10.20** remain for substantive review. Whole-Part-X
+Sections **10.12–10.20** remain for substantive review. Whole-Part-X
 reconciliation and independent editorial acceptance remain outstanding.
 No current Gesso/HumanHelp implementation certificate is implied.
 
@@ -226,6 +226,20 @@ source-level kernel/semantic audit nonclaims, appear in the audit.
 Published Part X now contains **5804 newline-split lines**
 and **242144 characters**.
 
-**Next:** Review **10.11 — Finite Exploration and Abstraction** against
-R4, accepted Parts I–IX, revised 10.01–10.10 and actual finite-model,
-resource-identity and abstract/concrete correspondence code.
+**10.11 review:** see `10.11-r4-preservation-audit.md`.
+Preserved byte-exact R5's local executable four-Boolean resource-ownership
+predicate witness and restored R4's identity freshness, transition and
+refinement obligations. Defined complete finite-state exploration versus
+bounded/representative oracles, nonvacuous original-source catalogs,
+concrete-to-abstract initial/step/property simulation, identity/equality
+symmetry, unbounded browser/command metadata, delayed physical effect
+revalidation and separate fairness/nondivergence for liveness.
+Twenty-four preservation decisions and eighteen paired acceptance controls
+are recorded with exact Gesso v1622 finite oracle, browser exploration
+and abstract-command model limitations in the audit.
+Published Part X now contains **6157 newline-split lines**
+and **259267 characters**.
+
+**Next:** Review **10.12 — Reproducible Formal Evidence and Maintenance**
+against R4, accepted Parts I–IX, completed 10.01–10.11 and Gesso's
+source-bound evidence, proof-artifact, dependency and requalification code.

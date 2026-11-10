@@ -5164,26 +5164,151 @@ general-purpose Clojure
 runtime has been proved.
 *** Finite exploration and abstraction
 
-An exact-finite claim names its initial states, complete transition relation,
-data domains, property, bounds, and exploration result. It must say whether all
-reachable states were explored and how deadlock, invalid states, and terminal
-states were treated. A timeout, resource limit, missing transition case, or
-partially explored graph is incomplete evidence, not successful exhaustive
-checking.
+Finite exploration can expose a genuine semantic counterexample, establish a
+property *exactly for one complete finite model*, or supply a bounded
+conformance check of an implementation. These are three different evidence
+classes. To transfer a finite-model theorem beyond its enumerated domain, Gesso
+must provide a separately justified abstraction/refinement relation from the
+original admitted source to that model, and a further implementation relation
+for the actual production execution if the claim concerns XTDB, transport or
+the browser. A finite test does not become an unbounded proof because the
+software is deterministic or its sampled observations match.
 
-Bounded active and queued slots do not make the entire state space finite.
-Commands, resource identities, data values, dependency depth, retired metadata,
-and outstanding physical effects may remain unbounded. Checking a few UUIDs or
-counter values establishes only that chosen finite model without a further
-coverage or abstraction theorem.
+The finite subject is derived from the canonical Gesso model, Choreo or
+browser-adapter semantics admitted under Parts I–IX. It retains exact
+source-generation, operation/initialization and invariant obligations,
+policy choices, source-derived reader/guard/frame semantics and open premises.
+Developers should not have to construct a second handwritten formal app with
+rules that merely resemble the runtime. An intentionally simplified
+independent test model may be useful, but its results are explicitly
+test-relative until the original-source correspondence is justified.
 
-For a concrete safety transfer, the abstraction must cover every concrete initial
-state in scope, simulate every relevant concrete transition, and ensure that
-the abstract invariant implies the concrete safety property. State mapping alone
-is insufficient. For liveness, fairness and divergence conditions must also be
-preserved as required by the theorem. A finite over-approximation may admit
-spurious counterexamples; concretization determines what can be attributed to
-production.
+**** Exact finite claims: closure, totality and vacuity
+
+An exact-finite result records the following as the *complete, closed
+model under examination*:
+
+| Required element | Exact claim boundary |
+|------------------+----------------------|
+| Initial states | Original admitted initial-condition/initializer relation, all selected starting states and their eligibility/inhabitation checks |
+| State and input domains | Each field's type, absence/present-nil interpretation, enum values and representative or exhaustive status, including identity and collection bounds |
+| Operations | Independently source-derived complete original operation IDs, guards, typed inputs, simultaneous writes, frames, outcome/failure/unknown transitions and environmental steps |
+| Transition semantics | Admitted enabled steps and successor relation, stuttering, scheduling, terminal/deadlock treatment and whether rejected operations are transitions or errors |
+| Property | Exact invariant, deadlock-freedom, eventuality or trace obligation, its quantifiers, scope and any fairness or environmental premises |
+| Exploration | Reachable-state/edge coverage, generated-vs-pruned states, cutoff, visited-state equivalence, trace/history handling, bounds and result kind |
+| Evidence | Checker/translator version, canonical input, actual outcome/counterexample, original source location, independent oracle and open abstraction/production bridges |
+
+An exhaustive result requires the whole reachable graph of *that* finite
+model under its declared transition relation, not merely all states up to a
+search depth or all choices returned by an unverified event generator.
+A BFS/DFS exploration may use state deduplication only when its equality
+or quotient is sound for the specific state/trace property. In particular,
+merging distinct histories because their current map happens to match
+can discard command-history, fairness, previous assignment or in-flight
+physical callback distinctions relevant to the theorem.
+
+A depth limit, state cap, edge cap, missing choice, unexpected exception,
+unsupported operation, unavailable dependency or timeout makes the selected
+exhaustiveness claim *incomplete*. It does not become a proof of absence of
+counterexamples. An actual reproduced counterexample to an adequately
+specified finite model can still be reported even if exploration did not
+finish; it must carry the actual trace and scope, not a fabricated
+"complete" status. A potential deadlock is distinguished from a declared
+terminal state, a blocked environmental step and a liveness violation.
+An empty initialization set makes a universal invariant trivially true;
+that is not sufficient positive evidence that the application works.
+
+For source-relative induction, the finite oracle can enumerate selected
+prestates and operation inputs and check base and step preservation without
+exploring only reachable states. It still must name whether each domain
+contains *all* values of the declared type or only representatives.
+Enums and Booleans may have complete finite domains under the
+given versioned interface; integers, strings, UUIDs, timestamps,
+dependency depths and arbitrary sequences usually do not.
+Checking all input combinations over a representative set is exact
+for *that set*, not proof that no omitted value changes an operator's
+semantics. A finite model with every guarded operation disabled
+can look safe while missing required positive Claim, Unclaim or
+manager Reassign behavior.
+
+**** Safety transfer requires the right simulation relation
+
+Let C denote the original/concrete semantic transition system, A
+the finite abstract system, R a relation from relevant C states
+to A states, and P_C/P_A the corresponding safety predicates.
+The intended *concrete-to-abstract* safety transfer needs:
+
+#+begin_example
+Initial coverage:
+  for every admitted concrete initial state c0,
+    there exists abstract initial a0 with R(c0, a0).
+
+Step simulation:
+  whenever R(c, a) and a relevant concrete step c --e--> c',
+    there is a permitted finite abstract trace a ==e==> a'
+    (possibly with justified hidden/stuttering steps),
+    with R(c', a') and preserved required observations.
+
+Property reflection:
+  for every related (c, a), P_A(a) implies P_C(c).
+
+Then an A invariant over all its reachable states transfers to
+related C reachable states, under the stated relation and premises.
+#+end_example
+
+The quantifiers and direction matter. Showing that each abstract step
+can be mimicked by one convenient concrete execution does *not* establish
+that every concrete execution is represented. Likewise, mapping each
+concrete state to some abstract state without checking its successors
+does not establish safety transfer. A proper abstraction may
+*overapproximate* concrete behavior and therefore admit spurious
+abstract counterexamples. A finite abstract violation is an actual
+failure of the chosen abstract property, but need not be realizable in
+the original semantics or in a deployed browser/XTDB execution;
+concretization and relation inspection decide the stronger attribution.
+
+For *production* safety, a second relation must qualify the actual
+installed code, original source version, authorized backend prestate,
+all relevant writers, transport/DOM effects and failure semantics.
+An abstract source theorem does not authenticate the route, model
+caller, physical transaction or browser mutation. A single
+real-world event can correspond to multiple abstract steps, but
+that stuttering/partial-order permission must not hide an
+unauthorized write, stale DOM adoption or additional active
+primary assignment.
+
+**** A bounded slot is not a bounded history
+
+Logical browser active/queued slots, request concurrency and
+selected finite state projections do not bound command identifiers,
+resource or effect instance IDs, history length, attempt count,
+provider bases, user inputs, dependency depth, retired metadata,
+in-flight network requests or physical DOM side effects.
+Gesso must either prove a state/data bound *under actual scheduling
+and retention premises* or choose a sound abstraction for each
+unbounded dimension; it cannot infer finite-state completeness
+from one bounded queue setting.
+
+Equality-class or symmetry reduction of opaque IDs is often
+preferable to arbitrarily choosing UUID 1–4. The abstraction
+must retain every equality and inequality relation relevant to
+guards, callback ownership, command replay, identity freshness,
+reused DOM IDs and noninterference between owners. An old resource
+A and active B may be represented by classes =:old= and =:current=,
+but two outstanding callbacks to *different old identities* cannot
+always be merged without proving the property ignores their
+difference. Fresh allocation can change the class partition.
+Recycling an old ID or aliasing two logical commands changes the
+transition relation unless ruled out by a source/protocol premise.
+
+An unbounded collection may admit a cutoff or data-independence
+proof, but that theorem must justify the cutoff for the
+particular property and all supported transitions. A finite
+representative Request/RequestAssignment model with two helpers
+can expose a one-primary race; it does not prove
+arbitrary number of helpers or all admin/migration writers
+without the required symmetry, cardinality, operation-catalog
+and physical-refinement arguments.
 
 **** Resource ownership: a local abstraction with an explicit limit
 
@@ -5258,6 +5383,234 @@ against B at that moment. Retaining the earlier Boolean =true= is not permission
 The same distinction applies when a completed effect has consumed its phase but
 a duplicate callback arrives.
 
+
+
+**** From four Boolean observations to a complete browser machine
+
+The preserved Clojure example above has four *local predicate*
+observations: active resource, equal resource instance, equal effect ID
+and awaiting-effect phase. They demonstrate the Boolean equivalence
+of =owned-effect?= and =abstract-owned-effect?= for the specific
+constructed inputs; they do not enumerate all reachable adapter
+states or prove the concrete-to-abstract relation. In particular the
+four Booleans do not encode how an execution acquires ownership,
+what happens when targets are replaced, how effects are scheduled,
+or whether the shell rechecks permission at the physical mutation.
+
+A full finite adapter subject would also model, as needed by the
+selected claim:
+
+- creation/allocation and freshness of resource, execution and
+  effect identities; permitted alias relationships and changes
+  across target reuse, plan replacement and owner retirement;
+- normalized callback delivery, duplicates, delay, loss,
+  cancellation failure and physical requests remaining after
+  semantic retirement;
+- current plan and application generation, installed asset/route
+  and target compatibility, active/queued logical slots, effect
+  phases and bounded or abstracted retained metadata;
+- authoritative observation frontiers, provisional/confirmed
+  command ownership, permission to acquire, and the different
+  physical events for transport completion versus DOM install;
+- multi-target HTMX/OOB partial completion, repair, abort,
+  continuity ownership and current effect-time revalidation;
+- environment/adversary choices that must be included to
+  warrant a universal claim over the declared scheduling scope.
+
+The finite model should retain a stable *logical* command C42
+independently of physical attempts H1/H2 and current resource A/B.
+Conflating those identities could make a late response look like
+a valid result of a new command. An optimistic current card is
+also not an authenticated statement of C42's durable
+incorporation. The transition relation must preserve these
+distinctions rather than assuming every successful HTTP
+response is a current authorized DOM adoption.
+
+The physical browser requirement can be falsified by a precise
+interleaving:
+
+#+begin_example
+A is the current resource; effect F from A is pending.
+A callback for F arrives and passes callback-entry checks.
+The callback is deferred before its managed DOM mutation.
+A retires; new resource B adopts the same target DOM ID.
+The deferred A callback resumes.
+At the physical mutation boundary A no longer owns the target.
+The shell must reject A's mutation even if its earlier check passed.
+#+end_example
+
+The originally preserved predicate rejects this case *only when
+evaluated against the current B-owned state at the mutation point*.
+A cached earlier =true= is not a permission lease. The
+browser adapter can model that admission; a theorem about
+the real shell additionally needs actual code/HTMX/DOM
+effect-time correspondence, physical scheduling and
+installed artifact currentness. This also applies to a
+completed effect that receives a duplicate callback
+after its awaiting phase is consumed. For a batch,
+successful installation of one target does not prove
+every other target adopted.
+
+**** Liveness needs divergence, fairness and permission premises
+
+Finite safety and finite liveness require different claims.
+An abstract safety simulation can hide arbitrarily many
+internal steps while preserving protected invariants. A
+progress/termination theorem additionally needs to show
+that the relation does not admit an infinite concrete
+divergence that the abstract model silently skips.
+Fairness assumptions must refer to the actual relevant
+scheduler, participant, provider, delivery or
+recovery mechanism; a bounded test depth does not
+establish them.
+
+A fairness-sensitive model must identify which actions
+are enabled, which remain continuously or repeatedly
+enabled, what strong/weak fairness applies and whether
+environment or user actions are assumed. The declared
+property is specific—for example, a retained qualified
+command result becomes observable when authorized
+recovery is repeatedly attempted under sufficient
+provider availability. That is not the same as claiming
+every network partition heals, every user presses Refresh
+or every provisional UI state settles automatically.
+Under HumanHelp's selected remote-advisory policy,
+a remote board's actual acquisition is conditional
+on *user-granted* scoped Refresh; SSE delivery does
+not authorize background collection reading.
+
+Finite cycle detection can identify a lasso violating
+an explicitly encoded fairness/liveness obligation
+in the selected model. If the model is cut at depth
+N, a finite sequence with no terminal state is not
+in itself proof of infinite divergence. Conversely,
+a reachable terminal path does not prove all fair
+runs eventually reach it. For a concrete liveness
+transfer the abstraction must preserve applicable
+fairness, enabledness and non-divergence,
+not only a Boolean ownership invariant.
+
+**** Evidence categories and reproducible adversarial acceptance
+
+An assurance report should explicitly identify:
+the original source and selected abstraction generation,
+the exact finite domains and whether they are exhaustive,
+initial and transition catalogs, property/temporal
+meaning, complete-vs-bounded exploration status,
+checker/tool options, evidence origin, reachability/
+deadlock/fairness interpretation, original source
+locations of violations and open simulation,
+concretization and production-enforcement premises.
+A copied finite result is not issuer-controlled proof
+or a current deployment authorization. Section 10.12
+owns the reusable evidence-package lifecycle.
+
+The following paired checks distinguish the strength
+of each conclusion:
+
+1. A complete declared Boolean/enum domain is explored;
+   one omitted enum variant invalidates exhaustive coverage.
+2. Nonempty valid initial states and a genuinely enabled
+   positive Claim exist; empty Init or reject-all
+   operations cannot pass whole-product acceptance.
+3. Every original operation and selected environment
+   step appears; removing Unclaim, Reassign or a
+   relevant competing writer invalidates the
+   corresponding source/physical completeness claim.
+4. All reachable states/edges in a finite model are
+   exhausted; a depth/node/edge cap is labelled
+   incomplete rather than counterexample-free.
+5. Source base/step enumeration respects absent
+   versus present nil and simultaneous writes;
+   conflation or sequential assignment produces
+   a discriminating independent-oracle mismatch.
+6. A valid symmetry/equality abstraction
+   preserves current-vs-old callback relationships;
+   collapsing distinct alias classes or fresh
+   allocation incorrectly changes an observable
+   outcome.
+7. A complete source/abstract initial and
+   transition simulation implies the named
+   concrete safety property; state mapping
+   without step simulation is rejected.
+8. A deliberate abstract overapproximation
+   produces a scoped counterexample; it
+   cannot be reported as a physical XTDB
+   or Chromium incident without concretization.
+9. Competing helper C42/C43 commands are
+   represented distinctly and at most
+   one primary can incorporate under
+   the claimed atomic model; merged
+   command IDs falsely erase the race.
+10. A valid A callback mutates a current
+    target when fully authorized; a
+    deferred A callback after B replaces
+    it must fail at *effect time*.
+11. Duplicate callback and completed
+    effect cannot reuse a consumed
+    permission; a cached initial
+    =true= cannot grant a second
+    DOM mutation.
+12. Real multi-target partial installation
+    retains incomplete/repairable
+    outcome; one target HTTP 200
+    cannot qualify full-batch
+    authoritative adoption.
+13. A finite lasso under justified
+    fairness can refute selected
+    progress; a depth-limited
+    prefix is not an infinite
+    liveness counterexample.
+14. A fair authorized recovery
+    is conditional on retention,
+    availability and appropriate
+    user action; it cannot
+    silently force remote Refresh
+    or assume network healing.
+15. A finite source-level transition
+    result is reported as bounded;
+    copied diagnostic or
+    controlled physical observation
+    cannot be promoted to
+    original-source theorem
+    or actual host authority.
+16. A selected abstraction backed
+    by a checked step/property bridge
+    can justify the corresponding
+    quantified safety domain;
+    a finite sample without the
+    bridge retains its finite-only
+    evidence status.
+17. Real browser execution agrees
+    on the exercised supported
+    resource/effect mutation case;
+    a CLJC adapter-model pass
+    does not itself prove that
+    Chromium and HTMX executed
+    the same physical schedule.
+18. Positive HumanHelp creator-local
+    and explicitly user-authorized
+    remote adoption remain possible;
+    a model that hides these
+    required cases is not a
+    complete application witness.
+
+Each case specifies source identities, finite/abstract
+universe, exact bounds and declared fairness,
+positive execution, adversarial change, first
+checking or physical boundary, independent
+observable result and still-open assumptions.
+Correct source rejection is not evidence that an
+unmediated physical writer was prevented.
+A finite checker timeout remains incomplete;
+an unknown physical outcome remains unknown;
+neither may be marked as an exhaustive safe run.
+
+The final standard is *finite proof with honest
+scope* and *generalization only through a
+justified relation*. A small abstract state
+machine is valuable when it covers the right
+behaviors, not because its state count is small.
 *** Reproducible formal evidence and maintenance
 
 An evidence package includes the theorem or model property, semantic versions,
