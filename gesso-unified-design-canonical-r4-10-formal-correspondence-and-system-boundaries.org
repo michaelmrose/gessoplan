@@ -7535,6 +7535,59 @@ meaningful event may be an admitted participant-message receipt, with no durable
 business fact to reread. Its contract must say so instead of borrowing the
 Request invalidation protocol.
 
+*** R4's contrasting typing-message contract
+
+The durable HumanHelp Claim example in 10.17–10.18 has a
+current authoritative Request to reread. An ephemeral
+typing indicator can instead depend on a specific
+*admitted participant-message receipt* from one choreography
+execution. The receiver cannot reconstruct that event
+merely by querying the latest Document, nor may a
+database-update advisory substitute for the message.
+
+R4 supplied illustrative Clojure forms for this contrast.
+The compact data below retains the semantic fields without
+claiming that a routing namespace, function or physical
+transport of this name exists in current Gesso:
+
+#+begin_src clojure
+{:message/intent {:message/id :illustrative/message-M
+                  :kind :collaboration/typing
+                  :document/id :illustrative/document-D}
+ :contract {:delivery :best-effort
+            :durability :ephemeral
+            :duplicates :permitted
+            :late-message :discard
+            :sender-binding :authenticated-principal
+            :recipient-binding :current-collaboration-route
+            :authorization :current-document-membership
+            :semantic-effect :recipient-observed-admitted-message}}
+#+end_src
+
+These are *schematic* bound identity placeholders and
+declarative requirements, not runnable sample API calls,
+authentication evidence, or checked physical admission.
+The same browser-supplied message ID, kind and Document ID
+do not authenticate its sender, designate permitted
+recipients, or assert actual receipt. The trusted host
+must bind sender and recipients from current authenticated
+and authorized collaboration state, and the receiving
+host/session must independently admit the routed message
+for its current principal, role, execution, scope and
+resource owner.
+
+A Gesso Choreo =:communicate= transition is the global
+semantic declaration; endpoint projection produces
+role-local send/receive obligations. Actual physical
+routing must refine the declared message/receipt events.
+Projection may establish who is supposed to know what;
+it cannot infer that a remote process actually delivered
+the envelope, that a browser saw it, or that a protected
+session was authorized at delivery time. A transport
+adapter supplies those distinct, source-linked
+correspondence witnesses.
+
+
 A minimal typing contract binds sender identity through authentication, resolves
 recipients from current authorized collaboration scope, limits payload, defines
 message and execution correlation, admits receipt under the recipient's current
@@ -7543,17 +7596,122 @@ The UI effect still passes its final ownership gate. Loss is permitted by that
 best-effort contract; persistent replay is not automatically useful for an
 expired typing signal.
 
+*** Physical correlation, delivery, and admission
+
+Distinguish message identity, choreography execution,
+role-local send occurrence, transport attempt, broker
+acknowledgment, recipient-side receipt and actual UI
+effect. A best-effort transport may lose or duplicate an
+envelope. A duplicate with the *same admitted delivery
+identity* must not execute the same role-local semantic
+receive twice within its declared deduplication scope;
+different declared messages must not be collapsed just
+because their payloads or Document selector match.
+Where a protocol explicitly tolerates repeated typing
+indications, idempotence still must not mint fresh
+sender knowledge, permissions or authoritative content.
+
+Receive admission checks intended recipient and
+execution/role correlation, complete required payload
+shape, authenticated sender provenance from the trusted
+routing boundary, current Document membership, compatible
+plan/protocol generation, expiry, and current resource
+ownership. A message for a retired or replaced browser
+target cannot reuse a newer target's rights. If a sender
+loses membership before the relevant trusted send
+boundary, old browser intent is not grandfathered.
+If permission is revoked between routing and receipt,
+the chosen current-disclosure/recipient-admission policy
+decides what may still be shown; an old broker queue
+does not override it.
+
+No router-supplied sender ID, recipient selector,
+proof-looking map, claimed host identity or timestamp
+is independently authoritative merely because its
+syntax matches a declared type. Security and disclosure
+must be re-established through actual trusted
+installation boundaries. Recipient-scoped delivery
+cannot reveal private Document existence, membership or
+typing activity to a different tenant or session.
+Malformed, oversize, unsupported, replayed under an
+incompatible generation, and mistargeted envelopes have
+typed rejection/ignore behavior under the selected
+protocol; none may grant an alternative authoritative
+operation.
+
+
 If expiry uses clocks across hosts, the contract names the clock and skew
 assumptions, or uses a receiver-local lifetime with appropriately narrower
 meaning. A timestamp alone does not prove that a remote message is fresh. A
 broker's acknowledgment, transport delivery, admitted receipt, rendered indicator,
 and domain commit are distinct events.
 
+*** Expiration, optional durability, and non-interchangeable receipts
+
+Typing is a useful example precisely because its
+best-effort loss is allowed and a missed transient UI
+effect need not be recovered by durable authoritative
+reread. The bounded lifetime is scoped to the chosen
+sender/recipient contract. If clocks across hosts
+are compared, issuer, offset/skew and admissible
+expiration behavior are trusted premises. An opaque
+receiver-local timeout can implement a narrower
+lifetime without assuming synchronized wall clocks.
+A stale but syntactically valid typing message is
+discarded; a late duplicate cannot resurrect a retired
+resource or start a new execution.
+
+If a product later requires guaranteed receipt, this
+is a different explicit choreography/message
+contract: durable retained message identity,
+recipient-specific authorization and admission,
+receipt acknowledgment, deduplication horizon,
+replay/gap and retirement behavior, and the
+appropriate fairness/availability premises.
+Broker durability, a publish acknowledgment, a
+websocket/SSE write, participant semantic receipt,
+and displayed indicator remain different events.
+Even a durable routed message is not an
+authoritative Request commit unless an explicitly
+admitted domain operation performed that commit.
+
+
 Stronger direct-message guarantees require explicit persistence, recipient
 admission, acknowledgment, deduplication, retry, retirement, and version
 compatibility contracts. Infrastructure reuse is allowed; semantic conflation
 is not. Direct participant routing must not redefine ordinary authoritative
 convergence or bypass protected-data authorization.
+
+*** Assured endpoint correspondence without a second application
+
+Gesso developers continue to define one ordinary
+Choreo and its public model/admission rules. The
+framework's projected plans and internal proof/checking
+machinery derive role knowledge and message obligations;
+developers do not hand-maintain a second Quint/TLA/
+Recife description of the physical router.
+
+A multi-node evidence path relates original
+=:communicate= source, checked endpoint projection,
+per-role execution state, trusted sender binding,
+issued routed envelope, physical delivery attempt,
+current authenticated recipient admission, and
+the exact participant receipt/host effect. Each
+edge is individually qualified. The current
+portable realization harness can exercise deliberate
+message drop/reorder and role-local behavior, but
+a deterministic in-memory queue is not a
+cross-host authenticity, confidentiality, delivery
+or resource-ownership proof.
+
+The selected direct-message adapter can reuse
+infrastructure chosen for Live advisories, but
+distinct queues, subjects, admission/disclosure
+rules, acknowledgments and failure semantics
+remain explicit. The app's ordinary durable
+Request-convergence guarantee must not depend on
+a participant typing indicator arriving.
+
 
 *** Multi-node assumptions and acceptance
 
@@ -7563,6 +7721,30 @@ interest registration, replay/gap detection, and current authorization contracts
 It also includes old/new assembly compatibility and browser artifact availability
 across rolling activation. Merely sharing a database or load balancer establishes
 none of these joins.
+
+*** Source-to-physical acceptance evidence
+
+Whole-application assurance names the original
+operations, relevant writers, participant messages,
+hosts, browser resources, routes, installed asset
+versions, exact admission profiles, and physical
+backend/transport identities. A successful isolated
+send/receive projection test or one load-balanced
+HTTP request does not close this application scope.
+
+A required positive case traverses the *actual*
+installed producer, transport and consumer path,
+with two independently running processes where
+cross-host behavior is claimed. Its adversarial
+companion challenges the first enforcing boundary
+for the specific promise, and records independent
+observable effect/receipt state. A diagnostic
+report containing matching fabricated host labels
+or supplied expected outcomes is not physical
+correspondence evidence. The suite must record
+source-linked observed, tested, assumed,
+inconclusive and refuted portions separately.
+
 
 The multi-node acceptance suite uses real process and transport boundaries and
 must include:
@@ -7584,6 +7766,38 @@ must include:
   and recovery path;
 - eventual successful recovery once the named availability, permission,
   retention, and user-action premises hold.
+
+*** Paired distributed and direct-message failure controls
+
+| Positive boundary case | Adversarial or forbidden outcome |
+|------------------------+----------------------------------|
+| One authorized sender's typing reaches a current admitted recipient | Forged sender, recipient or Document selector cannot disclose or install |
+| Choreo send and receive correlate within one execution | Same event label in a different execution cannot satisfy receipt |
+| Best-effort typing message displays under current owner | Message for a retired browser resource cannot mutate its replacement |
+| One scoped delivery ID is admitted once under its contract | Transport duplicate cannot manufacture a second semantic receipt |
+| Recipient's current membership permits the indicator | Revocation before current receipt gate cannot silently retain admission |
+| Supported receiver-local expiration discards late typing | Spoofed remote wall clock cannot prove freshness across hosts |
+| Declared best-effort loss leaves no claimed recipient receipt | Broker enqueue alone cannot count as delivered or rendered |
+| Qualified stronger durable-message profile supports required replay | Expired or absent replay evidence cannot be called guaranteed receipt |
+| Committed Request on A is acquired by permitted read on C | Message routing cannot become a second authoritative Request owner |
+| Same bound command resolves after host replacement | Replayed HTTP attempt cannot create a second committed domain effect |
+| Durable outbox recovers a crash after authoritative commit | Dead worker cannot permanently strand required publication intent |
+| Interest registration fence/replay closes initial gap | Healthy router with stale filters cannot silently drop advisory coverage |
+| Remote HumanHelp update waits for explicit permitted Refresh | Typing, SSE or advisory arrival cannot auto-adopt remote board truth |
+| Lagging C read preserves scoped outstanding debt | Echoed progression token cannot certify a current coherent snapshot |
+| Mixed old/new compatible plan versions follow checked admission | Unqualified wire/asset/assembly generation cannot silently inherit rights |
+| Concurrent independent requests preserve principal/permit isolation | One request's writer, client, receipt or command result cannot leak |
+| Selected real host fault is observed under declared topology | Two in-JVM labels or untriggered crash cannot prove failover |
+| Liveness under named surviving topology and user action is met | Partition, denied disclosure or no user Refresh cannot be promised unconditional convergence |
+
+This matrix supplements the multi-node inventory
+below and the 10.16–10.18 contracts. Positive cases
+prevent a reject-all implementation from appearing
+safe, while fault-injection and trace evidence
+show where the physical system first departed
+from admitted semantics. An unexecuted test is an
+open obligation, not certified coverage.
+
 
 The report separates safety during interruption from progress once those premises
 hold. If current authorization no longer permits result disclosure, the suite

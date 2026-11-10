@@ -8,9 +8,9 @@ proof examples, identities, links or Org delimiters were modified.
 `gesso-unified-design-canonical-r4-10-formal-correspondence-and-system-boundaries.org`
 is derived output, not an independent second source.
 
-**Review status:** **10.01–10.18 substantively reviewed** against R4,
+**Review status:** **10.01–10.19 substantively reviewed** against R4,
 accepted Parts I–IX and Gesso v1622, with numbered preservation audits.
-Sections **10.19–10.20** remain for substantive review. Whole-Part-X
+Section **10.20** remains for substantive review. Whole-Part-X
 reconciliation and independent editorial acceptance remain outstanding.
 No current Gesso/HumanHelp implementation certificate is implied.
 
@@ -342,5 +342,20 @@ acceptance cases are recorded against Gesso v1622's bounds.
 Published Part X now contains **7621 newline-split lines**
 and **342064 characters**.
 
-**Next:** Review **10.19 — Direct Routing and Multi-node Acceptance**,
-then 10.20 and whole-Part-X reconciliation.
+**10.19 review:** see `10.19-r4-preservation-audit.md`.
+Restored R4's ephemeral typing-message contrast as schematic
+Clojure data without inventing working router APIs. Distinguished
+global Choreo communication, projected send/receive, authenticated
+cross-host sender/recipient binding, transport attempt/acknowledgment,
+admitted participant receipt and resource-owned browser effect.
+Qualified expiry, duplicates, revocation, privacy and stronger optional
+delivery; retained the durable Request/outbox and HumanHelp explicit
+Refresh as different semantic contracts. Thirty preservation decisions
+and eighteen prospective physical/adversarial acceptance controls
+are recorded against actual Gesso v1622 code and its open boundaries.
+Published Part X contains **7835 newline-split lines**
+and **352827 characters**.
+
+**Next:** Review **10.20 — Final System-boundary Invariant**,
+then reconcile all of Part X against R4 and perform independent
+editorial acceptance.
