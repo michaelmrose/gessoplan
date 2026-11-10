@@ -1552,6 +1552,39 @@ No application can retract information already disclosed to an untrusted or
 offline browser; the enforceable guarantee is current checks at subsequent
 trusted disclosures and mutations, plus the declared supported-client behavior.
 
+ 
+*** R4's open lifecycle policy is now an explicit R5.1 decision
+
+R4 settled remote Create as advisory-only but deliberately left
+remote *lifecycle* adoption open. R5.1 selects a stricter HumanHelp
+product policy: remote Claim, Unclaim, On-the-way, Complete, Cancel
+and Reassign are also advisory until a user's explicit Refresh.
+The choice is a normative end-state requirement, not a statement
+that existing Live invalidation already satisfies it.
+
+The present =example.live/compiled-live= excludes =:created=
+from managed toolbar/list invalidation but still routes =:updated=
+changes into both managed fragments. Gesso can then cause
+automatic authoritative rereads and replacement. Thus the
+current implementation does **not** establish the final
+advisory-only policy for remote lifecycle updates.
+HumanHelp must change the application routing/adoption
+contract while preserving semantic change publication
+for local command resolution and permitted recovery.
+
+A remote change to an already visible T must not reveal
+its new helper, terminal status or Request content through
+a supposedly advisory payload. A stale Claim button
+remains subject to current Request guards. A rejected
+or uncertain local command may independently acquire the
+affected T to explain conflict, without silently importing
+other Requests. Authentication loss or established revoked
+read rights are different trusted safety transitions:
+they retire forbidden projections and mutation permissions
+rather than waiting for optional Refresh. Previously
+disclosed bytes in an untrusted/offline browser cannot
+be retrospectively erased.
+
 ** Explicit Refresh, coverage, and races
 :PROPERTIES:
 :CUSTOM_ID: req-humanhelp-refresh-coverage
@@ -1573,6 +1606,37 @@ additional clicks are coalesced into at most one user-authorized successor inten
 with current captured requirements; they do not create an unbounded queue. A
 pending indicator alone never creates that intent. The UI reports whether it is
 refreshing, waiting for another explicit action, or unable to refresh.
+
+ 
+*** Refresh permission and current implementation scope
+
+A single user gesture creates a bounded grant with an
+authenticated principal, current Location/collection scope,
+board owner and deployment generation, captured requirements,
+physical target, expiry and permitted *one logical* query.
+The trusted server checks its authority independently of
+browser-supplied scope, basis, client stamp or form values.
+A malformed/impossible progression token must be rejected
+or boundedly deferred, not force an indefinite query wait.
+Advisory arrival is not a new read permission.
+
+A second real click while a query runs can authorize at
+most one successor intent; neither an automatic retry
+nor a duplicate wakeup may create an unlimited queue.
+Expired, incompatible or cancelled grants preserve
+unresolved advisory debt and allow an explicitly
+admitted retry.
+
+The current =example.views/refresh-form= renders an HTMX
+POST with =hx-include= of board-state form inputs.
+=example.app/refresh-requests!= calls the production-backed
+=board-fragments= and returns toolbar/list OOB updates.
+That establishes a concrete, user-triggered board query,
+but the inspected route does not show a one-use grant,
+captured requirement ledger, admitted response owner
+or completed physical installation certificate.
+A refresh button plus HTTP 200 is not sufficient evidence
+of the stronger R5.1 protocol.
 
 A deployment may choose a bounded automatic repair/drain policy instead, but that
 is an explicit product-policy change with its own budgets, expiry, and acceptance
@@ -1609,6 +1673,35 @@ claim, and exposes repair without rolling back a newer independently admitted
 card. Re-fetching toolbar and list independently cannot manufacture a coherent
 board observation merely because both responses arrived successfully.
 
+ 
+*** HTMX OOB output has distinct completion stages
+
+With =hx-swap="none"=, a response may still change
+toolbar, list, board-state and advisory targets through
+individual out-of-band effects. The coordinator must
+validate the planned complete board and current resource
+ownership before the effects, observe each required
+physical installation, preserve compatible current
+search/options and only then mark the batch adopted.
+
+If the toolbar swaps but the request-list target is
+absent, HTTP receipt is not a coherent refresh.
+The application records a partial batch, retains
+unsatisfied advisory/repair requirements, and does
+not discard a newer locally installed S card.
+If one component needs a separately scoped
+acquisition, the result is labelled *partial*
+rather than falsely presenting a common snapshot.
+
+The current =example.live/request-toolbar-query=
+sets =:pending-open-count 0= and =:stale? false=.
+Those are presentation defaults, not evidence
+that a later advisory was covered or that OOB
+installation completed. Replacing the advisory
+surface with non-stale markup cannot itself
+consume a read grant or discharge a semantic
+Refresh obligation.
+
 *** Race rules
 
 The default allows a non-regressing complete-query advance even when a stronger
@@ -1636,6 +1729,45 @@ old complete result with arbitrary newer rows and call the union a complete
 snapshot. A mixed selective projection can be valid, but must retain its mixed
 provenance and must not claim snapshot-wide properties.
 
+ 
+*** Opaque progression and notification delivery premises
+
+Generic Gesso progression bases are opaque. A trusted
+XTDB/provider relation, not integer comparison,
+HTTP arrival order or the latest visible token,
+establishes whether a read actually covers a
+captured or subsequently arriving requirement.
+An affected-card observation may advance one
+subject while the board cohort remains older.
+The same user action can legitimately satisfy
+more than one obligation if the *one* authorized
+read and completed adoption cover each; a
+later advisory never creates a second read grant.
+
+HumanHelp's separate app-owned creation advisory
+uses =client-plumbing= to queue non-adopting
+Refresh OOB/toast presentation to connected
+clients other than the creator. Gesso
+=live.client= owns finite ephemeral pending
+mailboxes, including disconnected-client
+overflow and drop policies. This mechanism
+does not prove durable eventual delivery
+through disconnection, queue overflow,
+multi-node failover or a missed subscription.
+A stronger product guarantee needs
+source-owned reconnect/fence/replay or
+authorized reacquisition. Without it the
+system must expose the weaker contract,
+not report a permanently silent stream
+as current board knowledge.
+
+The notification is a wakeup, not the
+authoritative current Request state,
+a sufficient current disclosure capability,
+or a count of unseen new Requests.
+A durable command record and a board
+Refresh are separate recovery subjects.
+
 *** Membership removal and authoritative absence
 
 An authoritative query result can remove a cohort member only with the required
@@ -1654,6 +1786,48 @@ Pending provisional presence has a resolution owner. It cannot survive every
 complete authoritative observation indefinitely, and it cannot disappear with
 its command-recovery record merely because a DOM row was removed. Part VI's
 separate rules for presentation supersession and command uncertainty apply.
+
+ 
+*** Positive and adversarial Refresh acceptance histories
+
+These are required finished-product scenarios,
+not assertions that the currently checked
+Chromium lifecycle source already passes
+the complete two-client Refresh matrix.
+
+| History | Required result |
+|---------+-----------------|
+| Alice creates R while Bob has adopted an older board. | Bob sees advisory, not R; Alice's correlated Create result is independent. |
+| Alice claims T already visible to Bob. | Bob's T remains stale with advisory until user Refresh or separately authorized local affected-card recovery. |
+| A manager reassigns Bob's visible T to another helper. | No changed-helper card is silently installed on Bob's board. |
+| Another user completes or cancels an adopted Request. | Bob's card and terminal visibility do not silently advance; advisory debt remains. |
+| Bob clicks the stale Claim button. | Current model guards reject or commit appropriately; permitted conflict recovery is scoped to that Request. |
+| Bob loses read permission to a previously adopted Request. | Current trusted reads/mutations refuse disclosure and supported clients retire/redact as required, independent of voluntary Refresh. |
+| An incoming =:updated= invalidation tries to schedule a managed list GET. | The final application converts it to advisory rather than automatically adopting remote lifecycle content. |
+| A creation OOB advisory arrives without canonical Request HTML. | No remote Request membership is adopted by the toast or Refresh indicator alone. |
+| Bob clicks Refresh once with obligation O1. | One authorized coherent board read may satisfy O1 only after validated physical installation. |
+| O2 arrives after the O1 Refresh began. | Preserve O2 unless actual installed read coverage proves O2 satisfied; do not issue an automatic second query. |
+| Bob clicks Refresh again while O1 is running. | Allow at most one separately user-authorized queued successor, never a wakeup-triggered infinite loop. |
+| The Refresh caller sends an impossible basis or forges Location. | Reject/qualify input at trusted boundary without unbounded wait or cross-scope data. |
+| Bob installs local Create S while an older full-board read is in flight. | Decline regressing full replacement or use independently justified selective merge; preserve S and unrelated remote advisory. |
+| A returned Refresh belongs to a retired owner or old Location. | Do not install, even if the provider basis appears stronger. |
+| Toolbar OOB succeeds but Request list target is detached. | Keep the batch incomplete and advisory debt recoverable; never claim complete adoption. |
+| A response is delivered but the browser fails to install it. | HTTP success does not discharge pending requirements or consume semantic adoption evidence as if completed. |
+| A coherent board query cannot prove compatibility of separately read Request/User projections. | Retain honest mixed provenance rather than inventing one database snapshot. |
+| Search/options change while Refresh is in flight. | Keep current compatible options, not the stale values captured in the response. |
+| A terminal Request is absent because =show-terminal?= is false. | Hiding does not prove authoritative deletion or loss of cohort membership. |
+| Bob sees a changed helper after Refresh while C42 remains uncertain. | Current card knowledge does not identify whether C42 incorporated without command-specific evidence. |
+| A notification is dropped after ephemeral client-mailbox overflow. | Qualify delivery as incomplete; reconnect/fence/replay or explicit weaker guarantee is required. |
+| Advisory O2 is duplicated after a one-use Refresh grant was consumed. | Do not mint another read grant or erase still-uncovered scoped requirements. |
+
+The real HumanHelp Chromium acceptance
+source covers browser-generated Claim,
+Unclaim, On-the-way, Complete, Cancel
+and Reassign with persisted reloads.
+It does not by itself establish all
+these two-client advisory-only remote
+updates, one-use grants, multi-target
+installation, loss and failover cases.
 
 ** Search, ordering, visibility, and local state
 
