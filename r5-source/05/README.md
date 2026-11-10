@@ -1,16 +1,17 @@
 # R5.1 sectional source — Part V, Provisional State and Executable Presentation
 
-**Disposition:** lossless structural preparation of preferred R5
-Part V is complete. All thirteen sections 05.01–05.13 have received
-substantive R4-preservation and Gesso-correspondence reviews, recorded
-in their respective `05.xx-r4-preservation-audit.md` files.
-Whole-Part-V reconciliation is recorded in
-`05-whole-part-reconciliation.md`. Independent candidate
-acceptance remains the next separate decision.
+**Disposition:** All thirteen Part V sectional R4/Gesso reviews
+and their audits are complete. Whole-Part-V reconciliation is recorded
+in `05-whole-part-reconciliation.md`, and a separate independent
+reviewed-candidate acceptance in
+`PART-V-cross-section-acceptance.md`. **Part V is accepted as a
+reviewed R5.1 candidate**, with explicit cross-part obligations;
+this is not Gesso/browser/XTDB certification or approval of the
+complete twelve-part plan. Parts I–V are now accepted reviewed
+candidate parts; Parts VI–XII and whole-plan reconciliation remain open.
 The thirteen source units reconstruct
-`gesso-unified-design-canonical-r4-05-provisional-state-and-executable-presentation.org` byte for byte. **Whole-Part-V reconciliation is recorded; independent
-candidate acceptance remains outstanding.** Parts I–IV remain reviewed R5.1
-candidates. The twelve-part plan remains a draft.
+`gesso-unified-design-canonical-r4-05-provisional-state-and-executable-presentation.org`
+exactly.
 
 R4 `main` is the preservation baseline; R5 `r5` is the preferred
 architectural starting point, updated during R5.1 review where warranted
@@ -188,8 +189,17 @@ progression, and a positive complete-cohort/one-Refresh history.
 The audit records R4 preservation by topic and remaining distinct
 implementation, assurance and product obligations.
 
-**Next:** make an **independent Part V candidate-acceptance decision**
-based on the thirteen sectional audits, whole-part reconciliation,
-published text, actual joins and any remaining material design gaps.
-An accepted timeless plan remains distinct from certification of
-the current Gesso/HumanHelp implementations.
+**Independent Part V acceptance:** see
+`PART-V-cross-section-acceptance.md`. The acceptance independently
+checked all thirteen sectional audits, R4/R5 preservation, the seven
+Part V anchors, exact publication assembly, cross-part links and
+Org block structure. No blocking internal normative contradiction
+was identified under this review's scope. The decision is editorial
+and can be reopened by later evidence; physical implementation,
+general proof and independent HumanHelp acceptance remain separate.
+
+**Next:** prepare Part VI, `Browser Realization and Recovery`,
+as losslessly split numbered Org sources at natural heading boundaries.
+Preserve the stronger R5 architecture, audit against R4 and actual
+Gesso browser semantics, and validate exact initial assembly before
+the first focused section revision.
