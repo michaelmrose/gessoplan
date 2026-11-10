@@ -4,8 +4,8 @@
 into fifteen natural Org units. That initial source/publication matched
 Git blob `55c0c46f8ccf97b2ed6d61a3a7e1aeeca876f6a7`. Sections **07.01–07.15** have completed substantive R4-preservation
 and Gesso-source correspondence review, recorded in their numbered audits.
-Whole-Part-VII reconciliation and independent candidate acceptance
-**remain outstanding**. All nine original Part VII
+Whole-Part-VII reconciliation is **complete as a separate editorial pass**.
+Independent reviewed-candidate acceptance **remains outstanding**. All nine original Part VII
 `CUSTOM_ID` anchors remain unchanged.
 
 R4 (`main`) Part VII, 5,038 newline-split lines, is the preservation
@@ -46,7 +46,7 @@ no internal `***` section, table, code block, quote or requirement
 anchor was split. The smallest source is 35 original lines and the
 largest 191; those counts describe the **initial split**, not subsequent
 revisions. The current fifteen units reconstruct the
-**287,524-character**, **4,251-line**
+**289,553-character**, **4,284-line**
 Part VII publication exactly, retaining all nine original anchors.
 
 ## Assembly and verification
@@ -85,9 +85,9 @@ The **fifteen numbered sectional reviews are complete**. Each compared
 R4 (`main`) and the stronger R5 starting point, inspected relevant
 Gesso source and available tests, preserved normative future goals,
 added a `07.xx-r4-preservation-audit.md`, and rebuilt the publication.
-The next distinct work item is **whole-Part-VII reconciliation** of
-cross-section consistency and complete R4 preservation; only after that
-comes **independent reviewed-candidate acceptance**.
+Whole-Part-VII reconciliation is now recorded in
+`part-07-whole-part-reconciliation.md`. The next distinct task
+is **independent Part VII reviewed-candidate acceptance**.
 Do not mark Part VII accepted merely because this exact split passed.
 
 **Current accepted parts:** I–VI, each a reviewed R5.1 candidate.
@@ -175,7 +175,11 @@ nonpromotion of reports/artifacts into permission, command and browser
 recovery, seven cross-layer interpretation conditions, and sixteen
 positive/adversarial histories.
 
-**Next:** perform **whole-Part-VII reconciliation** across 07.01–07.15,
-including the combined R4 preservation inventory, interface consistency,
-conflicting assumptions and scope. Independent Part VII reviewed-candidate
-acceptance follows separately; do not mark Part VII accepted yet.
+**Whole-Part-VII reconciliation:** see `part-07-whole-part-reconciliation.md`.
+It maps twenty-one R4 second-level sections, their semantic-audit views,
+and clarifies cross-section ownership, outcome/evidence vocabulary,
+qualified effect coverage and separate acceptance requirements.
+
+**Next:** perform **independent Part VII reviewed-candidate acceptance**
+against the whole publication, R4 crosswalk and cross-part interfaces.
+Part VII is **not yet accepted**; Parts I–VI remain accepted candidates.
