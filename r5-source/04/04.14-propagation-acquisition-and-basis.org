@@ -5,8 +5,10 @@ path preserves enough information for the resulting reread to include that
 change. The sequence is:
 
 1. Qualified outcome evidence establishes the authoritative change.
-2. The durable change/publication record carries an admitted progression
-   requirement and affected scope information.
+2. Recoverable change/publication evidence carries an admitted progression
+   requirement and affected scope information. A durable record, qualified
+   change frontier, replayable source or equivalent reconciliation path can
+   establish this under the declared delivery guarantee.
 3. Routing delivers an advisory to a relevant participant under its transport
    and recovery contract.
 4. The participant's acquisition requests a scope and progression sufficient
@@ -18,25 +20,47 @@ The advisory remains advisory: it can establish that an acquisition is needed
 without supplying the new authoritative contents. Preserving progression does
 not require every stage to repeat the complete token; a protected reference to
 the requirement is sufficient when it can be resolved under the contract.
+The origin of a required notification and its recovery owner must survive the
+failure windows covered by the application's promise. A process-local emit,
+router enqueue, or SSE send is not an independently durable incorporation
+record and does not prove delivery, participant receipt, authoritative reread
+or installation. The system may safely redeliver advisory invalidations;
+deduplicating or coalescing them must preserve outstanding scoped progression
+obligations, not depend on recording per-recipient acknowledgements for each
+broadcast.
 
 A tokenless advisory needs an alternative qualified fence or acquisition rule
 that prevents a satisfying reread from preceding the triggering change. Merely
 reading something newer than the participant's old display may still miss that
 change. If the transport cannot supply such a rule, the weaker guarantee must
-be explicit.
+be explicit. A router may broaden fanout or redeliver possible missed
+invalidations without tracking exact delivery completion, but the resulting
+read must still satisfy the affected scope and an admissible consistency fence;
+redundant wakeups do not manufacture a trusted frontier.
 
 *** Initial acquisition and subscription races
 
 Initial content for a managed projection participates in the same scope,
 authority, progression, and installation contract as refresh content. Being
 server-rendered does not exempt it. The owner/resource instance and any initial
-basis claim must be established through the admitted bootstrap path.
+basis claim must be established through the admitted bootstrap path. A managed
+empty target with neither qualifying initial projection nor a permitted first
+acquisition is structurally incomplete even if its subscription can connect.
+A server-side render with no qualified source/coverage evidence also cannot
+assert that the browser actually installed the projected contents.
 
 The relationship between initial read and subscription must avoid an uncovered
 interval when the application promises eventual awareness of changes. Suitable
 strategies include an admitted read/subscription fence, replay from a durable
 cursor, buffered changes across registration, or another qualified recovery
 mechanism. Each strategy states how it handles reconnect and owner replacement.
+Interest registration at a single router is not proof that other writers or
+routers knew about that interest in time. The protection must cover the actual
+interest-discovery, publication, routing and acquisition boundaries, including
+the uncertain handoff when a router or process fails. Single-node and multi-node
+realizations preserve the same application-level guarantees; replication,
+routing topology, health detection and selective redelivery are physical
+strategies that must be checked against those guarantees.
 
 A periodic authoritative refresh may provide a weaker eventual-awareness
 strategy under explicit scheduling and availability assumptions. It does not
@@ -44,16 +68,43 @@ prove delivery of every invalidation. A router's successful local subscription
 does not by itself prove that no relevant upstream change was lost before its
 interest became visible.
 
+*** Worked gap: read before interest registration
+
+A browser acquires Request board Q at admitted frontier P17, then requests a
+managed Live subscription. Before the subscription becomes effective for all
+relevant writes, another authority transaction changes Q at P18. The initial
+read excludes that change. If publication uses only the interests visible at
+write time, and the subscription starts after the change without replay or a
+new read fence, the browser can remain indefinitely at P17 despite a healthy
+SSE connection. Neither a later keepalive nor successful router registration
+repairs that history by itself.
+
+An admitted implementation may instead register and buffer the interest before
+the initial read, replay changes since a durable cursor, acquire a new qualified
+frontier after registration, or periodically reconcile Q under explicit
+fairness/availability premises. If registration or router failover loses its
+continuity evidence, the participant must retain an unresolved acquisition
+obligation until qualified recovery establishes Q at a covering frontier.
+An implementation does not have to deliver every intermediate invalidation when
+a fresh authorized acquisition suffices. But it cannot claim eventual awareness
+without a path from this missed-change history to that acquisition.
+
 *** Observed basis is not authority to commit
 
 A browser-supplied observed basis can be useful as an untrusted input to
 freshness handling. It does not prove that the browser acquired or adopted the
 corresponding data, and it does not establish current authorization. Stronger
 claims require admitted evidence bound to the relevant observation and actor.
+Even a server-signed observation receipt proves only the proposition it
+actually attests (for example issuance under a named scope and frontier), not
+that the DOM installation completed or that the same principal remains
+currently authorized.
 
 The server must also bound and validate requested consistency behavior. A
 malformed, foreign-incarnation, or unattainable token must not force unbounded
-waiting or silently downgrade to an unconstrained read.
+waiting or silently downgrade to an unconstrained read. A qualified server
+frontier, known issued basis and merely client-echoed claim remain different
+evidence sources even when their portable tokens have identical bytes.
 
 Advancement alone does not invalidate a command. The model checks its actual
 business preconditions. When the operation explicitly requires an expected
@@ -65,3 +116,16 @@ visibility, temporal defaults, or command/result compatibility. The assembly
 and qualification artifacts bind the relevant provider contract, and persisted
 requirements need an explicit compatibility or migration policy.
 
+*** Paired propagation and bootstrap acceptance cases
+
+| Admitted construction or history | Adverse or unsupported counterpart | Required judgment |
+|----------------------------------+------------------------------------+-------------------|
+| A committed change produces recoverable scoped progression debt, and the resulting authorized reread covers its frontier. | A successful local emit or SSE send is called proof of durable change publication, receipt or installation. | Admit the justified stage only; preserve required debt across the declared process-loss window. |
+| A token-bearing invalidation carries an admitted requirement or recoverable protected reference. | A token is inferred from HTTP arrival time, a newer-looking string or the browser's current display. | Use qualified origin and provider comparison; do not invent authority. |
+| A tokenless advisory triggers an admitted acquisition fenced against its originating change. | A reread merely newer than an older display is presumed to include the triggering change. | Require a qualified fence or state the weaker best-effort contract. |
+| Initial authorized projection is acquired or an explicit first-acquisition path exists. | Managed empty target has only SSE subscription with no initial content or acquisition. | Admit managed bootstrap closure only with a qualifying path. |
+| Subscription registration is covered by replay, buffer, fence or reconciled read across the initial gap. | Q is read at P17, changes at P18 before interest registration, and remains stale despite a healthy stream. | Reject an unconditional eventual-awareness claim until recovery covers the gap. |
+| One router disappears and an admitted failover path reacquires or conservatively redelivers possibly lost invalidations. | The replacement router assumes its newly learned interests prove there were no prior missed changes. | Require scoped recovery evidence; extra safe redelivery is allowed. |
+| A disconnected owner reconnects with an admitted state or cursor and reestablishes the acquisition obligation. | A recycled host, SSE connection or browser resource identity silently transfers old acquisition/adoption rights. | Correlate current owner and incarnation; preserve or retire debt by explicit policy. |
+| A signed or server-held observation record establishes precisely its declared historical proposition. | Matching browser token or signature is treated as proof of DOM installation or current business permission. | Separate issuance, acquisition, installation, adoption and fresh authorization. |
+| A malformed, unattainable or foreign-incarnation consistency claim is handled with a bounded typed failure or declared recovery. | Server waits indefinitely or silently removes the requested minimum. | Fail closed within the supported protocol and resource bounds. |
