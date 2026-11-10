@@ -2,9 +2,9 @@
 
 **Disposition:** The preferred R5 Part VII was initially split losslessly
 into fifteen natural Org units. That initial source/publication matched
-Git blob `55c0c46f8ccf97b2ed6d61a3a7e1aeeca876f6a7`. Sections **07.01–07.12** have completed substantive R4-preservation
+Git blob `55c0c46f8ccf97b2ed6d61a3a7e1aeeca876f6a7`. Sections **07.01–07.13** have completed substantive R4-preservation
 and Gesso-source correspondence review, recorded in their numbered audits.
-Sections 07.13–07.15, whole-Part-VII reconciliation, and independent
+Sections 07.14–07.15, whole-Part-VII reconciliation, and independent
 candidate acceptance **remain outstanding**. All nine original Part VII
 `CUSTOM_ID` anchors remain unchanged.
 
@@ -46,7 +46,7 @@ no internal `***` section, table, code block, quote or requirement
 anchor was split. The smallest source is 35 original lines and the
 largest 191; those counts describe the **initial split**, not subsequent
 revisions. The current fifteen units reconstruct the
-**248,123-character**, **3,696-line**
+**261,762-character**, **3,886-line**
 Part VII publication exactly, retaining all nine original anchors.
 
 ## Assembly and verification
@@ -158,5 +158,10 @@ rule/operation audit views, known-versus-unknown inventory, proposition-specific
 assurance, dependency impact, opaque callbacks, read-only disclosure and
 sixteen positive/adversarial histories distinguish inspectable policy from proof.
 
-**Next:** review **07.13 — Structured Diagnostics and Repair**,
-including stable obligation identities, source-local repair and safe disclosure.
+**07.13 review:** see `07.13-r4-preservation-audit.md`. Source-bound
+first-blocker and complete open-obligation diagnostics, R4's concrete
+failure distinctions, safe source-local repair, exact artifact provenance,
+redaction and observer noninterference have eighteen positive/adverse cases.
+
+**Next:** review **07.14 — Acceptance, Qualification, and Change Impact**,
+including actual conformance, changed premises and nonvacuous product gates.
