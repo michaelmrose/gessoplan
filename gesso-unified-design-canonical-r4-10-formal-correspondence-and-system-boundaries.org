@@ -6776,12 +6776,60 @@ Multi-node deployment changes physical placement. It does not create a second
 authority model, a second command meaning, or automatic permission to adopt
 remote state.
 
+*** One semantic machine under physical placement
+
+Single-process and multi-process Gesso are *realizations of the same*
+admitted application. The original model rules, public operations,
+command-resolution outcomes, Choreo roles, knowledge obligations, browser
+progression and adoption policy do not acquire a separate distributed
+meaning. What changes with placement is which physical process,
+transport, backend, interest router and resource instance realizes each
+part of that same contract.
+
+The distributable implementation therefore has two independently
+checked relationships:
+
+- *Semantic preservation*: every selected distributed operation,
+  settlement, invalidation, acquisition and effect corresponds to an
+  admitted single-machine behavior, including rejection, unknown
+  outcomes, stuttering and permitted nondeterminism.
+- *Physical qualification*: the actual installed hosts, writer paths,
+  authoritative backend, request/session bindings, transport and
+  routing/recovery mechanisms satisfy the named assumptions required
+  for that correspondence under the declared topology and failures.
+
+The semantic machine does not become correct merely because two
+nodes agree with one another. A local reporter's assertion that it
+used the shared database, a matching application fingerprint or a
+successful load-balanced request is not evidence of all relevant
+physical entrypoints, current authorization, writer confinement or
+a general distributed refinement theorem.
+
+
 *** Roles, principals, authorities, and hosts remain distinct
 
 A role is a choreography role. An actor realizes that role under a principal and
 context. An authority owns specified authoritative facts or operations. A host
 is a physical process that may realize an authority projection for an invocation.
 None of these identities is interchangeable.
+
+The R4 identity contrast remains applicable:
+
+#+begin_example
+choreography role:   :request-authority
+original host:       web-node A
+replacement host:    web-node C
+semantic authority:  [:authority :request R]
+#+end_example
+
+These symbols illustrate different identity categories, not a
+special topology API or an assertion that node A owns authority.
+The same principal may have different actor instances in separate
+tabs, and separate HTTP requests may realize the same logical command.
+A host/process identity and an admitted assembly generation likewise
+must not be substituted for an execution, principal, authority or
+resource-instance identity.
+
 
 A Claim sent through host A and retried through host C retains its bound
 =:gesso/command-id= and public operation meaning. Each delivery may have a new
@@ -6800,6 +6848,48 @@ by allocating a new command identifier for the same pending intent.
 Physical relocation cannot reconstruct an intent whose binding was never retained.
 A current-state read at host C may establish the Request's present state while
 leaving the originating participant's command outcome unknown.
+
+*** Command identity, compatibility, and retention across hosts
+
+The original operation and command binding remains stable across
+host movement only when its actual retained evidence survives:
+authority/namespace and target, principal, operation, immutable
+semantic arguments, command identity, retained outcome and any
+applicable compatibility or expiry discipline. An HTTP delivery
+may have a new transport-request ID, and each physical submission
+has its own attempt identity and one-shot capability lifetime.
+Neither the new host nor a repeated caller-provided command ID
+confers fresh authorization.
+
+For a retry through C, the current trusted session/principal and
+protected result disclosure must be re-established. A compatible
+*recorded* command is resolved without incorporating again; a new
+command requires its own current authoritative eligibility and
+transaction-time guards. Duplicate concurrent deliveries of one
+command must not both create a new durable effect, under the
+qualified atomicity and retained-record assumptions. A changed
+principal, target, operation or argument binding cannot claim the
+old result. Missing, expired, inaccessible, or indeterminate
+evidence cannot silently become a new command or rejection.
+
+The retention guarantee states its supported time horizon,
+namespace, archival/tombstone or expiry mechanism, and treatment
+of old commands after node replacement or backend restoration.
+A finite record TTL without enforceable reuse exclusion does not
+provide indefinite deduplication. A replaced database incarnation
+or restored old snapshot does not automatically continue the old
+command history merely because its authority label or IDs match.
+
+An origin host may fail before submission, after an unobserved
+submission, after commit but before HTTP settlement, or after
+result publication. Those are different participant-knowledge
+states. The successor can return a recorded historical outcome
+only after acquiring sufficient trusted command-specific evidence;
+reading a Request's present state alone cannot establish the
+identity or outcome of Alice's lost command. A process-local
+attempt journal, response object or callback is not a portable
+cross-host authority credential.
+
 
 *** The selected ordinary topology is deliberately small
 
@@ -6820,9 +6910,150 @@ separate broker is warranted only when the selected delivery contract needs it.
 Multiple processes and a shared database are sufficient to test meaningful host
 replacement; a single process with two labels is not.
 
+*** Minimal physical realization without prescribing products
+
+A practical first deployment may use two Aleph/Biff processes,
+a request distributor such as HAProxy, shared qualified XTDB
+persistence, and a cross-host invalidation transport such as Valkey.
+A durable log such as Redpanda or another broker is optional and
+justified only by the selected acknowledgment, replay or routing
+contract. These are examples of integration choices from R4,
+not Gesso protocol requirements, mandatory infrastructure, or
+proof that the deployment works.
+
+The implementation should first express these responsibilities
+through stable Gesso semantic, writer, publisher, registration and
+transport interfaces. An in-process implementation and a
+multi-process implementation must satisfy the same application
+contract. A later Rust router or another transport implementation
+is an optimization or independently qualified adapter, not an
+excuse to change application semantics or force authors to write
+a separate multi-node protocol.
+
+Different nodes may concurrently run compatible but nonidentical
+assembly generations during a rolling deployment. The selected
+version-compatibility contract must identify admissible old/new
+operation, command record, credential/session, browser artifact,
+wire-format, progression, interest-registration and recovery
+behavior. If compatibility is not established, new admission
+or adoption is blocked, or a defined retirement/reacquisition
+path is used. A retained old route, writer callback or browser
+resource cannot silently cross the compatibility boundary.
+
+
 The topology qualification identifies concrete services, versions, transport
 configuration, credentials, failure model, and consistency assumptions. A backend
 being shared does not prove that two read paths have identical freshness.
+For that topology, the root ledger records at least:
+
+- actual *distinct* host/process identities, deployed final
+  handler/worker generation, serving sockets and writer entrypoints;
+- the shared authoritative backend's real incarnation, version,
+  transaction/consistency contracts, writer domain and connected
+  credentials, including external/direct writers where in scope;
+- the request distributor's routing and failure behavior, what
+  session authentication can be reconstructed at a replacement
+  host, and how clock/host-health observations are qualified;
+- actual command-record retention, historical outcome readback,
+  compatibility and disclosure, not just process-local one-shot
+  evidence;
+- distributed publication, interested-recipient routing,
+  registration/replay/gap detection, authorization, and which
+  observations are durable versus advisory;
+- supported concurrent and mixed-generation admission, failure
+  detection, bounded recovery/retirement and liveness/fairness
+  premises, with the first enforcing or observation boundary for
+  every exported guarantee.
+
+The current authoritative read may be served through a different
+XTDB client or host context. A successful query is not proof
+that the requested progression frontier was satisfied, and
+token metadata echoed from a request is not an authenticated
+observed basis. A qualified insufficient read preserves the
+browser's outstanding debt and recovery path. Provider system
+time, transaction ID, domain revision and an SSE cursor are not
+one interchangeable global sequence.
+
+*** Invalidation routing is a realization, not a second authority
+
+An authoritative database change, a durable publication intent,
+an expanded Gesso Live invalidation, a router-forwarded notice,
+a subscriber's admitted advisory and a domain-participant message
+are different facts. In particular, an invalidation means that
+relevant authority may have advanced and a later acquisition
+must respect its scope/progression. It does *not* mean the client
+received a choreography message, that protected content may be
+disclosed, or that a browser may automatically adopt new state.
+
+Indexed local interests may be extended across nodes by one or
+more routers. Hierarchical/coarse filters, replicated interest
+views, interleaved routing assignments, and conservative
+republication are possible realizations; none is prescribed by
+the semantic model. Any selected topology must specify how
+interest registration becomes effective, which host/router has
+enough knowledge to avoid excluding an interested recipient,
+what happens when that knowledge is stale or a router fails,
+and how a missed notice is detected or conservatively recovered.
+An independently healthy backup router is insufficient if it
+has not acquired the relevant interest or replay frontier.
+Router process health alone cannot certify complete routing
+state.
+
+Because invalidations do not command a domain mutation,
+duplicate or unnecessarily broad *authorized* advisories may
+be acceptable when coalesced without losing required progression
+or violating privacy and load constraints. This permits
+conservative recovery without logging one completion receipt
+per recipient for every broadcast. But retransmission cannot
+repair a missed publication or registration race unless a
+qualified retained source, fence, replay or gap detection
+mechanism provides the necessary evidence. Neither a dropped
+notification nor a long silence is proof that no relevant
+change occurred. The exact outbox/registration and subscriber
+contracts belong to 10.17; direct, semantically meaningful
+participant routing belongs to 10.19.
+
+The minimal multi-host contract must also preserve tenant and
+principal scope: interested routes do not grant permission to
+read a Request, and a topic or advisory payload cannot leak
+protected identities, values or counts merely because it
+contains no document body. Reauthentication, disclosure
+checks and resource ownership still apply at receiving hosts
+and browsers.
+
+*** Placement-specific fault boundaries and evidence
+
+A real multi-host acceptance cannot be performed by renaming
+two objects inside a single JVM. The test harness must be able
+to stop one physical process while a second continues, route
+new requests independently, force a qualified lagging read,
+change shared authorization state, observe committed command
+records, and exercise notice loss or an incomplete registration
+frontier. It must record which process, backend and transport
+actually supplied each observation.
+
+At minimum, challenge a same-command retry through a surviving
+host, concurrent duplicate submissions, lost original response,
+backend incompatibility, command-retention expiry, stale
+interest/router knowledge, router replacement, interrupted
+rollout, and one authorized cross-host Refresh. Pair each with
+a successful ordinary operation rather than passing a
+reject-all or never-delivered implementation. 10.17–10.19
+own the detailed publication, HumanHelp two-host schedule,
+ephemeral-message contrast and complete acceptance matrix.
+
+Safety is required during permitted interruptions: do not
+invent commits, successful deliveries, authorized disclosures,
+progression or UI adoption. Conditional liveness requires
+explicit assumptions about backend availability, surviving
+routes, retry/replay retention, eventual dispatch, current
+authorization and (for HumanHelp remote adoption) a permitted
+user Refresh. A partition that prevents those premises
+cannot be used to claim eventual progress. This is a named
+open guarantee, not a reason to weaken the single-node safety
+laws.
+
+
 Qualified progression checks still apply at each host.
 
 *** Durable facts are the ordinary rendezvous

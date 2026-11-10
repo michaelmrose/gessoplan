@@ -8,9 +8,9 @@ proof examples, identities, links or Org delimiters were modified.
 `gesso-unified-design-canonical-r4-10-formal-correspondence-and-system-boundaries.org`
 is derived output, not an independent second source.
 
-**Review status:** **10.01–10.15 substantively reviewed** against R4,
+**Review status:** **10.01–10.16 substantively reviewed** against R4,
 accepted Parts I–IX and Gesso v1622, with numbered preservation audits.
-Sections **10.16–10.20** remain for substantive review. Whole-Part-X
+Sections **10.17–10.20** remain for substantive review. Whole-Part-X
 reconciliation and independent editorial acceptance remain outstanding.
 No current Gesso/HumanHelp implementation certificate is implied.
 
@@ -299,5 +299,20 @@ nonclaims. Published Part X now contains
 **7033 newline-split lines** and
 **311115 characters**.
 
-**Next:** Review **10.16 — Multi-node Host Roles and Topology**,
-then 10.17–10.20 and whole-Part-X reconciliation.
+**10.16 review:** see `10.16-r4-preservation-audit.md`.
+Retained R5's single semantic application across hosts and R4's
+A-to-C role/host/authority illustration and optional Aleph/HAProxy/
+Valkey/Redpanda topology examples. Specified cross-host original
+command/attempt/retention bindings, current authorization and
+disclosure, qualified distinct host/backend/asset/assembly identities,
+rolling compatibility and failure-scope evidence. Made indexed or
+replicated interest routing and router replacement conditional on
+registration/replay/gap guarantees without mandating a transport or
+changing advisory into authoritative adoption. Thirty preservation
+decisions and eighteen positive/adversarial controls record Gesso
+v1622's local Live/command/assurance evidence and nonclaims.
+Published Part X now contains **7264 newline-split lines**
+and **322676 characters**.
+
+**Next:** Review **10.17 — Durable Rendezvous and Outbox**,
+then 10.18–10.20 and whole-Part-X reconciliation.
