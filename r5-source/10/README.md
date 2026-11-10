@@ -8,10 +8,10 @@ proof examples, identities, links or Org delimiters were modified.
 `gesso-unified-design-canonical-r4-10-formal-correspondence-and-system-boundaries.org`
 is derived output, not an independent second source.
 
-**Review status:** **10.01–10.19 substantively reviewed** against R4,
+**Review status:** **10.01–10.20 substantively reviewed** against R4,
 accepted Parts I–IX and Gesso v1622, with numbered preservation audits.
-Section **10.20** remains for substantive review. Whole-Part-X
-reconciliation and independent editorial acceptance remain outstanding.
+All twenty numbered sectional audits are complete. Whole-Part-X
+reconciliation and separate editorial acceptance remain outstanding.
 No current Gesso/HumanHelp implementation certificate is implied.
 
 **R4 preservation baseline:** `main` Part X, to be compared during each
@@ -356,6 +356,20 @@ are recorded against actual Gesso v1622 code and its open boundaries.
 Published Part X contains **7835 newline-split lines**
 and **352827 characters**.
 
-**Next:** Review **10.20 — Final System-boundary Invariant**,
-then reconcile all of Part X against R4 and perform independent
-editorial acceptance.
+**10.20 review:** see `10.20-r4-preservation-audit.md`.
+Preserved R5's final conditional semantic-to-production invariant and
+restored R4's explicit original-source complete obligation coverage,
+immutable source/artifact binding, exact-finite versus unbounded
+claims, safety versus liveness, and four independent completion
+milestones (operational, compositional, external-formal, multi-node).
+Added an explicit transfer-edge ledger, effect-time authorization,
+non-authoritative reporting, failure/unknown and requalification
+rules, with twelve positive/adversarial closing examples. Twenty-eight
+preservation decisions compare the normative finished-state design
+against Gesso v1622's explicitly conditional evidence.
+Published Part X contains **7990 newline-split lines**
+and **363311 characters**.
+
+**Next:** Complete **Part X whole-part R4/R5.1 cross-section
+reconciliation**, then run a separate independent editorial acceptance
+gate. Parts XI–XII and whole-plan acceptance follow.
