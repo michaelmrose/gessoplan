@@ -4,9 +4,9 @@
 losslessly into fifteen numbered Org units. Subsequent substantive
 reviews revise those sources and rebuild the publication by exact
 concatenation. All eight original `CUSTOM_ID` anchors remain stable.
-Sections **06.01–06.07** have completed substantive R4-preservation
+Sections **06.01–06.08** have completed substantive R4-preservation
 and Gesso-source correspondence reviews, recorded in their
-matching audits. Sections 06.08–06.15, whole-part reconciliation,
+matching audits. Sections 06.09–06.15, whole-part reconciliation,
 and independent candidate acceptance remain outstanding.
 Parts I–V are accepted reviewed R5.1 candidates. Parts VI–XII and
 the independent full-plan reconciliation remain unfinished.
@@ -115,14 +115,14 @@ concatenated exactly to the unchanged R5 Part VI baseline:
 **84,711 decoded JavaScript string code units** and
 **1,481 newline-split lines**. Subsequent sectional revisions
 update the canonical Part VI publication from the numbered units.
-After 06.07, the fifteen reviewed/unreviewed units exactly
-reconstruct the **157,520-character**, **2,489-line** Part VI
+After 06.08, the fifteen reviewed/unreviewed units exactly
+reconstruct the **168,972-character**, **2,619-line** Part VI
 publication, with all eight stable anchors and balanced Org
 blocks. The whole-plan output remains a generated artifact,
 not a separate editable normative source.
 
 The Python assembler was **not executed** in a local Gessoplan
-checkout. Initial splitting and subsequent 06.01–06.07
+checkout. Initial splitting and subsequent 06.01–06.08
 publications were checked by exact GitHub-fetched concatenation,
 not by Gesso runtime, backend, Chromium or formal proof execution.
 
@@ -181,6 +181,14 @@ reconnect and router failure demand a qualified fence/replay/reacquisition,
 not an inference from stream silence. Nine paired positive/adverse
 histories test source and physical correspondence.
 
-**Next:** review **06.08 — Plan Compatibility and Resume Admission**,
-including deployed artifact identity, suspended browser re-admission
-and recovery of commands without reviving stale physical continuations.
+**06.08 review:** see `06.08-r4-preservation-audit.md`.
+The revised compatibility matrix separates plan/continuation, operation
+invocation, retained command readback/replay, actual served browser assets,
+current disclosure and host-effect identity. Recognizable incompatibility
+retires private execution rights while command-history recovery remains
+independently permitted. Eight paired positive/adverse histories challenge
+bfcache restoration, rolling deployments, principal switches and unknowns.
+
+**Next:** review **06.09 — Continuation Retirement and Recovery**,
+including durable command-obligation handoff, the sleeping-checkout
+C77/P7/P8 example, authority reconstruction and bounded failure paths.
