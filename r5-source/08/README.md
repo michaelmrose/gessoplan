@@ -7,9 +7,9 @@ published Part VIII and `r5` publication had the **same Git blob**
 No normative wording, operation contract, example, heading, table,
 `CUSTOM_ID` or cross-part link was changed.
 
-**Review status:** **08.01–08.03 have completed substantive R4-preservation
+**Review status:** **08.01–08.04 have completed substantive R4-preservation
 and Gesso/HumanHelp source-correspondence review**, recorded in their
-numbered audits. Sections **08.04–08.15**, whole-Part-VIII reconciliation
+numbered audits. Sections **08.05–08.15**, whole-Part-VIII reconciliation
 and independent Part VIII acceptance remain outstanding. Parts I–VII
 are accepted reviewed R5.1 candidates; Parts VIII–XII and full-plan
 acceptance remain open.
@@ -19,7 +19,7 @@ The **R4 preservation baseline** is `main` Part VIII,
 The preferred **R5 architectural predecessor** had
 **1,468 newline-split lines**, 21 second-level headings and
 **92,955 decoded characters** before substantive revision.
-The current fifteen sources reconstruct the **2,029-line**, **128,899-character** Part VIII publication exactly. Length is not
+The current fifteen sources reconstruct the **2,236-line**, **138,476-character** Part VIII publication exactly. Length is not
 evidence that all R4 obligations survive; each numbered
 review must make its own R4/Gesso/HumanHelp comparison.
 
@@ -169,6 +169,12 @@ current real Reassign target menu, genuine Chromium/HTMX Claim–Unclaim–
 Mark–Complete–Cancel–Reassign test-source correspondence, distinct command
 outcome/DOM scopes and twenty-one positive/adversarial histories are reviewed.
 
-**Next:** Review **08.04 — Board Projection and Selective Adoption**,
-including bounded cohort membership, mixed authoritative observations,
-local search/options versus remote changes and physical adoption.
+**08.04 review:** see `08.04-r4-preservation-audit.md`.
+Cohort completeness and truthful counts, mixed observation scope,
+resource/DOM ownership, retained snapshot versus fresh HTMX query,
+user-field disclosure, and twenty-one positive/adversarial board histories
+have been compared with R4 and current HumanHelp/Gesso source.
+
+**Next:** Review **08.05 — Creation and Immediate Local Visibility**,
+including filtered creator results, local S versus remote R, postcommit
+advisory, command correlation and physical installation.
