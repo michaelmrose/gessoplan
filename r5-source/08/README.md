@@ -7,19 +7,19 @@ published Part VIII and `r5` publication had the **same Git blob**
 No normative wording, operation contract, example, heading, table,
 `CUSTOM_ID` or cross-part link was changed.
 
-**Review status:** **08.01 has completed substantive R4 preservation and
-Gesso/HumanHelp source correspondence review**, recorded in
-`08.01-r4-preservation-audit.md`. Sections **08.02–08.15**,
-whole-Part-VIII reconciliation and independent Part VIII acceptance
-remain outstanding. Parts I–VII are accepted reviewed R5.1 candidates;
-Parts VIII–XII and full-plan acceptance remain open.
+**Review status:** **08.01–08.02 have completed substantive R4-preservation
+and Gesso/HumanHelp source-correspondence review**, recorded in their
+numbered audits. Sections **08.03–08.15**, whole-Part-VIII reconciliation
+and independent Part VIII acceptance remain outstanding. Parts I–VII
+are accepted reviewed R5.1 candidates; Parts VIII–XII and full-plan
+acceptance remain open.
 
 The **R4 preservation baseline** is `main` Part VIII,
 **5,372 newline-split lines** and 29 second-level headings.
 The preferred **R5 architectural predecessor** had
 **1,468 newline-split lines**, 21 second-level headings and
 **92,955 decoded characters** before substantive revision.
-The current fifteen sources reconstruct the **1,624-line**, **103,128-character** Part VIII publication exactly. Length is not
+The current fifteen sources reconstruct the **1,851-line**, **116,459-character** Part VIII publication exactly. Length is not
 evidence that all R4 obligations survive; each numbered
 review must make its own R4/Gesso/HumanHelp comparison.
 
@@ -157,6 +157,12 @@ public-model ownership, partial lifecycle-slice versus complete
 product scope, real Biff/Aleph admission, and twelve positive/
 adversarial assembly histories now have explicit source correspondence.
 
-**Next:** Review **08.02 — Production Model and Operation Boundaries**,
-including real atomic Request/RequestAssignment dependencies, command
-identity, actor-versus-target authority and historical settlement.
+**08.02 review:** see `08.02-r4-preservation-audit.md`.
+Source-owned Request/RequestAssignment and Organization/Membership dependencies,
+aggregate absence assertions, actor-versus-target policy, observed-basis
+semantics, current public `:commit/status` versus future durable-command
+resolution, and eighteen positive/adversarial histories were reconciled.
+
+**Next:** Review **08.03 — Required Capabilities and Worked Claim Slice**,
+including independent positive HumanHelp product outcomes, real enabled
+controls, competitor claims, client settlement, and current physical adoption.

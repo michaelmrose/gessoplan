@@ -325,6 +325,34 @@ The canonical Request states for this application are =:open=, =:claimed=,
 label =:done=; it must not introduce a competing persisted =:completed= state.
 Public predicates and prepared projections provide state meaning to presentation.
 
+ 
+*** Production aggregate, state vocabulary, and source authority
+
+The production Request and RequestAssignment are separate persisted entities
+forming one model-owned Request aggregate. A Request owns Organization,
+Location, requestor, content and lifecycle identity. A primary or collaborator
+RequestAssignment owns its helper, role, active/ended state, provenance and
+history. An active primary assignment is not interchangeable with a
+convenient =:request/helper-id= view field, a provisional label or the
+browser's selected target.
+
+The public =request.core= predicates and snapshots, not example component
+conditionals, determine =:open=, =:claimed=, =:on-the-way=, =:done= and
+=:cancelled= and the assignment relationships each permits. Terminal
+completion and cancellation close the assignments required by the production
+operation; Reassign preserves a lawful historical end of the previous
+primary and creation of the new primary in one protected operation.
+Collaborator writes, Request editing, initialization and Organization/
+Membership changes remain within the relevant invariant/writer scope
+even when this proving UI does not expose each as a dedicated control.
+
+Use public =net.humanhelp.site.model.request.core=,
+=membership.core=, =organization.core= and =user.core= semantics
+for cross-model decisions. The production =request.choreo= layer
+coordinates these public operations; neither it nor the example
+may independently reimplement private =domain=, =fx= or =graph=
+policy to win a race against the public model.
+
 *** Atomic dependencies, not a sequence of reassuring reads
 
 A lifecycle handler may parse inputs, authenticate, prepare context, and perform
@@ -349,6 +377,50 @@ write leave a race. Rechecking only the rendered card's revision leaves a race.
 A transaction plan must preserve every relevant dependency through the qualified
 submission mechanism, including absence or query dependencies where required.
 
+ 
+*** Guard construction and physical correspondence are different claims
+
+The admitted Claim plan has a source-relative obligation to protect
+the aggregate snapshot, current operational Organization/Location
+scope, selected target's active eligible Membership and relevant
+role/skill assignment, and (for manager-assisted Claim) the actor's
+current supervisor/administrator authority. It additionally excludes
+active assignments as a *cardinality/absence* condition. The exact
+dependency footprint is determined by the real model policy,
+not by a hand-authored audit approximation.
+
+Gesso's generic transaction representation may combine
+=:commands= (Request/RequestAssignment mutations),
+=:guards= (versioned dependency evidence),
+=:assertions= (including set-level absence/cardinality)
+and =:changes= (semantic changes for Live). These
+are different kinds of obligations: guarding each observed
+assignment is insufficient by itself when a new matching
+assignment could appear. The Request aggregate concurrency
+root and required relevant absence assertions must be
+honored by the selected XTDB transaction semantics.
+
+The *model planner* may have a well-formed protected plan
+while the *physical backend* still requires independent
+qualification for transaction-internal evaluation,
+assertion atomicity, contending writers, post-commit
+progression and actual submission/observation provenance.
+An optional finite proof of the source-owned rule does
+not authenticate every XTDB attempt. Likewise,
+calling =model.tx/transact!= is not proof that unregistered
+maintenance writers cannot bypass Request invariants.
+The application can qualify the bounded real transaction
+behavior it has observed without calling that evidence
+universal linearizability or a complete-writer certificate.
+
+The browser's previously adopted basis =X17= is an
+authoritative *scoped observation frontier*, not the
+Request's revision, a global snapshot of all HumanHelp
+state, or an automatic stale-command veto. Unrelated
+commits may advance the database while Claim remains
+valid; a relevant Membership/assignment change must be
+reconsidered by the model and guarded at incorporation.
+
 *** Actor, target helper, and command identity
 
 The authenticated principal comes from the trusted request/runtime context.
@@ -372,6 +444,38 @@ correlation uses =:http-request-id= or =:transport-request-id=. Execution,
 resource instance, board owner, assembly/deployment, and command identities stay
 distinct. One generic “generation” field cannot stand in for all of them.
 
+ 
+*** Request actor, target, scope, and trust separation
+
+For the ordinary =:request/claim= control, *claim for myself*
+binds target helper to the currently authenticated actor
+within the trusted operation, not from a posted =:helper-id=.
+A distinct manager-assisted Claim may legitimately supply
+a different =:helper-id=, but the authoritative model must
+protect both the actor's **exact** supervisor or
+administrator role at the applicable Location and the
+chosen target's separate helper eligibility. HumanHelp
+does not grant manager authority merely by a role-name
+hierarchy or by the browser using the one physical
+=:helper= choreography participant.
+
+Reassign likewise must not equate an actor's permission
+to choose a target with the target's eligibility to
+hold the new assignment. Relevant Organization
+scope, Location, current Membership, active role
+assignments and declared skills are model dependencies.
+A target-helper picker can narrow options for UX;
+it cannot authorize a protected transaction.
+
+A route must reconcile the normalized path Request ID
+with the semantic command's Request argument. A
+separately chosen target/helper/skill cannot replace the
+trusted principal or ownership context. A valid
+operation capability or browser-chosen principal
+identifier is inert presentation data. Public
+model authorization and its current protected
+dependencies determine the actual transition.
+
 *** Resolve an existing command before applying new-command guards
 
 A compatible repetition checks the retained command record's binding and current
@@ -388,6 +492,47 @@ Command retention, exclusion after result expiry, recovery across interface
 versions, and disclosure after role changes follow Part IV. The browser may not
 create a new identifier merely to make an unresolved operation appear retryable.
 A command-recovery record and a current Request read answer different questions.
+
+ 
+*** Historical incorporation requires an actual selected implementation
+
+The complete target protocol is *resolve or incorporate*:
+a trusted server obtains an authoritative record for the
+original typed command binding (principal, operation,
+canonical argument set, interface/authority domain and
+stable command ID), verifies current disclosure rights,
+and returns the recorded result when repetition is
+compatible. An unresolved original command never becomes
+permission to mint a fresh ID merely because a timeout
+occurred or the current Request looks claimed.
+
+For new incorporation, the command record/exclusion
+and Request/RequestAssignment guarded mutations must
+share the qualified atomic boundary. An existing
+record must be effectively immutable for the selected
+retention contract. Record expiry must not permit
+duplicate logical incorporation while an old retry
+can still arrive; the operation must define exclusion,
+compatibility or manual reconciliation through that
+lifetime. Retried transport attempts can reach another
+Aleph node without changing their semantic identity.
+A later current-policy or principal-role change may
+forbid disclosure of a previously successful result
+without reversing the historical commit.
+
+This is a **required finished-system protocol**, not
+an assertion that every current `request.core` call
+already persists command ID and outcome. Current
+production public Request operations expose
+transaction =:commit/status= and progression; their
+model transaction success is not, by itself, a
+durable same-command replay certificate. Gesso's
+source-level command-record helper is experimental
+construction with a trusted disclosure/lookup
+assumption, not an installed HumanHelp
+exactly-once service. The application must connect,
+qualify and test that mechanism before claiming
+the stronger recovery property.
 
 *** Outcome and presentation contracts
 
@@ -409,6 +554,88 @@ does not erase that commit. The server can know =:committed= while a disconnecte
 browser knows only =:unknown=. A lost response is resolved with authoritative
 command-specific evidence, not by guessing from a fresh card that another actor
 could have produced.
+
+ 
+*** Distinguish the current model API from the intended protocol layers
+
+The present public Request operation reports
+=:commit/status :committed= and, when available,
+a composable authoritative =:progression=. The
+current Request choreography checks that committed
+result and constructs its own protocol-v3
+=:confirmed= authority projection. These are
+different *interfaces* from the Part IV
+=:committed= / =:already-incorporated= /
+=:rejected= / =:commit-unknown= command
+disposition taxonomy and from the browser's
+=:accepted= / =:rejected= / =:unknown=
+presentation. A correct adapter preserves
+the evidence required for each mapping;
+matching words or a generic 200/500 response
+do not supply the missing durable record.
+
+For the initiator, a direct correlated success can
+justify an explicitly scoped card acquisition or
+adoption if it meets the protocol's trust and
+progression requirements. A remote browser may
+receive only an advisory and is not automatically
+entitled to reread the board; one-user-Refresh
+remains a separate grant. Validating a current
+card can supersede provisional display even
+while command-specific historical attribution
+remains unknown.
+
+A post-commit error in HTML generation,
+publication or response delivery cannot
+reinterpret the actual Request/RequestAssignment
+commit as rollback. If physical storage reports
+an uncertain write, neither the model nor
+participant may invent a definitive rejection
+until admissible authoritative evidence settles
+the bound command. Recovery has a real retained
+owner, trigger, authorization, progressive read,
+expiration and explicit blocked/manual state
+when automatic resolution is not possible.
+
+*** Positive and adversarial model-boundary histories
+
+Acceptance exercises the production source/physical
+path and the relevant trust boundary. It does not
+substitute copied maps or idealized isolated model
+fixtures for a real deployed operation.
+
+| History | Required model/command/presentation disposition |
+|---------+-------------------------------------------------|
+| An authorized helper claims a genuinely open Request through the real public model. | Request becomes =:claimed= and an active primary RequestAssignment is atomically established; a justified progression permits the matching authoritative read. |
+| Two distinct eligible helpers submit different Claims from the same observed open state. | At most one establishes that open-to-claimed primary transition; the other cannot create a second active primary through a stale read. |
+| A missing active assignment appears between Request snapshot read and commit. | The active-assignment absence assertion and aggregate protection reject or re-evaluate rather than allow two active primary assignments. |
+| A helper's Membership or Location role becomes invalid after an advisory read but before incorporation. | The actual protected authority dependency blocks the new Claim despite the old enabled browser button. |
+| A manager selects another eligible helper under the same Request Location. | Guard the manager actor's exact supervisor/admin scope and the target's distinct current helper/skill eligibility, with correct assignment provenance. |
+| A browser forges =:principal=, =:helper-id=, selected role or a browser certificate. | Do not grant helper or manager authority; the trusted model binds actual actor and independently checks any legitimate target. |
+| A route targets Request R2 while the bound semantic command specifies R1. | Reject the conflicting normalized Request identity before protected mutation. |
+| A permitted current Claim arrives with observed basis X17 after unrelated XTDB commits to X23. | Do not reject merely because X17 is old; the model evaluates its actual currently protected dependencies. |
+| Claim modifies Request but the primary assignment assertion or insert fails. | The qualified atomic boundary leaves no partially claimed Request or orphan active primary. |
+| The public production Claim returns committed Request and assignment with progression, but no durable record for command C42. | Classify successful model mutation and current read evidence honestly; do not claim proved historical C42 replay/deduplication. |
+| C42 is delivered twice with identical principal, arguments and operation, with an authoritative disclosed record retained. | Resolve the second delivery to its historical permitted result without reapplying the Request mutation or duplicating durable publication intent. |
+| Another principal reuses C42 or a later retry changes C42's Request/target/helper arguments. | Reject incompatible binding or prohibit disclosure; no new effect under the borrowed command ID. |
+| C42 is incorporated, then Reassign changes the current helper and C42 is retried. | A permitted replay still reflects C42's historical result while the fresh Request snapshot reflects the later Reassign. |
+| The command record is absent at a lookup basis that cannot rule out pending C42 incorporation. | Remain unresolved; absence alone neither proves rejection nor permits a fresh same-intent command. |
+| A previously authorized principal loses permission to see C42's result. | Enforce current disclosure rules without leaking retained binding, Request or result. |
+| A successful Claim commits and HTML rendering or Live publication fails. | Preserve the committed model truth; participant can remain =:unknown= until permitted command-specific recovery. |
+| A physically unregistered writer bypasses the Request lifecycle API to change active assignment rows. | Retain the incomplete-writer/physical correspondence premise; a complete declared operation catalog does not prove global safety. |
+| A browser shows “Claimed” provisionally but the real model rejects or no persisted active primary exists. | Provisional presentation may be rolled back or superseded, but a final accepted product result cannot be DOM-only success. |
+
+These histories are required behavioral targets,
+not claims that HumanHelp's current `dev`
+branch passes the complete durable-command
+or real-browser matrix. Section 08.03 owns
+the worked Claim control and positive
+product oracle; 08.04–08.09 own the
+cohort, adoption, continuation and recovery
+details. Parts IV and VII govern protocol
+outcome types and real assembly/production
+enforcement, and Parts IX–XII retain
+independent formal/physical proof.
 
 ** Required user capabilities
 :PROPERTIES:
