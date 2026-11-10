@@ -1,9 +1,11 @@
 ** Command identity and authoritative disposition
 
-A semantic command identifies one intended invocation under a declared command
-policy. It survives physical retry. It is distinct from the operation definition,
-the choreography execution that attempted it, and the transport exchanges that
-carry it.
+A semantic command identifies one intended *semantic action occurrence* under
+a declared command policy. It survives physical retry and authorized
+reconciliation. It is distinct from the operation definition, any particular
+server invocation, choreography execution, backend submission attempt and
+transport exchange. One command can have several physical attempts without
+becoming several admitted business actions.
 
 | Identity | Meaning and lifetime |
 |----------+----------------------|
@@ -154,7 +156,12 @@ command and must not execute unrepeatable external effects inside a callback
 that the backend may rerun.
 
 The preliminary lookup in step 2 is an optimization, not an atomic
-absence guarantee. Concurrent compatible invocations may both observe no
+absence guarantee. A preliminary record read or candidate ineligibility
+judgment can select an attempt's path, but does not settle command disposition
+on its own. The protected incorporation/exclusion mechanism and qualified
+backend outcome interpretation own that stronger judgment. Compatible replay
+must resolve retained results without rerunning mutable eligibility guards
+for *new* incorporation. Concurrent compatible invocations may both observe no
 record and prepare candidate transitions. The qualified authoritative
 mechanism must ensure that at most the policy-permitted incorporation wins
 for the command namespace; a loser resolves the surviving record under

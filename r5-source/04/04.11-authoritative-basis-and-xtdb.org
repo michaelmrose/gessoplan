@@ -139,6 +139,17 @@ a completed transaction key, and a pinned read that observes a command record
 are different evidence subjects; their association must be justified rather
 than assumed from matching metadata.
 
+An observation may establish that a bound command record exists, or that
+an identified transaction completed, without proving that this invocation's
+*complete submitted footprint* caused that record. The adapter must distinguish
+(a) historical bound command incorporation, (b) identified transaction
+completion, and (c) the physical association among the admitted invocation,
+full effective submission and resulting record. (a) supports an authorized
+compatible recovered-result branch; (c), under the declared backend completion
+guarantee, is needed for attempt-attributed =:committed=. Without (c) the
+narrower observations remain useful but must not be promoted into an
+unqualified invocation outcome by a copied gateway report.
+
 After a confirmed commit, the adapter may issue a progression requirement that
 an authoritative read must satisfy to include the relevant effect. The read
 path must enforce that requirement or return a typed unavailable/unsupported

@@ -94,13 +94,17 @@ GitHub connector operation; run it in a checkout when available.
 
 **Whole-part reconciliation, pass 01:** see
 `PART-IV-cross-section-reconciliation-01-scope-presentation.md`.
-This pass corrected an actual mismatch between authoritative board
-query scope and HumanHelp's local-only search/sort/visibility options in
-04.12, 04.15 and 04.16. The first pass is NOT acceptance of Part IV.
+Corrected the authoritative-cohort versus local-presentation boundary
+in 04.12, 04.15 and 04.16.
 
-**Next:** reconcile authoritative command/atomic-outcome/unknown-result
-joins across 04.01–04.11 and 04.17. Continue testing the full
-model/FX/XTDB/Live/browser correspondence and Parts I–III/VIII joins
-in bounded, recorded passes. Do not confer whole-part reviewed-candidate
-status until the remaining joins have independent acceptance evidence.
-Each `next` remains one bounded revision.
+**Whole-part reconciliation, pass 02:** see
+`PART-IV-cross-section-reconciliation-02-command-outcomes.md`.
+Clarified attempt-specific incorporation evidence, historical command
+replay, terminal rejection and complete-submission correspondence in
+04.03, 04.06, 04.08, 04.11 and 04.17. Neither pass is acceptance.
+
+**Next:** reconcile durable provider work and postcommit Live
+publication/recovery across 04.03–04.10 and 04.14–04.17, then the
+remaining backend, browser and Parts I–III/VIII joins. Continue
+one bounded revision per `next`; do not grant reviewed-candidate
+status before the whole-part coherence audit is complete.

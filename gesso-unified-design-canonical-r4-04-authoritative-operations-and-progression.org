@@ -365,6 +365,22 @@ succeeded. Physical submission receipt, transaction acknowledgment, actual
 authoritative incorporation, result disclosure, Live delivery, and browser
 installation are not one terminal event.
 
+An invocation-specific =:committed= result requires qualified physical
+evidence tying the *actual complete submitted effect*, its command binding,
+trusted principal/authority, and affirmative outcome to the reported
+submission or invocation. Co-observing a transaction key and retained command
+record at one compatible pinned basis can establish narrower facts; it does
+not by itself identify the attempt that caused the record. Abstract transition
+proof does not supply that missing physical causality.
+
+Conversely, a compatible retained command record can justify the historical
+=:already-incorporated= recovery path without naming the winning attempt.
+Qualified binding-scoped terminal closure, not a failed guard or absent row,
+is required for stable =:rejected=. Otherwise a physically failed attempt,
+timeout, incomplete result or unestablished backend premise leaves the command
+unknown or supplies only a narrower typed attempt/invocation failure. These
+classifications cannot be strengthened by exchanging report-shaped maps.
+
 An authoritative readback must preserve its *own* observation scope, basis,
 completeness and trusted origin. If a command record is not observed after
 a timeout, absence at one insufficient or stale read is not evidence of
@@ -464,6 +480,9 @@ database automatically establishes this.
 | An old command record is found but the current principal lacks permission to disclose its outcome | Preserve the authoritative fact internally while returning only the permitted unavailable/indistinguishable result |
 | A replacement browser execution receives valid evidence about an old command | Admit it only through its current authority, ownership, resource and presentation mapping; the retired execution does not regain installation rights |
 | A host retries an unresolved command on another web node using the original immutable binding | Preserve the same resolve-or-incorporate rule, current backend/progression qualification and disclosed outcome contract; node placement does not create a new command |
+| Concurrent same-binding attempts A1 and A2 target C42; A1 aborts while A2 commits, and a qualified read finds C42. | Admit the historical compatible recorded result; never infer A1 committed or that the command was terminally rejected by A1's abort. |
+| A completed transaction key and command record are co-observed but the full-submission causal bridge is not established. | Preserve bounded physical evidence and historical recovery, but do not report invocation-specific =:committed= solely from coincidence. |
+| A terminal rejection fence and a pending incorporation attempt contend under the qualified command namespace. | Only established binding-scoped exclusion permits =:rejected=; an isolated failed guard or absent-record read does not. |
 
 ** Atomic authoritative transitions
 :PROPERTIES:
@@ -832,10 +851,12 @@ premise or reject the stronger claimed correspondence.
 
 ** Command identity and authoritative disposition
 
-A semantic command identifies one intended invocation under a declared command
-policy. It survives physical retry. It is distinct from the operation definition,
-the choreography execution that attempted it, and the transport exchanges that
-carry it.
+A semantic command identifies one intended *semantic action occurrence* under
+a declared command policy. It survives physical retry and authorized
+reconciliation. It is distinct from the operation definition, any particular
+server invocation, choreography execution, backend submission attempt and
+transport exchange. One command can have several physical attempts without
+becoming several admitted business actions.
 
 | Identity | Meaning and lifetime |
 |----------+----------------------|
@@ -986,7 +1007,12 @@ command and must not execute unrepeatable external effects inside a callback
 that the backend may rerun.
 
 The preliminary lookup in step 2 is an optimization, not an atomic
-absence guarantee. Concurrent compatible invocations may both observe no
+absence guarantee. A preliminary record read or candidate ineligibility
+judgment can select an attempt's path, but does not settle command disposition
+on its own. The protected incorporation/exclusion mechanism and qualified
+backend outcome interpretation own that stronger judgment. Compatible replay
+must resolve retained results without rerunning mutable eligibility guards
+for *new* incorporation. Concurrent compatible invocations may both observe no
 record and prepare candidate transitions. The qualified authoritative
 mechanism must ensure that at most the policy-permitted incorporation wins
 for the command namespace; a loser resolves the surviving record under
@@ -1298,9 +1324,11 @@ set. The interface declares how each maps to an operation outcome or typed
 invocation error. In particular, not established does not mean rejected.
 A stable terminal rejection requires the closure/exclusion evidence of
 04.07, not a failed assertion or lookup that merely found no record.
-The current experimental Gesso command-record constructor persists
-incorporation results; its existence does not imply that durable terminal
-rejection, result-expiry fencing or restoration protocols already exist.
+A command-record constructor that persists only incorporation results
+does not, by its existence alone, establish durable terminal rejection,
+expiry fencing, restored-command exclusion or an executable recovery owner.
+Each stronger guarantee needs its own admitted contract and qualified
+physical mechanism.
 
 A retained tombstone may establish exclusion of duplicate incorporation
 without retaining a disclosable result. A record missing because of
@@ -1312,10 +1340,15 @@ record through its replay branch. It returns =:already-incorporated= and the
 permitted success even though the Request is now claimed. It must not rerun the
 new-incorporation guard first and reject solely on that changed state.
 
-If another physical attempt finds a retained success after its own ambiguous
-submission, that proves command incorporation. It does not necessarily prove
-which physical attempt incorporated it. Reports and tests must preserve this
-distinction when attributing execution evidence.
+If another physical attempt finds a compatible, qualified retained success
+after its own ambiguous submission, that proves command incorporation under
+the record's admitted binding and read scope. It does not necessarily prove
+which physical attempt incorporated it. Such evidence may justify the
+historical =:already-incorporated= recovery result for an authorized resolver;
+an invocation-specific =:committed= needs additional admitted attempt-to-
+complete-submission causality. No such record can grant historical disclosure
+to an unauthorized principal, and a present Request projection is not a
+substitute command-existence oracle.
 
 *** C42 recovery and presentation are independently admitted
 
@@ -1872,6 +1905,17 @@ as evidence that the domain command incorporated. A returned submission ID,
 a completed transaction key, and a pinned read that observes a command record
 are different evidence subjects; their association must be justified rather
 than assumed from matching metadata.
+
+An observation may establish that a bound command record exists, or that
+an identified transaction completed, without proving that this invocation's
+*complete submitted footprint* caused that record. The adapter must distinguish
+(a) historical bound command incorporation, (b) identified transaction
+completion, and (c) the physical association among the admitted invocation,
+full effective submission and resulting record. (a) supports an authorized
+compatible recovered-result branch; (c), under the declared backend completion
+guarantee, is needed for attempt-attributed =:committed=. Without (c) the
+narrower observations remain useful but must not be promoted into an
+unqualified invocation outcome by a copied gateway report.
 
 After a confirmed commit, the adapter may issue a progression requirement that
 an authoritative read must satisfy to include the relevant effect. The read
@@ -2797,6 +2841,9 @@ behavior.
 | Atomic footprint | Domain update succeeds but ledger/outbox write is removed or fails. | The promised combined transition cannot be reported established. |
 | Submission fidelity | A checked fragment is followed by an extra write, changed option, altered target, or weakened guard. | The actual complete submission fails the relevant admission/correspondence check. |
 | Return provenance | A copied success report or unrelated callback return is substituted. | It does not establish this invocation's outcome. |
+| Concurrent attempt attribution | A1 aborts while compatible A2 incorporates C42 and qualified readback finds the retained command. | Allow historical C42 resolution while refusing both A1 =:committed= and terminal C42 =:rejected= inferred from A1. |
+| Co-observed but causally unbound evidence | A completed transaction key and command record occur at one pinned basis without a justified complete-submission causal association. | Preserve observed facts but do not claim invocation-specific =:committed= without the qualified physical bridge. |
+| Attempt failure versus command closure | An ordinary failed guard or absent-record read is compared with a binding-scoped terminal exclusion fence that can defeat a pending compatible submission. | Only the qualified closure justifies semantic =:rejected=; otherwise retain attempt-local failure or unknown. |
 | Frame | Unrelated fields change concurrently before a whole-document replacement. | The frame is preserved or the guarded transition fails. |
 | Representation | Missing, nil, false, nested values, and field-name collisions are exercised. | Unsupported cases reject explicitly; supported cases preserve declared semantics. |
 | Predicate protection | A row is inserted that defeats an absence, uniqueness, or aggregate condition. | The operation cannot incorporate using an inadequately protected pre-read. |
