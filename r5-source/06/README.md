@@ -4,9 +4,9 @@
 losslessly into fifteen numbered Org units. Subsequent substantive
 reviews revise those sources and rebuild the publication by exact
 concatenation. All eight original `CUSTOM_ID` anchors remain stable.
-Sections **06.01–06.05** have completed substantive R4-preservation
+Sections **06.01–06.06** have completed substantive R4-preservation
 and Gesso-source correspondence reviews, recorded in their
-matching audits. Sections 06.06–06.15, whole-part reconciliation,
+matching audits. Sections 06.07–06.15, whole-part reconciliation,
 and independent candidate acceptance remain outstanding.
 Parts I–V are accepted reviewed R5.1 candidates. Parts VI–XII and
 the independent full-plan reconciliation remain unfinished.
@@ -115,14 +115,14 @@ concatenated exactly to the unchanged R5 Part VI baseline:
 **84,711 decoded JavaScript string code units** and
 **1,481 newline-split lines**. Subsequent sectional revisions
 update the canonical Part VI publication from the numbered units.
-After 06.05, the fifteen reviewed/unreviewed units exactly
-reconstruct the **130,552-character**, **2,057-line** Part VI
+After 06.06, the fifteen reviewed/unreviewed units exactly
+reconstruct the **143,766-character**, **2,259-line** Part VI
 publication, with all eight stable anchors and balanced Org
 blocks. The whole-plan output remains a generated artifact,
 not a separate editable normative source.
 
 The Python assembler was **not executed** in a local Gessoplan
-checkout. Initial splitting and subsequent 06.01–06.05
+checkout. Initial splitting and subsequent 06.01–06.06
 publications were checked by exact GitHub-fetched concatenation,
 not by Gesso runtime, backend, Chromium or formal proof execution.
 
@@ -165,6 +165,14 @@ target-specific completion and subsequent adoption. Seven
 positive/adverse histories cover stale effects, partial DOM writes,
 newer local card S versus older board R, one Refresh and continuity.
 
-**Next:** review **06.06 — Fragment Coordination and Advisory Debt**,
-including retained requirements, bounded active cycles and permitted
-acquisition under the same scoped ownership and progression rules.
+**06.06 review:** see `06.06-r4-preservation-audit.md`.
+The revised coordinator retains acquisition/adoption and subscription
+debt independently of scheduling, distinguishes explicit user
+one-Refresh grants from automatic-refresh profiles, and bounds
+logical cycles without falsely bounding arbitrary requirement data
+or physically retained requests. Eight positive/adverse histories
+cover O1/O2, failed cycles, stale requests and subscription gaps.
+
+**Next:** review **06.07 — Refresh Obligations and Subscription Recovery**,
+including the full O1/O2 one-Refresh histories, applied-query identity,
+initial subscription fences and reconnect or router-failover gaps.

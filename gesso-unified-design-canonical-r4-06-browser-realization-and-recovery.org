@@ -1033,115 +1033,317 @@ test or source-derived diagnostic does not certify those systems.
 :CUSTOM_ID: req-fragment-coordinator
 :END:
 
-A fragment coordinator owns acquisition and installation work for a stable,
-admitted scope during one ownership lifetime. It does not own every request for
-a domain entity throughout the application.
+A fragment coordinator is the single semantic owner of acquisition,
+installation, advisory debt and relevant scheduling decisions for one
+*admitted logical scope during one owner-instance lifetime*. That
+scope binds the authoritative applied query, tenant/Organization and
+actor disclosure context, projection/cohort contract, required
+progression and relevant deployment/target ownership. It is not a
+global mutex for every view of the same domain Request; nor may two
+coordinators independently claim the same current physical target
+or acquired/adopted obligation without an explicit sharing protocol.
 
-Its contract separates:
+An invalidation is information that a relevant authoritative change
+*may require* acquisition or adoption. It is not itself a database
+observation, a trusted command outcome, permission to read protected
+data, or proof that another participant has adopted that change.
+Advisory delivery and user-visible Refresh availability can coexist
+with independently newer local authoritative presentation. The
+coordinator, not an arbitrary SSE callback, decides how each
+requirement enters its scoped obligation state.
 
-1. advisory obligations: what still needs to be acquired or adopted;
-2. acquisition permission: which reads may be initiated, when, and by whom;
-3. an active acquisition/installation cycle and its resource instances;
-4. a bounded successor scheduling slot;
-5. acquired and adopted scoped evidence;
-6. failure, retry, retirement, and continuity-recovery state.
+The coordinator distinguishes these independently owned subjects:
 
-A default single-flight policy permits at most one logical cycle and one coalesced
-successor slot per coordinator. The cycle normally lasts through acquisition and
-the permitted installation's completion or failure. An implementation that
-releases the read slot earlier must separately bound and coordinate its pending
-installations; one active HTTP request does not imply one active mutation.
+1. **Obligations:** source-qualified advisory or gap requirements,
+   their scope, origin, coverage relation, and required discharge
+   stage (acquisition, actual installation/adoption, or recovery).
+2. **Policy permission:** whether, by whom, for what query and how
+   many times an acquisition or installation may be initiated;
+   it is distinct from trusted server read authorization.
+3. **Active cycle:** one admitted logical acquisition/installation
+   lifetime, with its captured requirements, current request
+   generation, physical attempts, target/permit identities and
+   qualified completion or repair state.
+4. **Successor scheduling:** at most one coalesced scheduling slot
+   under the default policy, containing a *possible next cycle*,
+   not an unconstrained right to submit more requests.
+5. **Evidence:** independently qualified acquired observations,
+   actual installed/adopted scopes, progression judgments and
+   unresolved comparison/repair obligations.
+6. **Recovery/resources:** failed or indeterminate effects,
+   subscription continuity, retained debt, semantic retirement,
+   pending physical cancellation and bounded cleanup policy.
 
-Physical requests whose abort failed may remain after their logical cycles
-retire. They no longer have installation rights. The coordinator separately
-accounts for physical remnants and applies its resource limits.
+The default coordinator promises at most one active *logical*
+acquisition/installation cycle and one coalesced successor slot
+for its admitted owner and scope. A cycle ordinarily lasts through
+physical installation completion or a terminal cycle disposition,
+not merely until the HTTP response arrives. If a realization
+separates the network-read slot from installation, it must
+state and check separate bounds on outstanding prepared and
+physical installations. Bounding in-flight network requests
+alone does not establish one coherent current DOM mutation.
+
+#+begin_example
+active logical cycles for one admitted coordinator <= 1
+successor scheduling slots for that coordinator <= 1
+#+end_example
+
+This is a *logical scheduling bound*, not a claim that an aborted
+request ceases to exist physically, that all callbacks have
+returned, or that retained debt uses constant memory. Physical
+remnants from earlier generations can coexist with the active
+request. They have no installation authority and must have
+their own release, instrumentation, backpressure and boundedness
+contract. A single successor slot may represent arbitrarily
+many incomparable requirements unless the supported requirement
+domain supplies a sound finite abstraction or an explicit
+overflow/recovery policy.
 
 **** Advisory debt is not permission to acquire
 
-An advisory may establish that a relevant view has debt without authorizing an
-automatic refresh. Products may require an explicit Refresh action, defer changes
-while the user edits, or permit bounded background acquisition without immediate
-installation. Those are declared policies.
+A new invalidation first passes source, subscription/interest,
+current owner and scope admission. It then adds an obligation
+or produces a *justified* combination with existing obligations.
+An advisory that says "newer information may exist" but gives
+no authoritative minimum-read token still represents debt when
+the product's contract requires future reconciliation. Absence
+of a token is not permission to discard it. Conversely a
+duplicate of an *exact already-covered* requirement need not
+create new work if a qualified coverage judgment establishes
+that the active read or adopted result already satisfies it.
 
-A grant states its scope and duration. It distinguishes permission to perform
-one read from permission to initiate additional reads for obligations arriving
-later. A persistent =:granted? true= flag cannot silently authorize all future
-advisories.
+The obligation-to-observation satisfaction relation comes from
+Part IV's declared progression/coverage provider. The
+coordinator does not infer ordering of opaque XTDB tokens,
+timestamps, SSE sequence labels or request-generation integers.
+Combining distinct requirements by keeping only the numerically
+largest-looking basis is not an admitted implementation of
+that relation. Where requirements are incomparable, each
+independent condition must survive or be summarized by an
+explicitly sound provider-supplied representation.
 
-For example:
+A product may select one of several *declared* policies:
+
+- **Explicit user Refresh:** remote advisories update debt and
+  presentation (for example a Refresh glow) but do not initiate
+  acquisition. A qualified user action grants an exact read and
+  adoption policy for the applied query and captured obligations.
+- **Bounded automatic refresh:** a particular declared scope
+  permits one acquisition on an admitted invalidation, possibly
+  with bounded coalesced successors and explicit backpressure.
+- **Deferred or gated refresh:** work waits for edit completion,
+  reauthorization, connection recovery, foreground activity,
+  or another declared prerequisite, without erasing the debt.
+
+The product must not silently switch among these policies because
+an HTMX trigger happened, a queue slot became free, or a callback
+saw a nonempty obligation set. A managed automatic-fetch policy
+can be useful, but it is not the universal semantics of Live.
+A disabled or pending managed affordance remains honest about
+its retained obligation; an ordinary raw HTMX path may have
+a different, explicitly admitted contract.
+
+An explicit one-Refresh grant binds its current owner, principal/
+authority context, applied query and authorized cohort, captured
+requirement snapshot, allowed physical acquisition count,
+installation/adoption policy, validity interval and expiry or
+handoff conditions. For example:
 
 #+begin_src clojure
 {:grant/ref refresh-grant-ref
  :owner/ref board-coordinator-ref
  :authority-context/ref context-ref
  :query/ref applied-query-ref
- :requirement-snapshot/ref pending-obligations-ref
- :reads {:initial 1
-         :successors 0}
+ :requirement-snapshot/ref captured-debt-ref
+ :reads {:initial 1 :successors 0}
  :observation-policy :current-complete-query
  :adoption-policy :install-if-current
- :expiry-policy/ref grant-expiry-ref}
+ :expiry-policy/ref current-expiry-ref}
 #+end_src
 
-Here an explicit Refresh allows one acquisition for the captured requirements.
-The actual qualified observation may be stronger and satisfy more debt within
-the permitted query/adoption scope. That does not authorize a second automatic
-read. A drain-debt policy may allow bounded successors, but must state which
-later obligations it includes, its limits, and when user action is required.
+This record illustrates an already admitted grant; a fabricated
+map from client code cannot create an authorization. A permit
+to *schedule* a read is not the server's permission to disclose
+Request or RequestAssignment data. Each actual request still
+passes trusted principal, tenant and current read policy.
 
-Grant expiry uses a specified clock/lifecycle interpretation. Page suspension
-must not extend permission merely because a timer callback was delayed. If
-current validity cannot be established at the action boundary, the action waits
-for new admission.
+The read budget is consumed on the defined admission of the
+*actual physical acquisition*, not by setting a boolean in a
+completed handler. An unstarted queued successor cannot spend
+an expired grant later. Whether a failed attempt consumes the
+read budget, and whether a permitted retry is the same attempt
+or an additional read, are explicit grant-policy questions;
+they are not silently decided by HTTP error timing.
+A scheduled successor with no remaining permission is blocked,
+not dispatched; its requirements remain. The provider may
+return a qualified observation stronger than the captured
+minimum, satisfying additional debt without consuming
+another read. Satisfaction does not retroactively authorize
+a second acquisition.
+
+Grant expiration and page suspension are interpreted under
+a declared clock and lifecycle source. Delayed timers do not
+extend permission. A resumed page must revalidate current
+authority, applied query, deployment and owner as required;
+holding the old grant reference is insufficient.
 
 **** Coordinator state and transition obligations
 
-The following is an inspection model, not an additional mutable implementation
-that application authors maintain beside the semantic core:
+The following is an *inspection model*, not another mutable
+store that application authors maintain next to Gesso's
+semantic adapter:
 
 #+begin_src clojure
 {:coordinator/id board-coordinator-id
  :owner-instance/ref board-owner-ref
- :scope/ref applied-board-scope-ref
+ :scope/ref applied-authoritative-query-ref
  :authority-context/ref context-ref
- :obligations pending-obligations
+ :obligations outstanding-scoped-debt
  :permission current-grant-or-none
  :active-cycle active-cycle-or-none
  :successor-slot successor-intent-or-none
  :acquired-evidence acquired-scoped-evidence
  :adopted-evidence adopted-scoped-evidence
- :continuity subscription-continuity-state
- :physical-remnants outstanding-remnant-records}
+ :continuity subscription-and-gap-state
+ :physical-remnants bounded-cleanup-records}
 #+end_src
 
-Each obligation preserves its requirement, scope, required discharge stage, and
-origin. Coalescing may replace several obligations with an equivalent checked
-summary. It must not erase requirements that cannot be represented by one token.
-A bounded scheduling slot is not a bound on the information in outstanding debt.
+Each obligation identifies what was learned, by which admitted
+source/interest or continuity recovery event, for which
+authority/query/projection, and what stage qualifies as discharge.
+Coalescing is permitted only if the replacement representation
+preserves all required facts or records what remains unknown.
+For incomparable provider requirements, a bounded scheduling
+slot cannot itself guarantee bounded retained-data size.
+Limits and overflow behavior must be specified separately,
+including whether progress can block, degrade to a conservative
+reacquisition, or require a new user grant.
 
-| Event | Required transition |
-|-------+---------------------|
-| Relevant advisory | Record or combine its obligation; schedule only if current permission allows it. |
-| Explicit Refresh | Admit a grant for the applied query/context and create a cycle or coalesced successor intent. |
-| Acquisition issued | Register cycle, transport, target, and requirement bindings before physical dispatch. |
-| Observation received | Admit actual returned evidence; record acquisition satisfaction only where established. |
-| Installation permitted | Bind representation and current target instances; retain installation debt. |
-| Installation completed | Record adoption and discharge only obligations satisfied at their required stage. |
-| Request failed or aborted | End the appropriate attempt; preserve unsatisfied debt and any still-applicable permission. |
-| Installation failed | Preserve acquired evidence where valid and retain installation/repair debt. |
-| Query/context changed | Retire the old owner or perform a declared ownership transition; old work cannot install into the new scope. |
-| Subscription continuity lost | Record a gap obligation or unestablished continuity; require the declared recovery fence/acquisition. |
-| Coordinator retired | Revoke its rights, transfer surviving obligations where required, then clean up physical resources. |
+| Event or boundary | Required semantic result |
+|-------------------+--------------------------|
+| Authorized scoped invalidation while idle | Record or soundly combine its obligation. Start a cycle only if the currently selected acquisition policy and effective grant permit it. |
+| Invalidation while an acquisition is active | Retain any requirement not proven covered by the active/captured read; coalesce scheduling without treating callback arrival as progression. |
+| Duplicate or already satisfied requirement | Suppress redundant scheduling only under a valid exact/scope-aware coverage judgment; do not erase unrelated debt. |
+| Explicit user Refresh | Admit the current applied query, authority context, requirement snapshot and read budget; issue or schedule exactly the work permitted. |
+| Physical request constructed/issued | Register the logical cycle and its exact attempt/generation, source, query, captured obligations and target ownership before sending through HTMX. |
+| Authorized observation acquired | Admit the actual provider's coverage and progression. Clear only those obligations whose *acquisition* stage is now satisfied. |
+| Installation proposed/permitted | Bind current representation and physical target permit; retain adoption-stage debt until actual completed installation. |
+| Installation completed or partially failed | Advance only physically completed qualified scopes; retain per-target failure, ambiguity and repair debt. |
+| Request failed or transport outcome unknown | Retire the appropriate attempt without claiming its covered facts; preserve unmet debt and follow declared retry/grant policy. |
+| Active cycle finishes | Re-evaluate current obligations and current permission; start at most the admitted successor, otherwise retain blocked/deferred debt. |
+| Applied query, actor, owner or deployment changes | Revoke obsolete private resource rights; transfer only proven-compatible scope/debt to an admitted new owner. |
+| Subscription or connection continuity breaks | Record continuity as unestablished and the required fence/reacquisition obligation, even if no further advisory is delivered. |
+| Coordinator retires | Revoke scheduling/installation rights before physical cleanup; retain/transfer surviving obligations under the declared recovery policy. |
 
-Starting a queued successor consumes the permission that actually authorizes it.
-It is not implied by the presence of debt or by the success of an earlier read.
-If permission has expired or its budget is exhausted, the successor slot becomes
-blocked/deferred while the debt remains visible.
+A coordinator must not conflate physical completion with
+a response having passed a =:htmx/after-request= callback.
+An acquired, but uninstalled, board is not an adopted board.
+An advisory received while one read is in flight is
+discharged only by an actually qualified observation and
+its required adoption stage, not because the response happened
+to arrive later.
 
-Completion of the HTTP lifecycle does not discharge debt. Neither does an
-uninstalled response. If a failed cycle has no queued successor, its obligations
-still remain; otherwise a single unlucky refresh would silently lose the only
-record that the view is stale.
+Consider O1 requiring a complete authorized board observation
+and adoption under its applied Organization/query. Bob presses
+Refresh, granting exactly one read A1. While A1 is in flight,
+another relevant advisory O2 arrives. If the actual result
+satisfies only O1, O2 remains even when A1 installs correctly.
+If the result independently satisfies both requirements and
+its required scopes really install, both may clear without
+another request. If A1 fails, both relevant unsatisfied
+requirements remain; no ungranted successor may start.
+If A1's observation is valid but its DOM installation fails,
+acquired evidence and outstanding installation debt coexist.
+Section 06.07 gives the expanded same-case table and
+subscription-gap recovery.
+
+A failed cycle with no queued successor is not proof that
+its debt disappeared. The implementation must preserve
+unmet requirements independently of its queue slot, even
+when it has exhausted automatic retries or cannot currently
+schedule work. Conversely, installing another admitted
+observation that provably satisfies the debt may discharge
+it without initiating a redundant read. Logical success,
+unsatisfied obligations and retained physical cleanup are
+different state dimensions.
+
+A late A1 response after A1's owner retires cannot install
+into A2's target just because its basis looks stronger.
+The physical attempt, current source, effect and target
+incarnation must still be admitted. A valid old observation
+may be reused only under a separately admitted current
+read/installation policy with qualified progression and
+disclosure. It cannot revive A1's expired actuation permit.
+
+**** Boundedness, fairness and correspondence obligations
+
+The default one-active/one-successor invariant must be
+checked on the *entire* semantic coordination cycle,
+including outstanding installation, not only on the
+number of in-flight HTTP requests. A stronger application
+may use a declared parallel strategy with explicit
+independent target ownership and equivalent safety/
+resource bounds, but it must not silently claim the
+default single-flight theorem.
+
+A sound checker or exact-finite abstraction must cover
+admitted/stale owner generations, source-qualified advisory
+arrival, incomparable obligations, grants and budget
+consumption, actual acquisition and installation success/
+failure, page suspension, late physical requests, and
+retirement/handoff. Tests that merely call a local
+:fragment/refresh effect and see one HTTP request prove
+neither non-loss of obligations nor eventual convergence.
+
+Safety claims require that no obsolete request can
+install, no unqualified requirement can be discharged,
+no read begins without the selected permission, and no
+independently newer adopted scope is regressed by an
+older board. Liveness claims additionally depend on
+user action where explicit Refresh is required, provider
+availability, fairness, retry budgets, storage retention
+and a working subscription-gap recovery path. A finite
+state diagram with a terminal arrow is not proof of
+termination or convergence.
+
+Multi-node deployments must realize the same scope,
+interest, obligation, authorization and recovery
+semantics as single-node ones. The coordinator cannot
+infer that silence from a distributed router proves
+no relevant changes occurred. Interest installation,
+router failover and missed-delivery reconciliation
+require named physical guarantees or a qualified
+reacquisition/fence. This section does not prescribe
+a prematurely proved router algorithm; 06.07 and the
+deployment/correspondence parts own those details.
+
+**** Paired fragment-coordinator acceptance histories
+
+The finished design requires both a real eligible
+successful path and a nearby adverse/ambiguous case
+that reaches the particular boundary under test.
+
+| Eligible positive history | Adverse or ambiguous history | Required conclusion |
+|---------------------------+------------------------------+---------------------|
+| Bob receives O1, retains advisory debt and presses one Refresh to admit A1 under the applied board query. | The same advisory automatically triggers an ungranted fetch in the explicit-Refresh product policy. | Debt exists independently of acquisition permission; no physical read occurs without its declared grant. |
+| O2 arrives while A1 is in flight; A1 installs a qualified observation satisfying only O1. | A1 completion clears O2 merely because it happened after O2 arrived, or loses the requirement by resetting a queue slot. | Discharge O1 at its required stage, preserve O2 and any unmet continuity/adoption debt. |
+| A1's real qualified complete query observation covers both O1 and O2 and installs all required scopes. | The adapter assumes arbitrary numeric token ordering or silently discards an incomparable requirement to claim coverage. | Discharge both only on provider-justified satisfaction and actual adoption; no second read needed. |
+| A1 fails or its physical installation is partial; no successor read is permitted. | Failure ends the cycle and erases the only O1/O2 records, or a queued slot initiates A2 without a new grant. | Preserve unsatisfied debt and partial-effect repair; expose blocked/deferred state without hidden automatic acquisition. |
+| A1 logically retires, A2 is admitted later, and a late A1 response arrives after an unsuccessful abort. | The late response mutates A2's DOM by matching selector or a stronger-looking basis token. | Reject stale actuation, retain bounded physical cleanup debt and current owner evidence. |
+| One full-cycle coordinator finishes acquisition and admitted installation before starting its next logical cycle. | It counts only open HTTP connections and allows overlapping untracked DOM installations, while claiming single flight. | Require one-active/one-successor bound for the declared logical cycle or separately prove the alternate installation bound. |
+| The user changes the authoritative applied Organization/query while retaining a local text-search draft. | The old owner installs its earlier query response into the new applied cohort, or local draft changes silently reidentify the server read. | New owner/authorization and scoped transfer check; local presentation draft is not the authoritative applied query. |
+| A subscription disconnect is detected and a recovery fence/read is admitted under its policy. | No more SSE messages arrive and silence is treated as proof of continuity, including after router failover. | Preserve an unestablished-gap obligation; recovery needs qualified source coverage rather than assumed delivery. |
+
+No valid path is accepted merely because all managed
+actions were disabled. The product acceptance oracle
+comes from independently required HumanHelp behavior,
+including active Claim/Reassign, creator-local results,
+remote advisory without premature adoption and one
+explicitly granted Refresh where that policy is selected.
+A fabricated basis map, self-asserted source tag or
+matching plan digest is not evidence of completed
+provider acquisition or physical board installation.
 
 **** Worked example: two obligations during one refresh
 
