@@ -1,0 +1,115 @@
+*** Fragment coordination
+:PROPERTIES:
+:CUSTOM_ID: req-fragment-coordinator
+:END:
+
+A fragment coordinator owns acquisition and installation work for a stable,
+admitted scope during one ownership lifetime. It does not own every request for
+a domain entity throughout the application.
+
+Its contract separates:
+
+1. advisory obligations: what still needs to be acquired or adopted;
+2. acquisition permission: which reads may be initiated, when, and by whom;
+3. an active acquisition/installation cycle and its resource instances;
+4. a bounded successor scheduling slot;
+5. acquired and adopted scoped evidence;
+6. failure, retry, retirement, and continuity-recovery state.
+
+A default single-flight policy permits at most one logical cycle and one coalesced
+successor slot per coordinator. The cycle normally lasts through acquisition and
+the permitted installation's completion or failure. An implementation that
+releases the read slot earlier must separately bound and coordinate its pending
+installations; one active HTTP request does not imply one active mutation.
+
+Physical requests whose abort failed may remain after their logical cycles
+retire. They no longer have installation rights. The coordinator separately
+accounts for physical remnants and applies its resource limits.
+
+**** Advisory debt is not permission to acquire
+
+An advisory may establish that a relevant view has debt without authorizing an
+automatic refresh. Products may require an explicit Refresh action, defer changes
+while the user edits, or permit bounded background acquisition without immediate
+installation. Those are declared policies.
+
+A grant states its scope and duration. It distinguishes permission to perform
+one read from permission to initiate additional reads for obligations arriving
+later. A persistent =:granted? true= flag cannot silently authorize all future
+advisories.
+
+For example:
+
+#+begin_src clojure
+{:grant/ref refresh-grant-ref
+ :owner/ref board-coordinator-ref
+ :authority-context/ref context-ref
+ :query/ref applied-query-ref
+ :requirement-snapshot/ref pending-obligations-ref
+ :reads {:initial 1
+         :successors 0}
+ :observation-policy :current-complete-query
+ :adoption-policy :install-if-current
+ :expiry-policy/ref grant-expiry-ref}
+#+end_src
+
+Here an explicit Refresh allows one acquisition for the captured requirements.
+The actual qualified observation may be stronger and satisfy more debt within
+the permitted query/adoption scope. That does not authorize a second automatic
+read. A drain-debt policy may allow bounded successors, but must state which
+later obligations it includes, its limits, and when user action is required.
+
+Grant expiry uses a specified clock/lifecycle interpretation. Page suspension
+must not extend permission merely because a timer callback was delayed. If
+current validity cannot be established at the action boundary, the action waits
+for new admission.
+
+**** Coordinator state and transition obligations
+
+The following is an inspection model, not an additional mutable implementation
+that application authors maintain beside the semantic core:
+
+#+begin_src clojure
+{:coordinator/id board-coordinator-id
+ :owner-instance/ref board-owner-ref
+ :scope/ref applied-board-scope-ref
+ :authority-context/ref context-ref
+ :obligations pending-obligations
+ :permission current-grant-or-none
+ :active-cycle active-cycle-or-none
+ :successor-slot successor-intent-or-none
+ :acquired-evidence acquired-scoped-evidence
+ :adopted-evidence adopted-scoped-evidence
+ :continuity subscription-continuity-state
+ :physical-remnants outstanding-remnant-records}
+#+end_src
+
+Each obligation preserves its requirement, scope, required discharge stage, and
+origin. Coalescing may replace several obligations with an equivalent checked
+summary. It must not erase requirements that cannot be represented by one token.
+A bounded scheduling slot is not a bound on the information in outstanding debt.
+
+| Event | Required transition |
+|-------+---------------------|
+| Relevant advisory | Record or combine its obligation; schedule only if current permission allows it. |
+| Explicit Refresh | Admit a grant for the applied query/context and create a cycle or coalesced successor intent. |
+| Acquisition issued | Register cycle, transport, target, and requirement bindings before physical dispatch. |
+| Observation received | Admit actual returned evidence; record acquisition satisfaction only where established. |
+| Installation permitted | Bind representation and current target instances; retain installation debt. |
+| Installation completed | Record adoption and discharge only obligations satisfied at their required stage. |
+| Request failed or aborted | End the appropriate attempt; preserve unsatisfied debt and any still-applicable permission. |
+| Installation failed | Preserve acquired evidence where valid and retain installation/repair debt. |
+| Query/context changed | Retire the old owner or perform a declared ownership transition; old work cannot install into the new scope. |
+| Subscription continuity lost | Record a gap obligation or unestablished continuity; require the declared recovery fence/acquisition. |
+| Coordinator retired | Revoke its rights, transfer surviving obligations where required, then clean up physical resources. |
+
+Starting a queued successor consumes the permission that actually authorizes it.
+It is not implied by the presence of debt or by the success of an earlier read.
+If permission has expired or its budget is exhausted, the successor slot becomes
+blocked/deferred while the debt remains visible.
+
+Completion of the HTTP lifecycle does not discharge debt. Neither does an
+uninstalled response. If a failed cycle has no queued successor, its obligations
+still remain; otherwise a single unlucky refresh would silently lose the only
+record that the view is stale.
+

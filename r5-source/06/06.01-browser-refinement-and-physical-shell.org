@@ -1,0 +1,76 @@
+* Part VI — Browser realization and recovery
+:PROPERTIES:
+:CUSTOM_ID: part-06-browser-realization-and-recovery
+:PART_REVISION: 06-20261108
+:END:
+
+This part specifies how an admitted browser plan becomes physical requests,
+DOM changes, subscriptions, timers, and recoverable user interaction. It connects
+Part V's portable execution and presentation contracts to Part IV's authoritative
+operations, scoped observations, and unresolved commands. Part VII assembles
+these contracts before a managed affordance is served.
+
+The browser is an execution environment with delays, duplicate callbacks,
+reentrant event handlers, disappearing targets, lost connections, and suspended
+pages. These conditions belong in the realization contract. A successful pure
+transition, HTTP response, or swap callback does not by itself establish that
+the intended application state has been adopted.
+
+Examples use illustrative API names and inspection records. They specify the
+intended architecture; they do not assert that a displayed function already
+exists. Symbols such as =E42= and =observation-ref= denote values established by
+the surrounding construction. Copying their fields does not create an admitted
+observation, resource owner, installation permit, or server credential.
+
+The full application language remains available under the
+[[#req-full-language-construction][checked construction contract]]. Opaque
+renderers, adapters, and other application functions have explicit input/output,
+effect, and completion contracts. Unverified behavior remains an assertion or a
+named environmental premise. It is not promoted to a theorem because the code
+passes through a small runtime interface.
+
+** Browser adapter refinement
+:PROPERTIES:
+:CUSTOM_ID: req-browser-adapter-refinement
+:END:
+
+*** One executable semantic core and a narrow physical shell
+
+Browser coordination is defined by the permanent executable semantic core,
+including the browser adapter's transition semantics. A separate proof kernel,
+when used, checks evidence about that semantics. The proof kernel does not
+become a second runtime interpretation of browser behavior.
+
+For an admitted plan and normalized event, the adapter computes a next semantic
+state, a selected transition identity, and abstract effect descriptions:
+
+#+begin_src clojure
+(adapter/step admitted-plan adapter-state normalized-event)
+;; => {:state next-state
+;;     :transition-ref selected-transition-ref
+;;     :effects effect-descriptions
+;;     :diagnostics diagnostic-values}
+#+end_src
+
+The exact return representation is an implementation choice. The following
+boundaries are required:
+
+- The transition does not perform HTTP requests, mutate DOM, register listeners,
+  read wall-clock time, or invoke an uncontrolled effectful observer.
+- Nondeterministic inputs enter as explicit normalized values with their required
+  provenance. Reading a clock or generating an identity is an admitted boundary
+  operation, not an invisible dependency of a supposedly pure step.
+- Semantic state contains portable identities, ownership, knowledge, obligations,
+  and effect lifecycle records. DOM nodes, XHR objects, functions with mutable
+  closures, and physical cancellation handles remain in the shell.
+- The shell interprets abstract effects and supplies their actual completion or
+  failure events. It cannot silently decide a different semantic successor.
+- Opaque local computations use the declared execution boundary from Part V.
+  Their inputs, results, failure behavior, and premises remain inspectable even
+  where the computation itself has not been proved.
+
+One logical dispatcher owns semantic state for a runtime instance. Applications
+may have several isolated runtime instances, but two mutable copies must not
+both claim to own the same execution, coordinator, or resource instance. Shared
+resources have an explicit shared owner and protocol.
+

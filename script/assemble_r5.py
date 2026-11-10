@@ -6,7 +6,7 @@ Usage:
     python3 script/assemble_r5.py --write
 
 The twelve published parts retain their established root filenames during
-R5 candidacy. Parts I–V have independently checkable sectional sources.
+R5 candidacy. Parts I–VI have independently checkable sectional sources.
 """
 from __future__ import annotations
 
@@ -45,6 +45,7 @@ SECOND_SOURCE_DIR = ROOT / "r5-source" / "02"
 THIRD_SOURCE_DIR = ROOT / "r5-source" / "03"
 FOURTH_SOURCE_DIR = ROOT / "r5-source" / "04"
 FIFTH_SOURCE_DIR = ROOT / "r5-source" / "05"
+SIXTH_SOURCE_DIR = ROOT / "r5-source" / "06"
 SECTIONS_PART_THREE = (
     "03.01-what-a-choreography-is.org",
     "03.02-coordination-vocabulary.org",
@@ -109,11 +110,30 @@ SECTIONS_PART_FIVE = (
     "05.13-sidecar-authority-and-conformance.org",
 )
 
+SECTIONS_PART_SIX = (
+    "06.01-browser-refinement-and-physical-shell.org",
+    "06.02-identities-and-lifecycle-gating.org",
+    "06.03-htmx-transport-and-response-safety.org",
+    "06.04-claim-acquisition-and-browser-ffi.org",
+    "06.05-scoped-installation-and-physical-completion.org",
+    "06.06-fragment-coordination-and-advisory-debt.org",
+    "06.07-refresh-obligations-and-subscription-recovery.org",
+    "06.08-plan-compatibility-and-resume-admission.org",
+    "06.09-continuation-retirement-and-recovery.org",
+    "06.10-managed-effects-and-resource-lifetime.org",
+    "06.11-asynchronous-event-admission.org",
+    "06.12-authoritative-absence-and-progression.org",
+    "06.13-failure-liveness-and-boundedness.org",
+    "06.14-refinement-traces-and-execution-isolation.org",
+    "06.15-installation-invariants-and-conformance.org",
+)
+
 FIRST_PART = ROOT / "gesso-unified-design-canonical-r4-01-foundations.org"
 SECOND_PART = ROOT / "gesso-unified-design-canonical-r4-02-semantic-model.org"
 THIRD_PART = ROOT / "gesso-unified-design-canonical-r4-03-choreography-and-projection.org"
 FOURTH_PART = ROOT / "gesso-unified-design-canonical-r4-04-authoritative-operations-and-progression.org"
 FIFTH_PART = ROOT / "gesso-unified-design-canonical-r4-05-provisional-state-and-executable-presentation.org"
+SIXTH_PART = ROOT / "gesso-unified-design-canonical-r4-06-browser-realization-and-recovery.org"
 OUTPUT = ROOT / "output" / "gesso-plan-v5.org"
 
 
@@ -157,13 +177,22 @@ def part_five() -> str:
     return text
 
 
-def whole_plan(first: str, second: str, third: str, fourth: str, fifth: str) -> str:
+def part_six() -> str:
+    pieces = [(SIXTH_SOURCE_DIR / name).read_bytes() for name in SECTIONS_PART_SIX]
+    text = b"".join(pieces).decode("utf-8")
+    if text.count("* Part VI — Browser realization and recovery\n") != 1:
+        raise SystemExit("Expected exactly one Part VI root heading")
+    return text
+
+
+def whole_plan(first: str, second: str, third: str, fourth: str, fifth: str,
+               sixth: str) -> str:
     remaining = [
         (ROOT / f"gesso-unified-design-canonical-r4-{i:02d}-"
          f"{NAMES[i]}.org").read_text(encoding="utf-8")
-        for i in range(6, 13)
+        for i in range(7, 13)
     ]
-    return first + second + third + fourth + fifth + "".join(remaining)
+    return first + second + third + fourth + fifth + sixth + "".join(remaining)
 
 
 NAMES = {
@@ -192,10 +221,11 @@ def main() -> None:
     third = part_three()
     fourth = part_four()
     fifth = part_five()
+    sixth = part_six()
     if args.check:
         for part, assembled in ((FIRST_PART, first), (SECOND_PART, second),
                                 (THIRD_PART, third), (FOURTH_PART, fourth),
-                                (FIFTH_PART, fifth)):
+                                (FIFTH_PART, fifth), (SIXTH_PART, sixth)):
             if part.read_bytes() != assembled.encode("utf-8"):
                 raise SystemExit(
                     f"{part.relative_to(ROOT)} differs from its numbered source"
@@ -207,12 +237,13 @@ def main() -> None:
     THIRD_PART.write_bytes(third.encode("utf-8"))
     FOURTH_PART.write_bytes(fourth.encode("utf-8"))
     FIFTH_PART.write_bytes(fifth.encode("utf-8"))
+    SIXTH_PART.write_bytes(sixth.encode("utf-8"))
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
-    OUTPUT.write_text(whole_plan(first, second, third, fourth, fifth), encoding="utf-8")
+    OUTPUT.write_text(whole_plan(first, second, third, fourth, fifth, sixth), encoding="utf-8")
     print(f"Updated {FIRST_PART.relative_to(ROOT)}, "
           f"{SECOND_PART.relative_to(ROOT)}, {THIRD_PART.relative_to(ROOT)}, "
           f"{FOURTH_PART.relative_to(ROOT)}, "
-          f"{FIFTH_PART.relative_to(ROOT)}, "
+          f"{FIFTH_PART.relative_to(ROOT)}, {SIXTH_PART.relative_to(ROOT)}, "
           f"and {OUTPUT.relative_to(ROOT)}")
 
 

@@ -1,0 +1,72 @@
+*** Worked example: Claim followed by protected acquisition
+
+Alice sees Request R in an admitted board observation. She invokes its generated
+Claim binding. The binding identifies the admitted public operation and typed
+arguments; it does not carry a browser-created principal or authorization proof.
+
+The following sequence defines a supported realization:
+
+| Stage | Semantic commitment and physical action |
+|-------+-----------------------------------------|
+| Prepare | Validate the action binding against the displayed observation and current local context; allocate command C42 before any possible send and local execution E42. |
+| Begin | Admit the provisional trajectory and its exact target/resource instances; optionally display a clearly provisional Claiming state. |
+| Construct request | Bind one transport attempt T1 to C42, E42, and the admitted operation. HTMX owns that physical request. |
+| Send gate | Require the projected plan to have reached its send boundary and recheck current request permission before HTMX sends. |
+| Server operation | The trusted boundary validates C42's binding and performs the public model operation under Part IV's atomic guard and replay contract. |
+| Decode outcome | Admit a permitted outcome for C42; classify missing or indeterminate evidence as unknown rather than rejection. |
+| Acquire | Request a card/board observation satisfying the relevant scope and progression requirements, under explicit acquisition permission. |
+| Install | Admit the actual observation and issue a permit for its prepared representation and current target instances. |
+| Complete | Record adoption and discharge eligible obligations only after matching physical completion. |
+
+This realization deliberately separates command settlement from the card swap.
+Another profile may return a combined operation result and observation, provided
+it admits each component and enforces the same installation contract.
+
+The mapping remains Part IV's mapping. A permitted =:committed= success, or a
+permitted =:already-incorporated= result recording that success, can settle the
+Claim presentation as =:accepted=. An authoritative rejection settles it as
+=:rejected=. =:commit-unknown= remains =:unknown= until admissible outcome
+evidence resolves it. None of these labels alone proves that a new card has
+been acquired or physically installed.
+
+If the provisional derivation is asynchronous but the chosen HTMX send gate
+requires a synchronous decision, the integration must prepare it before entering
+that gate or defer the action through an admitted restart path. It cannot allow
+the request on the assumption that the projector will eventually succeed.
+
+A late result for C42 may still be useful command evidence after E42 retires.
+It cannot use E42's retired timer or DOM rights. A current reconciliation owner
+must admit it through the separately authorized command-evidence path.
+
+*** Browser FFI contracts are small but substantive
+
+Every physical handler declares:
+
+- its input schema and bound implementation identity;
+- the exact effect and resource instances it consumes;
+- its permitted physical footprint and owner/target checks;
+- whether completion is synchronous, asynchronous, or externally indeterminate;
+- when cancellation is available and what cancellation actually guarantees;
+- completion, failure, duplicate, and late-callback normalization;
+- its cleanup contract, including partial installation and registration races;
+- the premises not established by the executable semantic core.
+
+An empty handler, a missing handler, and a handler that ignores the requested
+target are not valid successful interpretations. Required effects fail visibly
+when their implementation is unavailable. An observer callback is not a substitute
+for the handler that performs the physical action.
+
+The shell's physical registry maps adapter-issued references to actual objects.
+It must correlate callbacks by the object/resource instance established at
+registration, not by whichever element now happens to match a selector. The
+registry does not independently choose semantic successors or infer authorization
+from DOM attributes supplied by an arbitrary browser client.
+
+Ordinary application code and third-party scripts can also affect browser state.
+For a protected footprint, those effects must participate in the admitted
+ownership protocol, be prevented from interfering, or remain an explicit
+noninterference premise of the relevant claim. An uncontrolled script that can
+replace the same card is not covered merely because Gesso's own handler is pure.
+Supporting the full language does not justify omitting its actual effects from
+the assurance boundary.
+

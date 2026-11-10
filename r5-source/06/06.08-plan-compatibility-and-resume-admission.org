@@ -1,0 +1,102 @@
+** Projected-plan identity, deployment, and stale continuation recovery
+:PROPERTIES:
+:CUSTOM_ID: req-stale-plan-recovery
+:END:
+
+A browser can remain open while executable plans, public operations, authority
+policy, assets, and protocol support change. A suspended continuation is admitted
+only while its required compatibility remains established. Deserializing its
+state successfully does not establish that compatibility.
+
+Part V distinguishes exact executable identity, compatibility judgments, and
+packaged asset identity. Browser admission additionally binds the relevant
+implementation closure and authority context. Equal source names, equal numeric
+state locators, or equal plan-format versions do not establish equivalent
+behavior.
+
+*** Compatibility is a collection of scoped judgments
+
+The assembly declares which judgments are required at startup, operation entry,
+resume, send, response interpretation, installation, and reconciliation.
+
+| Judgment | Question it answers |
+|----------+---------------------|
+| Runtime/plan interpretation | Can this runtime interpret this exact executable payload and its bound implementations? |
+| Continuation compatibility | May this suspended local state continue under the currently admitted contract? |
+| New invocation compatibility | May this operation version and argument schema be invoked now? |
+| Command replay/resolution compatibility | Can a retained command be resolved or compatibly repeated under its original binding? |
+| Observation/presentation compatibility | Can the current renderer and target contract interpret the acquired observation? |
+| Transport compatibility | Can the peers exchange the selected message/outcome formats with their intended meanings? |
+| Authority-context compatibility | Are the current principal, tenant, and disclosure/use permissions appropriate for this action? |
+
+One judgment can fail while another succeeds. A deployment may retire the old
+browser continuation while retaining the server resolver needed for commands
+already submitted. Conversely, a new browser plan may be usable while an old
+command requires a retained operation contract that is temporarily unavailable.
+
+Compatibility need not mean byte equality. Where migration or interoperation is
+supported, its admitted relation states the preserved invariants, permitted
+changes, evidence, and remaining assumptions. A blanket =compatible=true= without
+a subject and scope is insufficient.
+
+*** Resume is an admission boundary
+
+Navigation restoration, back/forward cache, service-worker responses, history
+snapshots, and a sleeping tab can restore old markup or code. The selected browser
+profile identifies which restoration paths it supports and how they enter
+admission before initiating protected work.
+
+Resume checks include the applicable executable/assembly contract, the current
+authority context, resource ownership, expiry conditions, and subscription
+continuity. It does not assume that a timer ran while the page was suspended or
+that a saved DOM tree still corresponds to current authority.
+
+The browser need not repeatedly prove the entire application before every
+keystroke. It must establish the premises needed by each protected boundary,
+using the admitted caching, lease, invalidation, and renewal policy. A stale
+local policy cache cannot replace the trusted server's current authorization
+checks.
+
+When retained private presentation is no longer appropriate to the current
+context, the application hides or quarantines it according to its display policy
+and reacquires authorized data. This is a future-use/display guarantee; it cannot
+undo information a person has already seen or establish deletion from an
+adversarial browser.
+
+*** Recover commands, not arbitrary suspended machinery
+
+The normal stale-plan recovery strategy is explicit restart from admitted
+observations and retained intent. Transparent migration of every DOM capture,
+timer, machine locator, closure, and in-flight continuation is not required.
+An application may support a specific migration if it supplies the necessary
+relation and evidence.
+
+A recoverable command retains sufficient binding to identify the original work:
+
+- its semantic command ID;
+- the operation/interface identity and binding/canonicalization contract;
+- its principal/tenant binding as required by the trusted operation;
+- the arguments or a protected resolver reference sufficient to recover their
+  authoritative binding;
+- the available outcome evidence and its provenance, if any;
+- the recovery owner, resolver contract, retention horizon, and retry policy.
+
+A browser may retain an opaque server-issued recovery reference instead of
+sensitive arguments. Persisted local data remains untrusted input on return to
+the server. It is not a portable credential, proof of prior authorization, or
+permission to disclose an old result. Storage must follow the application's
+privacy, retention, and cross-account rules; secrets need not be copied into a
+local recovery record.
+
+The command ID is necessary for correlation but does not encode this entire
+binding. Reusing it with altered arguments or a changed operation meaning is not
+recovery. Choosing a new command ID merely to escape an unknown result can create
+a duplicate operation and is forbidden for a compatible repetition of the same
+command.
+
+Preserving user intent does not authorize replay. After indeterminate delivery,
+a read-only resolver is the default safe mechanism where the operation supplies
+one. Resubmission requires an admitted repetition policy that validates the
+original binding and deduplication contract. Neither path can invent current
+authority.
+

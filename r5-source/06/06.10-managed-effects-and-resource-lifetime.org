@@ -1,0 +1,132 @@
+** Browser managed effects
+:PROPERTIES:
+:CUSTOM_ID: req-browser-managed-effects
+:END:
+
+A managed effect is physical work whose ownership, permitted footprint,
+completion, and retirement behavior are part of the admitted plan. Effects may
+create resources, alter presentation, initiate transport, or request another
+owned action. They do not acquire server authority by being called managed.
+
+*** Classify effects along independent dimensions
+
+A single effect can be asynchronous, allocate a resource, and provisionally mutate
+DOM. These are not mutually exclusive categories. The contract records the
+relevant dimensions separately:
+
+| Dimension | Examples of the distinction |
+|-----------+----------------------------|
+| Footprint | Transport send, listener registration, timer, scoped DOM mutation, local storage. |
+| Semantic purpose | Provisional presentation, authoritative-observation installation, continuity, command reconciliation, diagnostic output. |
+| Owner/lifetime | Execution-private, coordinator-owned, shared subscription, durable recovery owner. |
+| Completion | Synchronous postcondition, correlated asynchronous completion, externally indeterminate result. |
+| Repetition | One-shot local mutation, repeatable cleanup, replay-safe read, deduplicated command attempt. |
+| Retirement | Abort physical work if possible, revoke future rights, detach an interest, transfer unresolved obligation. |
+| Compensation | No compensation, permitted local restoration, or a separate authoritative command with its own checks. |
+
+Installing authoritative data is a browser realization of an admitted observation.
+It does not make the DOM an authoritative domain model. A local rollback is not
+an atomic undo of a server operation.
+
+*** One root effect scope per execution, with explicit children
+
+Each active local execution has one root ownership scope. Child scopes may
+separate a provisional card, a presentation deadline, and other resources whose
+lifetimes differ. Coordinators and shared connections have their own named
+ownership scopes. No effect is ownerless simply because several executions may
+benefit from it.
+
+Resource references include actual incarnation identity. Retiring one timer or
+transport cannot retire another resource that later reused the same registry key.
+Ownership transfer is an admitted semantic transition, not two unrelated writes
+that briefly leave the resource uncontrolled or doubly controlled.
+
+Shared-resource release distinguishes detaching one interest from closing the
+underlying connection. A reference count can implement the policy, but the
+semantic contract must define which interests are current and how duplicate
+attach/detach events behave.
+
+*** Register before issuing; reconcile late physical handles
+
+The runtime commits an effect/resource issuance record before calling the host
+API. This permits a synchronous completion to be matched to real issued work.
+It also handles the opposite race: retirement may occur before the host API
+returns its cancellation or listener handle.
+
+A physical registry therefore needs states such as awaiting-handle, live,
+retired-awaiting-handle, and released. When a late handle arrives, the shell checks
+whether the corresponding owner and resource instance are still current. If they
+are retired, it immediately performs the permitted release and never publishes
+the handle as a live resource.
+
+A completion that arrives during registration follows the same admission gate
+as any later completion. The implementation must handle completion-before-handle,
+retirement-before-handle, duplicate completion, and exceptions after partial
+registration. A handler that promises cleanup must expose enough information to
+clean up any work it actually created.
+
+Local effect issuance and remote operation incorporation are different protocols.
+One-shot execution of a DOM permit does not provide exactly-once network delivery.
+Remote retries rely on the command binding and authoritative deduplication contract
+from Part IV.
+
+*** Semantic retirement precedes physical cleanup
+
+Retirement first invalidates semantic rights. Physical abort, listener removal,
+timer clearing, and temporary-node cleanup follow. Safety cannot depend on those
+physical operations succeeding immediately.
+
+A late callback from a retired resource may report cleanup progress or provide
+evidence through a separately admitted surviving owner. It cannot regain the
+retired execution's right to send, settle, roll back, or install. A callback
+carrying a newer observation does not bypass this rule.
+
+Cleanup is idempotent for the same issued resource instance. It uses the captured
+physical handle or an equivalently strong binding, rather than searching the DOM
+for whichever current node matches an old selector. Deleting a temporary node or
+removing a style by comparing its current value is unsafe when a later owner may
+have written an identical value. Ownership and incarnation, not value coincidence,
+control cleanup.
+
+The runtime can continue semantic recovery while best-effort cleanup remains
+outstanding, subject to resource limits. If physical remnants exceed the admitted
+budget, it may suspend new work or require a stronger reset. The debt remains
+observable; a failed abort cannot be counted as successful resource release.
+
+*** Rollback and continuity rights have bounded lifetimes
+
+A reversible presentation effect carries a scoped restoration right. That right
+expires when its owner retires, the target is replaced, authoritative installation
+supersedes the affected scope, or the declared concurrency policy revokes it.
+
+Continuity capture is bound to its actual capture implementation and matching
+restore contract. A later registry change cannot silently interpret an old
+capture using a different restoration function. Captures may preserve permitted
+focus, selection, scroll, or local draft state; they do not preserve obsolete
+authoritative content or arbitrary old HTML as a privileged snapshot.
+
+Authoritative supersession may retire one provisional overlay while leaving an
+unresolved command's reconciliation owner alive. Competing presentation timers
+lose their settlement rights immediately when their branch settles or is
+superseded. A separately owned command-resolution deadline may remain necessary.
+Cancelling every timer associated with the command would conflate those lifetimes.
+
+*** Fault containment preserves the original failure and uncertainty
+
+A failure in a pure step before state commitment has not partially performed its
+abstract effects. The implementation retains the last committed state for
+diagnosis and follows the declared containment path. Where the affected owner
+cannot safely continue, it is retired through the trusted failure mechanism.
+
+A failure after physical work begins is different. Some effects may have occurred,
+and remote incorporation may be unknown. The shell records the actual stage and
+partial work, revokes unsafe rights, preserves unresolved obligations, and runs
+best-effort cleanup. It must not rewind semantic state and blindly reissue the
+whole effect batch.
+
+Cleanup failures are secondary diagnostic events linked to the primary fault.
+They do not replace its cause, manufacture an authoritative rejection, or erase
+command uncertainty. Independent owners may continue only if their isolation
+premises still hold. Corruption of a runtime-wide registry may require retiring
+the whole runtime instance rather than one execution.
+

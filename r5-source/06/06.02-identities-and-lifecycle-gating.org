@@ -1,0 +1,84 @@
+*** Distinct identities serve distinct purposes
+
+The browser preserves identity through every boundary at which a callback or
+effect might otherwise be attributed to the wrong work.
+
+| Identity | What it identifies |
+|----------+--------------------|
+| =:runtime-instance/id= | One admitted runtime lifetime in this page or worker context. |
+| =:authority-context/ref= | The relevant authenticated principal, tenant, and authorization-context binding; it is not a browser-issued credential. |
+| =:execution/id= | One local execution of an admitted projected plan. |
+| =:gesso/command-id= | One semantic command with the binding specified by Part IV. |
+| =:resource-instance/id= | One actual incarnation of a timer, listener, transport, subscription, or managed owner. |
+| =:effect-instance/id= | One issued physical effect and its completion protocol. |
+| =:transport-request-id= | One HTTP or other transport attempt; retries may have different transport identities for the same command. |
+| =:target-instance/id= | One admitted physical target incarnation, distinct from a reusable selector or domain entity ID. |
+| =:coordinator/id= | One acquisition coordinator for a declared scope and ownership lifetime. |
+| =:assembly-deployment/id= | A deployment/assembly incarnation where that distinction matters to admission. |
+| =:executable-identity= | The exact executable plan identity defined by Part V. |
+
+This vocabulary does not require one spelling for every host API. It requires
+that the distinctions survive normalization and checking. A bare =generation=
+field is insufficient unless its owning identity and comparison semantics are
+explicitly defined. An ordered resource-incarnation counter is local to its
+owner; it is not an ordering of commands, plans, or database observations.
+
+A HumanHelp domain Request ID remains a domain argument, such as
+={:arguments {:request-id R}}=. Runtime examples use =:transport-request-id=
+for transport correlation. A command can survive several transport attempts and
+local executions. Neither equality of command IDs nor equality of selectors
+makes their private callbacks interchangeable.
+
+*** Commit semantic state before issuing physical work
+
+The shell validates and commits the selected next state before interpreting its
+effects. An immediate completion callback must observe that the effect was
+issued and has an owner. It must never find a resource that exists physically
+but has not yet been registered semantically.
+
+Committing first is necessary but does not settle reentrancy. An effect handler
+can synchronously trigger another event, retire an execution, or replace a
+target before the remaining effects of the outer transition run. Each protected
+effect therefore checks its own current issuance record and permit at the point
+of actuation. An earlier decision does not grant the whole captured effect batch
+permanent permission to run.
+
+A conforming dispatch sequence is:
+
+1. normalize and admit the event against the current semantic state;
+2. calculate and validate the transition without physical side effects;
+3. commit the next state and effect-issuance records;
+4. expose the actual selected transition to isolated diagnostics;
+5. interpret each effect through its declared lifecycle and current-owner gate;
+6. admit resulting completions against the state current when they arrive.
+
+Diagnostic recording must not block required effects or throw an exception back
+into semantic control. Implementations can buffer immutable trace records before
+notifying observers. This preserves Part V's diagnostic noninterference
+contract without claiming that instrumentation has no resource cost.
+
+A shell must not overwrite state changed by a nested dispatch with the outer
+transition's earlier snapshot. It may serialize ordinary normalized events or
+support controlled reentry, provided the resulting order has an explicit
+semantic interpretation. Completion events cannot be silently dropped to make
+that implementation easier.
+
+*** Synchronous lifecycle decisions need a synchronous gate
+
+Some host hooks require an immediate allow/veto decision before returning. An
+ordinary asynchronous event queue cannot make such a decision after the host
+has already sent the request or performed the mutation.
+
+The integration contract identifies those hooks and supplies a synchronous
+admission gate. If admission requires unavailable knowledge, the dispatcher is
+in a state that cannot safely decide, or the hook fails, the protected action is
+vetoed or the integration reports an unsupported realization. It must not
+silently default to allow. A later attempt is permitted only through a declared
+retry/reacquisition path, preserving command identity where it repeats the same
+command.
+
+Returning synchronously is not evidence that a handler contains no deferred
+work. The handler contract must cover timers, promises, animation callbacks,
+custom-element callbacks, event dispatch, and library-scheduled mutations that
+can occur after the apparent decision.
+

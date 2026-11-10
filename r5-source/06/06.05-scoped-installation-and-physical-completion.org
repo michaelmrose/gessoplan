@@ -1,0 +1,146 @@
+*** Scoped authoritative installation
+:PROPERTIES:
+:CUSTOM_ID: req-runtime-scoped-authoritative-installation
+:END:
+
+Part IV distinguishes observation acquisition from installation. Part V adds
+provisional overlays and continuity rights. The browser carries these distinctions
+through the physical realization:
+
+| State of work | What is established |
+|---------------+---------------------|
+| Acquisition requested | A current owner has asked for a specified observation. |
+| Observation acquired | Admission establishes the returned evidence and actual coverage. |
+| Installation proposed | A representation and mutation footprint are prepared from that observation. |
+| Installation permitted | Current semantic checks authorize that specific realization. |
+| Installation in progress | The shell has begun the permitted physical work. |
+| Installation completed | Matching completion establishes the declared physical postcondition. |
+| Observation adopted | The participant records the completed installation within its actual scope. |
+
+Implementations may combine adjacent transitions when the required conditions
+are established together. They must not claim the later stage merely because an
+earlier one succeeded. In particular, receiving HTML, allowing a swap, or observing
+an HTTP completion is not sufficient adoption evidence.
+
+An acquisition can discharge an acquisition obligation without discharging an
+installation obligation. Participant agreement has the scope and stage specified
+by Part II; it is not shorthand for network success.
+
+**** Installation permits bind the intended physical act
+
+An installation permit is a runtime-issued semantic right, not a server credential.
+It binds enough information to prevent substitution between decision and action:
+
+- the runtime and authority-context binding;
+- the current execution, coordinator, or other declared owner;
+- the particular effect instance and allowed action;
+- the admitted observation reference and covered semantic scope;
+- the prepared representation identity or another checked binding to its contents;
+- the exact target instances and allowed physical mutation footprint;
+- the executable/profile compatibility required to interpret it;
+- the permitted completion and partial-failure protocol.
+
+A useful inspection form is:
+
+#+begin_src clojure
+{:permit/ref install-permit-ref
+ :runtime-instance/id runtime-id
+ :authority-context/ref context-ref
+ :owner/ref board-coordinator-ref
+ :effect-instance/id install-effect-id
+ :observation/ref observation-ref
+ :representation/ref prepared-board-ref
+ :scope/ref board-scope-ref
+ :targets [board-target-instance-ref]
+ :action :dom/replace-children
+ :completion-contract/ref completion-contract-ref}
+#+end_src
+
+The map describes a permit already issued by the semantic transition. Passing a
+similar map from an arbitrary callback does not mint that right. A server must
+never accept it as authority to perform a domain operation.
+
+Permits have an explicit lifecycle, such as issued, reserved/in-progress,
+completed, revoked, or failed. Consumption and completion are correlated to the
+same effect instance. A repeated callback cannot perform the mutation twice or
+advance the adopted frontier twice. Retirement and supersession revoke rights
+that have not reached their defined physical commitment point.
+
+**** Final admission covers delayed and reentrant effects
+
+Preparation may be expensive and may invoke arbitrary renderer code. It should
+occur before the final protected act, with no premature claim of adoption.
+Immediately before mutation, the shell checks the current permit, owner, target
+instances, observation applicability, and representation binding.
+
+The check and mutation need a qualified serialization contract. Arbitrary user
+callbacks cannot run between them and silently invalidate their premises. If the
+host mutation itself can reenter application code, the profile specifies how
+reservation, deferred semantic events, invalidation, and partial completion
+interact. A single JavaScript thread is not a proof of an indivisible semantic
+operation.
+
+For a deferred mutation, the callback must reenter this final gate. Carrying a
+boolean =allowed?= from an earlier hook is insufficient. Where the host library
+does not expose a suitable gate, the profile must provide an enforceable wrapper
+or exclude that deferred mode from the claimed realization.
+
+Consider E42 preparing a card update and receiving permit P1. Before the scheduled
+swap runs, an admitted board installation replaces that card target and revokes
+P1. The old callback may still fire. Its target-instance and permit checks reject
+the mutation, even if a new element has the same DOM ID and displays Request R.
+The late callback can finish physical cleanup; it cannot restore the old card.
+
+**** Completion determines adoption
+
+Successful completion names the issued effect, permit, target instances, and
+postcondition actually realized. It cannot be an uncorrelated event saying that
+some swap happened. The postcondition may be a qualified host completion event,
+a checked physical predicate, or a stronger profile-specific mechanism.
+
+Completion is admitted against the current semantic state, including intervening
+installations, context changes, and retirement. A delayed report of a real earlier
+mutation cannot overwrite a newer adopted frontier or discharge a different
+owner's obligations. The profile accounts for the ordering between physical
+mutation and semantic completion; uncertainty about that ordering requires
+reconciliation rather than a guessed adoption record.
+
+A missing target, duplicate target identifier, mismatched content, or partial
+multi-target update is not ordinary successful installation. The contract
+specifies the resulting fault or partial result and its repair path. If individual
+subscopes can be adopted independently, each needs evidence for its own completion;
+a multi-target request does not imply an atomic DOM transaction.
+
+Lost completion evidence leaves adoption unestablished. Recovery may inspect the
+physical state under a declared completion-reconciliation contract or reacquire
+and reinstall. Looking at vaguely similar DOM is not enough to attribute it to
+an issued authoritative observation.
+
+The semantic transition may conservatively revoke obsolete rollback or continuity
+rights before physical installation begins. Such revocation prevents stale
+restoration; it does not advance the adopted frontier. If the mutation then fails,
+the application retains the failure and repair obligation rather than pretending
+the old rollback remains safe.
+
+**** Progression and scope control supersession
+
+An admitted installation can supersede a provisional or older authoritative
+representation only within the scope for which the observation and conflict
+policy establish that right. Generic browser code does not compare opaque
+progression tokens numerically or create stronger evidence by replacing a token
+in a map.
+
+The browser uses Part IV's progression-provider judgments for compatibility,
+coverage, satisfaction, and combination. It preserves distinctions among entity
+facts, collection membership, fields, query identity, temporal basis, and
+authority context. A card observation may be sufficient to update the card while
+insufficient to remove it from a filtered board.
+
+A whole-board response can also contain an older representation of a card whose
+newer authoritative state is already adopted. Blindly swapping the complete
+response would regress that card even if board membership is useful. The admitted
+policy must reject/reacquire, use a qualified scoped merge, or establish that the
+new observation satisfies all affected progression requirements. A merge must
+preserve the evidence and representation relationships for the resulting scopes;
+it cannot claim that mixed observations came from one snapshot.
+

@@ -1,0 +1,123 @@
+** Async event safety
+:PROPERTIES:
+:CUSTOM_ID: req-browser-async-admission
+:END:
+
+Every asynchronous entry point normalizes and admits its event before causing a
+semantic transition or protected physical action. This includes network outcomes,
+HTMX callbacks, subscriptions, timers, animation callbacks, promises, worker and
+cross-tab messages, observer callbacks, and delayed continuity restoration.
+
+The gate is owner-relative. An execution-private completion, a shared subscription
+advisory, and a command-resolution result have different owners and applicability
+conditions. Requiring an execution ID on every event would misrepresent genuinely
+shared work; accepting all events without an execution ID would bypass admission.
+
+*** Event class comes from the registered source
+
+The trusted local adapter registration establishes what kind of event a source
+may deliver and which correlation fields it carries. An arbitrary payload field
+such as =:event/class :command-evidence= cannot choose a more permissive admission
+path.
+
+Normalization binds the actual source resource to its permitted schema and owner
+class. Payload values are validated within that binding. A worker or another tab
+can provide useful information, but its message is not automatically authoritative
+because it arrived through a browser API. The assembly declares how any claim in
+that message obtains provenance.
+
+An admission record can include:
+
+#+begin_src clojure
+{:source-registration/ref registered-source-ref
+ :resource-instance/id source-resource-id
+ :owner/ref admitted-owner-ref
+ :effect-instance/id issued-effect-id
+ :event-kind :transport/completed
+ :correlation {:transport-request-id T1
+               :gesso/command-id C42}
+ :payload decoded-payload}
+#+end_src
+
+The registration constrains the record. Constructing the map is not the check.
+A malformed or conflicting payload cannot overwrite the source's bound owner or
+transport instance.
+
+*** Admission checks both identity and legal state
+
+The gate establishes, as applicable:
+
+1. the source registration exists and permits this event kind;
+2. the runtime, owner, and resource instance are current for this path;
+3. correlation agrees with the issued effect, transport attempt, command binding,
+   and target scope;
+4. the event is well-formed and its claimed evidence has the required provenance;
+5. the current plan state admits this completion or settlement;
+6. duplicate/replay policy permits the intended consequence;
+7. any resulting physical action receives a current permit of its own.
+
+A valid identity does not make every event legal in every state. A completion
+cannot settle an effect never issued, and a timeout cannot reverse an already
+resolved branch merely because its execution record still exists.
+
+Disposition and diagnostics distinguish at least:
+
+| Condition | Meaning and treatment |
+|-----------+-----------------------|
+| Unknown correlation | No applicable issued work is known; do not guess an owner from nearby DOM. |
+| Stale resource/owner | The event belongs to an earlier incarnation or retired scope; suppress its former rights. |
+| Duplicate | The same admitted occurrence/result has already been handled; apply its declared idempotent disposition. |
+| Incompatible | The applicable plan, message, context, or retained-operation contract does not admit interpretation. |
+| Malformed | The event violates its input schema or bound correlation. |
+| Illegal state transition | The source is known but this event cannot legally advance its current state. |
+| Unestablished evidence | The supplied information does not justify the claimed fact or outcome. |
+| External/physical failure | The issued work failed or has an indeterminate result under its contract. |
+
+These are runtime classifications, not additional domain statuses or substitutes
+for =:committed=, =:rejected=, =:already-incorporated=, and =:commit-unknown=.
+Expected stale/duplicate events can be ignored semantically while still producing
+bounded diagnostics. Conflicting evidence or broken invariants require the
+specified fault/reconciliation path.
+
+*** Worked example: three different owners
+
+E42 submits command C42, then its card presentation retires. A board subscription
+S9 remains active under shared owner B3. Command recovery owner K8 now holds C42's
+unresolved obligation.
+
+| Incoming event | Required interpretation |
+|----------------+-------------------------|
+| E42's old presentation timeout fires. | Its resource/branch is retired; it cannot reject C42 or restore the card. |
+| E42's delayed provisional DOM callback fires. | Its permit and target rights are stale; no mutation is allowed. |
+| Current subscription S9 emits a relevant board advisory. | B3 may record scoped debt under its subscription contract; E42's retirement is irrelevant. |
+| Retired predecessor subscription S8 emits a callback. | S8 cannot use S9's rights merely because the endpoint and payload look the same. |
+| K8 receives permitted resolver evidence that C42 was incorporated. | It may resolve the command and request an authorized current acquisition; it cannot revive E42. |
+| An old transport callback labels itself shared command evidence. | The label does not change its registered source path; any evidence reuse needs an explicitly admitted handoff. |
+
+This permits useful late knowledge without reopening stale physical authority.
+A new execution E43 repeating the same command C42 also has distinct private
+resources. Equality of command IDs does not make E42's callbacks valid for E43.
+
+*** Duplicate delivery does not erase evidence distinctions
+
+A transport delivery identity, a semantic command identity, and an authoritative
+result/effect identity answer different questions. Deduplicating one layer does
+not automatically deduplicate the others.
+
+When an event/result ID is stable across repetitions, admission also checks the
+binding and permitted payload equivalence. Conflicting payloads under the same
+ID are a protocol/evidence fault, not harmless duplicates. The system cannot
+silently keep whichever result arrived last.
+
+Known authoritative incorporation is not downgraded to unknown because a later
+transport attempt times out. Conversely, two similar successful-looking payloads
+do not prove incorporation without admissible outcome evidence. The reconciliation
+rules preserve established knowledge within its actual scope and disclosure
+permission.
+
+Deduplication and retirement records have a declared retention/compaction policy.
+Unbounded tombstones are not the only solution, but compaction must prevent old
+callbacks from being mistaken for newly issued work. Fresh runtime/resource
+identities, retained fences, and explicit acceptance horizons can provide that
+separation. Reusing an identifier after deleting its history is not sufficient.
+

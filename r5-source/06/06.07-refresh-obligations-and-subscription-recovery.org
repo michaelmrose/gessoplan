@@ -1,0 +1,84 @@
+**** Worked example: two obligations during one refresh
+
+The board has adopted an admitted observation at provider position P17. An
+advisory O1 requires compatible board coverage satisfying P18. Alice presses
+Refresh, creating grant G1 and cycle A1. While A1 is in flight, O2 arrives with
+a compatible requirement P20. These labels denote provider-issued values;
+no generic numeric ordering is assumed.
+
+| Actual result and permission | Required behavior |
+|------------------------------+-------------------|
+| A1 observes and installs evidence satisfying O1 but not O2. | Discharge O1 at the required stage; retain O2. |
+| A1 observes evidence satisfying O1, but its installation fails. | Acquisition debt may clear; installation debt and repair remain. |
+| A1 observes and installs evidence the provider establishes satisfies both O1 and O2 within the permitted query scope. | Discharge both; no second request is needed. |
+| A1 fails, with no successor grant. | Retain both obligations and expose retry/deferred state. |
+| G1 permits one captured read only and O2 remains. | Do not automatically issue A2; wait for a new grant or another declared policy. |
+| G1 explicitly permits bounded drain-debt successors. | Issue at most the allowed successor cycle for remaining requirements. |
+
+Tests must obtain those judgments from the admitted progression contract or an
+explicit test provider. Editing a fixture from =P18= to =P21= does not demonstrate
+that a real acquisition observed sufficiently current authoritative state.
+
+If A1 is retired and an attempted abort fails, a later A1 response remains stale
+for installation even when its progression evidence is stronger than A2's. The
+application may reuse its observation only through a separately declared current
+admission path. A stronger token cannot renew A1's revoked resource rights.
+
+Discharge always considers the current obligation set and independently admitted
+evidence. It must neither restore a stale snapshot that loses O2 nor retain an
+obligation already satisfied by another completed installation. The product also
+declares whether a non-regressing partial advance may be adopted while stronger
+debt remains, or whether installation must satisfy all applicable current debt.
+The coordinator must not select between those policies by timing accident.
+
+**** Applied query identity and local drafts
+
+The coordinator's scope is the applied query, including relevant filters,
+organization/tenant, authorization context, temporal interpretation, and projection
+contract. A text field containing an unapplied filter draft does not redefine an
+in-flight request's scope. Conversely, committing a new filter must not leave an
+old response authorized to overwrite the new result set.
+
+Changing scope normally creates a new owner instance. A more sophisticated
+transition may transfer compatible obligations and observations under explicit
+coverage judgments. It must not merely mutate a scope field while retaining old
+request and target permissions.
+
+Continuity restoration may preserve a permitted local draft across installation.
+It cannot restore an old applied filter, stale authoritative card contents, or
+obsolete owner annotation as if those were harmless focus state.
+
+**** Initial load and subscription recovery close the same gap
+
+Initial server rendering is an authoritative acquisition/installation path. Its
+evidence, scope, asset/plan compatibility, and transition into live subscriptions
+must be admitted. Being present when the page loads does not exempt markup from
+the browser contract.
+
+The interval between taking a baseline observation and establishing a subscription
+can lose relevant changes. A supported integration declares how it closes this
+gap: for example, a qualified read/subscription fence, a durable cursor with
+replay, buffered events paired with a baseline, or a polling/reacquisition rule
+that establishes the required coverage. The specific strategy must be justified
+by the provider's actual semantics.
+
+The same obligation returns after a disconnected stream, server restart,
+subscription replacement, or page suspension. Absence of new events is not proof
+that nothing changed while disconnected. Recovery marks continuity unestablished
+and creates the necessary acquisition/replay work even if no advisory arrives.
+
+A stream event ID is not automatically a database progression token or evidence
+of durable replay. The profile binds each identifier to the guarantee it actually
+provides. Overlapping replacement connections, duplicate deliveries, and delayed
+events from the old subscription all pass through resource-instance admission.
+
+For a current-state view, a qualified current observation may replace the need
+to replay every intermediate change. A workflow that promises processing of every
+event needs a separate durable delivery/processing contract; refreshing the DOM
+cannot meet that promise.
+
+Subscription interests also have ownership. A shared connection may outlive a
+particular card, but a retired interest must not keep authorizing updates to that
+card. Shared ownership, per-interest routing, reconnect, and final resource release
+are explicit parts of the protocol.
+

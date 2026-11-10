@@ -1,0 +1,76 @@
+*** HTMX remains the declarative transport and swap owner
+
+For a declared HTMX integration, HTMX owns the actual request lifecycle and the
+supported native swap behavior. Gesso binds those actions to an admitted plan,
+checks their semantic permission, and accounts for their consequences. The
+integration must not quietly create a second request or a second swap while
+reporting that the original HTMX action was controlled.
+
+A supported browser profile names:
+
+- the actual loaded HTMX version, configuration, extensions, and relevant
+  browser/runtime assumptions;
+- which lifecycle hooks control request construction, final send admission,
+  response interpretation, mutation, and completion;
+- which hook decisions are synchronous, cancellable, and effective before the
+  protected action;
+- all permitted response-driven effects and their control points;
+- how physical request objects, target instances, and deferred work preserve
+  adapter-issued correlation;
+- what counts as successful completion, partial completion, cancellation,
+  target loss, or an unsupported path;
+- the conformance evidence and remaining assumptions for this profile.
+
+A matching library name or version string is not enough if configuration or an
+extension introduces an unaccounted mutation path. A profile may admit a useful
+extension after specifying and qualifying that path. It need not prohibit
+extensibility in principle.
+
+For every protected host behavior, the profile answers four questions:
+
+| Question | Required answer |
+|----------+-----------------|
+| Where can it be prevented? | A hook or wrapper that controls the action before its relevant effect. |
+| What exactly is permitted? | The action, target instances, representation, and mutation footprint bound to the permit. |
+| What can happen later? | Deferred callbacks, secondary targets, history effects, and other follow-on work. |
+| What proves completion? | A correlated event or checked postcondition for the actual issued action. |
+
+Calling a generic =preventDefault= in an arbitrary callback is not a universal
+answer. If the selected profile cannot control a required mutation before it
+occurs, the assembly must choose a different supported realization or reject
+that combination. Observing the bad mutation afterward is a diagnostic, not
+prevention.
+
+*** Response data, response effects, and content safety
+
+A response can carry a command result, an authoritative observation, rendered
+content, or instructions affecting additional browser state. Each has its own
+admission requirements. Permitting one does not admit the others.
+
+In particular, a command-response route configured with =hx-swap="none"= must
+not rely on that attribute alone as proof that the response has no effects. Its
+profile explicitly handles or excludes secondary-target swaps, response-triggered
+events, navigation/retargeting behavior, history changes, script execution, and
+extension-specific actions. Whether a particular mechanism exists and how it is
+controlled is a property of the qualified profile.
+
+Likewise, a permit for the main target does not authorize every out-of-band
+target mentioned by a response. Each target must be covered by the declared
+mutation footprint and current ownership. An integration may use one checked
+multi-target permit or a collection of separately admitted permits, with explicit
+partial-failure semantics.
+
+Authoritative domain provenance is distinct from content safety. A database
+observation does not prove that interpolated user content is safe HTML. The
+rendering contract specifies escaping, allowed active content, extension and
+script policy, and which response metadata can initiate work. Rendering first
+into an inert representation is useful where supported, but does not by itself
+prove all later activation safe.
+
+Generated markup must preserve the admitted relationship among its operation
+bindings, data observations, target/coordinator ownership, and relevant protocol
+version. Hand-copying an old action annotation onto newly rendered data cannot
+substitute for that construction. Replacement of a root fragment must also
+preserve or deliberately reconstruct the owner and subscription bindings needed
+for subsequent work.
+
