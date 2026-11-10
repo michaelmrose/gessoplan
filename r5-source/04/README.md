@@ -1,21 +1,27 @@
-# R5.1 sectional source — Part IV, Authoritative Operations and Progression
+# R5.1 reviewed sectional source — Part IV, Authoritative Operations and Progression
 
-**Disposition:** lossless structural preparation of the original R5 Part IV,
-with all 17 sections 04.01–04.17 substantively reviewed against
-R4, Part VIII's production RequestAssignment meaning, and Gesso's
-source. Their scoped preservation audits are
-`04.01-r4-preservation-audit.md` through
-`04.17-r4-preservation-audit.md`. **Individual sectional review is
-complete; whole-Part-IV reconciliation and acceptance are still open.** Part IV is not yet accepted. Parts I–III
-are reviewed R5.1 candidates. The twelve-part plan remains a draft.
+**Disposition:** Part IV has completed all 17 individual R4-preservation
+reviews, eight whole-part reconciliation passes, and a separate independent
+reviewed-candidate acceptance recorded in
+`PART-IV-cross-section-acceptance.md`. It is **accepted as the reviewed
+R5.1 candidate Part IV**, subject to the explicit cross-part follow-ups.
+This is an editorial semantic decision, not an XTDB proof, browser test,
+Gesso runtime certificate, or acceptance of the full twelve-part design.
 
-The original R5 source is preferred to R4 as the architectural starting
-point. The R4 `main` Part IV has 3,681 newline-split lines and nine
-`CUSTOM_ID` anchors; the R5 Part IV has 1,702 newline-split lines,
-57 nested requirement headings, and the same nine anchors. Lossless
-splitting did **not** determine whether the shorter R5 material omitted
-valuable R4 requirements. All seventeen sectional preservation audits
-are complete; whole-Part-IV cross-section reconciliation is underway.
+R4 (`main`) remains the preservation baseline; R5 (`r5`) remains the
+architectural starting point. The seventeen reviewed numbered sources are
+the authoritative Part IV editorial units; their exact published assembly
+retains its transitional `r4-` filename. The original R4 Part IV had
+3,681 newline-split lines and nine `CUSTOM_ID` anchors. The reviewed
+candidate retains all nine anchors and has 3,314 newline-split lines.
+Text length and anchor preservation alone do not establish semantic
+equivalence; the individual audits, cross-section corrections and joined
+acceptance record supply the editorial reasoning.
+
+Parts I–IV are now accepted **reviewed R5.1 candidates**, not certified
+implementations. Parts V–XII and the independent whole-plan review remain
+unfinished. Later cross-part discoveries may reopen this acceptance by
+an explicit bounded revision, without silently changing the source.
 
 ## Numbered source inventory
 
@@ -138,10 +144,19 @@ I–III and VIII–X. Updated 04.17 to distinguish independently required produc
 capabilities from source-discovered operations, finite positive witnesses,
 installed physical paths, and proof claims. Successful Claim does not establish
 Reassign or a separately selected response interaction.
-**Whole-Part-IV candidate acceptance remains open.**
+At the end of pass 08, candidate acceptance was still open; the
+subsequent decision is recorded in `PART-IV-cross-section-acceptance.md`.
 
-**Next:** make an independent, explicit whole-Part-IV acceptance decision
-using the seventeen sectional audits and eight reconciliation passes,
-checking whether any remaining normative contradiction needs a focused
-correction. Do not treat documentary acceptance as production certification.
-Continue one bounded revision per `next`.
+**Whole-part acceptance:** see `PART-IV-cross-section-acceptance.md`.
+All seventeen preservation audits, eight reconciliation passes, the
+original nine R4 Part IV anchors and candidate assembly were checked.
+No blocking internal normative contradiction remains under the reviewed
+scope; the verdict retains specific Parts V–XII and implementation
+correspondence obligations. The source Org units and canonical Part IV
+were not changed by this acceptance-only revision.
+
+**Next:** prepare Part V, `Provisional State and Executable Presentation`,
+by splitting the preferred R5 candidate at coherent Org/semantic joins.
+Preserve an exact baseline before reviewing its first section against
+R4, accepted Parts I–IV, Gesso's actual browser semantics, and the
+independent HumanHelp acceptance contract. One `next` is one bounded revision.
