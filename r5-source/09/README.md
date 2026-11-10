@@ -9,9 +9,9 @@ proof rules, identifiers, link targets or whitespace were changed.
 The canonical publication is derived output, not a second source
 to edit independently.
 
-**Review status:** **09.01–09.07 substantively reviewed** against R4,
+**Review status:** **09.01–09.08 substantively reviewed** against R4,
 Gesso v1622 and accepted Parts I–VIII, with source decisions recorded in
-the numbered preservation audits. Sections **09.08–09.16** remain for
+the numbered preservation audits. Sections **09.09–09.16** remain for
 substantive review. Whole-part reconciliation and independent Part IX
 candidate acceptance remain outstanding. Parts I–VIII are accepted R5.1 design
 candidates; this is not evidence of a completed runtime/proof system.
@@ -121,7 +121,7 @@ non-discharge, public model-interface ownership, exact versus implementation
 identity, and original-source report/certificate trust boundaries.
 Fourteen positive/adversarial scenarios and current Gesso precursor scopes
 are recorded separately from the timeless normative requirements.
-The published Part IX now has **3,112 lines** and **164,755 characters**.
+The published Part IX now has **3,318 lines** and **175,648 characters**.
 
 **09.03 review:** see `09.03-r4-preservation-audit.md`.
 Preserved the strict data-only AST, exact nominal reader/type footprints,
@@ -164,6 +164,15 @@ nonclaims, external theorem tools, cross-host portability and typed
 failure classifications. Twenty positive/adversarial acceptance cases
 and current Gesso finite/Boolean/Recife precursors remain in the audit.
 
-**Next:** Review **09.08 — Distributed Admissibility and Projection
-Judgments** against R4, accepted choreography/browser semantics,
-and the current Gesso distributed assurance implementation.
+**09.08 review:** see `09.08-r4-preservation-audit.md`.
+Reconciled role-/point-indexed knowledge and provenance, definite facts
+across branches, protected disclosure and actual observation basis,
+current transaction authority, selective HumanHelp Create/Refresh,
+and the difference between structural projection, concrete lockstep/weak
+witnesses, quantified trace refinement and qualified progress. Twenty
+paired positive/adversarial cases and Gesso v1622 Choreo source evidence
+are documented separately from the timeless normative design.
+
+**Next:** Review **09.09 — Certified Construction and Admission**
+against R4, the current source-issued certificate path, and accepted
+Parts I–VIII.
