@@ -8,10 +8,10 @@ proof examples, identities, links or Org delimiters were modified.
 `gesso-unified-design-canonical-r4-10-formal-correspondence-and-system-boundaries.org`
 is derived output, not an independent second source.
 
-**Review status:** **10.01–10.05 substantively reviewed** against R4,
+**Review status:** **10.01–10.06 substantively reviewed** against R4,
 accepted Parts I–IX and Gesso v1622, with numbered preservation audits.
-Sections **10.06–10.20** remain for substantive review. Whole-Part-X
-reconciliation and independent acceptance remain outstanding.
+Sections **10.07–10.20** remain for substantive review. Whole-Part-X
+reconciliation and independent editorial acceptance remain outstanding.
 No current Gesso/HumanHelp implementation certificate is implied.
 
 **R4 preservation baseline:** `main` Part X, to be compared during each
@@ -158,6 +158,20 @@ positive/adversarial acceptance cases and precise v1622 gateway/module
 nonclaims appear in the preservation audit. Published Part X now has
 **3756 newline-split lines** and **161135 characters**.
 
-**Next:** Review **10.06 — Guard Dependencies and Write Footprints** against
-R4, accepted Parts I–IX, revised 10.01–10.05 and Gesso's source-level
-and physical whole-document guard, monotonic revision, and frame witnesses.
+**10.06 review:** see `10.06-r4-preservation-audit.md`.
+Preserved R5's original runnable Clojure lost-field witness and R4's
+atomically guarded Claim production obligation. Clarified four distinct
+semantic/abstract/physical/conflict footprints, whole-document replacement,
+presence-aware top-level CAS and field-count requirements, genuinely
+narrow patches, external pre-read versus transaction-time state,
+absence/uniqueness phantom conflicts, ABA/current-state versus
+history-sensitive safety, all-writer monotonic revision/overflow and
+complete physical witness qualification. Twenty paired positive/adversarial
+tests and exact Gesso v1622 source limits are recorded in its audit.
+Published Part X now contains **4219 newline-split lines** and
+**173124 characters**.
+
+**Next:** Review **10.07 — Writer Coverage Beyond HTTP Routes** against R4,
+accepted Parts I–IX and completed 10.01–10.06, examining real deployed
+XTDB entrypoints, background/migration/service writers, physical
+capability restrictions and current Gesso inventory/mediation evidence.

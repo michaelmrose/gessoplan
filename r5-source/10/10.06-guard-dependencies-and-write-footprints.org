@@ -1,35 +1,63 @@
 *** Guard dependencies and write footprints are different
 
-The operation's guard footprint includes every fact whose current truth the
-transition requires. Its write footprint includes every physical location it
-may change. They need not be equal. Claim may read Membership and Organization
-while writing Request, primary assignment, command outcome, and outbox intent.
+A protected operation has at least four related but *non-interchangeable*
+footprints:
 
-An abstract scalar projection cannot hide a physical whole-document overwrite.
-If lowering replaces a complete document using a prepared value, preserving
-unmodified fields requires one of the following, justified for the backend:
+1. Its *semantic guard dependencies* are every state fact, relationship,
+   presence/absence predicate, authority input and observation whose current
+   truth or prior history controls whether a transition is permitted.
+2. Its *abstract write/frame footprint* identifies the fields or modeled
+   entities assigned and those whose presence and value must remain unchanged.
+3. Its *physical mutation footprint* identifies the entire persisted
+   documents/rows, indexes, command records and other state that the actual
+   backend operation can change, including implicit replacement effects.
+4. Its *conflict/protection footprint* identifies the physical guards,
+   versions, absence/uniqueness constraints and relevant competing writers
+   whose behavior must be controlled so the abstract guard and frame
+   remain valid at the actual linearization/commit boundary.
 
-- compare the complete relevant pre-state, including field presence, before
-  replacement;
-- compare a revision maintained by every relevant writer, where that discipline
-  really protects the complete replaced state;
-- derive the replacement from current transaction state while preserving the
-  required frame;
-- use a physical update whose semantics modify only the declared fields.
+These sets can overlap without being equal. A Claim may depend on current
+Membership, Organization, Location, Request status, an absent active-primary
+RequestAssignment and command identity, yet physically change Request,
+RequestAssignment, canonical command outcome and outbox intent. This
+does not mean Membership should be rewritten merely because its validity
+is a guard. Conversely, a whole-document =:put-docs= can overwrite fields
+that do *not* occur in the abstract declared delta. All four footprints
+must remain source-derived or explicitly qualified, scoped, and reviewable;
+passing an operation-set proof on a smaller abstract projection does not
+silently close the physical footprint.
 
-Merely checking the business fields and then replacing all fields can lose a
-concurrent update to an unguarded field. A revision check protects nothing that
-another writer may change without advancing the revision. Positive-document
-checks also do not protect absence or uniqueness predicates: an insertion can
-invalidate “no active primary assignment” without changing any previously read
-row. Those predicates require an appropriate atomic constraint or conflict
-mechanism.
+*** Frame preservation concerns presence, not merely named values
 
-The following executable Clojure example illustrates the lost-field problem.
-It models immutable maps only; it is neither XTDB code nor a certified operation.
-A complete-map comparison here includes presence and absence by map equality.
-A real backend lowering must establish equivalent treatment for its supported
-representation rather than assuming map equality is SQL equality.
+For a supported abstract guarded transition, all assigned expressions
+use the stated pre-state and input with *simultaneous assignment*,
+and the frame preserves all unassigned relevant fields, including
+their presence versus absence. A declared optional absent value is
+not an existing field containing nil. Physical equality must respect
+the admitted encoding and comparison semantics: SQL =NULL=
+comparisons, missing fields, nested values, timestamps and
+cross-language coercions cannot be treated as Clojure map equality
+without a qualified correspondence.
+
+The physical promise depends on the mutation form. An update that
+truly changes only the declared fields can have a narrower physical
+write footprint than a complete document replacement. A backend
+=:put-docs= or equivalent complete replacement modifies the
+*entire persisted document*, including possible removal of a
+field never named by the source delta. A before/after map of two
+business fields does not make it a two-field physical patch.
+The protected domain must name the whole document for a whole
+replacement, including presence and deletion; claiming to
+protect every currently known key is insufficient when
+another key could be added.
+
+The following executable Clojure example from the preferred R5
+section illustrates the lost-field problem. It models immutable
+maps only; it is *not* XTDB code, a transaction-internal
+snapshot or a certified operation. A complete-map comparison
+includes key presence by Clojure map equality. The real
+backend must independently justify an equivalent representation
+and comparison policy.
 
 #+begin_src clojure
 (def prepared-before
@@ -64,17 +92,452 @@ representation rather than assuming map equality is SQL equality.
               (:request/summary current-before-commit)))
 #+end_src
 
-A pinned pre-read establishes what was observed at that read. It can be useful
-input to a prepared conditional transaction. It does not itself establish what
-the transaction will see. The transaction-time guard supplies that separate
-condition under the qualified backend semantics.
+The partial guard accepts the stale prepared replacement, which would
+restore =:request/summary= to the original value. The complete-map
+guard detects that conflict in this *illustrative map model*.
+Neither assertion tests an actual XTDB transaction. A real
+guarded physical writer must reject the stale replacement
+or avoid losing the concurrent field by another justified
+implementation strategy.
 
-A complete value comparison can allow an ABA history: the value changed and
-later returned to the same value. This is not automatically a safety failure
-for a rule that depends only on current state. If the operation requires that
-no intervening change occurred, the contract needs a history-sensitive token or
-other mechanism. A strictly increasing, non-wrapping revision excludes reuse
-only under complete writer coverage, an explicit overflow policy, and appropriate
-identity treatment across deletion and recreation. Monotonicity is an actual
-ordering property here; ordinary identity propagation is preservation.
+*** Qualified mechanisms for guarded replacements
 
+For a whole-document replacement, at least one of the following
+must be *actually sufficient under the selected backend and writer
+universe*, not merely declared in a source report:
+
+- *Whole relevant pre-state compare:* The backend tests the
+  complete covered pre-image—including field presence,
+  absence and supported nested representation—at the
+  atomic conflict point before replacing the document.
+  Comparing previously observed fields alone is insufficient
+  if a new key can be inserted. A top-level field-count
+  assertion may close that particular insertion gap when
+  combined with correct all-field equality, supported
+  non-null semantics, stable field-name mapping and a
+  qualified atomic =ASSERT=/=PUT= contract. It is
+  not automatically a nested-frame, multi-document
+  or all-writer theorem.
+- *Closed monotonic revision discipline:* Every physical writer
+  capable of changing the protected state advances the exact
+  same bounded, non-reused revision/epoch and atomic
+  comparison checks the predecessor value.
+  The claim specifies authorized revision constructor,
+  overflow/nonwrapping policy, deletion/recreation
+  identity, migrations and operational exceptions.
+  A revision increment by *this* command alone
+  does not prove the all-writer discipline.
+- *Transaction-local derive-and-preserve:* The backend
+  computes the replacement from the actual guarded
+  current state inside the justified atomic transaction,
+  preserving the abstract frame and all required
+  failure behavior. An external read followed by
+  client-side merge is not transaction-local derivation.
+- *Genuinely narrow physical patch:* The backend's
+  supported atomic operation modifies exactly
+  admitted fields with protected guard and
+  absence/uniqueness semantics. A library operation
+  called "update" that serializes a full replacement
+  is not this strategy.
+
+A mixture of mechanisms may be required for the full
+domain. Their exact scope includes all protected
+documents and relationships, not just the row with
+a Request status field. If the selected lowering
+cannot express or independently justify the
+necessary guard/frame relation, the constrained
+gateway fails its stronger profile *before
+submission*. An expressly opaque alternative
+retains its own proof/implementation premises
+without inheriting a stronger checked-frame label.
+
+The proof is directional. If a physical action
+is admitted, then under named backend,
+serialization and writer-coverage premises
+it must refine the declared abstract transition;
+a match between reported field counts does
+not entail that every relevant physical state
+is covered. The root report states which
+fields, documents, mutation forms, conflict
+mechanisms, source version, current handler
+and backend semantics were actually qualified.
+
+*** External observation, transaction-time guards and actual causality
+
+A pinned external read establishes a particular
+observed state at an identified provider basis.
+It may supply input to a prepared guarded plan,
+or a bounded diagnostic comparing the declared
+pre-image with observed data. It does not
+establish the transaction-internal prestate
+or guarantee no conflicting write occurs
+between the read and submission.
+
+A qualified XTDB =ASSERT=/=ASSERT=/=PUT=
+implementation can enforce particular
+field/count predicates against the state
+seen by those assertions at its atomic
+execution boundary *if* the reviewed
+backend version, operation order,
+snapshot/isolation, conflict and failure
+semantics support that interpretation.
+A checked SQL string, caller-supplied
+candidate state or accepted plan shape
+does not establish those backend
+premises or authenticate the actual
+executed transaction vector. A
+postsubmission pinned read likewise
+does not prove that *this* submitted
+operation caused its state: another
+writer can intervene or restore
+identical bytes.
+
+Separate source/model facts, prepared
+lowering, selected actual gateway
+submission, transaction receipt,
+ledger/domain readback, real backend
+atomicity, installed model route,
+principal authorization, and full
+physical writer coverage. A copied
+receipt and a direct XTDB bypass
+cannot become an admitted operation
+by matching diagnostic identities.
+A post hoc frame violation
+may be detected and reported;
+it cannot retroactively prevent
+a forbidden write.
+
+*** Absence, uniqueness and write-skew require predicate protection
+
+Positive comparison of documents that already exist does
+not prove *absence* of a matching row or *uniqueness*
+of a relationship. The source guard may say there is
+no active primary RequestAssignment for R17. Two
+different helper transactions can both insert
+distinct assignment documents while leaving
+every previously read Request field unchanged.
+A CAS on the Request status, by itself, protects
+the relationship only if the actual model/writer
+protocol proves that both inserts must conflict
+through that CAS or another shared linearization
+mechanism.
+
+A physical absence/uniqueness invariant therefore
+requires a qualified atomic predicate check,
+exclusive key, constraint, conflict/write
+dependency or protocol shown to serialize
+all competing relevant writers. The proof
+states its target relation and model's
+active/terminal semantics, not merely
+"no duplicate document ID." Deleting and
+recreating assignment records, changing
+their active status, switching Organization,
+running migrations or bypass writers
+must participate in the appropriate
+invariant/concurrency argument.
+A database's documented unique-index
+or isolation behavior is a *specific
+qualified backend premise* for a
+specific schema and operation order,
+not a general Gesso theorem.
+
+For HumanHelp Claim, the source
+catalog must include real public
+RequestAssignment transitions,
+current Request and helper
+Membership/Organization/Location
+policy and the actual writer
+domain. An abstract one-primary
+induction theorem remains valid
+under its declared operation
+catalog even if some real
+admin writer bypasses it;
+what fails is the stronger
+physical-coverage/refinement
+claim. This boundary is owned
+jointly with 10.07 and
+10.08, not erased by
+a source proof.
+
+*** ABA, monotonic revisions, identity and history
+
+A complete value compare can admit
+an ABA history: a value changes and
+later returns to the same value.
+This is *not automatically* a
+safety failure if the policy
+depends only on the actual
+current state. A "no intervening
+change" theorem, historical
+command exclusion, lease
+generation or long-lived
+observed transition may
+instead depend on history,
+and therefore needs a
+history-sensitive token
+or protocol whose scope
+actually includes those
+changes.
+
+A strictly increasing,
+nonwrapping revision
+provides a possible
+ABA defense only if
+the following all hold:
+
+1. The revision has an exact
+   total-order representation
+   with no narrowing,
+   coercion, arithmetic
+   overflow or reuse.
+2. The original transaction
+   requires the expected
+   revision and advances it
+   in the correct
+   atomic write; a
+   copied revision or
+   arbitrary new value
+   is rejected.
+3. Every relevant physical
+   writer, including jobs,
+   migration tools,
+   admin operations and
+   other nodes, participates
+   in the revision discipline.
+4. Identity evolution through
+   deletion/recreation,
+   reset and reinitialization
+   cannot resurrect an
+   old revision inside
+   a logically new
+   object instance.
+5. The selected database
+   actually checks
+   the revision predicate
+   at the required
+   atomic boundary,
+   with explicit conflict
+   and unknown outcomes.
+
+A source checker may
+verify this command's
+exact predecessor/successor
+arithmetic while leaving
+the all-writer/history
+premise open. That is
+meaningful conditional
+evidence, not the
+full physical theorem.
+A timestamp, increasing
+SSE counter, command
+ID or XTDB basis
+token must not
+silently substitute
+for the revision
+property: each has
+different provenance
+and ordering rules.
+Immutable semantic
+identity is a
+preservation relation,
+not automatically
+a monotonic
+progression value.
+
+*** Required conformance and independent effect oracles
+
+The checked source,
+physical lowering and
+real implementation
+must be tested with
+positive and
+adversarial neighbors.
+At minimum, the
+following controls
+are required for
+their selected
+claim scopes:
+
+- A complete
+  document pre-image
+  accepts a
+  genuinely
+  unchanged
+  current state;
+  an intervening
+  summary edit
+  must not be
+  overwritten
+  by a stale PUT.
+- The original
+  map example's
+  partial guard
+  accepts the
+  conflicting
+  summary; the
+  full presence-aware
+  guard rejects it.
+  This is
+  *model evidence*,
+  not an XTDB
+  result.
+- A new field
+  inserted between
+  external read
+  and commit
+  defeats
+  old-field-only
+  checks; the
+  selected
+  whole-document
+  protection
+  rejects that
+  conflict or
+  uses a safe
+  narrow patch.
+- Absent,
+  present nil,
+  scalar,
+  nested and
+  deleted values
+  are represented
+  according to
+  supported
+  backend codecs;
+  unsupported SQL
+  equality or
+  missing/NULL
+  coercion must
+  reject or
+  remain explicit.
+- Two concurrent
+  eligible helpers
+  can attempt
+  Claim while
+  preserving
+  one active
+  primary;
+  separate-row
+  insertion without
+  shared predicate
+  conflict
+  cannot pass.
+- A valid
+  revision
+  successor and
+  current expected
+  value may
+  admit a
+  transaction;
+  unchanged
+  revision,
+  skipped successor,
+  wraparound
+  and stale
+  expected value
+  must fail
+  the supported
+  monotonic
+  contract.
+- A documented
+  ABA restoration
+  may satisfy
+  a current-only
+  predicate;
+  it must *not*
+  satisfy a
+  declared
+  no-intervening-
+  change
+  requirement
+  without
+  history
+  evidence.
+- A direct admin
+  or external
+  writer lacking
+  revision discipline
+  makes the
+  deployment-wide
+  monotonic
+  guarantee open
+  or false;
+  one bounded
+  writer catalog
+  cannot assert
+  completeness.
+- Actual guarded
+  submission,
+  backend result
+  and readback
+  are attributed
+  within their
+  observed scope;
+  matching
+  poststate after
+  a separate
+  writer is
+  not physical
+  transaction
+  causality.
+- Public model
+  Claim and
+  RequestAssignment
+  invariants have
+  meaningful
+  eligible
+  positive paths;
+  a gateway
+  that rejects
+  all physical
+  attempts cannot
+  pass the
+  independent
+  product gates.
+
+Each case must
+predeclare the
+original source
+and guarded
+policy, tested
+backend subset,
+positive control,
+mutated input
+or interleaving,
+first expected
+enforcing
+boundary and
+independent
+pre-effect or
+post-effect
+physical observer.
+An invalid
+attempt rejected
+by the source
+checker is not
+proof that a
+distinct external
+writer was
+prevented.
+A timed-out
+backend or
+incomplete
+causal observation
+must be reported
+as incomplete
+or unknown,
+not a
+checked frame
+guarantee.
+
+The goal is
+exact protection
+of the *actual
+claimed state
+and history*,
+with only those
+transactional and
+deployment
+premises that
+have truly
+been qualified.
