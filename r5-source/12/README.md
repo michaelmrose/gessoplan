@@ -1,6 +1,6 @@
 # R5.1 sectional source — Part XII, Implementation Order and Final Invariants
 
-**Status: all sixteen sections 12.01–12.16 substantively reviewed and R4-preservation-audited (16/16); whole-Part-XII cross-section reconciliation complete. Independent Part XII candidate acceptance and final twelve-part editorial reconciliation remain pending.**
+**Status: all sixteen sections 12.01–12.16 substantively reviewed and R4-preservation-audited (16/16); whole-Part-XII cross-section reconciliation and independent Part XII reviewed-candidate editorial acceptance complete. Final twelve-part editorial reconciliation and acceptance remain pending.**
 
 At the *initial lossless split*, preferred `r5` and the pre-revision
 `r5.1` Part XII were byte-identical. Since then all sixteen units have been
@@ -321,7 +321,25 @@ split-time README wording. Preserved original model/source, issuer,
 actor, physical host, proof and user-grant ownership.
 No runtime, browser, XTDB or external formal tests were executed.
 
-**Next:** Independent Part XII reviewed-candidate editorial
-acceptance against original R4, the sixteen preservation
-audits, the assembled publication and this reconciliation.
-After that, final twelve-part editorial reconciliation.
+**Independent Part XII candidate acceptance:** see
+`PART-XII-cross-section-acceptance.md`.
+Independently challenged each original R4 stage against the
+reordered R5.1 owners, all Gates A–P with their distinct
+positive/adversarial oracles, the C42 and stopped-release
+histories, the independent full HumanHelp denominator,
+source/issuer/physical proof boundaries and separate four
+release decisions/four completion milestones. All sixteen
+source sections still assemble exactly; the original one
+Part XII anchor, eighteen stages, sixteen gates, four
+Org block pairs and all thirteen cross-part links remain
+valid. This is acceptance of the *future-system normative
+design*, not an assertion of real current Gesso
+implementation, operational product, physical release
+or formal proof. No runtime/XTDB/browser/multi-node/
+external theorem tests were executed.
+
+**Next:** Final twelve-part whole-specification
+editorial reconciliation against all accepted
+parts and original R4 contracts, followed by
+an independent final whole-plan candidate/
+publication acceptance decision if it passes.
