@@ -1,0 +1,48 @@
+** Bounded rolling-release compatibility
+:PROPERTIES:
+:CUSTOM_ID: req-bounded-release-compatibility
+:END:
+
+Compatibility is a checked relation between a particular client or continuation
+and a target admitted server realization for a particular operation or protocol.
+It is not inferred from Git ancestry, similar names, numerical version ordering,
+activation recency, or an identical URL.
+
+The baseline supports a bounded overlap between a selected current assembly and
+its selected predecessor. The deployment contract declares the exact assembly
+set, maximum overlap duration, supported directions, asset and protocol retention,
+and retirement behavior. Another finite bound may be selected explicitly. A
+numerical “one version back” label is insufficient because compatibility depends
+on semantics and deployment capabilities, not arithmetic.
+
+Development rebuilds may create many admitted candidates without activating them.
+Admission identity, activation order, client artifact identity, and semantic
+compatibility remain separate coordinates. A candidate does not become the
+predecessor merely because its commit was earlier.
+
+*** Check every direction routing can expose
+
+For a two-assembly overlap, the release must account for this matrix:
+
+| Client artifact or plan | Target server | Required decision |
+|-------------------------+---------------+-------------------|
+| Previous admitted client | Previous admitted server | Continued validity of the old pairing during its allowed lifetime |
+| Previous admitted client | Current admitted server | Checked old-to-new continuation or typed retirement/recovery |
+| Current admitted client | Previous admitted server | Checked new-to-old continuation, or enforced routing exclusion |
+| Current admitted client | Current admitted server | Ordinary current-pair admission and installation |
+
+Both cross-directions need separate evidence if routing permits both. Sticky
+sessions do not eliminate a direction unless the actual routing and failover
+contract excludes it and tests demonstrate that exclusion. Host loss, reconnect,
+asset caches, and requests already in flight belong in that analysis.
+
+A routing exclusion is itself an enforced deployment premise. If an excluded
+pairing occurs, the trusted boundary rejects it before a continuation performs
+incompatible authoritative work. It does not guess at an older decoder, strip
+semantic metadata, or silently execute the request as an ordinary anonymous
+HTMX operation.
+
+The decision is scoped to the operation/plan and its continuation contract. A
+Claim-compatible pairing need not support every browser route. The supported
+scope is explicit to both admission and recovery.
+

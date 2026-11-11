@@ -1,0 +1,85 @@
+*** Four release decisions, with different evidence
+
+The release process distinguishes these decisions:
+
+| Decision | What must be established | What it does not establish |
+|----------+-------------------------+----------------------------|
+| Candidate admission | The constructed semantic/build candidate satisfies its profile and applicable pre-installation gates | That a particular server has adopted it |
+| Installation eligibility | Actual private host bindings, providers, workers, assets, and enforcement satisfy the installation contract | That all public traffic has switched or that runtime premises stay true forever |
+| Activation eligibility | The installation is current, exposure and overlap are permitted, and transition prerequisites hold | The success of every future user operation |
+| Completion claim | Every required capability and evidence gate for the named milestone is satisfied for its scope | Completion of other milestones or later changed releases |
+
+These are architectural decisions, not a requirement for four public API calls.
+An implementation may combine phases while preserving their obligations.
+
+A candidate can be exercised in a controlled integration environment only after
+that environment's own admission and installation gates hold. Testing an admitted
+staging installation is not the same as admitting the final production host.
+The final host establishes its environment-specific bindings before exposing
+managed behavior. This avoids both circular acceptance rules and a practice of
+exposing unchecked application paths merely to see whether they work.
+
+*** Gate results are closed, explicit, and scoped
+
+The release-report vocabulary distinguishes the following results. An adapter
+may translate a tool's native statuses into these meanings, but it must not turn
+an inconclusive result into success.
+
+| Result | Meaning | Satisfies a required gate? |
+|--------+---------+---------------------------|
+| =:passed= | The required check completed successfully for the applicable subject and scope | Yes, after evidence and applicability validation |
+| =:failed= | The check established the specified violation or unsuccessful outcome | No |
+| =:incomplete= | Work began but did not establish the required result, including timeout or exhausted exploration | No |
+| =:unavailable= | The required checker, environment, dependency, or resource could not be used | No |
+| =:unsupported= | The mechanism cannot establish the requested judgment for this input or scope | No |
+| =:skipped= | The check was intentionally not executed | No |
+| =:stale= | Existing evidence no longer applies to the current subject or premises | No |
+| =:missing= | No required result or resolvable evidence exists | No |
+
+These are release-check results, not model outcomes or evidence classes.
+=:passed= may describe a test, a kernel check, a qualification run, or a proof
+check; the record still names which mechanism ran. A passing test does not become
+a proof because its status shares the same word.
+
+An expected rejection passes only a negative test whose input, first enforcing
+boundary, and expected diagnostic or prohibited effect were specified. The
+candidate rejected by that test is not thereby admitted. A test that succeeds
+because an unrelated wrapper rejected earlier does not establish enforcement
+by the intended boundary.
+
+A gate can be excluded only through the declared scope and applicability rules.
+It is recorded as excluded with a reason and requirement reference, not as a
+passing check. A gate mandatory for the canonical milestone cannot be excluded
+while retaining that milestone's complete status. Unknown applicability blocks
+the relevant decision until resolved.
+
+*** Mandatory obligations and accepted premises are not one counter
+
+The profile decides which obligations require checked derivations, which require
+runtime mechanisms, which require qualification or test evidence, and which may
+remain explicit trusted or asserted premises. A conditional admission can be
+valid while displaying such accepted premises.
+
+The report therefore separates:
+
+- mandatory unmet obligations, which must be empty for the requested decision;
+- accepted premises with their exact proposition, scope, owner, and dependent
+  claims;
+- runtime obligations, whose enforcing mechanisms must be installed and whose
+  concrete conditions are evaluated when required;
+- unsupported, stale, or refuted claims;
+- exclusions and narrower scopes;
+- original source obligations and the evidence relationships that account for
+  their current disposition.
+
+“Zero open obligations” is not a substitute for this accounting. It can hide the
+fact that an implementation premise was merely accepted, or demand an impossible
+proof of all external systems. Mandatory obligations cannot be moved into the
+premise list because a proof failed. An accepted backend premise still needs
+its required qualification and must not be known false.
+
+A current principal, valid command binding, or permission to mutate a resource
+cannot be frozen as a build-time fact. Release evidence establishes the proper
+runtime mechanism and its scope, not the truth of every future invocation's
+premises.
+

@@ -1,0 +1,124 @@
+*** Deterministic regeneration and identity layers
+
+For unchanged complete declared inputs, the normalized semantic construction
+must reproduce the identities it claims deterministic: semantic subjects,
+required dependency closure, supported projections and plans, assembly
+interfaces, and browser manifest. Relevant normalizer, rule, checker, codec,
+compiler, and format versions enter the appropriate dependencies.
+
+The identities answer different questions:
+
+| Identity or relation | Question answered |
+|----------------------+-------------------|
+| Semantic subject identity | Is this the same normalized meaning in the supported interpretation? |
+| Required dependency closure | Which exact subjects and premises support this claim? |
+| Implementation identity | Which concrete callable, lowering, or provider realization is bound? |
+| Exact artifact identity | Which actual bytes were built, tested, stored, or served? |
+| Assembly generation | Which immutable admitted whole-application realization owns this invocation? |
+| Continuation compatibility | May this client or execution safely use that target realization? |
+| Activation record | Which admitted realization was exposed in this environment and transition? |
+
+Source paths, line numbers, Git commits, timestamps, and human version labels are
+useful provenance. They are not substitutes for those meanings. Identical source
+text under a changed primitive or compiler may not preserve the relevant claim.
+Conversely, a comment edit need not change a semantic subject.
+
+Semantic reproducibility does not imply byte-identical compiler output. Exact
+reproducible builds additionally control every byte-affecting input. Otherwise
+the build records and verifies the actual emitted bytes separately. Timestamp
+or diagnostic exclusions from an identity must be explicit and justified.
+
+A changed dependency requires reconsideration of the affected artifacts; it does
+not guarantee that every artifact's bytes change. A server-side policy change
+may leave an executable browser payload unchanged if its complete relevant
+contract and dependencies remain satisfied. A new manifest or receipt is still
+required wherever its binding changes. Reuse follows checked facts, not an
+assumption that every source edit either rebuilds everything or changes nothing.
+
+*** Incremental invalidation follows actual dependency edges
+
+The dependency index is derived from admitted source and the required claim
+closure. It includes semantic dependencies and the separate implementation,
+provider, configuration, build, and qualification dependencies needed by each
+claim. A structural graph supplied by the caller cannot establish its own
+completeness.
+
+When a dependency changes, reconsider its transitive dependents. Retain a result
+only when the current consumer establishes its applicability, including profile
+and interpretation compatibility. Rechecking a join may show that an unchanged
+interface theorem remains reusable while physical evidence must be renewed.
+The system need not regenerate unrelated subjects because they share a file or
+Git commit.
+
+Invalidation records distinguish these actions:
+
+- reconsider a claim whose dependency changed;
+- reconstruct a semantic subject or executable artifact where required;
+- recheck evidence or its applicability;
+- rerun a concrete qualification or acceptance case;
+- reacquire installation evidence for a changed physical environment;
+- retain an immutable result with the reason its applicability survives.
+
+They must not collapse all of these into “rebuild” or imply that a retained
+abstract proof establishes unchanged production behavior.
+
+**** Executable illustration: the affected dependency closure
+
+This pure Clojure example computes a reconsideration set over a supplied finite
+graph. The graph uses subject labels, not cryptographic identities. It assumes
+that its nodes and edges have already been validated and that the graph is the
+complete relevant dependency index. It does not check those assumptions, issue
+a certificate, or decide which reconsidered result can ultimately be reused.
+
+#+begin_src clojure
+(def release-dependencies
+  {:claim-rule #{}
+   :model-schema #{}
+   :claim-contract #{:claim-rule :model-schema}
+   :claim-proof #{:claim-contract}
+   :claim-adapter #{}
+   :claim-conformance #{:claim-contract :claim-adapter}
+   :claim-plan #{:claim-contract}
+   :search-projection #{}
+   :search-plan #{:search-projection}
+   :browser-manifest #{:claim-plan :search-plan}
+   :application-root #{:claim-proof :claim-conformance :browser-manifest}})
+
+(defn affected-subjects [dependencies changed]
+  (loop [affected changed]
+    (let [expanded
+          (into affected
+                (for [[subject inputs] dependencies
+                      :when (some #(contains? affected %) inputs)]
+                  subject))]
+      (if (= affected expanded)
+        affected
+        (recur expanded)))))
+
+(def policy-change
+  (affected-subjects release-dependencies #{:claim-rule}))
+
+(def adapter-change
+  (affected-subjects release-dependencies #{:claim-adapter}))
+
+(assert (= #{:claim-rule :claim-contract :claim-proof
+             :claim-conformance :claim-plan :browser-manifest
+             :application-root}
+           policy-change))
+(assert (= #{:claim-adapter :claim-conformance :application-root}
+           adapter-change))
+(assert (not (contains? policy-change :search-plan)))
+(assert (not (contains? adapter-change :claim-proof)))
+#+end_src
+
+In this graph, the policy change reaches the browser manifest, while an adapter
+change reaches physical conformance and the application root without invalidating
+the abstract Claim proof. A real manifest that also binds the adapter would add
+that edge and therefore be reconsidered. A search implementation that relies on
+the changed policy would likewise add the dependency. The example does not
+justify omitting either edge when it exists.
+
+Reconsidering the manifest does not force recompilation if the actual required
+payload and build binding can be reused under the current contract. The example
+computes impact, not an optimal build schedule or a proof of cache validity.
+

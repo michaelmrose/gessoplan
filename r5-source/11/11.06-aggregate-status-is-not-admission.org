@@ -1,0 +1,68 @@
+*** Executable illustration: aggregate status is not evidence admission
+
+The following pure function illustrates only the final aggregation of an
+already validated, nonempty required-gate set and gate-result records. It does
+not validate proof evidence, authorize deployment, or replace the profile's
+source-derived gate construction. Its output explains blockers to a caller.
+
+#+begin_src clojure
+(def release-result-kinds
+  #{:passed :failed :incomplete :unavailable :unsupported
+    :skipped :stale :missing})
+
+(defn summarize-required-gates [required results]
+  (when-not (and (set? required) (seq required) (map? results))
+    (throw (ex-info "Expected a nonempty required-gate set and result map."
+                    {:reason :invalid-gate-input})))
+  (let [blockers
+        (into {}
+              (keep (fn [gate]
+                      (let [present? (contains? results gate)
+                            row (get results gate)
+                            status (if present? (:status row) :missing)]
+                        (cond
+                          (not (contains? release-result-kinds status))
+                          [gate :invalid-result]
+
+                          (= :passed status) nil
+
+                          :else [gate status]))))
+              required)]
+    {:summary (if (empty? blockers) :requirements-passed :blocked)
+     :blockers blockers}))
+
+(def small-required-set #{:assembly-closure :real-claim :response-contract})
+
+(def incomplete-results
+  {:assembly-closure {:status :passed}
+   :real-claim {:status :passed}})
+
+(assert (= {:response-contract :missing}
+           (:blockers (summarize-required-gates
+                       small-required-set incomplete-results))))
+
+(assert (= :blocked
+           (:summary
+            (summarize-required-gates
+             small-required-set
+             (assoc incomplete-results
+                    :response-contract {:status :skipped})))))
+
+(assert (= :requirements-passed
+           (:summary
+            (summarize-required-gates
+             small-required-set
+             (assoc incomplete-results
+                    :response-contract {:status :passed})))))
+#+end_src
+
+An arbitrary caller can fabricate the example's =:passed= rows. That is precisely
+why aggregation is downstream of evidence validation and is not an issuer. The
+real gate checks each result's evidence, subject, profile, scope, and applicability
+before it reaches this stage. An extra passing row for an unrelated capability
+cannot satisfy a missing required gate.
+
+The real required set is derived from the requested canonical scope and must not
+be replaced with the three-gate illustration. Rejection of an empty set is a
+small guard against vacuous aggregation, not a proof that the set is complete.
+
