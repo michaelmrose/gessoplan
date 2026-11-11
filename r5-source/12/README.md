@@ -1,6 +1,6 @@
 # R5.1 sectional source — Part XII, Implementation Order and Final Invariants
 
-**Status: lossless split complete; substantive section reviews, whole-part reconciliation and independent editorial acceptance pending.**
+**Status: 12.01 substantively reviewed and audited (1/16); sections 12.02–12.16, whole-part reconciliation and independent editorial acceptance pending.**
 
 Preferred `r5` and pre-split `r5.1` Part XII are byte-identical. The sixteen
 numbered Org sources reproduce the existing root-level
@@ -61,7 +61,17 @@ positive and adversarial acceptance cases. Only substantive review,
 whole-part reconciliation and independent editorial acceptance can
 grant reviewed-candidate status.
 
-**Next:** Review `12.01-delivery-discipline.org` against R4, preferred
-R5, accepted Parts I–XI and Gesso. Complete 12.01–12.16 in focused
-revisions, then whole-Part-XII reconciliation, independent Part XII
-acceptance and final whole-plan editorial reconciliation.
+**12.01 review:** see `12.01-r4-preservation-audit.md`. Restored R4's
+real host/Biff preflight prerequisite and the distinct classes of
+stage dependency while retaining R5's stronger vertical Claim slice.
+Made original product denominators, current authority, installed
+physical enforcement, unknown-outcome recovery, advisory-only remote
+Refresh and positive/adverse evidence requirements begin at the
+first relevant boundary. The complete source and original R4
+preservation/implementation-context comparison are recorded in
+the separate audit. No runtime, formal or browser test is claimed.
+
+**Next:** Review `12.02-semantic-ownership-and-typed-rules.org`
+(Stages 1–2), then the remaining numbered sections, whole-Part-XII
+reconciliation, independent Part XII acceptance and final whole-plan
+editorial reconciliation.
