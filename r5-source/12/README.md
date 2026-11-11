@@ -1,6 +1,6 @@
 # R5.1 sectional source — Part XII, Implementation Order and Final Invariants
 
-**Status: sections 12.01–12.15 substantively reviewed and audited (15/16); section 12.16, whole-part reconciliation and independent editorial acceptance pending.**
+**Status: all sixteen sections 12.01–12.16 substantively reviewed and R4-preservation-audited (16/16); whole-Part-XII cross-section reconciliation, independent Part XII candidate acceptance and final twelve-part editorial reconciliation remain pending.**
 
 Preferred `r5` and pre-split `r5.1` Part XII are byte-identical. The sixteen
 numbered Org sources reproduce the existing root-level
@@ -286,7 +286,26 @@ one-use Refresh and S0–S4 evidence scope.
 Audit records bounded Gesso v1622 code;
 no runtime or formal tests were executed.
 
-**Next:** Review `12.16-final-unified-invariants.org`,
-then whole-Part-XII reconciliation,
-independent Part XII candidate acceptance,
+**12.16 review:** see `12.16-r4-preservation-audit.md`.
+Completed the final R4-preservation sectional review
+while retaining R5's four-part unified closing structure.
+Restored R4's multi-source role knowledge,
+declarative HTMX lifecycle, narrow pure adapter
+and physical browser shell, intentional Clojure/
+XTDB choices, immediate effect-right retirement,
+source-owned policy audit and strict proof/test
+distinction. Reconciled stronger R5.1 C42
+history, actual atomic writer/frame obligations,
+initial Live registration, outbox/failover,
+one-use HumanHelp Refresh, S0–S4 formal
+transfer, original product denominator and
+independent release/milestone claims.
+The new last principle is a summary, not a
+second model or release authority.
+Gesso v1622 correspondence and open
+implementation evidence remain in the
+separate audit. No runtime/formal tests ran.
+
+**Next:** Whole-Part-XII cross-section reconciliation,
+then independent Part XII candidate acceptance
 and final twelve-part editorial reconciliation.
