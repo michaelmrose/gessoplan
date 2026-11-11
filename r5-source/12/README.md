@@ -1,6 +1,6 @@
 # R5.1 sectional source — Part XII, Implementation Order and Final Invariants
 
-**Status: sections 12.01–12.10 substantively reviewed and audited (10/16); sections 12.11–12.16, whole-part reconciliation and independent editorial acceptance pending.**
+**Status: sections 12.01–12.11 substantively reviewed and audited (11/16); sections 12.12–12.16, whole-part reconciliation and independent editorial acceptance pending.**
 
 Preferred `r5` and pre-split `r5.1` Part XII are byte-identical. The sixteen
 numbered Org sources reproduce the existing root-level
@@ -193,7 +193,24 @@ completion requires genuine fault/load evidence.
 The audit records bounded Gesso v1622 source
 correspondence; no tests or external proofs ran.
 
-**Next:** Review `12.11-dependencies-and-delivery-checkpoints.org`,
-then the remaining sections, whole-Part-XII
-reconciliation, independent Part XII acceptance
-and final twelve-part editorial reconciliation.
+**12.11 review:** see `12.11-r4-preservation-audit.md`.
+Restored R4's five distinct dependency types and
+cleared false serial dependencies in the R5
+18-stage contract table. Distinguished publication
+from browser adoption, early host safety from
+full application closure, conditional small
+theorem from physical transfer and multi-host
+exploration from production completion.
+Each integrated checkpoint now retains an
+eligible observed positive, nearby adverse case,
+scope and open obligation. Four independent
+milestones remain owned by Part XI, alongside
+the different four release decisions and
+eight checked gate dispositions. The
+R4/source and bounded Gesso v1622 audit
+is separate; no runtime/proof tests ran.
+
+**Next:** Review `12.12-worked-claim-path.org`,
+then 12.13–12.16, whole-Part-XII reconciliation,
+independent Part XII acceptance and final
+twelve-part editorial reconciliation.
