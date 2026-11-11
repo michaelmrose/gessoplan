@@ -1,6 +1,6 @@
 # R5.1 sectional source — Part XI, Release and Completion
 
-**Status: lossless split complete; 11.01–11.02 substantively reviewed.**
+**Status: lossless split complete; 11.01–11.03 substantively reviewed.**
 
 The preferred `r5` Part XI and the `r5.1` Part XI were byte-identical
 before this split. The eighteen numbered `.org` files listed here reproduce
@@ -78,6 +78,23 @@ Published Part XI now has **1504 newline-split
 lines** and **86267 characters**. Section map line
 numbers still refer to the initial lossless split.
 
-**Next:** Review **11.03 — Deterministic Regeneration and Invalidation**,
-then 11.04–11.18, whole-Part-XI reconciliation and acceptance,
-Part XII and final twelve-part review.
+**11.03 review:** see `11.03-r4-preservation-audit.md`.
+Preserved R5's deterministic semantic/build identity layers and
+finite dependency-cone Clojure example while restoring R4's
+complete interpretation inputs, source-derived and physical
+edge coverage, correctness-first incremental recheck, and
+independent implementation/installation invalidation rules.
+Separated reconsideration from exact reuse, artifact rebuild,
+provider qualification and active-host rechecking, without
+promoting structural hashes to behavior proofs. Twenty-eight
+R4/R5 preservation decisions and fourteen prospective paired
+conformance controls compare the design with Gesso v1622's
+real structural subject/dependency, proof-obligation, browser
+artifact and host-entrypoint components. Published Part XI is
+**1656 newline-split lines** and
+**95487 characters**; the README's initial-split
+line ranges are intentionally historical.
+
+**Next:** Revise **11.04 — Cache Admission and Implementation Change**,
+then 11.05–11.18 and whole-Part-XI reconciliation/acceptance.
+Part XII and final whole-plan acceptance remain outstanding.

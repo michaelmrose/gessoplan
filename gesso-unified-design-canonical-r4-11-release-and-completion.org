@@ -469,6 +469,44 @@ reproducible builds additionally control every byte-affecting input. Otherwise
 the build records and verifies the actual emitted bytes separately. Timestamp
 or diagnostic exclusions from an identity must be explicit and justified.
 
+**** Determinism has a declared semantic boundary
+
+Identity is computed from the *complete meaning-bearing input* for
+the specific subject and interpretation, not merely its displayed
+name or serialization. The versioned normalizer must declare
+which fields, primitive definitions, imported contracts, schema
+types, feature/profile settings and admissible external
+assumptions affect the relevant meaning. Equivalent ordering
+of supported unordered maps/sets should not introduce accidental
+drift; relevant sequence order, literal distinctions and
+whitespace inside semantic strings must not be erased.
+
+The identity contract also distinguishes a syntactically
+normalized interface from denotational equivalence: a structural
+digest is not a proof that arbitrary Clojure code, a database
+lowering or two different implementations behave identically.
+Changes to interpretation, trusted primitive rules or
+normalization semantics require versioned reconsideration
+even when a human-readable rule or identifier looks unchanged.
+
+Compiler, formatter, build toolchain and runtime dependency
+changes are tracked by the evidence and artifact edges that
+depend on them. A comment or source location edit that is
+excluded from the semantic representation need not invalidate
+a theorem, but it may still affect provenance, diagnostics
+or an actual byte-producing compiler input. The build either
+controls every byte-affecting input for reproducible bytes
+or measures the bytes it *actually* emitted and qualifies
+their current binding. A timestamp-sensitive artifact
+cannot inherit a previous byte identity from a matching
+semantic subject alone.
+
+The identity and dependency ledgers must be compatible with
+the immutable release intent of 11.01 and the different
+candidate, installation, activation and completion subjects
+of 11.02. None of those decisions is represented by one
+global monotonic release number or a Git commit alone.
+
 A changed dependency requires reconsideration of the affected artifacts; it does
 not guarantee that every artifact's bytes change. A server-side policy change
 may leave an executable browser payload unchanged if its complete relevant
@@ -483,6 +521,48 @@ closure. It includes semantic dependencies and the separate implementation,
 provider, configuration, build, and qualification dependencies needed by each
 claim. A structural graph supplied by the caller cannot establish its own
 completeness.
+
+**** Dependency closure includes the boundaries that can invalidate a claim
+
+The dependency index must be derived from the canonical admitted
+application and the required original-source obligation catalog,
+including invariant, operation, role/knowledge, model read/write,
+guard, plan, projection, rendered affordance, application assembly,
+proof/checker/profile and client artifact contracts. Where relevant,
+the dependent evidence graph also includes the actual bound
+implementation, physical writer/entrypoint, provider, compiler,
+configuration, credentials, host installation, activated generation
+and compatibility/retention assumptions.
+
+These are not assumed to be one uniform graph. A semantic
+contract-dependency edge, proof-dependency edge, implementation
+correspondence edge, build-input edge, physical qualification
+edge and active-installation edge can have different recheck
+policies. The checker must establish every required edge of
+the declared graph; that proves *declared* graph consistency
+only. Independent closure obligations still govern original
+source completeness and undiscovered physical writers.
+A caller-supplied dependency map cannot close its own
+missing-edge obligation merely because it is acyclic.
+
+A renamed, removed or newly discovered required subject
+is a change to the corresponding obligation/closure,
+not an excuse to retain downstream success because an
+old identifier disappeared from the graph. Unresolved
+references, contradictory dependencies, and cycles
+that cannot be admitted under the selected graph
+contract are typed construction/release failures
+rather than silently ignored edges.
+
+A dynamic permission, current Membership, request
+status, user input or command outcome should not
+be frozen as an immutable build dependency. The
+release dependency is on the *installed mechanism*
+which checks those facts at the authoritative
+read/write boundary; actual invocation must still
+check the current values. A pure build graph
+cannot replace runtime authorization or liveness.
+
 
 When a dependency changes, reconsider its transitive dependents. Retain a result
 only when the current consumer establishes its applicability, including profile
@@ -502,6 +582,32 @@ Invalidation records distinguish these actions:
 
 They must not collapse all of these into “rebuild” or imply that a retained
 abstract proof establishes unchanged production behavior.
+
+**** Reconsideration is not synonymous with recompilation
+
+A changed input expands the candidate *reconsideration cone*,
+not necessarily the set of artifacts whose bytes must change.
+For each affected subject, the current consumer determines
+which action applies:
+
+| Action | Required reason |
+|--------+-----------------|
+| Retain an immutable semantic conclusion | Current source subject, checker/rule contract, original obligations, dependency closure and premises are still admissible |
+| Reissue or recheck semantic proof evidence | The relevant source, inference/checker, proof dependency, profile or interpretation changed |
+| Rebuild a plan or browser artifact | Its executable contract or byte-affecting build inputs changed, or reuse cannot be established |
+| Revalidate concrete implementation/XTDB behavior | A handler, transaction lowering, real writer, provider or related physical assumption changed |
+| Recheck installation/activation | Exact served assets, registered routes, live host/worker/credential binding or overlap conditions changed |
+| Reacquire product/test evidence | The required capability, execution subject, test harness or assurance scope changed |
+
+An implementation can optimize this by retaining
+immutable checked results under the cache-admission
+rules of 11.04. It may not skip required current
+validation based solely on an old success map.
+An unavailable required recheck remains unavailable,
+not a pass. Retrying a read-only proof query is not
+the same as resubmitting an uncertain committed
+business command.
+
 
 **** Executable illustration: the affected dependency closure
 
@@ -559,10 +665,56 @@ that edge and therefore be reconsidered. A search implementation that relies on
 the changed policy would likewise add the dependency. The example does not
 justify omitting either edge when it exists.
 
+For the illustrative graph, the two assertions test only
+reachability in a finite, supplied dependency map.
+A real implementation must independently show that
+=release-dependencies= was derived from the complete
+relevant original source and that every implementation,
+source, browser and environment edge was discovered.
+The helper eligibility change must also supply a typed,
+authoritative =:helper/not-suspended= input; merely adding
+an unvalidated keyword to a set is not an admitted rule.
+
+The example's `:claim-adapter` is deliberately distinct
+from `:claim-contract`. Its implementation replacement
+reconsiders conformance and application assembly while
+permitting the original abstract proof to survive only
+after the current checker verifies the unchanged proof
+subject and dependencies. If the real browser manifest
+binds adapter identity, the manifest must depend on it:
+the illustrative absence of that edge cannot justify
+omission from the production closure.
+
+
 Reconsidering the manifest does not force recompilation if the actual required
 payload and build binding can be reused under the current contract. The example
 computes impact, not an optimal build schedule or a proof of cache validity.
 
+
+**** Positive and adversarial invalidation controls
+
+| Positive control | Prohibited inference or regression |
+|------------------+------------------------------------|
+| Two equivalent normalized maps reproduce one supported structural subject ID | Unordered input iteration changes proof identity arbitrarily |
+| Relevant string, vector-order or primitive-meaning change produces a requalified subject | Normalizer erases a semantic distinction and retains an old theorem |
+| Diagnostic-only edit retains abstract proof where its subject remains the same | Actual byte-affecting build change is omitted from artifact dependencies |
+| Claim eligibility policy change reconsiders Claim proof/plan and root | The unrelated Request search plan is rebuilt without a dependency reason |
+| Claim adapter A is replaced by B under the same checked abstract contract | Old A-only physical conformance result is reported for B |
+| Current proof checker re-admits an unchanged semantic subject and complete dependencies | A copied digest, subject label or cached success is trusted without re-admission |
+| Browser manifest changes trigger exact artifact and receipt correspondence checks | Changed manifest is treated as equivalent solely because source operation name matches |
+| New privileged XTDB writer is discovered and added to physical coverage obligations | Old complete declared semantic graph is called complete deployed writer inventory |
+| Deleted or renamed required capability remains an unresolved original obligation until accounted for | Removed graph node silently disappears from release requirements |
+| Incompatible graph cycle or missing required edge rejects admission with a typed error | Traversal terminates and is mistaken for proof that the graph is valid |
+| Installation provider, credential or activated host changes requalify affected live claims | Unchanged semantic fingerprint permanently certifies new deployment |
+| Current Membership is checked at Claim effect time by installed authorization | Build-time cached Membership or a release report grants permanent permission |
+| Optional unrelated file edit retains unaffected evidence when current admissibility is shown | Entire proof graph is regenerated solely because two subjects shared a Git commit |
+| Expected unsupported/unavailable proof recheck preserves the original required gate as unsatisfied | Release system silently downgrades a strict profile to maintain a green result |
+
+These are design acceptance obligations, not recorded passing
+tests of Gesso v1622. They require independently chosen
+positive and counterexample cases, actual source-derived
+coverage and physical validation at the boundaries claimed
+by the selected release profile.
 *** Cache admission preserves the original trust boundary
 
 A persisted cache entry is candidate evidence. Its key, filename, recorded digest,
