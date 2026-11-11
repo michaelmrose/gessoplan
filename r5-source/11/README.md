@@ -1,6 +1,6 @@
 # R5.1 sectional source — Part XI, Release and Completion
 
-**Status: lossless split complete; 11.01–11.14 substantively reviewed.**
+**Status: lossless split complete; 11.01–11.15 substantively reviewed.**
 
 The preferred `r5` Part XI and the `r5.1` Part XI were byte-identical
 before this split. The eighteen numbered `.org` files listed here reproduce
@@ -297,6 +297,31 @@ scoped Gesso v1622 evidence, without claiming executed runtime
 or proof tests. Revised numbered Org source and published XI
 remain exact with original eight stable anchors preserved.
 
-**Next:** Review **11.15 — External Formal Verification Completion**,
-then 11.16–11.18, whole-Part-XI reconciliation, independent
-editorial acceptance, Part XII and whole-plan review.
+**11.14 handoff:** 11.15 was the next unfinished source. Its
+substantive review is recorded below.
+
+
+**11.15 review:** see 11.15-r4-preservation-audit.md.
+Reconciled R4 and R5 with Part X's seven-rule closed
+propositional formal target and five separate S0–S4
+formal/production correspondence claims. Required
+independent machine-checked rule and derivation
+soundness, qualified production acceptance implication,
+typed atom semantics, real issuer/source binding,
+reproducible proof import, assumption propagation,
+proof-version invalidation, finite-versus-unbounded
+evidence and genuine positive/adversarial checking.
+Preserved the distinction between a conditional
+S2 implementation premise and a stronger proved
+production checker claim, plus external safety/liveness
+refinement boundaries. Recorded 32 preservation
+decisions and 20 paired prospective formal controls
+with tightly scoped v1622 Gesso correspondence.
+No external prover or runtime test was executed.
+Updated the numbered source and its exact
+published Part XI together with original anchors.
+
+**Next:** Review **11.16 — Multi-node Production Completion**,
+then 11.17–11.18, whole-Part-XI reconciliation,
+independent editorial acceptance, Part XII and
+final twelve-part preservation and consistency review.
