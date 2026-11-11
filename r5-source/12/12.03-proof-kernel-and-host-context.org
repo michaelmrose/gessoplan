@@ -1,64 +1,197 @@
 *** Stage 3 -- Small proof kernel and guarded proof mechanisms
 
-Build the narrow proof-checking foundation alongside runtime construction. It
-is a separate component from the executable semantic core and is a prerequisite
-only for claims that require its judgments. Ordinary operational delivery does
-not wait for external formalization of this kernel.
+Build a small, inspectable *proof-checking* foundation alongside the
+permanent executable semantic core. These are different components:
+the semantic core supplies runtime transition meaning; a propositional
+kernel checks derivations of its own closed logic; dedicated transition,
+initial-state and induction checkers establish their specified conditional
+judgments. Proof-producing elaboration proposes derivations but cannot
+create an inference rule or issue authority by calling a trusted-looking
+function. The proof stage is a prerequisite for claims that need its
+judgments, not a universal requirement that every useful application
+operation await independent mathematical formalization.
 
-Deliver the actual closed propositional rules from Part IX: premise, truth
-introduction, implication reflexivity, conjunction introduction and elimination,
-implication elimination, and disjunction introduction. Check source syntax,
-subject/type bindings, prior-step references, exact conclusions, and premise
-accounting. Do not introduce atomic truth axioms, arithmetic solving, or
-hypothetical premise discharge through an undocumented shortcut.
+*** Close the initial propositional checking boundary
 
-Elaboration may search for or generate candidate derivations, but the small
-kernel checks their source independently. A failed or bounded-out search reports
-that result; it cannot add a truth axiom or silently turn an obligation into a
-premise. Proof search need not be part of the trusted kernel.
+Use the original, versioned proposition source with an exact subject,
+nominal variable environment, declared premises, step graph and final
+goal. The initial calculus has only seven inference-rule families:
 
-Dedicated guarded-transition mechanisms describe pre-state, input, guards,
-simultaneous assignments, and framed fields. They produce the supported
-consequence and invariant-preservation judgments. Conditional induction checks
-the initial condition and every operation against every required invariant in
-one declared catalog, with the source-derived obligations intact.
+- premise use;
+- truth introduction;
+- implication reflexivity;
+- conjunction introduction;
+- conjunction elimination;
+- implication elimination;
+- disjunction introduction.
 
-Acceptance includes valid conditional proofs, malformed derivations, wrong
-subjects, invalid substitutions, omitted preservation cases, unsupported effects,
-and false premise discharge. Positive initial-state and operation examples expose
-vacuous unusable constructions. A proof of a declared abstract machine does not
-establish a real initializer, all physical writers, or database refinement.
+The checker independently parses and typechecks every source proposition,
+validates rule-specific arities and exact conclusions, and requires each
+referenced step to precede its use. A derivation claiming a stronger goal,
+using the wrong subject/nominal atom, inventing a step, hiding a required
+premise or relying on an unsupported rule fails. Every required original
+obligation remains visible independently of the supplied derivation.
+The supported source format may additionally require every declared
+premise/step to be used; that completeness discipline does not itself
+prove that an original application rule or physical writer was inventoried.
 
-The result is a checkable derivation or dedicated judgment result under named
-premises. Certificate issuance and complete cross-layer composition are separate
-consumers. Copying a checked report does not create an issued capability.
+There is no initial axiom asserting an arbitrary atomic predicate,
+unrestricted excluded middle, arithmetic/SMT solving, hypothetical premise
+discharge, arbitrary host Clojure evaluation or transactional authority.
+A conditional derivation establishes a conclusion *assuming* its admitted
+source premises; it does not establish that those premises hold in the
+current Request, browser, database, or installed application. A checked
+derivation and its report are not a signed authorization or issuer handle.
+
+*** Derive guarded consequences without enlarging the logical kernel
+
+Represent a selected typed guarded transition with pre-state and input,
+current guards, simultaneous post-state assignments and an explicit frame
+for untouched fields, including presence as well as value where relevant.
+A dedicated proof mechanism may derive exactly supported guard,
+assignment, frame, conjunction and equality-substitution consequences.
+It checks original transition source and matching-relation assumptions.
+It cannot generalize a one-document assignment to a multi-record
+RequestAssignment invariant, silently infer hidden external writes, or
+turn a postcondition into evidence that a particular XTDB effect ran.
+
+For conditional induction, freeze one *original-source* operation catalog,
+its initial condition and every required invariant. Each invariant needs
+a justified initial condition and preservation argument for *every*
+declared operation; a missing operation, malformed guard, changed frame,
+omitted invariant, unsupported consequence or falsely discharged premise
+keeps the stronger judgment open. Every claimed operation and initializer
+also faces independent source/physical completeness challenges. A finite
+set of tested initial constructors establishes coverage only of its
+declared finite catalog, not that every physical initializer satisfies
+the initial predicate. The selected model must retain eligible initial
+states and meaningful enabled positive operations, rather than pass an
+unreachable or reject-everything machine.
+
+Do not confuse an induction obligation with an issued universal proof.
+Successful checker-local reasoning may remain conditional on original-source
+coverage, initial-state existence, operation-catalog completeness, abstract
+transition semantics, checker soundness and source-to-installed-effect
+correspondence. Scoped checking of the complete declared set does not
+establish the completeness of all potentially bypassing physical writers.
+
+*** Keep proof, issuance and formal transfer independently accountable
+
+Elaboration and search can construct candidate proofs or finite witnesses,
+but must submit their *source* to the relevant independent checker.
+Malformed derivations, stale subjects, step/reference mistakes,
+unsupported substitutions, skipped branches, result-map forgery and a
+mutant elaborator must not obtain a stronger accepted claim. Exhaustion,
+incompleteness, a timeout and an unproved premise are not success
+statuses. Nearby eligible positive derivations and useful transitions
+must still pass; a mechanism that rejects everything cannot earn
+completion for a functional Claim path.
+
+Certificate admission separately binds the checked source, dependency
+closure, original obligation denominator, issuer scope, validity
+conditions and unclosed assumptions. A copyable report, old certificate
+description or fabricated fingerprint cannot mint a current capability.
+Logical facts in a derivation may be reused under logical inference
+rules; one-use physical effect rights and resource ownership are not
+duplicated merely by duplicating a proposition.
+
+Independent mathematical soundness of the kernel, the production checker
+acceptance implication, typed-atom semantics and actual physical
+application correspondence remain distinct later formal and release
+claims. In particular, a sound theorem about a seven-rule abstract
+calculus does not by itself prove the concrete JVM checker, issuer,
+Biff/XTDB writer, generated browser plan or deployment. Keep every
+unproved bridge as a named obligation and never promote finite model
+checks, successful unit tests or source inspection into such a theorem.
+
+Acceptance of this stage is the precise scoped checking of positive
+and adverse *source-bound* proofs, guarded consequences and induction
+candidates with their remaining premises honestly recorded. Complete
+cross-namespace certification, independently established kernel
+soundness and production effect qualification remain separate milestones.
 
 *** Stage 4 -- Qualified host, lifecycle, and invocation context
 
-Select and qualify the concrete Biff, Ring/Aleph, runtime, browser/HTMX, compiler,
-and XTDB integration contracts the application will use. A label such as “final
-Biff 2” is not a substitute for the actual dependency identity and behavior.
-The plan does not require waiting for an unspecified future dependency release.
+Select and qualify the *actual* Biff, Ring/Aleph, runtime, XTDB,
+compiler and browser/HTMX versions and interfaces used by the
+application. “Final Biff 2” is not an API, compatibility contract or
+reason to wait for an unspecified release. A selected host profile
+names concrete dependency identity and configuration, effective
+request/FX value flow, lifecycle semantics, handler adoption,
+backend behavior and the implementation assumptions on which a
+claim depends. These are implementation subjects, not new owners of
+domain rules.
+
+*** Install the real application boundary before exposing traffic
 
 Deliver:
 
-- explicit invocation input and previous-output value flow for model/FX execution;
-- stable lifecycle identities, dependency ordering, ownership, start/init behavior,
-  and cleanup;
-- private construction and installation before managed application exposure;
-- a supported server handoff that adopts the actual guarded handler;
-- request-local assembly and authority context with independent concurrent scopes;
-- explicit context transfer and retirement for supported asynchronous work,
-  deferred responses, streams, workers, and subscriptions;
-- qualification records and assumption-sensitive tests for the selected substrate.
+- explicit current invocation input and prior-output value flow for
+  generated and handwritten Biff/Graph/FX construction; no accidental
+  assumption that previous output is implicitly merged into context;
+- stable native module identities, declared resource/dependency owners,
+  correct phase ordering, acquisition, initialization, start and cleanup;
+- private candidate construction, required preflight/assembly checks,
+  current handler installation and a qualified admission boundary before
+  the selected application behavior is externally reachable;
+- an exact relation between the checked candidate, concrete module,
+  installed Ring handler, server's actual adopted handler, active routes
+  and served/loaded browser artifacts, with unqualified bypasses reported;
+- actual protected principal, model, request and transaction context
+  assembled at the trusted boundary, not supplied by client metadata;
+- independent concurrent request scopes and explicit supported transfer
+  of a qualified context to deferred responses, streams, workers and
+  subscriptions, with generation/owner-bound retirement;
+- selected backend/HTMX/compiler qualification, real valid/invalid
+  conformance tests, and honest residual assumptions for other host paths.
 
-Acceptance verifies real handler adoption, missing-provider rejection, startup
-failure cleanup, concurrent request separation, and permitted deferred completion.
-A thread-local binding alone cannot authorize work after its scope ends. One
-global one-use writer or lease is not a general concurrent application model.
+A host may have multiple physical lifecycle phases. In a selected Biff
+integration where all module initializers run *before* the ordered
+start phase, putting preflight first in start order does not prevent an
+earlier initializer from opening a socket, publishing a worker or
+performing a protected write. Every such initializer must be separately
+classified, safely private/fenced, or admitted before its relevant
+effect. The final guarded application must not be exposed through an
+unchecked listener under startup failure, missing provider or later
+handler replacement. Safe resource cleanup follows revocation of
+active effect rights; failed or partial cleanup does not restore them.
 
-This stage supplies the lifecycle and enforcement interfaces. It cannot report
-whole-application closure before Stage 10's actual required checks exist. A
-private listener or separately admitted health response must not expose unchecked
-application behavior under a startup exception.
+*** Preserve concurrency, asynchronous ownership and real observability
 
+Application admission and a physically installed handler do not
+automatically qualify every dynamic render, alternative Ring response,
+migration, external writer, worker or browser entrypoint. An HTML
+serialization gate covers the canonical responses actually sent
+through it; a pre-serialized or substituted handler remains an open
+bypass unless independently instrumented or excluded by a real
+enforcing boundary. The actual server must be shown to use the
+guarded handler and asset set before physical correspondence is
+credited; a staging report or matching handler key is not such proof.
+
+Each request, command, execution, stream, delayed callback and browser
+resource has its own relevant scope and retirement rules. A single
+process-wide, one-use writer lease, thread-local dynamic binding or
+global request context is not a sufficient model for concurrent
+requests and retained asynchronous effects. A context transferred
+to a worker needs a declared owner, authority basis, permitted effects,
+lifetime, cancellation and post-retirement behavior. Current protected
+reads and writes still require trusted checks at their use points;
+a formerly admitted request context is not everlasting Membership.
+
+Acceptance challenges startup from a genuine valid candidate as well
+as missing/misordered modules, an initializer effect before start,
+host handler substitution, failed preflight after resource acquisition,
+duplicate module identity, concurrent request cross-talk, stale
+deferred writes, unsupported context transfer, and asset/route mismatch.
+The check observes the first real physical effect/serving boundary,
+not only a helper report claiming the boundary would have blocked it.
+Eligible normal requests and authorized deferred completions must still
+work under the selected profile, with observed cleanup and bounded
+resource behavior.
+
+This stage supplies scoped lifecycle, invocation and enforcement
+interfaces. It does not assert Stage 10's complete whole-application
+closure, Stage 11's production release admission, or independent
+formal/physical correspondence. A health or private probe may use a
+separately declared and actually enforced narrower scope; it cannot
+quietly expose ordinary unchecked application routes.

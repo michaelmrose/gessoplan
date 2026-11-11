@@ -1,6 +1,6 @@
 # R5.1 sectional source — Part XII, Implementation Order and Final Invariants
 
-**Status: sections 12.01–12.02 substantively reviewed and audited (2/16); sections 12.03–12.16, whole-part reconciliation and independent editorial acceptance pending.**
+**Status: sections 12.01–12.03 substantively reviewed and audited (3/16); sections 12.04–12.16, whole-part reconciliation and independent editorial acceptance pending.**
 
 Preferred `r5` and pre-split `r5.1` Part XII are byte-identical. The sixteen
 numbered Org sources reproduce the existing root-level
@@ -83,7 +83,22 @@ paired positive/adversarial acceptance. Gesso v1622 source
 correspondence and unproved boundaries are recorded in the
 separate audit. No runtime tests or formal proof were run.
 
-**Next:** Review `12.03-proof-kernel-and-host-context.org`
-(Stages 3–4), then the remaining source units, whole-Part-XII
-reconciliation, independent Part XII acceptance and final
-whole-plan editorial reconciliation.
+**12.03 review:** see `12.03-r4-preservation-audit.md`.
+Preserved R4's small proof checker and real Biff/FX lifecycle
+responsibilities while retaining the stronger R5 distinction
+between executable semantic core, small propositional proof
+kernel, dedicated guarded/induction checkers and separately
+qualified actual host. Made the seven proof rules, original
+source completeness, premise/issuer boundaries, honest
+nonvacuity and external soundness obligations explicit.
+Restored the Biff init-before-start hazard, actual installed
+handler adoption, startup cleanup, independent concurrent
+requests, async transfer and physical bypass limitations.
+The audit records scoped Gesso v1622 source evidence and
+prospective positive/adverse cases. No runtime, browser,
+XTDB or formal tests were executed.
+
+**Next:** Review `12.04-authoritative-commands-and-physical-mediation.org`
+(Stages 5–6), followed by the other Part XII sectional reviews,
+whole-part reconciliation, separate Part XII acceptance and
+final twelve-part editorial reconciliation.
