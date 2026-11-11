@@ -1,6 +1,6 @@
 # R5.1 sectional source — Part XI, Release and Completion
 
-**Status: lossless split complete; 11.01–11.05 substantively reviewed.**
+**Status: lossless split complete; 11.01–11.06 substantively reviewed.**
 
 The preferred `r5` Part XI and the `r5.1` Part XI were byte-identical
 before this split. The eighteen numbered `.org` files listed here reproduce
@@ -125,6 +125,22 @@ limitations. Published Part XI has **1940
 newline-split lines** and **114987 characters**;
 the original section-index line ranges are historical.
 
-**Next:** Review **11.06 — Aggregate Status Is Not Admission**,
-then 11.07–11.18, whole-Part-XI reconciliation and independent
-editorial acceptance, Part XII and final whole-plan acceptance.
+**11.06 review:** see `11.06-r4-preservation-audit.md`.
+Preserved the small R5 pure Clojure gate-status reducer and
+added executable illustrations that forged passing statuses
+and an incomplete but nonempty required-gate set both
+produce superficially green summaries. These are negative
+proofs of the helper's authority, not actual release tests.
+Clarified all eight result classes, strict mandatory gates,
+separate applicability/exclusions, negative versus positive
+test outcomes, command settlement and four release decisions.
+Recorded 28 R4/R5 preservation decisions and 12 prospective
+positive/adversarial pairs against Gesso v1622's actual
+bounded and nonauthoritative assurance reports.
+Published Part XI now has **2054
+newline-split lines** and **120920 characters**;
+the original index line ranges remain historical.
+
+**Next:** Review **11.07 — Candidate Activation and Rollback**,
+then 11.08–11.18, whole-Part-XI reconciliation and
+independent editorial acceptance, Part XII and whole-plan acceptance.

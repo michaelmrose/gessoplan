@@ -1151,6 +1151,61 @@ source-derived gate construction. Its output explains blockers to a caller.
                     :response-contract {:status :passed})))))
 #+end_src
 
+
+The example's green result is deliberately *non-authoritative*. Two
+additional pure tests reveal why: (1) a caller can fabricate passing
+rows without any proof or physical test; (2) the supplied set may be
+nonempty but omit the actual original requirements. Both produce a
+`:requirements-passed` summary even though neither demonstrates
+admission of the intended release.
+
+#+begin_src clojure
+;; This looks green solely because the caller supplied green rows.
+(def invented-green-rows
+  (zipmap small-required-set
+          (repeat {:status :passed})))
+
+(assert (= :requirements-passed
+           (:summary
+            (summarize-required-gates
+             small-required-set invented-green-rows))))
+
+;; A nonempty subset need not be the complete canonical required set.
+(assert (= :requirements-passed
+           (:summary
+            (summarize-required-gates
+             #{:assembly-closure} incomplete-results))))
+
+;; Present malformed rows are distinct from genuinely missing rows.
+(assert (= {:response-contract :invalid-result}
+           (:blockers
+            (summarize-required-gates
+             small-required-set
+             (assoc incomplete-results
+                    :response-contract {:status :unknown})))))
+
+;; Every recognized nonpassing check result remains blocking.
+(assert
+ (every?
+  (fn [status]
+    (= {:response-contract status}
+       (:blockers
+        (summarize-required-gates
+         small-required-set
+         (assoc incomplete-results
+                :response-contract {:status status})))))
+  [:failed :incomplete :unavailable :unsupported
+   :skipped :stale :missing]))
+#+end_src
+
+These assertions are *negative illustrations*, not assertions that
+Gesso has verified any actual release. Their purpose is to show that
+the same pure helper can report green when its inputs are forged or
+incomplete. The helper cannot learn the missing requirement from
+the map it is given; preventing that failure belongs to independent
+source/requirement closure and current proof/physical evidence
+validation from 11.01–11.05, not to another success flag in its output.
+
 An arbitrary caller can fabricate the example's =:passed= rows. That is precisely
 why aggregation is downstream of evidence validation and is not an issuer. The
 real gate checks each result's evidence, subject, profile, scope, and applicability
@@ -1161,6 +1216,65 @@ The real required set is derived from the requested canonical scope and must not
 be replaced with the three-gate illustration. Rejection of an empty set is a
 small guard against vacuous aggregation, not a proof that the set is complete.
 
+**** Check status, applicability, and authority are not interchangeable
+
+The example's eight result kinds classify the *outcome of a named
+required check*. They are not command outcomes, evidence types,
+exclusions, or issued release decisions. A timed-out exploration
+is `:incomplete`, not a successful proof from seeing no
+counterexample. Unavailable or unsupported mandatory machinery
+blocks the selected claim; the original strict profile cannot
+be silently downgraded to keep its green label.
+
+An independently authorized *narrower release intent* may
+exclude a particular requirement only with its own scope,
+original requirement reference, responsible decision and
+visible remaining milestone debt. Exclusion is a separate
+applicability result, not a ninth check outcome or a passing
+check. Unknown applicability remains unresolved.
+
+An expected refusal is a positive result only for a specified
+*negative test*: it must observe the intended first enforcing
+boundary and absence of the prohibited physical effect. It is
+not authorization of that invalid command, nor does a
+reject-all implementation meet the ordinary positive operation
+requirements. Similarly, failure to retrieve release
+diagnostics after a potentially committed Request mutation
+does not change its domain outcome to `:rejected` or
+authorize duplicate submission.
+
+The release root of 11.05 preserves original requirement
+coverage, source-bound derivations, proof assumptions, actual
+test/XTDB and installed Biff/browser evidence, and the
+candidate/install/activate/complete distinctions. A passing
+aggregate can be displayed only as a *summary of independently
+validated evidence under one declared claim*. It cannot
+produce the evidence or make an incomplete source inventory
+complete. Even a genuine historical aggregate is not
+permanent evidence that a changed host or provider remains
+qualified.
+
+**** Required positive and adversarial acceptance pairs
+
+| Positive case | Counterexample to reject |
+|---------------+--------------------------|
+| Entire original requirement inventory drives the mandatory gate set | Nonempty reduced set omits failing HumanHelp response-flow and still appears green |
+| Admitted original proof/checker and real test evidence bind each passing row | All-passing caller-made status map becomes a certificate |
+| Missing required gate remains `:missing` | Absent original requirement disappears from denominator |
+| Malformed present row is reported `:invalid-result` by sample | Unknown status treated as a passing result |
+| All seven nonpassing statuses block a required gate | Timeout, unsupported checker or stale result is counted as passed |
+| Positive supported Claim operation succeeds at actual effect boundary | Reject-all handler passes solely negative tests |
+| Defined invalid Claim reaches its designated protecting boundary | Earlier unrelated test wrapper rejection counts as actual physical enforcement |
+| Approved preview exposes original full-plan exclusions | A small operational slice is called full HumanHelp completion |
+| Named abstract theorem and accepted backend premises stay distinct | Source proof success claims physical writer and transaction correctness |
+| Candidate, installation, activation and completion retain separate evidence | Pure aggregate green status activates a live host |
+| Real served JS/XTDB evidence is checked for exact current subjects | Copied fixture success authorizes production |
+| Commit-unknown remains pending authorized historical reconciliation | Missing report is read as rejection and triggers duplicate write |
+
+These are prospective test requirements, not test evidence
+produced by this editorial revision. The executable assertions
+above test only the arithmetic of a user-supplied finite map,
+not live proof, release admission, or production behavior.
 *** The tested object must be the activated object
 
 The candidate binds declarations, prepared operations, route/decoder behavior,
