@@ -1,6 +1,6 @@
 # R5.1 sectional source — Part XII, Implementation Order and Final Invariants
 
-**Status: sections 12.01–12.05 substantively reviewed and audited (5/16); sections 12.06–12.16, whole-part reconciliation and independent editorial acceptance pending.**
+**Status: sections 12.01–12.06 substantively reviewed and audited (6/16); sections 12.07–12.16, whole-part reconciliation and independent editorial acceptance pending.**
 
 Preferred `r5` and pre-split `r5.1` Part XII are byte-identical. The sixteen
 numbered Org sources reproduce the existing root-level
@@ -123,7 +123,20 @@ Recorded bounded Gesso v1622 source correspondence, R4
 preservation and positive/adversarial future conformance
 cases. No new JVM, Node, Chromium, HTMX or formal tests ran.
 
-**Next:** Review `12.06-live-publication-and-application-closure.org`
-(Stages 9–10), then the remaining sections, whole-Part-XII
-reconciliation, separate candidate acceptance and final
-twelve-part editorial reconciliation.
+**12.06 review:** see `12.06-r4-preservation-audit.md`.
+Restored R4's Live initial acquisition, explicit authoritative
+absence, provider progression, missing-notice recovery and
+whole-application mandatory preflight. Strengthened R5's
+atomic publication-intent vs delivery distinction,
+subscription registration/failover gap handling, policy-
+authorized one-use remote Refresh, complete physical
+installation, product-independent requirement denominators,
+source-owned semantic audit and actual installed Biff/asset
+correspondence. The separate audit records bounded Gesso
+v1622 implementation evidence and positive/adversarial
+future tests. No runtime, browser or formal tests ran.
+
+**Next:** Review `12.07-release-and-humanhelp-stages.org`
+(Stages 11–12), then finish the remaining sectional audits,
+whole-Part-XII reconciliation, independent candidate acceptance,
+and final twelve-part editorial reconciliation.
