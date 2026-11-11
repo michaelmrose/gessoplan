@@ -1,6 +1,6 @@
 # R5.1 sectional source — Part XII, Implementation Order and Final Invariants
 
-**Status: sections 12.01–12.13 substantively reviewed and audited (13/16); sections 12.14–12.16, whole-part reconciliation and independent editorial acceptance pending.**
+**Status: sections 12.01–12.14 substantively reviewed and audited (14/16); sections 12.15–12.16, whole-part reconciliation and independent editorial acceptance pending.**
 
 Preferred `r5` and pre-split `r5.1` Part XII are byte-identical. The sixteen
 numbered Org sources reproduce the existing root-level
@@ -244,7 +244,30 @@ positive and adverse test/oracle, with Gesso v1622
 source evidence and incomplete deployment limits
 recorded in the separate audit. No tests ran.
 
-**Next:** Review `12.14-cross-stage-gates-i-to-p.org`,
-then 12.15–12.16, whole-Part-XII reconciliation,
+**12.14 review:** see `12.14-r4-preservation-audit.md`.
+Preserved every R4 Gate I–P while tightening the first
+admission and physical/evidence obligations:
+representation never confers issuer/model authority;
+the original product/operation denominator is
+independent of generated closure; C42 incorporation
+is distinct from individual attempts, current
+card truth and subscriber knowledge; one-use
+user Refresh preserves scope/covered debt;
+proof/release evidence retains exact S0–S4
+and installed applicability; opaque
+Clojure policy remains not-inspected
+rather than certified absent; formal
+atomicity requires exact backend guards,
+frame and writer correspondence; and
+intent review remains advisory until
+the product owner changes original source.
+All eight gates now include eligible
+and adversarial acceptance cases.
+The separate audit records bounded
+Gesso v1622 source evidence.
+No runtime or formal tests ran.
+
+**Next:** Review `12.15-worked-stopped-candidate.org`,
+then 12.16, whole-Part-XII reconciliation,
 independent Part XII acceptance and final
 twelve-part editorial reconciliation.
