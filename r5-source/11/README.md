@@ -1,6 +1,6 @@
 # R5.1 sectional source — Part XI, Release and Completion
 
-**Status: lossless split complete; 11.01–11.06 substantively reviewed.**
+**Status: lossless split complete; 11.01–11.07 substantively reviewed.**
 
 The preferred `r5` Part XI and the `r5.1` Part XI were byte-identical
 before this split. The eighteen numbered `.org` files listed here reproduce
@@ -141,9 +141,9 @@ Published Part XI now has **2054
 newline-split lines** and **120920 characters**;
 the original index line ranges remain historical.
 
-**Next:** Review **11.07 — Candidate Activation and Rollback**,
-then 11.08–11.18, whole-Part-XI reconciliation and
-independent editorial acceptance, Part XII and whole-plan acceptance.
+**11.06 handoff:** 11.07 was the next unfinished section after the
+11.06 review. Its completed review is recorded below; the next
+unfinished section is now 11.08.
 
 **Editorial hygiene after 11.06:** reviewed sections 11.01–11.06 now
 express release and evidence obligations without current-version or
@@ -152,7 +152,7 @@ implementation comparisons remain in the existing preservation audits.
 See `PART-XI-editorial-hygiene.md`. This does not review 11.07–11.18.
 
 
-**11.07 review:** see \`11.07-r4-preservation-audit.md\`.
+**11.07 review:** see `11.07-r4-preservation-audit.md`.
 Strengthened candidate versus actual installed/activated subject identity,
 exact build/serving byte relations, real handler adoption and private
 init-time effect fencing. Made concurrent compare-and-activate, long-lived
