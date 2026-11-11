@@ -1,6 +1,6 @@
 # R5.1 sectional source — Part XII, Implementation Order and Final Invariants
 
-**Status: sections 12.01–12.06 substantively reviewed and audited (6/16); sections 12.07–12.16, whole-part reconciliation and independent editorial acceptance pending.**
+**Status: sections 12.01–12.07 substantively reviewed and audited (7/16); sections 12.08–12.16, whole-part reconciliation and independent editorial acceptance pending.**
 
 Preferred `r5` and pre-split `r5.1` Part XII are byte-identical. The sixteen
 numbered Org sources reproduce the existing root-level
@@ -136,7 +136,21 @@ correspondence. The separate audit records bounded Gesso
 v1622 implementation evidence and positive/adversarial
 future tests. No runtime, browser or formal tests ran.
 
-**Next:** Review `12.07-release-and-humanhelp-stages.org`
-(Stages 11–12), then finish the remaining sectional audits,
-whole-Part-XII reconciliation, independent candidate acceptance,
-and final twelve-part editorial reconciliation.
+**12.07 review:** see `12.07-r4-preservation-audit.md`.
+Restored R4's first-release installation safety and complete
+production HumanHelp acceptance while retaining R5's stronger
+four-decision release architecture, source-bound evidence
+and directional old/new compatibility. Separated proof reuse,
+fresh issuance, activated host assets, command-history recovery
+and four completion milestones. Reasserted all six lifecycle
+operations, genuine Reassign target selection, independent
+Response-flow choice, adopted-cohort controls, one-use Refresh,
+positive real-browser acceptance and fourteen independent
+Part VIII product gates. The audit compares scoped Gesso
+v1622 artifact, proof, preflight and command modules without
+claiming implementation completeness. No tests were executed.
+
+**Next:** Review `12.08-certification-and-mutation-stages.org`
+(Stages 13–14), then remaining sections, whole-Part-XII
+reconciliation, independent Part XII acceptance and final
+twelve-part editorial reconciliation.
