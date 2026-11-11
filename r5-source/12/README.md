@@ -1,6 +1,6 @@
 # R5.1 sectional source — Part XII, Implementation Order and Final Invariants
 
-**Status: sections 12.01–12.08 substantively reviewed and audited (8/16); sections 12.09–12.16, whole-part reconciliation and independent editorial acceptance pending.**
+**Status: sections 12.01–12.09 substantively reviewed and audited (9/16); sections 12.10–12.16, whole-part reconciliation and independent editorial acceptance pending.**
 
 Preferred `r5` and pre-split `r5.1` Part XII are byte-identical. The sixteen
 numbered Org sources reproduce the existing root-level
@@ -165,7 +165,19 @@ generic non-HumanHelp domains. The audit identifies
 Gesso v1622 evidence and implementation limits; no
 runtime or formal tests were executed.
 
-**Next:** Review `12.09-explainability-and-independent-kernel-proof.org`
-(Stages 15–16), followed by the remaining sections,
-whole-Part-XII reconciliation, independent candidate
-acceptance and final twelve-part editorial reconciliation.
+**12.09 review:** see `12.09-r4-preservation-audit.md`.
+Restored R4's first-blocker explanations, human/source-linked
+counterexamples, real generated-backend provenance, read-only
+advisory intent review and original-source repairs.
+Specified the first external seven-rule theorem and five
+separate S0–S4 results: rule soundness, derivation soundness,
+production Clojure correspondence, typed-atom interpretation,
+and source-to-production transfer. Preserved open premises,
+bounded finite evidence and optional ordinary-Clojure
+authoring, with exact Gesso v1622 source comparison.
+No external proof or runtime tests were executed.
+
+**Next:** Review `12.10-formal-transfer-and-multi-node.org`
+(Stages 17–18), then remaining sectional sources,
+whole-Part-XII reconciliation, separate candidate acceptance
+and final twelve-part editorial reconciliation.
