@@ -1,6 +1,6 @@
 # R5.1 sectional source — Part XII, Implementation Order and Final Invariants
 
-**Status: 12.01 substantively reviewed and audited (1/16); sections 12.02–12.16, whole-part reconciliation and independent editorial acceptance pending.**
+**Status: sections 12.01–12.02 substantively reviewed and audited (2/16); sections 12.03–12.16, whole-part reconciliation and independent editorial acceptance pending.**
 
 Preferred `r5` and pre-split `r5.1` Part XII are byte-identical. The sixteen
 numbered Org sources reproduce the existing root-level
@@ -71,7 +71,19 @@ first relevant boundary. The complete source and original R4
 preservation/implementation-context comparison are recorded in
 the separate audit. No runtime, formal or browser test is claimed.
 
-**Next:** Review `12.02-semantic-ownership-and-typed-rules.org`
-(Stages 1–2), then the remaining numbered sections, whole-Part-XII
-reconciliation, independent Part XII acceptance and final whole-plan
-editorial reconciliation.
+**12.02 review:** see `12.02-r4-preservation-audit.md`. Restored
+R4's original source, certified-interface, typed-language and
+authoritative-model duties while retaining R5's semantic-first
+staging. Distinguished original semantic ownership, source
+identity, evidence, nominal typing, value interpretation,
+opaque Clojure contracts and installed authority. Strengthened
+presence/nullable path checks, conservative normalization,
+independent product denominators, source elaboration and
+paired positive/adversarial acceptance. Gesso v1622 source
+correspondence and unproved boundaries are recorded in the
+separate audit. No runtime tests or formal proof were run.
+
+**Next:** Review `12.03-proof-kernel-and-host-context.org`
+(Stages 3–4), then the remaining source units, whole-Part-XII
+reconciliation, independent Part XII acceptance and final
+whole-plan editorial reconciliation.
