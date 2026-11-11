@@ -1,6 +1,6 @@
 # R5.1 sectional source — Part XI, Release and Completion
 
-**Status: lossless split complete; 11.01–11.04 substantively reviewed.**
+**Status: lossless split complete; 11.01–11.05 substantively reviewed.**
 
 The preferred `r5` Part XI and the `r5.1` Part XI were byte-identical
 before this split. The eighteen numbered `.org` files listed here reproduce
@@ -110,6 +110,21 @@ Published Part XI contains **1801 newline-split
 lines** and **104694 characters**. Original section-map
 line ranges remain historical.
 
-**Next:** Review **11.05 — Root Release Evidence and Required Fields**,
-then 11.06–11.18, whole-Part-XI reconciliation and independent
-editorial acceptance, Part XII and full-plan acceptance.
+**11.05 review:** see `11.05-r4-preservation-audit.md`.
+Preserved R5's eight required root-report families while restoring
+R4's explicit kernel/semantic-checker versioning, TCB classification,
+independently accepted capabilities, immutable original requirement
+denominator, and distinct tested versus served artifacts. Required
+source-to-proof-to-implementation-to-host evidence references,
+time-scoped conditional premises and consistent human/machine report
+views without granting report data runtime authorization. Thirty
+preservation decisions and twelve prospective positive/adversarial
+cases were checked against actual Gesso v1622's conditional
+reporting, proof, physical Biff/XTDB inventory and browser build
+limitations. Published Part XI has **1940
+newline-split lines** and **114987 characters**;
+the original section-index line ranges are historical.
+
+**Next:** Review **11.06 — Aggregate Status Is Not Admission**,
+then 11.07–11.18, whole-Part-XI reconciliation and independent
+editorial acceptance, Part XII and final whole-plan acceptance.
