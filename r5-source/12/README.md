@@ -1,6 +1,6 @@
 # R5.1 sectional source — Part XII, Implementation Order and Final Invariants
 
-**Status: sections 12.01–12.11 substantively reviewed and audited (11/16); sections 12.12–12.16, whole-part reconciliation and independent editorial acceptance pending.**
+**Status: sections 12.01–12.12 substantively reviewed and audited (12/16); sections 12.13–12.16, whole-part reconciliation and independent editorial acceptance pending.**
 
 Preferred `r5` and pre-split `r5.1` Part XII are byte-identical. The sixteen
 numbered Org sources reproduce the existing root-level
@@ -210,7 +210,27 @@ eight checked gate dispositions. The
 R4/source and bounded Gesso v1622 audit
 is separate; no runtime/proof tests ran.
 
-**Next:** Review `12.12-worked-claim-path.org`,
-then 12.13–12.16, whole-Part-XII reconciliation,
-independent Part XII acceptance and final
-twelve-part editorial reconciliation.
+**12.12 review:** see `12.12-r4-preservation-audit.md`.
+Preserved R4's single evolving Claim and explicit
+warning that illustrative admit/issue/check
+sketches are not executable Gesso APIs.
+Reconciled the same original Request/primary
+assignment, Alice's C42, distinct physical
+attempts, browser resources, issuer/evidence
+and production/release subjects across all
+eighteen revised stages. Expanded an honest
+commit/lost-response/host-crash/outbox/
+late-interest/one-use Refresh schedule and
+independently scoped positive/adverse cases.
+Distinguished actual backend guards, command
+attribution, semantic proof, source closure,
+installed host/browser correspondence and
+HumanHelp product completion. The audit
+records scoped Gesso v1622 source evidence;
+no physical or external proof tests ran.
+
+**Next:** Review `12.13-cross-stage-gates-a-to-h.org`,
+then 12.14–12.16, whole-Part-XII
+reconciliation, independent Part XII
+acceptance and final twelve-part
+editorial reconciliation.
