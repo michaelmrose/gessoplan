@@ -1,6 +1,6 @@
 # R5.1 sectional source — Part XII, Implementation Order and Final Invariants
 
-**Status: sections 12.01–12.09 substantively reviewed and audited (9/16); sections 12.10–12.16, whole-part reconciliation and independent editorial acceptance pending.**
+**Status: sections 12.01–12.10 substantively reviewed and audited (10/16); sections 12.11–12.16, whole-part reconciliation and independent editorial acceptance pending.**
 
 Preferred `r5` and pre-split `r5.1` Part XII are byte-identical. The sixteen
 numbered Org sources reproduce the existing root-level
@@ -177,7 +177,23 @@ bounded finite evidence and optional ordinary-Clojure
 authoring, with exact Gesso v1622 source comparison.
 No external proof or runtime tests were executed.
 
-**Next:** Review `12.10-formal-transfer-and-multi-node.org`
-(Stages 17–18), then remaining sectional sources,
-whole-Part-XII reconciliation, separate candidate acceptance
+**12.10 review:** see `12.10-r4-preservation-audit.md`.
+Reconciled formal-to-production transfer with R4's
+source, checker, atomicity, generated counterexample,
+finite/unbounded proof, real installed-evidence and
+release-freshness requirements. Kept admission
+soundness, execution safety simulation, liveness
+premises and reverse traceability distinct.
+Preserved one semantic machine across application
+hosts, source-owned durable publication, original
+C42 command recovery, router interest fencing and
+failover, idempotent redelivery and HumanHelp's
+explicit one-use Refresh. Production multi-node
+completion requires genuine fault/load evidence.
+The audit records bounded Gesso v1622 source
+correspondence; no tests or external proofs ran.
+
+**Next:** Review `12.11-dependencies-and-delivery-checkpoints.org`,
+then the remaining sections, whole-Part-XII
+reconciliation, independent Part XII acceptance
 and final twelve-part editorial reconciliation.
