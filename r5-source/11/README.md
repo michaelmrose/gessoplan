@@ -1,6 +1,6 @@
 # R5.1 sectional source — Part XI, Release and Completion
 
-**Status: lossless split complete; 11.01–11.09 substantively reviewed.**
+**Status: lossless split complete; 11.01–11.10 substantively reviewed.**
 
 The preferred `r5` Part XI and the `r5.1` Part XI were byte-identical
 before this split. The eighteen numbered `.org` files listed here reproduce
@@ -200,6 +200,24 @@ v1622 source evidence, without claiming runtime or physical tests.
 The accepted original Part XI anchors are preserved and the numbered
 source rebuilds the published Part XI exactly.
 
-**Next:** Review **11.10 — Retirement Recovery and Rolling Acceptance**,
-then 11.11–11.18, whole-Part-XI reconciliation, independent editorial
-acceptance, Part XII and final whole-plan acceptance.
+**11.09 handoff:** Section 11.10 was the next unfinished review. Its
+completed substantive revision is documented below.
+
+
+**11.10 review:** see 11.10-r4-preservation-audit.md.
+Preserved R4's intent-versus-execution retirement distinction and
+concrete C42 lost-response history, and R5's explicit separation
+of browser effects, durable command truth and HumanHelp's one-use
+Refresh. Clarified current-authority recovery, missing historical
+record nonclaims, durable/publication debt, semantic retirement
+before physical cancellation, grant and advisory coverage, and
+the independent physical positive/negative acceptance profile.
+Recorded 32 R4/R5 preservation and ownership decisions and 22
+prospective paired conformance cases, referencing the bounded
+Gesso v1622 source evidence without claiming implementation
+release certification. The published part is rebuilt from the
+revised numbered source; existing anchors are unchanged.
+
+**Next:** Review **11.11 — Global Non-goals and Design Freedom**,
+then 11.12–11.18, whole-Part-XI reconciliation, independent
+acceptance, Part XII and whole-plan acceptance.
