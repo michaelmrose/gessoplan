@@ -1,6 +1,6 @@
 # R5.1 sectional source — Part XI, Release and Completion
 
-**Status: lossless split complete; 11.01–11.13 substantively reviewed.**
+**Status: lossless split complete; 11.01–11.14 substantively reviewed.**
 
 The preferred `r5` Part XI and the `r5.1` Part XI were byte-identical
 before this split. The eighteen numbered `.org` files listed here reproduce
@@ -276,6 +276,27 @@ implementation correspondence; no runtime test is claimed.
 Source and published Part XI were revised together,
 preserving its eight original stable anchors.
 
-**Next:** Review **11.14 — Compositional Certification Completion**,
-then 11.15–11.18, whole-Part-XI reconciliation, independent
-editorial acceptance, Part XII and final whole-plan review.
+**11.13 handoff:** 11.14 was the next incomplete source. Its
+completed substantive review is recorded below.
+
+
+**11.14 review:** see 11.14-r4-preservation-audit.md.
+Reconciled R4's source-owned certification/artifact classes,
+genuine proof-producing elaboration, currentness, repair diagnosis
+and substantial Claim pilot with R5's stronger typed rules,
+distributed use-site judgments, kernel/checker separation, source-
+complete derived obligations, conditional induction and premise
+discharge. Distinguished checked derivation, independent checker
+soundness, installed physical realization and independent product
+acceptance. The real public Request/RequestAssignment Claim
+pilot keeps stable command C42, four outcome classes, one-primary
+concurrency, external writer and browser obligations open when
+not established. Recorded 32 preservation/ownership decisions
+and 18 paired prospective conformance cases against narrowly
+scoped Gesso v1622 evidence, without claiming executed runtime
+or proof tests. Revised numbered Org source and published XI
+remain exact with original eight stable anchors preserved.
+
+**Next:** Review **11.15 — External Formal Verification Completion**,
+then 11.16–11.18, whole-Part-XI reconciliation, independent
+editorial acceptance, Part XII and whole-plan review.
