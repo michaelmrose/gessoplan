@@ -1,6 +1,6 @@
 # R5.1 sectional source — Part XI, Release and Completion
 
-**Status: all 11.01–11.18 sections substantively reviewed; whole-Part-XI reconciliation complete; separate editorial acceptance pending.**
+**Status: all 11.01–11.18 sections substantively reviewed; whole-Part-XI reconciliation complete; Part XI independently ACCEPTED as the reviewed R5.1 candidate.**
 
 At the original lossless split, preferred R5 and R5.1 Part XI were
 byte-identical. The eighteen numbered Org files reproduced that
@@ -410,6 +410,15 @@ No actual Gesso runtime or formal tests were executed.
 **Reconciliation disposition: COMPLETE**, distinct from and not a substitute
 for an independent Part XI editorial acceptance.
 
-**Next:** Perform the **separate independent Part XI reviewed-candidate
-editorial acceptance** against this record and the committed sources.
-Then proceed to Part XII and final whole-plan acceptance.
+**Independent whole-Part-XI reviewed-candidate acceptance:** see
+PART-XI-cross-section-acceptance.md. A separate editorial challenge of all
+18 source units, original R4 requirements, the preferred R5 architecture,
+Parts I–X, adversarial release and recovery cases, exact published assembly,
+anchors and internal references found no blocking normative contradiction.
+**Acceptance disposition: ACCEPT**, conditional on the explicit future
+implementation, product, proof and final cross-part obligations. This is
+not an executed runtime test or a certification of deployed Gesso.
+
+**Next:** Split **Part XII** losslessly into coherent source units, then
+perform its sectional R4 reviews, whole-part reconciliation and independent
+acceptance. Final twelve-part reconciliation and publication review follow.
