@@ -1,13 +1,15 @@
 # R5.1 sectional source — Part XII, Implementation Order and Final Invariants
 
-**Status: all sixteen sections 12.01–12.16 substantively reviewed and R4-preservation-audited (16/16); whole-Part-XII cross-section reconciliation, independent Part XII candidate acceptance and final twelve-part editorial reconciliation remain pending.**
+**Status: all sixteen sections 12.01–12.16 substantively reviewed and R4-preservation-audited (16/16); whole-Part-XII cross-section reconciliation complete. Independent Part XII candidate acceptance and final twelve-part editorial reconciliation remain pending.**
 
-Preferred `r5` and pre-split `r5.1` Part XII are byte-identical. The sixteen
-numbered Org sources reproduce the existing root-level
+At the *initial lossless split*, preferred `r5` and the pre-revision
+`r5.1` Part XII were byte-identical. Since then all sixteen units have been
+substantively revised and R4-preservation-audited. The ordered Org files are
+the editable normative source, and the root-level
 `gesso-unified-design-canonical-r4-12-implementation-order-and-final-invariants.org`
-exactly in the order listed. This first revision changes **no** normative
-heading, text, example, whitespace, anchor or link. Numbered Org files are
-editable source, and the root-level publication is derived output.
+is the **derived, now substantially revised** publication. The complete
+Part XII must still be an exact concatenation of the sixteen current units.
+Historical split-time line numbers below are not current positions.
 
 | Ordered source | Initial lines | Scope |
 | --- | ---: | --- |
@@ -41,13 +43,15 @@ locations, not offsets in later revised publications.
 checks the part against its canonical root publication with `--check`.
 Its `--write` action now publishes all twelve source-built parts
 and assembles `output/gesso-plan-v5.org` from those parts.
-Because this split is lossless, neither existing published Part XII nor
-the whole-plan output needs a content change in this revision.
+The initial split was lossless; the subsequently revised Part XII publication
+does change, and every source revision must regenerate it. The whole-plan
+output is a separate generated artifact; this editorial review does not
+claim to have rebuilt it.
 
-The sixteen retrieved section strings were concatenated and compared
-character-for-character with the root Part XII source on a pinned GitHub
-commit. This check is not a claim that a local Python assembler, a
-Clojure JVM test, a browser test or a formal checker was run.
+The sixteen retrieved section strings are checked against the root Part XII
+character-for-character on a pinned GitHub commit. This source check is
+not a claim that a local Python assembler, Clojure JVM, browser, XTDB,
+multi-node fault runner or formal checker was executed.
 
 ## Review method and next action
 
@@ -306,6 +310,18 @@ Gesso v1622 correspondence and open
 implementation evidence remain in the
 separate audit. No runtime/formal tests ran.
 
-**Next:** Whole-Part-XII cross-section reconciliation,
-then independent Part XII candidate acceptance
-and final twelve-part editorial reconciliation.
+**Whole-Part-XII reconciliation:** see
+`PART-XII-cross-section-reconciliation.md`. Independently reconciled
+the eighteen stage contracts, all Gates A–P, R4-to-R5.1 preservation,
+the C42 and stopped-release histories, four release decisions,
+four independent milestones and relevant Parts VI–XI requirements.
+Corrected the one unresolved Part X formal-proof link, aligned Gate L's
+Refresh physical-read budget with Parts VI/VIII and repaired stale
+split-time README wording. Preserved original model/source, issuer,
+actor, physical host, proof and user-grant ownership.
+No runtime, browser, XTDB or external formal tests were executed.
+
+**Next:** Independent Part XII reviewed-candidate editorial
+acceptance against original R4, the sixteen preservation
+audits, the assembled publication and this reconciliation.
+After that, final twelve-part editorial reconciliation.
