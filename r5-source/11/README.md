@@ -1,6 +1,6 @@
 # R5.1 sectional source — Part XI, Release and Completion
 
-**Status: lossless split complete; 11.01–11.07 substantively reviewed.**
+**Status: lossless split complete; 11.01–11.08 substantively reviewed.**
 
 The preferred `r5` Part XI and the `r5.1` Part XI were byte-identical
 before this split. The eighteen numbered `.org` files listed here reproduce
@@ -164,6 +164,24 @@ decisions and 16 positive/adversarial physical conformance pairs, with
 precisely limited Gesso v1622 source evidence and no claim of executed
 deployment tests. The numbered source and published Part XI were rebuilt
 together; all eight original Part XI anchors remain.
-**Next:** Review **11.08 — Rolling Compatibility Directions**, then
-11.09–11.18, whole-Part-XI reconciliation, independent acceptance,
-Part XII and whole-plan acceptance.
+**11.07 handoff:** 11.08 was the next incomplete source following 11.07.
+Its completed substantive review is recorded below; the next section
+is now 11.09.
+
+
+**11.08 review:** see 11.08-r4-preservation-audit.md.
+Reconciled R4's four release identities and finite rolling window with
+R5's four-direction A/B matrix and operation-specific compatibility.
+Specified source-derived versus physically reachable pairings, actual
+routing/failover exclusions, mandatory current qualification and early
+typed refusal of incompatible continuations. Retained qualified old
+command reconciliation after mutation rights retire, and HumanHelp's
+explicit remote Refresh. Added 32 preservation/ownership decisions and
+18 prospective positive/adversarial conformance pairs against scoped
+Gesso v1622 source evidence; no runtime or multi-host tests are claimed.
+The original Part XI anchors and full source-to-publication identity
+remain unchanged except for the intended 11.08 normative revision.
+
+**Next:** Review **11.09 — Continuation Contract and Asset Retention**,
+then 11.10–11.18, whole-Part-XI reconciliation, independent editorial
+acceptance, Part XII and final whole-plan acceptance.
