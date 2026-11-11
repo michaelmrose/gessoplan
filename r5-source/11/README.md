@@ -1,6 +1,6 @@
 # R5.1 sectional source — Part XI, Release and Completion
 
-**Status: lossless split complete; 11.01–11.08 substantively reviewed.**
+**Status: lossless split complete; 11.01–11.09 substantively reviewed.**
 
 The preferred `r5` Part XI and the `r5.1` Part XI were byte-identical
 before this split. The eighteen numbered `.org` files listed here reproduce
@@ -182,6 +182,24 @@ Gesso v1622 source evidence; no runtime or multi-host tests are claimed.
 The original Part XI anchors and full source-to-publication identity
 remain unchanged except for the intended 11.08 normative revision.
 
-**Next:** Review **11.09 — Continuation Contract and Asset Retention**,
-then 11.10–11.18, whole-Part-XI reconciliation, independent editorial
+**11.08 handoff:** 11.09 was the next incomplete section after the
+11.08 review; its completed substantive review is recorded below.
+
+
+**11.09 review:** see 11.09-r4-preservation-audit.md.
+Reconciled R4's complete continuation meaning and qualified directional
+adaptation with R5's explicit browser/progression/codec/durable-work
+contracts. Added source-complete presence-aware normalization,
+separate semantic and physically installed compatibility, and
+release-specific retained asset, decoder, Live and historical-command
+horizons. Preservation of current Membership, protected disclosure,
+browser resource ownership and explicit HumanHelp Refresh remains
+mandatory. Recorded 32 R4/R5 preservation decisions and 20
+positive/adversarial future conformance pairs against scoped Gesso
+v1622 source evidence, without claiming runtime or physical tests.
+The accepted original Part XI anchors are preserved and the numbered
+source rebuilds the published Part XI exactly.
+
+**Next:** Review **11.10 — Retirement Recovery and Rolling Acceptance**,
+then 11.11–11.18, whole-Part-XI reconciliation, independent editorial
 acceptance, Part XII and final whole-plan acceptance.
