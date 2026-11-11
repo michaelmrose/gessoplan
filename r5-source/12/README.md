@@ -1,6 +1,6 @@
 # R5.1 sectional source — Part XII, Implementation Order and Final Invariants
 
-**Status: sections 12.01–12.12 substantively reviewed and audited (12/16); sections 12.13–12.16, whole-part reconciliation and independent editorial acceptance pending.**
+**Status: sections 12.01–12.13 substantively reviewed and audited (13/16); sections 12.14–12.16, whole-part reconciliation and independent editorial acceptance pending.**
 
 Preferred `r5` and pre-split `r5.1` Part XII are byte-identical. The sixteen
 numbered Org sources reproduce the existing root-level
@@ -229,8 +229,22 @@ HumanHelp product completion. The audit
 records scoped Gesso v1622 source evidence;
 no physical or external proof tests ran.
 
-**Next:** Review `12.13-cross-stage-gates-a-to-h.org`,
-then 12.14–12.16, whole-Part-XII
-reconciliation, independent Part XII
-acceptance and final twelve-part
-editorial reconciliation.
+**12.13 review:** see `12.13-r4-preservation-audit.md`.
+All eight original cross-stage Gates A–H retain their
+R4 contract while strengthening first-boundary evidence:
+no silent managed-to-ordinary downgrade; one semantic
+subject through production/proof; model-owned business
+rules and explicit opaque Clojure premises; actual
+current trusted authority; built/served/loaded
+artifact and handler correspondence; real declared
+dynamic recovery; physical Chromium/XTDB/Biff
+acceptance; and rejection before the earliest
+prohibited effect. Each gate includes an eligible
+positive and adverse test/oracle, with Gesso v1622
+source evidence and incomplete deployment limits
+recorded in the separate audit. No tests ran.
+
+**Next:** Review `12.14-cross-stage-gates-i-to-p.org`,
+then 12.15–12.16, whole-Part-XII reconciliation,
+independent Part XII acceptance and final
+twelve-part editorial reconciliation.
