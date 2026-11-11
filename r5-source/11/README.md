@@ -1,6 +1,6 @@
 # R5.1 sectional source — Part XI, Release and Completion
 
-**Status: lossless split complete; 11.01–11.10 substantively reviewed.**
+**Status: lossless split complete; 11.01–11.11 substantively reviewed.**
 
 The preferred `r5` Part XI and the `r5.1` Part XI were byte-identical
 before this split. The eighteen numbered `.org` files listed here reproduce
@@ -218,6 +218,23 @@ Gesso v1622 source evidence without claiming implementation
 release certification. The published part is rebuilt from the
 revised numbered source; existing anchors are unchanged.
 
-**Next:** Review **11.11 — Global Non-goals and Design Freedom**,
-then 11.12–11.18, whole-Part-XI reconciliation, independent
-acceptance, Part XII and whole-plan acceptance.
+**11.10 handoff:** 11.11 was the next incomplete source. Its
+completed substantive review is recorded below.
+
+
+**11.11 review:** see 11.11-r4-preservation-audit.md.
+Kept R5's grouped non-goals while recovering all R4 exclusions as
+explicit, source-owned design freedoms. Clarified that no universal
+fact DAG, CRDT, globally durable actor, global revision, arbitrary
+machine migration or host-language theorem prover is required.
+None of these non-goals waives actually selected durable commands,
+writer coverage, multi-node Live recovery, current authority,
+mandatory proof, physical conformance, or HumanHelp product
+acceptance. Recorded 32 preservation/ownership decisions and 21
+prospective positive/adversarial conformance cases with bounded
+v1622 implementation correspondence; no actual tests were run.
+The canonical Part XI is updated alongside its numbered source.
+
+**Next:** Review **11.12 — Progress Metrics and Denominators**,
+then 11.13–11.18, whole-Part-XI reconciliation, independent
+editorial acceptance, Part XII and final whole-plan acceptance.

@@ -1,90 +1,287 @@
 ** Global non-goals and retained design freedom
 
-These boundaries keep the ordinary framework smaller than a universal
-distributed database, workflow engine, or theorem prover. They do not forbid an
-application from choosing a stronger domain-specific mechanism.
+Gesso's assurance boundary is deliberately narrower than the set of
+possible Clojure programs, distributed databases, durable workflows and
+formal systems. This limits *what the framework requires universally*,
+not what an application is allowed to use or what a selected release
+profile may require. A domain can opt into stronger persistence,
+communication, proof, migration, consistency or verification where
+its declared semantics demand it. The chosen mechanism then enters
+the relevant source, dependency, qualification, writer and physical
+evidence boundaries.
 
-*** Domain persistence and reconciliation remain application choices
+A non-goal is not an exclusion that can be applied after a failed
+mandatory gate. A required capability remains required by its original
+business source and selected release intent; an unsupported mechanism
+makes the corresponding stronger claim open or blocked. Conversely,
+the presence of a powerful optional mechanism does not automatically
+upgrade an unrelated operation to a proven or deployed claim.
 
-Gesso does not require a second persisted DAG of every fact, provisional value,
-command, and supersession edge. The application models and authoritative backend
-own durable domain facts and the history required by their contracts. A proof
-dependency graph is not a universal application fact store.
+*** No universal persisted fact graph or model history
 
-Gesso does not require Git-like branching history, event sourcing, CRDTs, or
-three-way merges for every model. It may provide typed reconciliation structure;
-the model owns the conflict meaning, eligible participants, and allowed
-resolution. Optimism and command reconciliation do not imply automatic merge
-policy.
+Gesso does not mandate a second persisted directed acyclic graph
+containing every authoritative fact, provisional presentation,
+supersession, command, witness and dependency. The domain models and
+their selected authoritative backend own durable business facts,
+the identities that make those facts meaningful, and precisely the
+history and retention required by their operations.
 
-No global integer stands for provider progression, domain revision, valid time,
-command causality, and actor knowledge. Domain revisions may be monotonic where
-the model declares an ordering and enforces its writer discipline. Other identities
-are preserved according to their own scopes and lifetimes.
+Proof and assembly dependency graphs are *assurance structures*,
+not a second system of record for arbitrary application state.
+They must still account for the original-source obligations,
+applicable assumptions, participating writers and invalidation
+of dependent evidence when these change. Calling the graph optional
+does not permit a required operation, outbox effect, command result
+or recovery obligation to vanish from that account.
 
-*** Placement does not require universal durable actors
+Nor is every model required to persist Git-like branches, commit
+ancestry, three-way merge ancestry, event sourcing or a CRDT.
+These can be chosen when the domain's consistency and conflict
+semantics benefit. Gesso can expose a typed, checked interface for
+conflict detection, eligible resolutions, idempotent handling and
+reconciliation outcomes; the model supplies the meaning and
+authorization of those resolutions. The framework never selects
+a universally valid "ours wins" policy merely because it has a
+provisional state and an authoritative observation.
 
-Durable cross-user interactions ordinarily rendezvous through authoritative model
-state and later short choreographies. A global directory of every actor's current
-host, direct participant routing, and persistence of every suspended server
-machine are not baseline requirements. A feature needing message receipt or
-durable workflow continuation has its own explicit capability contract.
+A model that requires an audit trail, idempotent durable command
+record, compensating operation, migration log or historical
+outcome lookup must preserve it under the declared backend
+contract. The absence of a *universal* fact DAG or event log is
+not permission to erase those selected durable obligations.
 
-Gesso does not transparently migrate arbitrary suspended browser state between
-incompatible releases. Bounded compatibility, retirement, and permitted current
-reconstruction are the baseline. Domain-specific checked migrations may be added
-without making all historical runtime states permanently supported.
+*** No single global revision or automatic knowledge equality
 
-*** The proof boundary is explicit and partial
+No global integer represents, all at once, authoritative XTDB
+transaction progression, domain entity revision, valid/effective
+time, a command's causal history, a participant's knowledge
+frontier and a browser resource incarnation. These have different
+owners, comparison relations and retention lifetimes.
 
-The framework does not prove arbitrary Clojure or ClojureScript merely because
-it can call the function. Full-language implementations remain first-class
-through the managed interfaces and explicit premises defined in Part I. Closed
-checkers reject unsupported syntax for their judgment; they do not forbid the
-host-language implementation from participating under an appropriate contract.
+A provider may expose a sound scoped monotonic basis or a model
+may declare and enforce its own entity revision. A composed
+observation uses only the ordering and coverage relations
+justified by its provider and query scope; incomparable
+frontiers are not coerced into one scalar "freshness".
+The browser cannot equate the latest timestamp, transport
+response or invalidation with authority to install an
+unobserved collection or prove a command's historical effect.
 
-The design does not require a universal host-language type system, unrestricted
-dependent types, or application-authored proof-assistant scripts. Supported
-semantic interfaces, generated obligations, and checkable evidence provide the
-ordinary path.
+Gesso also does not require every role to know every fact.
+Distributed knowledge, relevance, privacy, authorization
+and permitted acquisition intentionally create different
+valid projections. Agreement or convergence claims concern
+only the declared reachable information, justified source
+and progression frontier, permitted adoption and
+environmental assumptions. Deliberately undisclosed data
+is not a disagreement to be repaired by an unauthorized read.
 
-Gesso does not prove the whole JVM, JavaScript engine, browser, HTMX, Biff,
-authentication stack, XTDB implementation, operating system, hardware, or network.
-The relevant contracts remain qualified premises as specified in Part X. This
-is compatible with useful conditional proofs about the application's semantics.
+*** No universal direct participant fabric or durable actors
 
-A well-typed coherent policy may still be the wrong product choice. Gesso cannot
-infer intended business policy from syntax or establish correct requirements by
-checking only what the implementation chose to expose.
+An ordinary cross-user interaction can rendezvous through
+authoritative domain state and later short choreographies.
+Gesso does not require a global directory mapping every
+actor to a current server node, universally routable
+participant messages, or persistence of every suspended
+server/browser machine as an independently durable actor.
 
-*** Runtime enforcement and concrete testing remain necessary
+If a protocol *does* require direct delivery, confirmed message
+receipt, durable actor execution or a long-running workflow,
+its selected module must declare those semantics, failure
+alternatives, durable owner, authorization, replay/duplicate
+rules and the evidence on which its claim depends. Those
+capabilities remain valid application choices rather than
+mandatory infrastructure for all Gesso deployments.
 
-Proofs do not remove validation of untrusted inputs, current principals and
-permissions, command bindings, actual provider observations, resource ownership,
-or compatibility. They depend on those mechanisms supplying their concrete
-premises.
+Single-node and multi-node realization preserve the *same*
+operation, command, knowledge, Live and recovery semantics.
+Scaling across nodes may introduce routing, interest discovery,
+subscription fencing, shared publication and redelivery
+mechanisms; these do not invent a second model of authority.
+An implementation may begin with a Clojure router and later
+replace a physical routing component without changing the
+source-owned invalidation or permitted acquisition contract.
 
-Formal results do not eliminate real browser, backend, concurrency, load,
-installation, or failure testing. Conversely, more tests do not silently upgrade
-a tested claim into a theorem. Conditional progress retains availability,
-fairness, retention, disclosure, and user-action assumptions. A timeout path does
-not prove that an inactive browser or unavailable service will eventually recover.
+An SSE advisory is not necessarily a domain command, and
+delivery of one message is not proof of durable database
+incorporation or browser adoption. A required invalidation
+must still have a justified discovery, publication, coverage
+and recovery path through router loss or late interest
+registration. A deployment cannot cite this no-global-fabric
+non-goal as a waiver for lost required Live updates.
 
-No role is required to know every fact. Relevance, privacy, and authorization may
-intentionally produce different valid projections. Agreement claims concern the
-facts and frontiers actually promised.
+*** No arbitrary stale-machine migration
 
-*** Identity, sidecars, and backend choices keep their boundaries
+Gesso does not transparently deserialize or migrate arbitrary
+suspended browser or server execution state through incompatible
+releases. The baseline is finite checked release overlap,
+typed semantic retirement, transfer of explicitly recoverable
+intent and current authorized reconstruction under the
+newly admitted plan.
 
-Source identity is not semantic identity. Exact artifact identity is not semantic
-proof. Optional proof and diagnostic sidecars remain nonsemantic to runtime
-transitions; mandatory admission and runtime gates still enforce the selected
-contract. Required durable audit or publication is an explicit effect rather
-than an optional sidecar.
+An old execution loses its private timer, callback, resource
+and optimistic rollback rights when retired. A supported
+logical route, Request identity, user-owned draft or local
+choice may survive only with revalidation and current owner
+admission. A still-unresolved command retains its original
+identity and historical reconciliation obligation where
+promised; it does *not* regain old executor permission or
+become a new command. A current Request read can repair a
+view but is not proof of the older command's incorporation.
 
-Database neutrality is not a goal purchased at the expense of a useful qualified
-XTDB realization. Semantic contracts remain separate from accidental storage
-representation, but the implementation may use provider-specific mechanisms
-where they improve correctness or simplicity. Another provider must establish
-its own correspondence and qualification.
+A checked domain-specific state transformation or compatible
+long-lived workflow is permitted. Its source-derived scope,
+state/codec interpretation, current principal checks,
+invariants, and relevant installed effects must be qualified.
+A release must not pretend that an unavailable old decoder
+or an expired asset can migrate a private machine through
+a "compatible" version label.
+
+For HumanHelp, reconnection, new assets and host replacement
+do not automatically grant the user a new remote-board
+Refresh or silently adopt advisory-only changes. Recovery
+follows the same owner, coverage and one-use grant semantics
+as an ordinary running application.
+
+*** No universal proof of arbitrary host-language computation
+
+The finished framework has closed, purpose-built semantic
+interfaces for selected rules, operations, choreography,
+projection, application composition and checkable evidence.
+A Clojure or ClojureScript function can participate through
+an admitted interface without becoming a theorem simply
+because it was called from a certified operation.
+
+Gesso does not require a universal Clojure type checker,
+unrestricted dependent types, arbitrary Clojure/JVM theorem
+proving or an application author writing Lean, TLA+, Quint
+or Recife scripts for ordinary development. Application
+authors declare source business rules and construction,
+select explicit assurance profiles, and provide genuinely
+necessary premises or domain-level specifications. Gesso
+derives supported proof/checker obligations and can invoke
+appropriate external checking machinery as an implementation
+mechanism, without making those languages a second mandatory
+application specification.
+
+A closed checker rejects unsupported expressions *for that
+judgment*. The application may use a general host-language
+implementation under an explicitly weaker, qualified
+interface where the selected profile permits it. A mandatory
+stronger proof obligation cannot be silently rewritten as a
+trusted assertion because the checker cannot inspect a function.
+Likewise, a proof kernel's successfully checked derivation
+is not proof that a separate opaque executor implements it.
+
+The framework does not claim to have proved the entire
+JVM, JavaScript engine, browser, HTMX, Biff, XTDB, operating
+system, hardware, network or every third-party dependency.
+A precise source theorem can remain valid *conditionally*,
+with each relevant compiler, adapter, runtime, physical
+writer and deployment contract separately classified and
+qualified. "Unproved" is not the same as "assumed correct":
+the release report names actual unresolved, accepted or
+unsupported premises and the claims depending on them.
+
+*** No inference that a coherent business rule is the desired rule
+
+A rule can be well typed, compositionally coherent, preserved
+by every declared transition, and faithfully executed while
+still expressing the wrong product choice. Gesso checks
+the declared semantic and application obligations; it
+does not infer the product owner's intended meaning from
+a successfully type-checked syntax tree or the subset of
+controls the implementation happens to expose.
+
+Independent required capabilities, authorization choices,
+user-facing interaction and positive acceptance remain
+part of the original product requirement set. In HumanHelp,
+missing Response interaction, Reassign or remote Refresh
+cannot become "optional" because another feature passed
+formal or browser checks. The product owner decides open
+business choices; checking verifies the resulting selected
+policy, not a guessed policy invented to pass a gate.
+
+*** No elimination of current enforcement or physical testing
+
+Construction and certificate checks do not freeze future
+authentication, Membership, current domain guards, backend
+qualification, browser target ownership or transport
+compatibility. Those must be evaluated at the corresponding
+trusted effect, disclosure or adoption boundary. A proof
+report does not grant runtime permissions, while the installed
+runtime guard must implement its selected policy without
+silently downgrading an unsupported managed action.
+
+Nor do proofs eliminate integration, concurrency,
+failure-injection, real browser, selected backend, load,
+startup or deployment tests. The independent production
+correspondence checks which routes, writers, handlers,
+assets and provider incarnations actually perform the
+checked operations. A fabricated passing test map, one
+successful negative-only fixture or an unused built asset
+cannot replace a genuine observed boundary. Conversely,
+hundreds of passing tests cannot turn an unsupported
+universal theorem into a checked derivation.
+
+No unconditional distributed liveness, recovery or
+convergence follows from a connected transport or a finite
+machine check. Any positive progress guarantee retains
+its availability, fairness, retention, user action,
+reconnect and disclosure premises. Safety must remain
+accurate when those premises fail: unknown incorporation
+cannot become rejection, and inaccessible recovery
+cannot be described as completed delivery.
+
+*** Identity, evidence sidecars and backend freedom
+
+Source file, namespace, Git commit, line number, assembly
+identity, exact asset bytes, normalized semantic subject,
+issued proof handle and current resource incarnation are
+different coordinates. Their correctly bound relations can
+support verification and diagnostics; replacing one with
+another because two strings look alike is not assurance.
+
+Optional explanatory proof or diagnostic sidecars do not
+change domain transition meaning or authorize effects.
+A selected mandatory preflight, issuer, admission or runtime
+guard *does* enforce its independent boundary using the
+appropriate validated evidence. Required durable audits,
+publication outbox writes and command records are actual
+declared effects, not optional logs simply because they
+help with diagnosis. No passive report gains the right
+to mutate a Request or install a protected DOM target.
+
+Database-neutrality is not a mandatory end in itself.
+The semantic rules are separated from accidental XTDB
+storage representation, but a qualified XTDB-specific
+transaction, history, readback or basis-fencing mechanism
+may be the most direct correct realization. An alternative
+provider may be installed when its actual atomicity,
+history, consistency, failure and qualification premises
+establish the needed relation. It is not accepted merely
+because it implements a similarly named protocol.
+
+*** Non-goals do not weaken selected release obligations
+
+| Deliberate non-goal | Mandatory boundary that remains |
+|--------------------+---------------------------------|
+| No universal fact DAG | Original business facts, writers, command outcomes, audit/outbox and proof dependencies remain complete for their selected contracts |
+| No global revision integer | Every selected source, progression, causal and knowledge ordering is checked in its actual domain |
+| No universal event sourcing or CRDT | Model-selected conflict and durable reconciliation semantics are enforced with appropriate authority |
+| No global actor directory or cross-node message fabric | Required Live interest/invalidation and durable-work failure/recovery obligations still hold on every admitted topology |
+| No arbitrary suspended-machine migration | Supported bounded compatibility, honest retirement and retained command-specific intent still hold |
+| No arbitrary Clojure theorem prover | Closed-source proof obligations and explicitly classified opaque implementations still meet the selected assurance profile |
+| No proof of the entire software/hardware stack | Named trusted premises, qualified deployed bindings and independent physical acceptance remain visible |
+| No inference of product intent | Original independent product requirements and positive user capabilities remain the acceptance denominator |
+| No unconditional convergence | Progress is conditional; safety and truthful blocked/unknown statuses survive outage |
+| No mandatory database portability | Each selected backend has qualified, source-compatible transaction and observation behavior |
+| No semantic sidecar authority | Required admission/runtime gates and actual durable effects still enforce their independently owned contracts |
+
+The negative design constraints preserve room for ordinary,
+lightweight server-rendered Clojure/HTMX applications as well
+as applications selecting stronger formal, distributed or
+durable capabilities. What may be omitted is *unselected
+machinery*, never the source-derived obligations or actual
+enforcement necessary for a guarantee the release claims.
 
