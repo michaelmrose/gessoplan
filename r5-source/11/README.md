@@ -144,3 +144,9 @@ the original index line ranges remain historical.
 **Next:** Review **11.07 — Candidate Activation and Rollback**,
 then 11.08–11.18, whole-Part-XI reconciliation and
 independent editorial acceptance, Part XII and whole-plan acceptance.
+
+**Editorial hygiene after 11.06:** reviewed sections 11.01–11.06 now
+express release and evidence obligations without current-version or
+review-process commentary in the normative Org. The actual v1622
+implementation comparisons remain in the existing preservation audits.
+See `PART-XI-editorial-hygiene.md`. This does not review 11.07–11.18.
