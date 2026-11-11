@@ -150,3 +150,20 @@ express release and evidence obligations without current-version or
 review-process commentary in the normative Org. The actual v1622
 implementation comparisons remain in the existing preservation audits.
 See `PART-XI-editorial-hygiene.md`. This does not review 11.07–11.18.
+
+
+**11.07 review:** see \`11.07-r4-preservation-audit.md\`.
+Strengthened candidate versus actual installed/activated subject identity,
+exact build/serving byte relations, real handler adoption and private
+init-time effect fencing. Made concurrent compare-and-activate, long-lived
+context, partial resource cleanup, revoked old-generation rights, and
+current qualified rollback explicit. Preserved R4's no-unchecked-artifact,
+bounded deployment and no-domain-state-rollback obligations while retaining
+R5's four independent release decisions. Added 32 preservation/ownership
+decisions and 16 positive/adversarial physical conformance pairs, with
+precisely limited Gesso v1622 source evidence and no claim of executed
+deployment tests. The numbered source and published Part XI were rebuilt
+together; all eight original Part XI anchors remain.
+**Next:** Review **11.08 — Rolling Compatibility Directions**, then
+11.09–11.18, whole-Part-XI reconciliation, independent acceptance,
+Part XII and whole-plan acceptance.
