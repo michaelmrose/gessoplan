@@ -1,6 +1,6 @@
 # R5.1 sectional source — Part XI, Release and Completion
 
-**Status: lossless natural split complete; 11.01 substantively reviewed.**
+**Status: lossless split complete; 11.01–11.02 substantively reviewed.**
 
 The preferred `r5` Part XI and the `r5.1` Part XI were byte-identical
 before this split. The eighteen numbered `.org` files listed here reproduce
@@ -64,7 +64,20 @@ Published Part XI now contains **1338 newline-split lines**
 and **77283 characters**. The README section map retains the
 *original pre-review line ranges*, not dynamically updated offsets.
 
-**Next:** Review **11.02 — Four Decisions and Gate Results** against R4,
-accepted Parts I–X, the revised 11.01 release-intent contract and actual
-Gesso release/assurance code. Sections 11.03–11.18, whole-Part-XI
-reconciliation and acceptance, Part XII and full-plan review remain open.
+**11.02 review:** see `11.02-r4-preservation-audit.md`.
+Reconciled R4's complete operational gate with R5's four
+subject-specific release decisions and eight exact result
+classes. Specified canonical gate enumeration, current
+issuer/physical observation provenance, separately scoped
+conditional premises, explicit approved exclusions, mandatory
+fail-closed profiles and nonvacuous positive/adversarial tests.
+Recorded twenty-eight preservation decisions and twelve
+paired prospective controls against Gesso v1622's current
+bounded Biff, browser build, reporting and certificate code.
+Published Part XI now has **1504 newline-split
+lines** and **86267 characters**. Section map line
+numbers still refer to the initial lossless split.
+
+**Next:** Review **11.03 — Deterministic Regeneration and Invalidation**,
+then 11.04–11.18, whole-Part-XI reconciliation and acceptance,
+Part XII and final twelve-part review.
