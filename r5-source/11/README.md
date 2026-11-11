@@ -1,6 +1,6 @@
 # R5.1 sectional source — Part XI, Release and Completion
 
-**Status: lossless split complete; 11.01–11.12 substantively reviewed.**
+**Status: lossless split complete; 11.01–11.13 substantively reviewed.**
 
 The preferred `r5` Part XI and the `r5.1` Part XI were byte-identical
 before this split. The eighteen numbered `.org` files listed here reproduce
@@ -254,6 +254,28 @@ correspondence and no claims of executed runtime testing.
 The numbered source and canonical Part XI publication are
 updated together; original Part XI stable anchors remain.
 
-**Next:** Review **11.13 — Operational Application Completion**,
-then 11.14–11.18, whole-Part-XI reconciliation, independent
-acceptance, Part XII and final whole-plan review.
+**11.12 handoff:** 11.13 was the next unfinished source. Its
+substantive review is recorded below.
+
+
+**11.13 review:** see 11.13-r4-preservation-audit.md.
+Reconciled R4's operational Biff/XTDB/Choreo/Live/continuity,
+real Chromium, positive user-action and controlled-defect
+conditions with R5's stricter independent public-model,
+installed-handler and product-acceptance obligations.
+Kept Part VIII's already selected remote advisory-only Refresh
+policy and explicitly *unselected* independent Response
+interaction. Required authentic actor/target and multi-record
+Request/assignment conditions for all six lifecycle actions,
+real loaded browser/route and backend behavior, truthful
+unknown-command and interruption recovery, and separate
+closure/enforcement/usable-product claims. Recorded 32
+preservation/ownership decisions and 26 positive/adversarial
+physical acceptance pairs with narrowly scoped Gesso v1622
+implementation correspondence; no runtime test is claimed.
+Source and published Part XI were revised together,
+preserving its eight original stable anchors.
+
+**Next:** Review **11.14 — Compositional Certification Completion**,
+then 11.15–11.18, whole-Part-XI reconciliation, independent
+editorial acceptance, Part XII and final whole-plan review.
