@@ -1,6 +1,6 @@
 # R5.1 sectional source — Part XI, Release and Completion
 
-**Status: lossless split complete; 11.01–11.03 substantively reviewed.**
+**Status: lossless split complete; 11.01–11.04 substantively reviewed.**
 
 The preferred `r5` Part XI and the `r5.1` Part XI were byte-identical
 before this split. The eighteen numbered `.org` files listed here reproduce
@@ -95,6 +95,21 @@ artifact and host-entrypoint components. Published Part XI is
 **95487 characters**; the README's initial-split
 line ranges are intentionally historical.
 
-**Next:** Revise **11.04 — Cache Admission and Implementation Change**,
-then 11.05–11.18 and whole-Part-XI reconciliation/acceptance.
-Part XII and final whole-plan acceptance remain outstanding.
+**11.04 review:** see `11.04-r4-preservation-audit.md`.
+Restored R4's green cached O12/R7/v6 failure and A44/B45 physical
+implementation change as concrete conceptual counterexamples.
+Distinguished live issuer handles, serialized proof/import
+re-admission, passive bounded decoding, actual physical-test
+provenance, runtime authorization and selective immutable theorem
+reuse. A cache cannot replace original source checking, current
+proof issuance or installed real writer/asset evidence.
+Thirty preservation decisions and fourteen prospective paired
+controls contrast this future design with Gesso v1622's actual
+issuer, dependency, admission, browser build and reporting modules.
+Published Part XI contains **1801 newline-split
+lines** and **104694 characters**. Original section-map
+line ranges remain historical.
+
+**Next:** Review **11.05 — Root Release Evidence and Required Fields**,
+then 11.06–11.18, whole-Part-XI reconciliation and independent
+editorial acceptance, Part XII and full-plan acceptance.

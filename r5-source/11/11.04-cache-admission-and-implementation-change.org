@@ -15,11 +15,91 @@ The supported reuse paths are:
 | Previous concrete test or qualification | Exact tested subject/configuration or a justified coverage-preserving relation, with remaining environment checks identified |
 | Previous installation record | Only the installation facts it still establishes; a new host or changed binding acquires its own evidence |
 
+**** Cache lookup and proof admission are different events
+
+A cache lookup yields candidate evidence, not a checker-issued proof. The
+trusted consumer constructs its expected subject from the *original current*
+Gesso source and full declared obligation/dependency closure; it cannot
+accept a serialized package's own claim about that closure as its sole
+authority. The present checker contract, required inference rules, proof
+profile, assumptions and precise proposition determine whether reuse is
+admissible. A matching cache key, checksum, success flag or subject name is
+only a lookup/correlation aid.
+
+A genuine immutable issuer-registered, in-process result can avoid repeated
+expensive derivation while the current consumer independently establishes
+its continued applicability. Persisted serialized proof material has crossed
+a new trust boundary and requires the supported current source/proof checker
+or external proof-import contract before it can be issued again. The system
+need not rerun unrelated immutable proofs on every HTTP request, but cannot
+replace a mandatory current check with a trusted-looking deserialized map.
+
+**** Worked counterexample: R4's green file is not a certificate
+
+These two maps are *schematic comparison data*, not new callable Gesso
+APIs or evidence that a checker was executed:
+
+#+begin_src clojure
+(def expected-claim
+  {:subject :operation/request-claim-O13
+   :requires #{:rule/claim-eligible-R8 :schema/request-S9}
+   :checker :checker/operation-v7
+   :profile :profile/compositional-v3})
+
+(def persisted-candidate
+  {:cache/key [:request/claim :profile/compositional-v3]
+   :subject :operation/request-claim-O12
+   :requires #{:rule/claim-eligible-R7 :schema/request-S9}
+   :checker :checker/operation-v6
+   :status :passed
+   :derivation-hash "71ad..."})
+#+end_src
+
+The candidate fails current re-admission for *separate reasons*: subject
+O12 does not match O13, declared rule R7 is stale relative to R8, checker
+v6 is not the required v7, and the digest is not the proof derivation or
+genuine live issuer binding. A fail-fast implementation may report the
+first problem, but cannot infer the rest were satisfied.
+
+Even copying O13, R8 and v7 into a forged green file does not supply an
+original source derivation or prove its premises and checking rules. The
+trusted consumer must derive its expected inputs independently. Corrupted
+proof bytes can be rejected or reconstructed from admissible originals,
+never promoted to successful certification.
+
+
 An opaque JVM handle is process-local. Printing or serializing it cannot make it
 a durable certificate. Copying a report into a new map cannot recover its issuer
 or the origin of its physical observations. The cache must not accept executable
 reader forms, arbitrary callbacks, or unbounded structures merely because they
 arrive under an evidence filename; its parser and resource contract are explicit.
+
+**** Closed serialization and observation provenance
+
+Serialized evidence has a versioned passive-data format, bounded size and
+depth, permitted reference syntax, supported checker/import versions and
+strict resource limits. Cache loading cannot evaluate executable EDN reader
+forms, arbitrary callbacks, user code, unbounded collections or unknown
+extensions. Unsupported, truncated and unreadable packages fail with typed
+diagnostics. A safe cache miss is permission to reconstruct from trusted
+original input, *not* to ignore a required proof or a known counterexample.
+
+Test and physical-qualification receipts have their own trust rules. A
+copyable report, checksum or signed-looking record cannot independently
+prove that a designated test actually ran on an identified physical XTDB
+provider, browser build, served host or privileged writer. If a selected
+release profile requires independently attributable execution or current
+installation, the evidence issuer, tested subject, environment, bounds,
+method and qualification dependencies must be established at the original
+boundary. A signature can authenticate a defined statement but cannot
+make an incomplete statement about writer coverage exhaustive.
+
+Persisted evidence never grants live authority. A cached proof is not
+a current Membership check, retained command result, principal, permission
+to disclose, DOM resource-owner capability or permission to submit another
+mutation. Real protected operations retain their effect-time authorization
+and post-submit unknown-outcome recovery obligations.
+
 
 A corrupted or incomplete cache entry may fail admission or trigger fresh
 reconstruction from trusted inputs. It cannot relax the original check. A
@@ -31,6 +111,26 @@ An unchanged immutable result can avoid repeating expensive work under an admitt
 cache contract. This does not require reparsing an unchanged proof on every
 request. It also does not cache current Membership, command disposition, live
 resource ownership, or permission to disclose a prior result as permanent facts.
+
+**** Proof retention, physical requalification, and cache freshness
+
+The cache contract must distinguish a proof's *current abstract subject*
+from a particular Clojure handler, XTDB lowering, compiler, provider,
+deployment host, issued browser plan and actual served asset. A change
+to any applicable physical dependency requalifies the corresponding
+physical claim without automatically invalidating an independently checked
+unchanged abstract theorem. Matching semantic identity is not sufficient
+until the current checker validates the source meaning, proof inputs,
+dependency closure, interpretation, profile and premise scope.
+
+Cache re-admission does not collapse 11.01's original requirement catalog,
+11.02's four release decisions, or 11.03's different reconsideration actions
+into a permanent green release flag. A previously successful staging report
+cannot qualify a different production installation. An obsolete artifact
+receipt cannot qualify newly emitted browser bytes. Unavailable current
+qualification leaves the required release decision unmet, while unaffected
+evidence can remain useful under its actual checked applicability.
+
 
 **** Unchanged contract, changed implementation
 
@@ -54,3 +154,48 @@ handler the server executes. A successful source-relative join does not prove
 complete physical writer coverage or the final serving process's adoption.
 Those remain the separate production obligations defined in Parts VII and X.
 
+**** Worked implementation contrast: unchanged Claim, changed adapter
+
+The R4 adapter A44-to-B45 counterexample can be stated without
+pretending that a public `release/reconsider-implementation` or
+`certificate/admit-cached` API already exists:
+
+| Evidence | A44-to-B45 decision |
+|----------+---------------------|
+| Current abstract Claim theorem | Retain only if the issuer/checker re-establishes its original normalized subject, proof, complete declared dependencies, profile and premises |
+| Original A44 XTDB lowering and guard/frame correspondence | Not evidence of B45's different physical behavior; check B45 independently |
+| Backend isolation, codec and transaction qualification | Retain only the scope demonstrably preserved; requalify changed provider/adapter/transaction assumptions |
+| Installed Ring handler and privileged writer inventory | Acquire evidence of B45's actual bound callable and complete relevant host writer paths |
+| Browser plan, manifest, build receipt and emitted bytes | Reconsider actual dependencies and verify current stamp/byte correspondence; recompile only when justified |
+| End-to-end Claim test | Verify validity on B45 and re-execute any required physical case not covered by a sound transfer |
+| Root release and active host claim | Rejoin current conditional proof, B45 implementation/installed host, exact artifact and applicable live qualification |
+
+The useful optimization is preserving a genuine theorem independently
+of the handler refactor, not retaining A44-only conformance as proof of
+B45. Conversely, it is wrong to throw away unrelated Request-search
+proofs or browser plans just because both implementations share a
+repository commit.
+
+**** Positive and adversarial cache-admission controls
+
+| Positive case | Prohibited shortcut or counterexample |
+|---------------+---------------------------------------|
+| Current live issuer handle is bound to its original proof and dependencies | Caller-created handle or copied EDN report becomes a certificate |
+| Original O13/R8/v7 proof rejects stale O12/R7/v6 cache candidate | Green filename, digest or `:passed` flag bypasses validation |
+| Forged package with new labels lacks checkable original derivation | Merely copying a current semantic ID manufactures checker admission |
+| Closed bounded data package safely decodes under selected version | EDN reader execution or arbitrary callback runs at cache load |
+| Corrupt stored proof fails or reconstructs from trusted originals | Truncated cache turns mandatory release gate into success |
+| Genuine reusable theorem retains explicit current assumptions | Known-false backend premise becomes discharged through cached result |
+| Qualified physical receipt applies only to its observed subject | Staging test log alone certifies the production deployment |
+| Changed B45 actual transaction requalifies physical conformance | A44's successful XTDB test is relabeled B45 |
+| New installed handler and writer closure are qualified at the host | Caller-supplied B45 name authenticates the serving process |
+| Current browser manifest, receipt and actual built bytes agree | Stale JS bundle is reused because semantic Claim name matches |
+| Current Membership and command scope are checked at effect time | Proof cache freezes authorization or resolves unknown command |
+| Lost command response remains unknown pending historical evidence | Post-submit diagnostic/cache failure becomes rejection and new write |
+| Unrelated Request search remains admitted under unchanged dependencies | A Claim-only refactor forces global semantic rebuild |
+| Unavailable mandatory strict re-admission blocks exact profile | Weaker operational success silently substitutes for demanded proof |
+
+These are future positive and adversarial acceptance obligations, not
+current v1622 test results. Physical claims require the real first
+enforcing boundary and supported passing operations, not only a
+test-only wrapper or a reject-all implementation.
