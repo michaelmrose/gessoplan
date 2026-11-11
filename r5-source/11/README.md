@@ -1,13 +1,14 @@
 # R5.1 sectional source — Part XI, Release and Completion
 
-**Status: lossless split complete; all 11.01–11.18 sections substantively reviewed; whole-part reconciliation pending.**
+**Status: all 11.01–11.18 sections substantively reviewed; whole-Part-XI reconciliation complete; separate editorial acceptance pending.**
 
-The preferred `r5` Part XI and the `r5.1` Part XI were byte-identical
-before this split. The eighteen numbered `.org` files listed here reproduce
-the existing root-level `gesso-unified-design-canonical-r4-11-release-and-completion.org` exactly when concatenated
-in the shown order. No normative statement, heading, whitespace, code block,
-table, example, link or anchor was changed. The numbered files become the
-editable Part XI source; the published root file is derived output.
+At the original lossless split, preferred R5 and R5.1 Part XI were
+byte-identical. The eighteen numbered Org files reproduced that
+original text unchanged. **Subsequently every numbered section has
+been substantively revised.** The numbered files remain the editable
+source; the root canonical Part XI remains their exact ordered
+publication. The index below retains the *initial split* line ranges,
+not locations in the much longer revised document.
 
 | Section | Natural review topic | Original lines |
 | --- | --- | --- |
@@ -32,7 +33,8 @@ editable Part XI source; the published root file is derived output.
 
 **Source identity at the split:** 1216 physical lines,
 69769 UTF-8 bytes, 8 unique `CUSTOM_ID` anchors.
-The original canonical Part XI remains unmodified in this commit.
+The original canonical Part XI remained unmodified at the initial split;
+subsequent section reviews intentionally updated its normative contents.
 The `script/assemble_r5.py` assembler now includes Part XI in
 `--check`, `--write` and whole-plan publication. A local preflight of
 the accepted R5.1 archive passed Python syntax compilation and all eleven
@@ -393,8 +395,21 @@ completed substantive review and have sectional R4 audits.
 This is *not* whole-part reconciliation or independent
 editorial acceptance.
 
-**Next:** Perform **whole-Part-XI reconciliation** across
-11.01–11.18 and Parts VIII–X, with exact R4 preservation
-and source/publication checks. Then perform a **separate**
-independent Part XI editorial acceptance decision,
-followed by Part XII and final twelve-part acceptance.
+**11.18 handoff:** All sections received their substantive R4 audits.
+The distinct whole-Part-XI reconciliation is now recorded below.
+
+
+**Whole-Part-XI reconciliation:** see PART-XI-cross-section-reconciliation.md.
+R4 preservation, all eighteen sectional audits, original required capabilities,
+proof/physical ownership, four release decisions, four separate completion
+milestones, version compatibility and lost-command/router/Refresh recovery
+were checked as one future-system design. Corrected only the 11.08 wording:
+its fourth coordinate is a directional *relation*, not another identity.
+No actual Gesso runtime or formal tests were executed.
+
+**Reconciliation disposition: COMPLETE**, distinct from and not a substitute
+for an independent Part XI editorial acceptance.
+
+**Next:** Perform the **separate independent Part XI reviewed-candidate
+editorial acceptance** against this record and the committed sources.
+Then proceed to Part XII and final whole-plan acceptance.
