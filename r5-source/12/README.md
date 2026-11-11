@@ -1,6 +1,6 @@
 # R5.1 sectional source — Part XII, Implementation Order and Final Invariants
 
-**Status: sections 12.01–12.04 substantively reviewed and audited (4/16); sections 12.05–12.16, whole-part reconciliation and independent editorial acceptance pending.**
+**Status: sections 12.01–12.05 substantively reviewed and audited (5/16); sections 12.06–12.16, whole-part reconciliation and independent editorial acceptance pending.**
 
 Preferred `r5` and pre-split `r5.1` Part XII are byte-identical. The sixteen
 numbered Org sources reproduce the existing root-level
@@ -111,7 +111,19 @@ Gesso v1622 modules. Recorded R4 preservation decisions and paired
 positive/adverse future conformance cases; no runtime or proof test
 was executed in this editorial revision.
 
-**Next:** Review `12.05-choreography-and-browser-effects.org`
-(Stages 7–8), followed by remaining Part XII sections, whole-part
-reconciliation, separate Part XII acceptance and final whole-plan
-editorial reconciliation.
+**12.05 review:** see `12.05-r4-preservation-audit.md`.
+Retained R4's global/role-local Choreo, knowledge, causal branch,
+portable projection and browser-adapter obligations while strengthening
+R5's exact source-to-plan and abstract-to-physical joins.
+Required explicit role provenance, branch discrimination, real
+HTMX/OOB installation, last-mutation permission, bounded
+physical resource remnants, command-unknown recovery and
+HumanHelp's advisory-only remote lifecycle with one-use Refresh.
+Recorded bounded Gesso v1622 source correspondence, R4
+preservation and positive/adversarial future conformance
+cases. No new JVM, Node, Chromium, HTMX or formal tests ran.
+
+**Next:** Review `12.06-live-publication-and-application-closure.org`
+(Stages 9–10), then the remaining sections, whole-Part-XII
+reconciliation, separate candidate acceptance and final
+twelve-part editorial reconciliation.
