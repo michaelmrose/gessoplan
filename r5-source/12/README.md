@@ -1,6 +1,6 @@
 # R5.1 sectional source — Part XII, Implementation Order and Final Invariants
 
-**Status: sections 12.01–12.03 substantively reviewed and audited (3/16); sections 12.04–12.16, whole-part reconciliation and independent editorial acceptance pending.**
+**Status: sections 12.01–12.04 substantively reviewed and audited (4/16); sections 12.05–12.16, whole-part reconciliation and independent editorial acceptance pending.**
 
 Preferred `r5` and pre-split `r5.1` Part XII are byte-identical. The sixteen
 numbered Org sources reproduce the existing root-level
@@ -98,7 +98,20 @@ The audit records scoped Gesso v1622 source evidence and
 prospective positive/adverse cases. No runtime, browser,
 XTDB or formal tests were executed.
 
-**Next:** Review `12.04-authoritative-commands-and-physical-mediation.org`
-(Stages 5–6), followed by the other Part XII sectional reviews,
-whole-part reconciliation, separate Part XII acceptance and
-final twelve-part editorial reconciliation.
+**12.04 review:** see `12.04-r4-preservation-audit.md`.
+Reconciled R4's model/consistency foundation with R5's stronger
+public-command and physical-mediation stages. Distinguished one
+logical command and multiple attempts, trusted original binding,
+current multi-record Claim guards, atomic command-result and selected
+durable notice intent, four honest outcomes and C42-specific replay.
+Strengthened transaction-internal prestate, guarded presence/frame,
+ABA and cardinality, source-bound one-shot physical submission,
+separate provenance and writer-closure obligations against actual
+Gesso v1622 modules. Recorded R4 preservation decisions and paired
+positive/adverse future conformance cases; no runtime or proof test
+was executed in this editorial revision.
+
+**Next:** Review `12.05-choreography-and-browser-effects.org`
+(Stages 7–8), followed by remaining Part XII sections, whole-part
+reconciliation, separate Part XII acceptance and final whole-plan
+editorial reconciliation.

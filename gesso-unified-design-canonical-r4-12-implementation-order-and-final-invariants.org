@@ -555,8 +555,45 @@ quietly expose ordinary unchecked application routes.
 
 Construct public model operations with explicit preparation, guarded incorporation,
 and after-commit work. Choreography and views consume their public contracts
-rather than private model internals. HumanHelp models remain the owners of
-Request, Membership, Organization, and RequestAssignment meaning.
+rather than private model internals. HumanHelp's public Request, Membership,
+Organization, and RequestAssignment contracts own the relevant business truth;
+application assembly and the executor cannot define a second Claim policy.
+
+The *source-owned transition* is the original subject. For Claim it includes
+authenticated actor/target binding, current helper Membership and protected
+Organization association, eligible Request lifecycle, absence or uniqueness of
+the primary RequestAssignment, every guarded write and its frame, and the
+disclosure contract for the returned or later recovered result. A server
+pre-read may prepare a proposal, but is not itself a current commit-time
+authorization or a certificate that the write protected all dependencies.
+
+*** Bind one logical command without confusing it with an attempt
+
+The public operation is declared before any particular command exists. A
+logical command receives its identity and immutable binding before the
+first possible transmission; a request, retry, execution, host, transaction,
+transport attempt and browser resource each have other identities. The
+trusted ingress must establish the authenticated principal, selected
+operation and target, canonical argument semantics and allowed authority
+scope. A client-supplied command ID is a correlation value, never proof
+of permission, incorporation, current Membership or result disclosure.
+
+The complete binding is retained with the command's authorized historical
+disposition. A compatible retry or resolution consults that history *before*
+testing new-incorporation business guards: a successfully incorporated Claim
+can legitimately leave its Request no longer open. It must be possible
+to report that original success without executing Claim again or falsely
+rejecting the historical command. Reusing the same ID for changed arguments,
+principal, operation or scope is a typed incompatibility, not a new intent.
+
+A newly incorporable command must atomically protect its current business
+conditions, complete multi-record effects and required durable command
+outcome. Where the selected reliability profile requires durable notice
+intent, its record belongs in the same suitable atomic authoritative
+boundary; asynchronous SSE publication is a subsequent delivery step.
+Separate after-commit attempts must not make an already incorporated
+domain transition appear rejected. A command record is not a permission
+to disclose private history to an unauthorized resolver.
 
 Deliver:
 
@@ -571,23 +608,116 @@ Deliver:
   =:commit-unknown=, with explicit presentation mappings;
 - protected command reconciliation, retry, retention, and expiry behavior;
 - public composition of cross-model constraints without pretending that separate
-  transactions form one atomic operation.
+  transactions form one atomic operation;
+- a source-complete ledger of permission, relationship, existence, uniqueness,
+  guarded change, command-result, disclosure and publication requirements,
+  including independently required actions not yet implemented;
+- explicit separation of attempt-local transport outcomes, authoritative
+  command incorporation/exclusion, historical recovery, and actor-visible
+  presentation or Live advisory progression;
+- canonical outcomes with qualified origin and scope, preserving unknown
+  incorporation after a possible send rather than inferring failure from
+  connection loss, read timeout, absent command record or abort of one attempt;
+- the independent server read and authorization required to disclose a retained
+  command result, including retained history, expiry and compatible old-client
+  recovery under a changed host generation.
 
-Acceptance includes a successful command, typed guard rejection, compatible replay
-after success, incompatible reuse, changed Membership or association, concurrent
-delivery, and lost response after possible submission. One attempt's abort does
-not prove the logical command failed if another delivery can incorporate it.
+A command is not safely retryable merely because a new physical attempt is
+possible. Retained identical command binding and appropriate authoritative
+resolve-or-incorporate exclusion are needed to prevent duplicate effects;
+on indeterminate evidence the contract must say who retries, rereads,
+reconciles or waits, and under which availability and retention premises.
+A failed individual attempt does not exclude a concurrent other attempt.
+Nor does current Request/assignment state by itself attribute success
+to one particular earlier command.
+
+*** Admit the complete source effect, not a convenient document fragment
+
+Claim's domain mutation, primary RequestAssignment creation or reassignment,
+canonical command-result creation and required publication intent are one
+declared authoritative effect where that strong profile is selected.
+A sequence of individually successful writes is not equivalent to an atomic
+multi-record transition. Other source-owned operations, including Unclaim,
+Reassign and terminal transitions, need their own eligible and adversarial
+execution paths; a successful Claim neither implies their correctness nor
+shrinks the independent HumanHelp capability denominator.
+
+Outcomes =:committed=, =:rejected=, =:already-incorporated= and
+=:commit-unknown= remain model/command-level claims with qualified evidence.
+The browser's provisional/accepted/rejected/unknown presentation does not
+constitute a database transaction result. A known committed outcome may
+still have undelivered Live advice or an unadopted remote presentation;
+a successful SSE send does not grant remote collection Refresh. A
+postcommit publication failure never retrospectively invalidates the
+authoritative result. Preflight may reject structurally unsupported
+operation/effect shapes early, while changing current domain predicates
+must be rechecked at their trusted incorporation boundary.
+
+Acceptance pairs a genuine successful Claim with typed guard rejection,
+compatible historical replay, incompatible command reuse, changed Membership
+or association, simultaneous competing Claim, stale server pre-read, lost
+response after possible submission, and recovered command truth after a
+later lifecycle mutation. It also challenges a forged principal, missing
+RequestAssignment write, omitted command record or outbox requirement,
+unknown outcome incorrectly marked rejected, and a retry under a new
+identity. The first boundary with sufficient legitimate evidence must
+reject or retain the exact uncertainty; no reject-everything candidate can
+count as a completed usable operation.
 
 The Claim scope guards Request state, helper Membership, Organization policy,
 association and primary-assignment conditions together with its writes. A
 pre-read or a self-asserted eligible flag cannot establish those current facts
-at incorporation. Backend realization is separately qualified in Stage 6.
+at incorporation. Replaying C42 after an Unclaim or other later event requires
+authorized *command-specific* historical evidence, not merely a currently
+claimed Request. Stage 6 separately qualifies the actual backend, guard
+semantics, transaction-internal prestate and all physical writing paths.
 
 *** Stage 6 -- Physical transaction mediation and provider qualification
 
-Bind the authoritative plan to the actual submission boundary. Prefer constrained
-lowering and an owned gateway for supported physical forms; retain an explicit
-opaque adapter contract where the full language or provider requires one.
+Bind the authoritative plan to the actual physical submission boundary.
+The supported implementation may use a narrow mechanically checked lowering
+or an explicit opaque adapter whose remaining assumptions cannot disappear.
+For a selected strong claim, the admitted source, complete guarded plan,
+lowered immutable transaction vector, issued executor, exact one-shot physical
+submission, authenticated authority context and observation provenance must
+refer to the *same* execution subject. The selected provider/backend profile,
+transaction options, encoding and trusted host route are distinct identities.
+
+*** Protect prestate, write footprint and the exact frame
+
+The canonical abstract transition evaluates its guards against a declared
+pre-write state and applies its supported assignments atomically. A concrete
+XTDB implementation must show that its ASSERT predicates and transaction
+operations faithfully implement that transition under the selected API
+semantics. For a supported ASSERT-before-write lowering, checking ordering
+and transaction-vector shape is a useful prerequisite, not proof that the
+provider's *transaction-internal* prestate equals a separately pinned
+external read. A snapshot token, ledger row, transaction key or later matching
+card cannot authenticate an unseen internal guard evaluation.
+
+Guard and write footprints are different. A guard may depend on Request
+status, helper Membership, Organization policy, a relationship's absence or
+uniqueness, and command history while the admitted writes touch a different
+set of documents. An opaque predicate or external writer can invalidate
+the proof unless the selected mechanism establishes its coverage or retains
+a named premise. Every mutation, effective transaction option, hook, and
+update/replace semantics must be accounted for.
+
+Whole-document replacement can erase a concurrently added field even
+when all previously visible values compare equal. A sound frame contract
+must protect **presence and value**, including newly introduced and
+deleted fields, using an admitted complete field-count/footprint guard,
+monotonic history-sensitive revision, suitable partial update operation
+or other independently qualified mechanism. Full-value comparison alone
+does not eliminate ABA (A→B→A); if forbidden intervening history matters,
+the chosen identity/revision/transaction-history discipline must actually
+exclude it, including bypassing writers.
+
+Absence, uniqueness, cardinality and one-primary RequestAssignment are
+predicate/relationship obligations, not merely a cached false value.
+Their physical realization must survive two concurrent attempts and every
+admitted writer. No pre-read test or synthetic concurrency schedule is
+a substitute for a real protected physical contention case.
 
 Deliver:
 
@@ -602,23 +732,77 @@ Deliver:
 - provider-qualified outcome, read-basis, progression, and atomicity interpretation;
 - a real writer inventory and mediation contract covering routes, jobs, imports,
   maintenance, migrations, and external write credentials where the claim requires it;
-- explicit backend-assumption qualification and invalidation from Part X.
+- explicit backend-assumption qualification and invalidation from Part X;
+- one source-to-physical and target-bound submission relation: the caller
+  cannot append raw SQL, alter the protected table/target, change transaction
+  options or swap the backend callback after the admitted plan is issued;
+- transaction-internal prestate and actual guard/action correspondence, or a
+  precise conditional premise and reproducible real-provider tests where
+  the provider exposes no independently authenticated internal witness;
+- complete protected physical frame and presence/write-footprint evidence,
+  including caller-supplied actual values, absent relationships, monotonic
+  revision policies and history-sensitive conflict assumptions;
+- independently qualified process/request/execution/host context, preserving
+  parallelism while limiting individual submit capabilities to the intended
+  one-shot attempt and retiring stale physical effects;
+- separate submitted-operation provenance, provider return, ledger/commit
+  status, authoritative command record, read basis, scoped progression,
+  actual actor readback and browser adoption, without treating agreement
+  between two observations as causal proof;
+- independent source/assembly and host-observed writer inventories plus
+  mediation or explicitly admitted external writer assumptions for
+  migrations, background tasks, maintenance clients, extra processes
+  and directly credentialed XTDB connections.
 
-Acceptance uses actual backend concurrency and failure windows. It challenges
-unguarded overwritten fields, changed associations, competing inserts, duplicate
-commands, lost return, insufficient read progression, and changed adapter or
-provider configuration. Supported values distinguish absence, null, false,
-collections, and physical encoding.
+*** Challenge real submission, concurrent writers and evidence limits
 
-A pinned external pre-read is not a transaction-internal state witness. A later
-matching post-state is not proof of causality. A local return observation is not
-a universal refinement theorem. A full-value guard alone does not exclude ABA.
-When intervening history matters, a separate history-sensitive mechanism and
-complete writer discipline must establish the required exclusion.
+Acceptance uses actual backend concurrency and failure windows. It requires
+at least one eligible physical success and controlled negatives for stale
+Request status, revoked/changed Membership, changed association, competing
+primary insertion, duplicate command, additional field erasure, ABA,
+loss of command record, unauthorized writer, provider exception after
+possible submission, insufficient read progression, and changed adapter
+or configuration. The actual transaction's lowered operations and protected
+targets must agree with the original plan. Supported values distinguish
+absence, null, false, collections, and physical encodings under selected
+runtime codecs.
 
-The stage reports exactly which physical forms are supported. One-document
-coverage cannot satisfy HumanHelp's multi-record Claim contract. A host-supplied
-writer list cannot prove that undisclosed direct writers are impossible.
+Physical evidence has several independently limited layers. A plan-shaped
+checker result proves construction of a *form*, not that it ran. A
+process-local one-shot callback or captured return proves only its
+correspondingly scoped observation; it is not a cryptographic, durable
+command record. A pinned poststate and ledger observation may be
+consistent with the returned key without proving which physical writer
+caused the observed domain state. A genuinely authenticated protected
+physical writer, complete internal-guard coverage and actual submission
+can establish stronger bounded claims; a universal refinement theorem
+still requires the stated semantics, source completeness and
+independent proof/correspondence premises.
+
+The selected strong application profile must survey *all relevant writers*
+rather than only HTTP routes or Gesso-issued operations. Independent
+host/process/credential coverage is needed before treating a source
+registry as a physically closed world. Where the environment cannot
+enumerate or constrain an external writer, the stronger no-bypass
+claim remains unestablished even when the registered local callbacks
+all agree. Deployment changes invalidate the appropriate old physical
+evidence while possibly preserving an unrelated sound abstract theorem.
+
+A pinned external pre-read is not a transaction-internal state witness; later
+matching post-state is not proof of causality; local return observation is not
+a universal refinement theorem. Complete field comparison without history
+does not exclude ABA. The required external behavior, physical prestate
+relationship, and closed-writer premise remain named and testable.
+
+The stage reports exactly which physical forms, provider versions, writer
+paths and authority scopes are supported. One-document coverage cannot
+satisfy HumanHelp's multi-record Claim contract. A host-supplied writer
+enumerator cannot prove that undisclosed direct XTDB writers are impossible,
+and a registered one-shot callback need not be the one a deployed route uses.
+The release and cross-layer checker may claim only the smaller supported
+subject until actual installed submission, open writer effects,
+unknown-command recovery, retained publication and protected readback
+are covered by qualified evidence and nonvacuous testing.
 
 *** Stage 7 -- Portable choreography, distributed admissibility, and projection
 
