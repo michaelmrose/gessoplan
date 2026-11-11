@@ -1,6 +1,6 @@
 # R5.1 sectional source — Part XI, Release and Completion
 
-**Status: lossless split complete; 11.01–11.16 substantively reviewed.**
+**Status: lossless split complete; 11.01–11.17 substantively reviewed.**
 
 The preferred `r5` Part XI and the `r5.1` Part XI were byte-identical
 before this split. The eighteen numbered `.org` files listed here reproduce
@@ -345,6 +345,27 @@ limited explicitly; no new runtime or two-host tests ran.
 Published Part XI was rebuilt with the original eight
 stable anchors intact.
 
-**Next:** Review **11.17 — Completion Scopes and Records**,
-then 11.18, whole-Part-XI reconciliation, independent
-editorial acceptance, Part XII and final cross-part review.
+**11.16 handoff:** 11.17 was the next unfinished section. Its completed
+substantive review is documented below.
+
+
+**11.17 review:** see 11.17-r4-preservation-audit.md.
+Reconciled R4's detailed source/assembly-generation/browser/
+evidence release record and future applicability with R5's
+clear separate milestone example. Distinguished *four*
+release decisions from *four* independent completion scopes;
+bound all statuses to original independent requirements,
+qualified evidence/issuer, actual installed subjects,
+premises, artifacts, environments and dependency-based
+currentness. Retained the independently open HumanHelp
+Response decision and already selected advisory-only
+explicit Refresh policy. Added a clearly illustrative,
+non-authoritative EDN record, 32 preservation decisions
+and 22 paired future record/change controls with bounded
+Gesso v1622 source correspondence. This is not an
+executed runtime test or a release certificate.
+Numbered source and canonical Part XI are rebuilt together.
+
+**Next:** Review **11.18 — Release Change Acceptance and Working Rule**,
+then whole-Part-XI reconciliation, independent editorial
+acceptance, Part XII and final cross-part consistency review.
