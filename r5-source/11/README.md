@@ -1,6 +1,6 @@
 # R5.1 sectional source — Part XI, Release and Completion
 
-**Status: lossless split complete; 11.01–11.11 substantively reviewed.**
+**Status: lossless split complete; 11.01–11.12 substantively reviewed.**
 
 The preferred `r5` Part XI and the `r5.1` Part XI were byte-identical
 before this split. The eighteen numbered `.org` files listed here reproduce
@@ -235,6 +235,25 @@ prospective positive/adversarial conformance cases with bounded
 v1622 implementation correspondence; no actual tests were run.
 The canonical Part XI is updated alongside its numbered source.
 
-**Next:** Review **11.12 — Progress Metrics and Denominators**,
-then 11.13–11.18, whole-Part-XI reconciliation, independent
-editorial acceptance, Part XII and final whole-plan acceptance.
+**11.11 handoff:** 11.12 was the next incomplete source. Its completed
+substantive review is recorded below.
+
+
+**11.12 review:** see 11.12-r4-preservation-audit.md.
+Restored R4's specific proof artifact/theorem, TCB, controlled
+mutation, diagnostic and real-browser coverage measures while
+retaining R5's stable-denominator and incremental-reuse discipline.
+Separated original independent product capabilities, exposed
+assembly closure, installed enforcement, semantic judgments,
+external correspondence and actual test execution. Made missing
+or empty inventories, unqualified passing maps and post-failure
+denominator changes ineligible for false completion credit.
+Recorded 32 preservation/ownership decisions and 20 paired
+future measurement controls, with narrowly scoped v1622 source
+correspondence and no claims of executed runtime testing.
+The numbered source and canonical Part XI publication are
+updated together; original Part XI stable anchors remain.
+
+**Next:** Review **11.13 — Operational Application Completion**,
+then 11.14–11.18, whole-Part-XI reconciliation, independent
+acceptance, Part XII and final whole-plan review.
