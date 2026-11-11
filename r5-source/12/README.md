@@ -1,6 +1,6 @@
 # R5.1 sectional source — Part XII, Implementation Order and Final Invariants
 
-**Status: sections 12.01–12.14 substantively reviewed and audited (14/16); sections 12.15–12.16, whole-part reconciliation and independent editorial acceptance pending.**
+**Status: sections 12.01–12.15 substantively reviewed and audited (15/16); section 12.16, whole-part reconciliation and independent editorial acceptance pending.**
 
 Preferred `r5` and pre-split `r5.1` Part XII are byte-identical. The sixteen
 numbered Org sources reproduce the existing root-level
@@ -267,7 +267,26 @@ The separate audit records bounded
 Gesso v1622 source evidence.
 No runtime or formal tests ran.
 
-**Next:** Review `12.15-worked-stopped-candidate.org`,
-then 12.16, whole-Part-XII reconciliation,
-independent Part XII acceptance and final
-twelve-part editorial reconciliation.
+**12.15 review:** see `12.15-r4-preservation-audit.md`.
+Preserved R4's green-looking failed P23/P24
+candidate, omitted trusted clock/fallback,
+browser-forged authority, lost C42 attribution,
+unlicensed remote reconnect adoption,
+missing Reassign, old certificate/browser evidence,
+future-network assumption and full repair path,
+without treating illustrative R4 API calls
+as actual Gesso functions. Extended the
+controlled defect matrix through all
+Gates A–P, tested first-owner versus
+masked downstream error semantics,
+nonvacuous valid positives, four
+independent release decisions, physical
+writer/frame, actual host installation,
+one-use Refresh and S0–S4 evidence scope.
+Audit records bounded Gesso v1622 code;
+no runtime or formal tests were executed.
+
+**Next:** Review `12.16-final-unified-invariants.org`,
+then whole-Part-XII reconciliation,
+independent Part XII candidate acceptance,
+and final twelve-part editorial reconciliation.
