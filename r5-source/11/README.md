@@ -1,6 +1,6 @@
 # R5.1 sectional source — Part XI, Release and Completion
 
-**Status: lossless split complete; 11.01–11.15 substantively reviewed.**
+**Status: lossless split complete; 11.01–11.16 substantively reviewed.**
 
 The preferred `r5` Part XI and the `r5.1` Part XI were byte-identical
 before this split. The eighteen numbered `.org` files listed here reproduce
@@ -321,7 +321,30 @@ No external prover or runtime test was executed.
 Updated the numbered source and its exact
 published Part XI together with original anchors.
 
-**Next:** Review **11.16 — Multi-node Production Completion**,
-then 11.17–11.18, whole-Part-XI reconciliation,
-independent editorial acceptance, Part XII and
-final twelve-part preservation and consistency review.
+**11.15 handoff:** 11.16 was the next unfinished source. Its
+completed substantive review is recorded below.
+
+
+**11.16 review:** see 11.16-r4-preservation-audit.md.
+Reconciled R4's concrete host-loss/duplicate/outbox/reconnect
+and load acceptance with R5's topology/evidence table
+and Part X's same-single/multi-node semantics. Explicitly
+required physically independent host/XTDB/route observations,
+original-command retention, writer-derived durable notice
+intent, atomic outbox recovery, router interest registration
+fences, stale-filter/backup failure coverage, conservative
+authorized redelivery, progression-safe rereads, current
+authorization, HumanHelp's explicit Refresh and tested
+rolling-release/resource limits. Replicated/hierarchical
+filters and alternate router implementations remain
+eligible optimizations, not mandatory architecture.
+Recorded 32 preservation/ownership decisions and 24
+prospective positive/adversarial physical acceptance cases.
+Gesso v1622 single-node-oriented source evidence is
+limited explicitly; no new runtime or two-host tests ran.
+Published Part XI was rebuilt with the original eight
+stable anchors intact.
+
+**Next:** Review **11.17 — Completion Scopes and Records**,
+then 11.18, whole-Part-XI reconciliation, independent
+editorial acceptance, Part XII and final cross-part review.
