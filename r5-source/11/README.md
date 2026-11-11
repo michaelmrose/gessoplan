@@ -1,6 +1,6 @@
 # R5.1 sectional source — Part XI, Release and Completion
 
-**Status: lossless split complete; 11.01–11.17 substantively reviewed.**
+**Status: lossless split complete; all 11.01–11.18 sections substantively reviewed; whole-part reconciliation pending.**
 
 The preferred `r5` Part XI and the `r5.1` Part XI were byte-identical
 before this split. The eighteen numbered `.org` files listed here reproduce
@@ -366,6 +366,35 @@ Gesso v1622 source correspondence. This is not an
 executed runtime test or a release certificate.
 Numbered source and canonical Part XI are rebuilt together.
 
-**Next:** Review **11.18 — Release Change Acceptance and Working Rule**,
-then whole-Part-XI reconciliation, independent editorial
-acceptance, Part XII and final cross-part consistency review.
+**11.17 handoff:** 11.18 was the last unfinished sectional review. Its
+completed substantive review is recorded below.
+
+
+**11.18 review:** see 11.18-r4-preservation-audit.md.
+Completed the final Part XI sectional review by challenging
+the actual release mechanism itself: source/proof invalidation,
+sound incremental reuse, corrupted cached reports, exact
+original capability denominators, strict gate failures,
+genuine issuance, installed listener/browser bytes, coherent
+activation/failure cleanup, current authority, command C42
+uncertainty, durable publication and multi-node interest
+recovery, mixed client generations, and HumanHelp's one-use
+advisory-only Refresh. Preserved R4's question about each
+proposition, premise, evidence, first enforcing boundary
+and next-layer correspondence while extending R5's
+positive/adversarial release testing. Recorded 32
+R4/R5 preservation decisions and 28 paired conformance
+cases with narrowly bounded Gesso v1622 source evidence;
+no runtime or release tests were executed. Numbered source
+and canonical Part XI were edited together.
+
+**Status:** All eighteen Part XI numbered source sections have
+completed substantive review and have sectional R4 audits.
+This is *not* whole-part reconciliation or independent
+editorial acceptance.
+
+**Next:** Perform **whole-Part-XI reconciliation** across
+11.01–11.18 and Parts VIII–X, with exact R4 preservation
+and source/publication checks. Then perform a **separate**
+independent Part XI editorial acceptance decision,
+followed by Part XII and final twelve-part acceptance.
