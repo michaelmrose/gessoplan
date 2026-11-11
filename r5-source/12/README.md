@@ -1,6 +1,6 @@
 # R5.1 sectional source — Part XII, Implementation Order and Final Invariants
 
-**Status: sections 12.01–12.07 substantively reviewed and audited (7/16); sections 12.08–12.16, whole-part reconciliation and independent editorial acceptance pending.**
+**Status: sections 12.01–12.08 substantively reviewed and audited (8/16); sections 12.09–12.16, whole-part reconciliation and independent editorial acceptance pending.**
 
 Preferred `r5` and pre-split `r5.1` Part XII are byte-identical. The sixteen
 numbered Org sources reproduce the existing root-level
@@ -150,7 +150,22 @@ Part VIII product gates. The audit compares scoped Gesso
 v1622 artifact, proof, preflight and command modules without
 claiming implementation completeness. No tests were executed.
 
-**Next:** Review `12.08-certification-and-mutation-stages.org`
-(Stages 13–14), then remaining sections, whole-Part-XII
-reconciliation, independent Part XII acceptance and final
-twelve-part editorial reconciliation.
+**12.08 review:** see `12.08-r4-preservation-audit.md`.
+Preserved R4's cross-namespace certificate hierarchy,
+minimal checker and HumanHelp compositional proof pilot
+while retaining R5's stronger source-derived, semantic-first
+architecture. Required original obligation/capability
+completeness, claim-scoped premise discharge, honest
+conditional induction, separate abstract/installed/browser
+Claim conclusions and nonvacuous positive tests. Reworked
+systematic mutations around predeclared earliest gate,
+independent forbidden-effect observation, deliberate
+valid variants, honest unsupported/incomplete counts and
+generic non-HumanHelp domains. The audit identifies
+Gesso v1622 evidence and implementation limits; no
+runtime or formal tests were executed.
+
+**Next:** Review `12.09-explainability-and-independent-kernel-proof.org`
+(Stages 15–16), followed by the remaining sections,
+whole-Part-XII reconciliation, independent candidate
+acceptance and final twelve-part editorial reconciliation.
