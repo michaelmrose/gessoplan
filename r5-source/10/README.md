@@ -401,3 +401,9 @@ product decision and all implementation evidence gaps remain open.
 splitting the preferred R5 publication into natural reviewable R5.1
 sources before one-section-at-a-time R4/code-informed revisions.
 Part XII and final full-plan acceptance remain open.
+
+**Post-acceptance editorial hygiene.** Historical R4 and present-version
+references are being replaced with self-contained target-design language.
+See `PART-X-post-acceptance-editorial-errata.md` for the precise scope.
+The existing preservation audits retain implementation-version evidence;
+none of these edits upgrades an evidence claim or changes a normative gate.
