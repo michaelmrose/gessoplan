@@ -1,6 +1,6 @@
 # R5.1 sectional source — Part XI, Release and Completion
 
-**Status: lossless natural split complete; substantive revision pending.**
+**Status: lossless natural split complete; 11.01 substantively reviewed.**
 
 The preferred `r5` Part XI and the `r5.1` Part XI were byte-identical
 before this split. The eighteen numbered `.org` files listed here reproduce
@@ -50,7 +50,21 @@ After 11.01–11.18, complete whole-Part-XI reconciliation and
 independent editorial acceptance. The split itself is not
 editorial acceptance or an implementation certification.
 
-**Next:** Substantively review **11.01 — Release Claim and Admission Profile**
-against R4, accepted Parts I–X and the real Gesso assurance/release gates.
-Sections 11.02–11.18, whole-Part-XI acceptance, Part XII and whole-plan
-acceptance remain outstanding.
+**11.01 review:** see `11.01-r4-preservation-audit.md`.
+Reconciled R4's predeclared release denominator and required release gates with
+R5's stronger immutable claim-first, named scope/profile and candidate identity.
+Made proof discovery coverage independent of a successful generated gate list,
+separated compatible semantic proof reuse from stale physical/asset evidence,
+preserved strict-profile fail-closed behavior without demanding every advanced
+milestone for an ordinary operational release, and kept HumanHelp's response-
+flow product decision distinct from unsupported checking machinery.
+Twenty-five R4/R5 preservation decisions and twelve future paired physical
+acceptance controls record actual Gesso v1622 source evidence and its nonclaims.
+Published Part XI now contains **1338 newline-split lines**
+and **77283 characters**. The README section map retains the
+*original pre-review line ranges*, not dynamically updated offsets.
+
+**Next:** Review **11.02 — Four Decisions and Gate Results** against R4,
+accepted Parts I–X, the revised 11.01 release-intent contract and actual
+Gesso release/assurance code. Sections 11.03–11.18, whole-Part-XI
+reconciliation and acceptance, Part XII and full-plan review remain open.
