@@ -114,4 +114,4 @@ The design retains four **separate completion milestones**: operational applicat
 
 ### Optional decorative PDF layout
 
-On the `pretty` branch, `bb pretty [gothic|botanical|math|geometric]` builds an optional Florilegium-decorated PDF without changing global Fish/Pandoc settings or the normative source. See [the presentation experiment](script/pretty/README.md). The usual `bb gen` remains unchanged.
+On the `pretty` branch, `bb pretty [gothic|botanical|math|geometric] [seed]` builds an optional Florilegium-decorated PDF without changing global Fish/Pandoc settings or the normative source. See [the presentation experiment](script/pretty/README.md). The usual `bb gen` remains unchanged.

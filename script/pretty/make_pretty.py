@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""Prepare the full unchanged Org and a Pandoc --include-in-header sidecar.
+"""Prepare an unchanged Org copy and a Florilegium LaTeX header sidecar.
 
-Pandoc's -V header-includes variable overrides Org #+LATEX_HEADER metadata.
-Unlike that metadata, --include-in-header survives this existing orgToPdf
-configuration. The repository-local Pandoc wrapper supplies the sidecar.
+The project-local Fish orgToPdf function passes this sidecar to Pandoc using
+--include-in-header. All decoration is separate from canonical Org source.
 """
 from __future__ import annotations
 
@@ -15,33 +14,65 @@ import re
 PARTS = ("I", "II", "III", "IV", "V", "VI",
          "VII", "VIII", "IX", "X", "XI", "XII")
 PROFILES = ("gothic", "math", "botanical", "geometric")
+MAX_SEED = 2_147_483_646
 
 
-def latex_header(profile: str) -> str:
+def parse_seed(text: str) -> int:
+    """Accept a safe, deterministic positive seed; never interpolate raw input."""
+    if not re.fullmatch(r"[0-9]{1,10}", text):
+        raise argparse.ArgumentTypeError(
+            f"seed must be an integer from 1 to {MAX_SEED}"
+        )
+    value = int(text)
+    if not 1 <= value <= MAX_SEED:
+        raise argparse.ArgumentTypeError(
+            f"seed must be an integer from 1 to {MAX_SEED}"
+        )
+    return value
+
+
+def latex_header(profile: str, seed: int | None = None) -> str:
+    if profile not in PROFILES:
+        raise ValueError(f"Unknown Florilegium profile: {profile}")
+    if seed is not None and not 1 <= seed <= MAX_SEED:
+        raise ValueError(f"seed must be between 1 and {MAX_SEED}")
+
+    geometry = []
     if profile == "gothic":
-        package = r"\usepackage[nomargin,headpieces]{florilegium}"
-        geometry = []
+        options = ["nomargin", "headpieces"]
     else:
-        theme = {"math": "math", "botanical": None,
-                 "geometric": "geometric"}[profile]
-        theme_opt = f",theme={theme}" if theme else ""
-        package = (r"\usepackage[grown,headpieces,novisitors,noshells,"
-                   "density=0.10,intensity=0.40" + theme_opt
-                   + r"]{florilegium}")
+        # Only the illustrated-margin profiles reserve a wide drawing column.
         geometry = [
             r"\usepackage{geometry}",
             r"\geometry{a4paper,left=54mm,right=18mm,top=18mm,bottom=21mm}",
         ]
+        if profile == "botanical":
+            # Rich botanical profile: foliage, visitors and shells are all
+            # enabled. The old botanical settings were 0.10 and 0.40.
+            options = ["grown", "headpieces", "density=0.28",
+                       "intensity=0.78"]
+        else:
+            # Keep the mathematical/geometric themes unchanged.
+            options = ["grown", "headpieces", "novisitors", "noshells",
+                       "density=0.10", "intensity=0.40",
+                       f"theme={profile}"]
 
+    package = r"\usepackage[" + ",".join(options) + r"]{florilegium}"
     lines = [
         f"% Generated Florilegium {profile} profile; not normative content.",
         *geometry,
+    ]
+    if seed is not None:
+        # Florilegium requires this definition BEFORE \usepackage. A seed
+        # package option is NOT supported by the upstream .sty.
+        lines.append(r"\def\florilegiumseed{" + str(seed) + "}")
+    lines.extend([
         package,
         r"\definecolor{ink}{HTML}{2456C4}",
         r"\definecolor{accent}{HTML}{B4662F}",
         r"\florilegiumhide[1]",
         r"\AtBeginDocument{\typeout{GESSOPLAN-FLORILEGIUM-LOADED}}",
-    ]
+    ])
     return "\n".join(lines) + "\n"
 
 
@@ -52,6 +83,10 @@ def main() -> None:
     parser.add_argument(
         "--profile", choices=PROFILES,
         default=os.getenv("GESSOPLAN_PRETTY_PROFILE", "gothic")
+    )
+    parser.add_argument(
+        "--seed", type=parse_seed, default=os.getenv("GESSOPLAN_PRETTY_SEED"),
+        help="positive integer seed; default is Florilegium's page-dependent seed"
     )
     args = parser.parse_args()
     if args.source.resolve() == args.output.resolve():
@@ -73,14 +108,14 @@ def main() -> None:
     )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     header_file.parent.mkdir(parents=True, exist_ok=True)
-    # Do not inject Org #+LATEX_HEADER, which is ignored in the original
-    # Pandoc command due to its -V header-includes option.
     args.output.write_bytes(original)
-    header_file.write_text(latex_header(args.profile), encoding="utf-8")
+    header_file.write_text(latex_header(args.profile, args.seed),
+                           encoding="utf-8")
     assert args.output.read_bytes() == original
+    seed_desc = f", seed {args.seed}" if args.seed is not None else ""
     print(f"Prepared unchanged canonical Org as {args.output}")
-    print(f"Prepared Florilegium {args.profile} header as {header_file}")
-    print("bb pretty will inject it through Pandoc --include-in-header")
+    print(f"Prepared Florilegium {args.profile}{seed_desc} header as {header_file}")
+    print("bb pretty injects it through Pandoc --include-in-header")
 
 
 if __name__ == "__main__":

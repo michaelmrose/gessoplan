@@ -10,24 +10,28 @@
    :depends [gen-org]
    :task (shell "fish" "-c" "orgToPdf output/gesso-plan-v5.1.org")}
   pretty-org
-  {:doc "Generate a presentation-only Florilegium Org copy; optional profile argument"
+  {:doc "Generate a presentation-only Florilegium Org copy; optional profile and seed"
    :depends [gen-org]
    :task
    (let [args *command-line-args*
          profile (or (first args)
                      (System/getenv "GESSOPLAN_PRETTY_PROFILE")
-                     "gothic")]
-     (when (> (count args) 1)
-       (throw (ex-info "Usage: bb pretty-org [gothic|botanical|math|geometric]"
+                     "gothic")
+         seed (or (second args)
+                  (System/getenv "GESSOPLAN_PRETTY_SEED"))]
+     (when (> (count args) 2)
+       (throw (ex-info "Usage: bb pretty-org [gothic|botanical|math|geometric] [seed]"
                        {:args args})))
      (when-not (#{"gothic" "botanical" "math" "geometric"} profile)
        (throw (ex-info (str "Unknown Florilegium profile: " profile)
                        {:profile profile})))
-     (shell "python3" "script/pretty/make_pretty.py"
-            "output/gesso-plan-v5.1.org"
-            "output/gesso-plan-v5.1-pretty.org"
-            "--profile" profile))}
+     (apply shell
+            (cond-> ["python3" "script/pretty/make_pretty.py"
+                     "output/gesso-plan-v5.1.org"
+                     "output/gesso-plan-v5.1-pretty.org"
+                     "--profile" profile]
+              seed (conj "--seed" seed))))}
   pretty
-  {:doc "Generate a Florilegium PDF; optional profile argument"
+  {:doc "Generate Florilegium PDF; optional profile and seed arguments"
    :depends [pretty-org]
    :task (shell "sh" "script/pretty/render.sh")}}}
