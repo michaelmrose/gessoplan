@@ -10,12 +10,24 @@
    :depends [gen-org]
    :task (shell "fish" "-c" "orgToPdf output/gesso-plan-v5.1.org")}
   pretty-org
-  {:doc "Generate a presentation-only Florilegium Org copy"
+  {:doc "Generate a presentation-only Florilegium Org copy; optional profile argument"
    :depends [gen-org]
-   :task (shell "python3" "script/pretty/make_pretty.py"
-                "output/gesso-plan-v5.1.org"
-                "output/gesso-plan-v5.1-pretty.org")}
+   :task
+   (let [args *command-line-args*
+         profile (or (first args)
+                     (System/getenv "GESSOPLAN_PRETTY_PROFILE")
+                     "gothic")]
+     (when (> (count args) 1)
+       (throw (ex-info "Usage: bb pretty-org [gothic|botanical|math|geometric]"
+                       {:args args})))
+     (when-not (#{"gothic" "botanical" "math" "geometric"} profile)
+       (throw (ex-info (str "Unknown Florilegium profile: " profile)
+                       {:profile profile})))
+     (shell "python3" "script/pretty/make_pretty.py"
+            "output/gesso-plan-v5.1.org"
+            "output/gesso-plan-v5.1-pretty.org"
+            "--profile" profile))}
   pretty
-  {:doc "Generate a Florilegium PDF without changing global configuration"
+  {:doc "Generate a Florilegium PDF; optional profile argument"
    :depends [pretty-org]
    :task (shell "sh" "script/pretty/render.sh")}}}

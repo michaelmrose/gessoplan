@@ -6,9 +6,12 @@ unchanged. The optional `pretty` build modifies only presentation artifacts.
 ## Commands
 
 ```sh
-bb gen             # original, unmodified Org/PDF publication
-bb pretty-org      # byte-identical Org copy + separate LaTeX header
-bb pretty          # generate Florilegium-decorated PDF
+bb gen                  # original, unmodified Org/PDF publication
+bb pretty               # Gothic headpieces (default)
+bb pretty botanical     # botanical margins
+bb pretty math          # mathematical margins
+bb pretty geometric     # geometric margins
+bb pretty-org botanical # prepare the Org copy and header without rendering
 ```
 
 `bb pretty` creates `output/gesso-plan-v5.1-pretty.org` (the same bytes as the
@@ -56,14 +59,15 @@ Fetching Florilegium additionally requires Git/network access once.
 
 ### Profiles
 
-`gothic` (default) uses architectural headpieces and does not change
-ordinary page geometry.
+Pass the desired style as the first positional argument to `bb pretty` or
+`bb pretty-org`. Valid styles are `gothic`, `botanical`, `math`,
+and `geometric`. With no argument, the default is `gothic`; it uses
+architectural headpieces without changing ordinary page geometry.
 
-```sh
-GESSOPLAN_PRETTY_PROFILE=botanical bb pretty
-GESSOPLAN_PRETTY_PROFILE=math bb pretty
-GESSOPLAN_PRETTY_PROFILE=geometric bb pretty
-```
+For compatibility with scripts, `GESSOPLAN_PRETTY_PROFILE` remains an optional
+fallback when no argument is given. An explicit positional argument takes
+precedence. Unknown styles or more than one argument cause an error.
+
 
 Those profiles add elaborate grown margins and reserve a wider left
 drawing column. They can increase PDF size, line wrapping, page count,
