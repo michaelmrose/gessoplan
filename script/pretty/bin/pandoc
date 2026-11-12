@@ -1,0 +1,10 @@
+#!/bin/sh
+# Interpose only for bb pretty. Preserve all original orgToPdf Pandoc args.
+# --include-in-header survives an existing -V header-includes override.
+set -eu
+: "${GESSOPLAN_REAL_PANDOC:?Missing real Pandoc executable}"
+: "${GESSOPLAN_PRETTY_HEADER:?Missing Florilegium TeX header}"
+: "${GESSOPLAN_PANDOC_MARKER:?Missing invocation marker}"
+test -s "$GESSOPLAN_PRETTY_HEADER"
+: > "$GESSOPLAN_PANDOC_MARKER"
+exec "$GESSOPLAN_REAL_PANDOC" "$@" "--include-in-header=$GESSOPLAN_PRETTY_HEADER"
