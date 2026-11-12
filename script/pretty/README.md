@@ -1,67 +1,63 @@
 # Florilegium PDF experiment on the pretty branch
 
-The original **bb gen** and 192 canonical Org sources are not changed.
-This is an opt-in presentation path built around the existing Fish
-`orgToPdf`, Pandoc Lua pagination filter, fonts and cover.
+The original **bb gen** and the 192 canonical Org source sections remain
+unchanged. The optional `pretty` build modifies only presentation artifacts.
 
 ## Commands
 
 ```sh
-bb gen             # regular original PDF
-bb pretty-org      # complete identical Org copy + local LaTeX header
-bb pretty          # Florilegium PDF (default: Gothic part openings)
+bb gen             # original, unmodified Org/PDF publication
+bb pretty-org      # byte-identical Org copy + separate LaTeX header
+bb pretty          # generate Florilegium-decorated PDF
 ```
 
-The complete ordinary Org document is
-`output/gesso-plan-v5.1.org`. The optional copy is
-`output/gesso-plan-v5.1-pretty.org`. **They have identical bytes.**
-Decorative commands are instead stored in
-`output/.orgToPdf/gesso-plan-v5.1-pretty-header.tex`, created by
-`bb pretty-org`; those files are not independent normative sources.
+`bb pretty` creates `output/gesso-plan-v5.1-pretty.org` (the same bytes as the
+canonical assembled document), and
+`output/.orgToPdf/gesso-plan-v5.1-pretty-header.tex` (the additional Pandoc
+preamble). The output PDF is `output/gesso-plan-v5.1-pretty.pdf`.
 
-### Why the header must be passed this way
+### Why the rendering is repository-local
 
-In an earlier version, the experiment prepended `#+LATEX_HEADER:`
-commands to the generated Org. Unfortunately, the existing
-`orgToPdf` invocation uses Pandoc `-V header-includes=...`, which
-**overrides Org's header-includes metadata**. The declarations were
-quietly dropped, and LuaLaTeX made a normal, undecorated PDF.
+The user's real `orgToPdf` is a Fish function in
+`~/.config/fish/functions/orgToPdf.fish`. It calls Pandoc directly with an
+existing `--include-in-header`, followed by `latexmk -lualatex`.
 
-The fixed workflow adds one local executable,
-`script/pretty/bin/pandoc`, to `PATH` **only for the `bb pretty`
-subprocess**. It passes all arguments from `orgToPdf` unchanged to
-the actual Pandoc executable and appends
-`--include-in-header=<generated-header.tex>`.
-Pandoc supports this alongside `-V header-includes`, so the package
-will actually reach the generated LaTeX.
+A previous attempt relied on intercepting Pandoc by prepending a script
+to `PATH`. That wrapper **was not invoked** by the user's Fish pipeline.
 
-After compilation, `bb pretty` checks the wrapper was invoked, the
-generated `.tex` contains the package and the actual `.log` records
-`florilegium.sty`. It fails rather than silently declaring a successful
-decorated PDF when the package was skipped.
+Rather than rely on PATH or override Org metadata, the `pretty` branch
+now contains `script/pretty/orgToPdf.fish`: the original function with
+an **optional third argument**, `extra-header.tex`. It retains the
+original highlighting, fonts, geometry, Pandoc code-block pagination
+filter, LuaLaTeX command and PDF output logic; it only appends a second
+`--include-in-header` when this optional argument is supplied.
 
-No `~/.config/fish`, `~/.local/share/pandoc` or system TeX files
-are modified.
+`render.sh` runs Fish with
+`source script/pretty/orgToPdf.fish`, so the project-local definition
+takes precedence regardless of how the user's global function is
+autoloaded. **No home-directory Fish/Pandoc configuration is edited.**
+
+The build checks that the generated LaTeX contains the Florilegium
+package, that the LaTeX log contains an explicit load marker emitted
+from the added preamble, and that the PDF exists.
 
 ### Upstream dependency
 
-On the first build, `script/pretty/install.sh` checks out
+The first build fetches
 [Florilegium](https://github.com/kevinraymond/florilegium) into
-ignored `.pretty-deps/florilegium`, pinned to exact commit
-`4518bc80baf49575e0ab8282b457f58fcfc38a3d`.
-The `headpieces` feature is newer than the published v2.0.1 release.
-You can instead point `GESSOPLAN_FLORILEGIUM_DIR` at a suitable
-existing local checkout. Git and network access are required only for
-the first automated source fetch.
+ignored `.pretty-deps/florilegium`, pinned to exact upstream commit
+`4518bc80baf49575e0ab8282b457f58fcfc38a3d` (headpieces support,
+newer than the last published v2.0.1 release). Alternatively supply
+`GESSOPLAN_FLORILEGIUM_DIR` pointing at a compatible local checkout.
 
-Required executables: Babashka, Fish, Pandoc, Git for first fetch and
-the already-installed LuaLaTeX/TeX dependencies (including TikZ).
-These are runtime prerequisites, not global configuration edits.
+Existing dependencies: Babashka, Fish, Pandoc, LuaLaTeX/latexmk,
+TeX Live's TikZ and the existing global Pandoc filter/support files.
+Fetching Florilegium additionally requires Git/network access once.
 
 ### Profiles
 
-Default `gothic`: architectural headpieces for the major headings
-without changing page geometry or reducing code line widths.
+`gothic` (default) uses architectural headpieces and does not change
+ordinary page geometry.
 
 ```sh
 GESSOPLAN_PRETTY_PROFILE=botanical bb pretty
@@ -69,20 +65,20 @@ GESSOPLAN_PRETTY_PROFILE=math bb pretty
 GESSOPLAN_PRETTY_PROFILE=geometric bb pretty
 ```
 
-The other three profiles enable growing artwork on each page, with a
-wider margin, lower density/intensity, and greater rendering/file-size
-cost. The first PDF page containing the existing cover is excluded from
-Florilegium's drawing with `\\florilegiumhide[1]`; no source cover
-modification is needed.
+Those profiles add elaborate grown margins and reserve a wider left
+drawing column. They can increase PDF size, line wrapping, page count,
+and compilation time significantly. The existing cover's first PDF
+page is excluded from generated artwork via `\\florilegiumhide[1]`.
 
-### Verification scope
+### Validation
 
-The Pandoc header-override issue and the project-local
-`--include-in-header` workaround were reproduced with Pandoc.
-The full real `orgToPdf`/Fish/LuaLaTeX pipeline still needs a run
-in the user's environment. The script now detects the previous silent
-failure. Check actual rendered margins, top-level heading placement,
-cover, tables, code, pagination and PDF size before considering a merge.
+The old build yielded an undecorated PDF because Florilegium never
+reached the LaTeX preamble; the second build failed because PATH-based
+interception of Pandoc was not called. This revision removes that
+interception entirely. The full PDF still requires verification on the
+user's actual TeX Live installation; the first step is confirming the
+load marker, then inspecting the cover, part headings, code/table
+wrapping, and resulting PDF dimensions and size.
 
-Florilegium's primary license is MIT, with a separate LPPL 1.3c
-license on `florilegium-pgfmath.lua`.
+Florilegium is mostly MIT-licensed, with LPPL 1.3c for its
+`florilegium-pgfmath.lua`.

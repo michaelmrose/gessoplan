@@ -1,27 +1,26 @@
 #!/bin/sh
-# Run the original global orgToPdf function with a project-scoped Pandoc
-# --include-in-header. Never edit the user's Fish/Pandoc configurations.
+# Run the repository-local amended orgToPdf Fish function.
+# No PATH interposition and no edits to user home-directory configuration.
 set -eu
 
 root=$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)
 cd "$root"
 
-if ! command -v fish >/dev/null 2>&1; then
-    echo "Fish is required for the existing orgToPdf function." >&2
-    exit 1
-fi
-if ! command -v pandoc >/dev/null 2>&1; then
-    echo "Pandoc is required for the existing orgToPdf function." >&2
-    exit 1
-fi
+for tool in fish pandoc latexmk lualatex; do
+    if ! command -v "$tool" >/dev/null 2>&1; then
+        printf >&2 "Missing required executable: %s\n" "$tool"
+        exit 1
+    fi
+done
 
-org="$root/output/gesso-plan-v5.1-pretty.org"
-header="$root/output/.orgToPdf/gesso-plan-v5.1-pretty-header.tex"
-marker="$root/output/.orgToPdf/gesso-plan-v5.1-pretty.pandoc-wrapper-used"
-tex="$root/output/.orgToPdf/gesso-plan-v5.1-pretty.tex"
-log="$root/output/.orgToPdf/gesso-plan-v5.1-pretty.log"
+org="output/gesso-plan-v5.1-pretty.org"
+header="output/.orgToPdf/gesso-plan-v5.1-pretty-header.tex"
+tex="output/.orgToPdf/gesso-plan-v5.1-pretty.tex"
+log="output/.orgToPdf/gesso-plan-v5.1-pretty.log"
+pdf="output/gesso-plan-v5.1-pretty.pdf"
+
 test -s "$org" && test -s "$header" || {
-    echo "First run bb pretty-org to prepare both Org and the TeX header." >&2
+    echo "Missing pretty Org/header; run bb pretty-org first." >&2
     exit 1
 }
 
@@ -32,37 +31,28 @@ else
     pkgdir="$root/.pretty-deps/florilegium"
 fi
 test -f "$pkgdir/florilegium.sty" && test -f "$pkgdir/florilegium.lua" || {
-    echo "Missing Florilegium .sty/.lua under $pkgdir" >&2
+    printf >&2 "Florilegium .sty/.lua missing in %s\n" "$pkgdir"
     exit 1
 }
 
-# The absolute source paths work even when orgToPdf compiles in .orgToPdf.
-# The trailing colon preserves the usual system TeX/Lua search paths.
+# Absolute search paths work regardless of latexmk's auxiliary directory.
+# Trailing colon preserves Kpathsea's default paths.
 export TEXINPUTS="$pkgdir//:${TEXINPUTS:-}"
 export LUAINPUTS="$pkgdir//:${LUAINPUTS:-}"
-export GESSOPLAN_REAL_PANDOC
-GESSOPLAN_REAL_PANDOC=$(command -v pandoc)
-export GESSOPLAN_PRETTY_HEADER="$header"
-export GESSOPLAN_PANDOC_MARKER="$marker"
-rm -f "$marker"
-export PATH="$root/script/pretty/bin:$PATH"
 
-# This uses the user's normal global Fish function and all its existing
-# flags/filters, but replaces the Pandoc executable only in this subprocess.
-fish -c 'orgToPdf output/gesso-plan-v5.1-pretty.org'
+# Explicitly source our amended function: global autoloading cannot override it.
+fish -c 'source script/pretty/orgToPdf.fish; orgToPdf output/gesso-plan-v5.1-pretty.org hemisu output/.orgToPdf/gesso-plan-v5.1-pretty-header.tex'
 
-# A successful latexmk exit by itself does not show Florilegium ran!
-if [ ! -f "$marker" ]; then
-    echo "ERROR: orgToPdf did not call our project-local Pandoc wrapper." >&2
+test -s "$tex" && grep -Fq '{florilegium}' "$tex" || {
+    printf >&2 "ERROR: Florilegium package missing from generated TeX: %s\n" "$tex"
     exit 1
-fi
-if [ ! -s "$tex" ] || ! grep -Fq '{florilegium}' "$tex"; then
-    echo "ERROR: Florilegium was missing from the generated LaTeX preamble: $tex" >&2
+}
+test -s "$log" && grep -Fq 'GESSOPLAN-FLORILEGIUM-LOADED' "$log" || {
+    printf >&2 "ERROR: no Florilegium load marker in LaTeX log: %s\n" "$log"
     exit 1
-fi
-if [ ! -s "$log" ] || ! grep -Fq 'florilegium.sty' "$log"; then
-    echo "ERROR: LuaLaTeX did not record loading florilegium.sty: $log" >&2
+}
+test -s "$pdf" || {
+    printf >&2 "ERROR: decorated PDF is missing: %s\n" "$pdf"
     exit 1
-fi
-echo "Verified Florilegium was injected and loaded."
-echo "Decorated PDF: output/gesso-plan-v5.1-pretty.pdf"
+}
+printf 'Verified Florilegium loaded and generated %s\n' "$pdf"

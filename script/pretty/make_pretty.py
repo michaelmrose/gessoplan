@@ -40,6 +40,7 @@ def latex_header(profile: str) -> str:
         r"\definecolor{ink}{HTML}{2456C4}",
         r"\definecolor{accent}{HTML}{B4662F}",
         r"\florilegiumhide[1]",
+        r"\AtBeginDocument{\typeout{GESSOPLAN-FLORILEGIUM-LOADED}}",
     ]
     return "\n".join(lines) + "\n"
 
