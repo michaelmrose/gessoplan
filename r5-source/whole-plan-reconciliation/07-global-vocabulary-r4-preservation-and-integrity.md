@@ -23,7 +23,7 @@ This audit asks which R4 references remain addressable, whether editorial source
 | Original R4 anchor IDs | **83 unique** | Inventoried from twelve `main` R4 publications |
 | R5.1 anchor IDs | **87 unique; no duplicates** | All 83 original R4 IDs remain present; four IDs were added |
 | Original R4 anchor IDs missing | **0** | Identity references survive; this is not a semantic-preservation theorem |
-| Explicit canonical Org anchor links | **91 resolved; 0 broken** | Resolution of `[[#id]]` and `[[#id][label]]` targets against full assembled anchor set |
+| Explicit canonical Org anchor links | **92 resolved; 0 broken** | Resolution of `[[#id]]` and `[[#id][label]]` targets against full assembled anchor set |
 | Org begin/end block boundaries | **307 matched pairs; 0 nesting/type errors** | Stack-checked `#+begin_*` and `#+end_*` in the canonical assembled texts |
 | Part XII numbered roadmap stages | **18: stages 1–18, no omission** | Ordered delivery headings still cover original roadmap intent |
 | Part XII cross-stage gates | **16: A–P, no omission** | Named cross-stage acceptance headings remain |
