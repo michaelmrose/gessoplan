@@ -111,3 +111,7 @@ The design retains four **separate completion milestones**: operational applicat
 ---
 
 **Related:** [Gesso code](https://github.com/michaelmrose/gesso) · [HumanHelp application](https://github.com/michaelmrose/humanhelpthird) · [Revision charter](doc/gesso-r5.1-canonical-revision-charter.org) · [Final acceptance report](r5-source/whole-plan-reconciliation/08-independent-final-twelve-part-editorial-acceptance.md)
+
+### Optional decorative PDF layout
+
+On the `pretty` branch, `bb pretty` builds an optional Florilegium-decorated PDF without changing global Fish/Pandoc settings or the normative source. See [the presentation experiment](script/pretty/README.md). The usual `bb gen` remains unchanged.

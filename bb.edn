@@ -1,11 +1,21 @@
 {:tasks
- {gen
-  {:doc "Generate the unified Org file and PDF"
-   :task
-   (do
-     (shell "mkdir" "-p" "output")
-     (shell "sh" "-c"
-            "cat src/*/*.org > output/gesso-plan-v5.1.org"
-            )
-     (shell "fish" "-c"
-            "orgToPdf output/gesso-plan-v5.1.org"))}}}
+ {gen-org
+  {:doc "Assemble the canonical Org document"
+   :task (do
+           (shell "mkdir" "-p" "output")
+           (shell "sh" "-c"
+                  "cat src/*/*.org > output/gesso-plan-v5.1.org"))}
+  gen
+  {:doc "Generate the original Org and PDF"
+   :depends [gen-org]
+   :task (shell "fish" "-c" "orgToPdf output/gesso-plan-v5.1.org")}
+  pretty-org
+  {:doc "Generate a presentation-only Florilegium Org copy"
+   :depends [gen-org]
+   :task (shell "python3" "script/pretty/make_pretty.py"
+                "output/gesso-plan-v5.1.org"
+                "output/gesso-plan-v5.1-pretty.org")}
+  pretty
+  {:doc "Generate a Florilegium PDF without changing global configuration"
+   :depends [pretty-org]
+   :task (shell "sh" "script/pretty/render.sh")}}}
