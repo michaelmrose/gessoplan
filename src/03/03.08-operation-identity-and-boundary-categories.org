@@ -90,6 +90,17 @@ The choice should be the smallest mechanism that makes the wrong ordinary call
 difficult and the resulting diagnostic precise.  A representation technique is
 not valuable merely because it looks more typed.
 
+In particular, a =defrecord= used as an admitted-category carrier retains
+ordinary map behavior. Its distinct class identity is not enough when a
+consumer can bypass the intended typed accessor with generic lookup or
+destructuring. For framework categories whose interchange could corrupt
+semantic meaning, supported construction must either rule out that bypass
+through checked interface typing or expose a non-map opaque carrier with
+category-specific operations and dynamic boundary rejection. It must not rely
+on every caller remembering an optional class or discriminator check. A plain
+Clojure call outside the checked construction surface remains a dynamic
+boundary; it does not gain compiler-verified static safety by using a record.
+
 Ordinary downstream application code should normally author domain values and
 semantic declarations, not manually wrap every UUID, basis token, command, or
 projection in framework ceremony.  Gesso should perform category establishment
@@ -141,6 +152,7 @@ without turning a raw or stale value into a trusted one.
 | Two calls use the same =:request/claim= keyword after the model policy changed | Compare the relied-upon semantic contract and compatibility obligations; a name alone is insufficient |
 | A retry keeps its =CommandId= but changes arguments or the bound principal | Reject incompatible binding; the identifier does not grant permission to incorporate again |
 | An =ExecutionId= matches a command's raw UUID, or a host has the same name as an authority | Keep the categories distinct; neither coincidence changes semantic identity or authority |
+| A =defrecord= carrying =CommandId= is destructured as a generic map and forwarded where =ExecutionId= is required | Reject a known mismatch during managed construction; otherwise reject at the guarded runtime boundary. Field compatibility does not constitute semantic type compatibility |
 | A browser sends a tagged =Principal= or an =AuthoritativeBasis= looking map | Validate shape separately from trusted authentication or scoped observation acquisition |
 | A serialized copy of a structural checker handle or report carries the expected fingerprint | Do not grant live admission, theorem truth, certificate status, or application permission |
 | Two executable plans share an admitted content digest but one host runs an unverified handler | Exact artifact content is not installed handler/physical execution correspondence |

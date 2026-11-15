@@ -300,6 +300,33 @@ Merely assigning different variable names to interchangeable unchecked inputs
 does not establish that protection. Framework-owned construction should derive
 these bindings wherever it already possesses the required information.
 
+A =defrecord= is a nominal host-language class but is also a persistent map:
+keyword lookup, map destructuring, and generic associative operations can
+still access or manipulate its fields without performing a category check. A
+record's nominal identity therefore does not, by itself, make an unguarded
+map-oriented consumer type-safe. For category-sensitive framework values whose
+misuse must be rejected even if a caller forgets an explicit check, supported
+APIs must use a representation and call discipline that enforce the distinction
+by default: for example, a non-map opaque =deftype= accessed through
+category-specific operations, or a checked construction interface that prevents
+generic map access from bypassing the category judgment. A tagged map or record
+remains valid where the boundary's automatically enforced contract supplies
+equivalent protection; merely documenting that callers ought to check its
+discriminator or class is insufficient.
+
+Managed construction must check the producer/consumer semantic types and reject
+a provable category mismatch before execution, including an attempted
+map-style bypass where the checked interface knows the operand's category.
+At a dynamic or opaque Clojure boundary that cannot be fully checked in
+advance, the consuming API must guard the category at runtime and reject
+mismatch rather than interpreting same-shaped fields or silently treating an
+unsupported lookup as missing data. The ordinary Clojure compiler alone does
+not provide whole-program static enforcement of such contracts. The assurance
+claim is limited to call sites and paths covered by Gesso's admitted checker or
+runtime guards; unconstrained trusted host code cannot acquire that guarantee
+merely by naming a type. Framework construction should make the checked path
+the default without forcing routine domain maps into opaque wrappers.
+
 Nominal or opaque representation alone is not a security proof.  A value called
 =VerifiedChoreography= is trustworthy only to the extent that its construction
 or admission path actually establishes the claims downstream code relies on.
