@@ -589,6 +589,24 @@ At the highest level:
 | Executable plans | Carry canonical executable semantics and identities |
 | Runtime realization | Perform declared effects through adapters and transport |
 
+Semantic categories are established and preserved along this dependency path.
+A supported Gesso interface must not treat two values as interchangeable solely
+because they share a Clojure map shape, keyword vocabulary, UUID encoding, or
+Malli schema. Gesso constructs or re-establishes distinctions required by an
+operation, projection, or assurance boundary through checked elaboration,
+trusted acquisition, admission, or another qualified construction path. Where
+a caller supplies an incompatible or unadmitted value, the earliest supported
+consuming boundary rejects it with a diagnostic naming the required category,
+the supplied or unknown category, and the missing establishment step. Ordinary
+application authors should not have to manually wrap routine domain values or
+manufacture framework-owned admission evidence to obtain this protection.
+
+This principle prevents accidental substitution in cooperating application
+code; a nominal record, discriminator, or shape check does not by itself
+establish trusted provenance, current authority, or proof. The detailed
+category and admission rules are defined in
+[[#req-semantic-admission][Part II]].
+
 Evidence flows alongside this path:
 
 Declarations export normalized semantic interfaces. Checking derives and
@@ -4142,6 +4160,33 @@ trusted correlation, or another mechanism that actually enforces the contract.
 Merely assigning different variable names to interchangeable unchecked inputs
 does not establish that protection. Framework-owned construction should derive
 these bindings wherever it already possesses the required information.
+
+A =defrecord= is a nominal host-language class but is also a persistent map:
+keyword lookup, map destructuring, and generic associative operations can
+still access or manipulate its fields without performing a category check. A
+record's nominal identity therefore does not, by itself, make an unguarded
+map-oriented consumer type-safe. For category-sensitive framework values whose
+misuse must be rejected even if a caller forgets an explicit check, supported
+APIs must use a representation and call discipline that enforce the distinction
+by default: for example, a non-map opaque =deftype= accessed through
+category-specific operations, or a checked construction interface that prevents
+generic map access from bypassing the category judgment. A tagged map or record
+remains valid where the boundary's automatically enforced contract supplies
+equivalent protection; merely documenting that callers ought to check its
+discriminator or class is insufficient.
+
+Managed construction must check the producer/consumer semantic types and reject
+a provable category mismatch before execution, including an attempted
+map-style bypass where the checked interface knows the operand's category.
+At a dynamic or opaque Clojure boundary that cannot be fully checked in
+advance, the consuming API must guard the category at runtime and reject
+mismatch rather than interpreting same-shaped fields or silently treating an
+unsupported lookup as missing data. The ordinary Clojure compiler alone does
+not provide whole-program static enforcement of such contracts. The assurance
+claim is limited to call sites and paths covered by Gesso's admitted checker or
+runtime guards; unconstrained trusted host code cannot acquire that guarantee
+merely by naming a type. Framework construction should make the checked path
+the default without forcing routine domain maps into opaque wrappers.
 
 Nominal or opaque representation alone is not a security proof.  A value called
 =VerifiedChoreography= is trustworthy only to the extent that its construction
@@ -9521,6 +9566,17 @@ The choice should be the smallest mechanism that makes the wrong ordinary call
 difficult and the resulting diagnostic precise.  A representation technique is
 not valuable merely because it looks more typed.
 
+In particular, a =defrecord= used as an admitted-category carrier retains
+ordinary map behavior. Its distinct class identity is not enough when a
+consumer can bypass the intended typed accessor with generic lookup or
+destructuring. For framework categories whose interchange could corrupt
+semantic meaning, supported construction must either rule out that bypass
+through checked interface typing or expose a non-map opaque carrier with
+category-specific operations and dynamic boundary rejection. It must not rely
+on every caller remembering an optional class or discriminator check. A plain
+Clojure call outside the checked construction surface remains a dynamic
+boundary; it does not gain compiler-verified static safety by using a record.
+
 Ordinary downstream application code should normally author domain values and
 semantic declarations, not manually wrap every UUID, basis token, command, or
 projection in framework ceremony.  Gesso should perform category establishment
@@ -9572,6 +9628,7 @@ without turning a raw or stale value into a trusted one.
 | Two calls use the same =:request/claim= keyword after the model policy changed | Compare the relied-upon semantic contract and compatibility obligations; a name alone is insufficient |
 | A retry keeps its =CommandId= but changes arguments or the bound principal | Reject incompatible binding; the identifier does not grant permission to incorporate again |
 | An =ExecutionId= matches a command's raw UUID, or a host has the same name as an authority | Keep the categories distinct; neither coincidence changes semantic identity or authority |
+| A =defrecord= carrying =CommandId= is destructured as a generic map and forwarded where =ExecutionId= is required | Reject a known mismatch during managed construction; otherwise reject at the guarded runtime boundary. Field compatibility does not constitute semantic type compatibility |
 | A browser sends a tagged =Principal= or an =AuthoritativeBasis= looking map | Validate shape separately from trusted authentication or scoped observation acquisition |
 | A serialized copy of a structural checker handle or report carries the expected fingerprint | Do not grant live admission, theorem truth, certificate status, or application permission |
 | Two executable plans share an admitted content digest but one host runs an unverified handler | Exact artifact content is not installed handler/physical execution correspondence |
