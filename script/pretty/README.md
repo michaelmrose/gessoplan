@@ -52,6 +52,27 @@ Existing dependencies: Babashka, Fish, Pandoc, LuaLaTeX/latexmk,
 TeX Live's TikZ and the existing global Pandoc filter/support files.
 Fetching Florilegium additionally requires Git/network access once.
 
+### Automatic table wrapping
+
+Both `bb gen` and `bb pretty` run the repository-local Pandoc Lua filter
+`script/pdf/wrap_tables.lua`. Pandoc normally renders Org tables without
+column-width hints as LaTeX `l` columns, which cannot wrap their contents
+and may extend beyond the right edge of the page. The filter assigns relative
+widths to unconstrained columns, so ordinary prose in each cell wraps over
+multiple lines. Pandoc's existing `longtable` output can continue across
+pages, breaking between rows.
+
+Tables with explicit Org column widths (e.g. `| <20> | <80> |`) are left
+unchanged. In mixed-width tables, unspecified columns receive a reasonable
+share of the available width while retaining the relative proportions of
+explicitly sized columns. Exceptionally long unbreakable tokens or unusual
+tables may still need specific formatting; ordinary prose tables should
+not require source-file edits.
+
+Run `python3 -m unittest discover -s script/pdf -p 'test_*.py'` to check
+generated wrapping-column declarations (requires Pandoc). A full publication
+render remains the final visual check for long documents.
+
 ### Running major-part headers
 
 Both PDF publication paths use `script/pdf/running-part-header.tex`.

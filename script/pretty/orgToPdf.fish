@@ -48,6 +48,7 @@ function orgToPdf
         --pdf-engine=lualatex \
         --highlight-style="$theme" \
         --lua-filter="$HOME/.local/share/pandoc/filters/code-block-needspace.lua" \
+        --lua-filter="script/pdf/wrap_tables.lua" \
         $header_args \
         -V graphics \
         -V geometry:top=0.45in,bottom=0.65in,left=0.65in,right=0.65in \
