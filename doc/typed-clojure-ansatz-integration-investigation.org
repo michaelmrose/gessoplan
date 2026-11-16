@@ -1,0 +1,522 @@
+#+TITLE: Typed Clojure and Ansatz Integration Investigation for Gesso
+#+SUBTITLE: Design rationale, potential division of labor, trust boundaries, and staged acceptance plan
+#+DATE: 2026-11-16
+#+OPTIONS: toc:3 num:nil
+#+STARTUP: nofold
+
+* Status and purpose
+
+Status: /non-normative implementation investigation; candidates, not adopted dependencies/.
+
+This note preserves the design discussion leading to a possible integration of
+Typed Clojure and Ansatz into Gesso. It records the motivating problems, why
+the tools appear complementary, the evidence examined, and an incremental
+evaluation plan. It is not a declaration that either integration already exists,
+an implementation completion report, or a revision of Gesso's canonical
+semantics.
+
+Gessoplan R5.1 is a timeless specification of the intended finished framework.
+It should not depend on today's choice of type checker or theorem prover unless
+the promised semantics intrinsically require that particular technology.
+The implementation may evolve while the canonical contracts stay stable.
+This investigation therefore lives under =doc/=, not in the twelve canonical
+parts or =errata.org=.
+
+The question is not "Can we convert every Clojure function into a theorem?"
+It is "Can established tools check more of Gesso's implementation and discharge
+more of its existing semantic obligations, while applications remain ordinary
+Clojure plus Gesso declarations?"
+
+* Summary of the emerging decision
+
+- Evaluate *Typed Clojure* for static checking of Gesso's own implementation,
+  especially nominal identities, admitted/unchecked boundaries, operation
+  interfaces, and staged execution outcomes.
+- Evaluate *Ansatz* for kernel-checked proofs of selected pure, Gesso-owned
+  semantic functions and generated obligations, including invariant preservation
+  and possibly abstraction/correspondence lemmas.
+- Keep *Gesso* authoritative for business meaning, semantic identity,
+  original-source completeness, operation admission, runtime enforcement, and
+  the final qualified assurance judgment. Neither tool may redefine those.
+- Retain *Recife* (and other model-checking backends) as a separate complementary
+  technique for interleavings, bounded concurrency, temporal properties,
+  counterexamples, and fairness assumptions.
+- Coordinate the design of both integrations, but implement in *two small,
+  independently testable passes* and a subsequent integration pass. Do not
+  introduce both across the whole framework in one sweeping change.
+- Ordinary downstream Gesso applications should not be required to annotate
+  their code in Typed Clojure, write Ansatz proof scripts, or learn Lean/TLA+/
+  Recife. They may opt into stronger checking of arbitrary host-language code.
+- Do not replace the existing small Gesso propositional checker merely because
+  Ansatz is more expressive. First show equivalence or sufficient preservation
+  of its source-bound admission obligations.
+
+These are proposed engineering directions, not approvals of specific package
+versions, APIs, soundness claims, or runtime dependency changes.
+
+* Why investigate these tools?
+
+** The initial problem: Clojure category mismatches
+
+Clojure's ordinary type hints are primarily for JVM interop/dispatch and
+reflection avoidance. They do not make a function's signature into a general
+statically enforced contract. A =defrecord= is a JVM nominal class but also
+implements map-like protocols: map destructuring can bypass the intended
+semantic opacity. Even a non-map =deftype= only establishes a runtime class
+boundary unless checked or guarded at the call site.
+
+Gesso must distinguish values that can have identical underlying shapes:
+=CommandId= versus =ExecutionId=, raw versus admitted declarations, provisional
+versus authoritative outcomes, and authoritative basis versus advisory state.
+Malli supplies value-shape validation, not the entire meaning, origin,
+authority, or transition legality of those values.
+
+Our proposed representation for sensitive categories is an opaque non-map value
+or an equivalently guarded construction interface, combined with static checks
+where the language admits them and runtime checks at unchecked boundaries.
+Typed Clojure is a candidate for strengthening the first part. It cannot
+substitute for the latter two.
+
+** The second problem: proofs beyond ordinary type correctness
+
+The Gessoplan design calls for generated semantic state machines, checks of
+invariant preservation, theorem/evidence provenance, and implementation
+correspondence. Generic static type checking alone does not prove:
+
+  I(s) AND Enabled(s,c) AND T(s,c,s') => I(s').
+
+Ansatz appears to offer a Clojure-hosted, Lean-style dependent-type language,
+a Java implementation of a proof kernel, proof-generating tactics, Malli
+integration, and Lean declaration export/replay. These make it worth
+investigating *before* investing in a general custom Gesso refinement checker
+or a richer custom theorem prover.
+
+This does *not* mean Gesso can automatically verify arbitrary existing
+Clojure, nor that a kernel proof certifies emitted JVM code or XTDB effects.
+
+* Division of responsibility
+
+| Question or boundary | Primary owner | Candidate supporting tool |
+|----------------------+---------------+---------------------------|
+| Domain meaning, rule ownership, admitted operations | Gesso | Neither substitutes |
+| Nominal identity in statically checked implementations | Gesso-defined representation and type interfaces | Typed Clojure |
+| Shapes, decoding, validation at runtime boundaries | Gesso and Malli | Typed Clojure/Malli integration can assist |
+| Pure transition specifications and proofs | Gesso semantic source | Ansatz |
+| Quantified preservation and selected abstraction theorems | Gesso obligations and assumptions | Ansatz |
+| Concurrency, scheduling, failure, liveness | Gesso's declared protocol semantics | Recife/TLC |
+| Proof premises, source coverage, qualified evidence | Gesso | Ansatz exports evidence; others contribute results |
+| Correctness of compiler-generated executable versus checked term | Gesso's correspondence policy | Differential tests, evidence, possible additional proof |
+| Correctness of installed XTDB/browser/transport behavior | Gesso implementation correspondence | Integration and conformance testing |
+| Downstream authoring experience | Gesso | Tools generally hidden behind build/assurance |
+
+The desired division is *not* "Typed Clojure proves code, Ansatz proves the
+business, and Recife proves production." Each claim has a specific subject and
+limited scope. None alone proves the complete installed application.
+
+* Typed Clojure candidate
+
+** What it contributes
+
+Typed Clojure supports occurrence typing, typed collections/heterogeneous
+maps, unions, polymorphism, and checked function interfaces. Its =typed.malli=
+integration and Malli type-provider examples suggest that some existing schema
+information can inform type checking without duplicating all annotations.
+
+For Gesso the near-term objective is deliberately limited: make a selected
+set of internal semantic interfaces genuinely statically checked, and arrange
+for the checker to reject representative wrong-category and wrong-result
+examples. "Sufficiently typed" means *measured checked critical-path coverage*,
+not a particular number of annotations.
+
+Strong candidate areas, in order:
+
+1. =CommandId=, =ExecutionId=, operation IDs, basis tokens, and other semantic
+   identity types; prevent accidental interchange through checked interfaces.
+2. Raw/unadmitted versus admitted models, operations, rules, and assurance
+   evidence; prevent direct use of an unadmitted value as an admitted one.
+3. Construction, preflight, semantic-plan, and projection boundaries.
+4. Authoritative operation inputs, rejection types, settlement and
+   =commit-unknown= outcome categories.
+5. Browser optimistic/provisional versus advisory/authoritative progression and
+   transport interfaces.
+
+Check the *bodies* of the important functions, not merely their asserted
+signatures. Track use of =Any=, ignored forms, untyped callouts, unsound casts,
+and disabled namespace checks explicitly. A green checker with most of the
+critical path escaped is not an assurance success.
+
+** Dependency policy and compatibility
+
+Prefer a development-time checker alias and, where possible, the project's
+documented zero-runtime-dependency annotation pattern for libraries. Merely
+putting the checker in the development classpath does not guarantee a
+transitively clean production classpath: inspect the actual dependency tree.
+
+At the time of this investigation, the Typed Clojure README labels 1.4.0 as
+its latest stable release and specifies Clojure 1.13.0-alpha11 and JDK 21+.
+Gesso has used Clojure 1.12. Compatibility must be tested against *Gesso's
+actual runtime and build environment*, rather than assumed. A compatible
+release, isolated checker process, or a consciously planned Clojure upgrade
+may be necessary. Do not upgrade Gesso as an incidental side effect of this
+experiment.
+
+Typed Clojure's analyzer, macros, generated functions, and dynamic boundaries
+may limit how far coverage can practically reach. The first pass should
+measure these limitations, not promise whole-framework typing.
+
+** Candidate acceptance tests
+
+- A deliberately swapped =CommandId=/=ExecutionId= is rejected.
+- A raw declaration passed to an admitted-only function is rejected.
+- An incompatible authoritative settlement type is rejected.
+- Correct existing interfaces pass without broad use of =Any= or ignored code.
+- Checker runs reproducibly in the actual test/CI environment.
+- Normal downstream Gesso consumption does not acquire an unwanted checker
+  runtime dependency.
+
+* Ansatz candidate
+
+** Why it is more than another static type checker
+
+Ansatz's proof kernel checks elaborated terms; its tactic machinery produces
+proof terms that are subsequently checked. It provides dependent types,
+inductive types, verified functions, arithmetic and simplification tactics,
+Malli bridges, and exported declarations for Lean interoperability.
+
+In the source inspected during this investigation, the strict kernel
+=TypeChecker.check= / =checkConstant= path differs deliberately from the
+lenient =inferType= computation used by elaboration and tactics. Only strict
+checking can be used for trusted theorem admission. Inductive/recursor
+admission has separate checks.
+
+This division is attractive: Gesso may *generate* proof obligations and
+candidate proofs without trusting the proof generator as the final checker.
+
+Ansatz's =a/defn= works over an admitted Clojure-like verified fragment; it is
+not a wholesale static checker for arbitrary existing Clojure functions.
+Its regular host-language output is executable, but proof of a mathematical
+definition and correctness of its compiled implementation are distinct
+judgments.
+
+** Strong first target: an original Claim invariant
+
+Choose an *existing Gesso-owned* HumanHelp Claim semantic operation; do not
+create a convenient but independent substitute and call that correspondence.
+
+A representative invariant:
+
+  I(s) := for each request r,
+          count(active primary assignments for r in s) <= 1.
+
+A corresponding proof obligation:
+
+  forall s,c,s'.
+    I(s) and ClaimEnabled(s,c) and ClaimTransition(s,c,s')
+    imply I(s').
+
+The first experiment should use Ansatz to establish a theorem about the
+*admitted abstract transition*, conditional on precisely specified guards
+and assumptions. It must also show the positive operational behavior
+(e.g. an eligible Claim is possible), not merely prove a vacuous invariant
+because every transition is disabled.
+
+Gesso must retain separate obligations for authority acquisition, actual
+XTDB atomicity, concurrency, external writers, unknown outcomes, and the
+relationship between the abstract transition and the installed operation.
+
+** Critical trust boundaries seen in Ansatz source
+
+- =sorry= / =admit= can close a theorem goal while recording a dependency on
+  =sorryAx=. A checked theorem may therefore depend on admitted axioms.
+  Gesso cannot equate "kernel accepted" with "unconditional theorem".
+- =a/foreign= and =implemented_by= accept unverified Clojure implementations
+  at asserted kernel interfaces. This is an explicit trusted host boundary,
+  not a proof of the implementation's behavior.
+- Partial/unsafe definitions and assumptions must remain distinguishable
+  from safe checked definitions.
+- The Malli-to-kernel bridge is useful but not semantically complete.
+  Some schema and predicate forms have opaque or permissive representations,
+  and some test-value codecs reject forms they cannot round-trip.
+  A proof of a weakened translated predicate is not a proof of the stronger
+  original Gesso rule.
+- =a/structure= and Malli map carriers may compile to =defrecord= or ordinary
+  maps. The kernel's type distinctions do not by themselves protect unchecked
+  Clojure call sites or untrusted transport values.
+- The generated JVM/Clojure implementation, lowerings, custom optimizer hooks,
+  trusted external code and numeric behavior require correspondence evidence.
+  Differential test facility =check-verified!= is testing over generated inputs,
+  not an exhaustive proof that all compiled executions match the kernel term.
+- Exported theorem closures can report =:axioms= and =:non-safe= declarations;
+  this is promising input to Gesso's own dependency and trust policy.
+- The separate =lean-jvm= SDK executes a bounded prepared Lean compiler-IR
+  program. Its artifact preparation and runtime are *not* automatically a
+  substitute for kernel proof admission or a prerequisite for Gesso.
+
+A useful Gesso policy for an elevated theorem claim is: require exact original
+source binding, full supported translation, strict kernel checking, a complete
+dependency closure, explicit permitted axioms and host premises, and a
+separate account of any implementation correspondence still unproved. For
+an assumption-free claim, reject =sorryAx= and any unpermitted axiom or
+trusted replacement; a conditional theorem may explicitly list and justify
+its premises rather than pretending they do not exist.
+
+** Proof-engine choice remains open
+
+Gessoplan Part XII currently specifies a small, bounded propositional proof
+checker with explicit admission and original-source completeness discipline.
+Ansatz's general kernel might discharge richer theorems and perhaps replace
+some work, but it does not automatically replace that *issuer-controlled,
+source-bound checking and coverage contract*.
+
+Evaluate these alternatives after the pilot:
+
+- Keep the small Gesso checker and use Ansatz for mathematical obligations.
+- Replace portions of proof checking with Ansatz, retaining Gesso's
+  source/admission and premise controls.
+- Use a hybrid where a small Gesso checker composes admitted facts from
+  externally checked proofs.
+
+Do not choose purely by theorem-prover expressiveness.
+
+* Where the two integrations meet
+
+** One source of semantic truth, not two type registries
+
+Gesso's admitted semantic categories, operations, values, and invariants are
+the source of truth. Typed Clojure's types and Ansatz's kernel expressions are
+*derived interpretations* with declared translation domains and limitations.
+
+Example only; not a proposed public API:
+
+#+begin_src clojure
+{:semantic/category :command-id
+ :representation :opaque-runtime-value
+ :nominal/identity :CommandId
+ :checks {:runtime-boundary :required
+          :static-projection :typed-clojure
+          :proof-projection :ansatz}}
+#+end_src
+
+A shared Malli shape alone does not prove that =CommandId= and =ExecutionId=
+have the same meaning. They must remain distinct in both generated interfaces.
+Likewise, Malli validation cannot establish authenticated provenance or
+current authorization.
+
+** Potential combined checking chain
+
+1. Gesso admits and versions the original semantic declaration.
+2. Gesso derives a typed interface for relevant Clojure implementation paths.
+3. Typed Clojure checks those paths in its supported language and reports any
+   escaped or unchecked boundaries.
+4. Gesso derives an Ansatz representation of a selected pure rule/transition
+   plus an explicitly quantified obligation.
+5. Ansatz constructs and strictly checks a proof, with an inspectable
+   assumption/dependency closure.
+6. Gesso compares both derivatives against the *original admitted subject*,
+   not just against each other.
+7. Gesso separately qualifies the relationship between the checked semantic
+   object, generated executable and real XTDB/browser/transport behavior.
+
+A proof-producing or type-projecting adapter is an *untrusted producer of
+candidate evidence* until its output has been validated according to the
+specific claim. In particular, a generated proof can be logically valid
+and still correspond to the wrong source expression.
+
+** Proposed evidence record (illustrative)
+
+#+begin_src clojure
+{:source {:subject-id :request/claim
+          :generation :admitted-generation
+          :digest :original-source-digest}
+ :typed {:checker :typed-clojure
+         :checked-namespace-digests [...]
+         :unchecked-boundaries [...]
+         :result :checked}
+ :proof {:checker :ansatz-kernel
+         :statement-digest :formal-statement-digest
+         :assumptions [...]
+         :non-safe-dependencies [...]
+         :result :kernel-checked}
+ :coverage {:required-obligations [...]
+            :derived-obligations [...]
+            :unrepresented-obligations [...]}
+ :correspondence {:semantic-translation :established-or-open
+                  :jvm-implementation :established-or-open
+                  :xtdb-operation :established-or-open}}
+#+end_src
+
+These keys and values are illustrative only. A real format must use exact
+types, versioned schemas, immutable identifiers, evidence scopes, and
+failure-classification rules. Merely stamping both outputs with the same
+string does not establish that the translations are correct.
+
+** A possible use of checked/generated functions in Recife
+
+Recife executes Clojure transition functions inside finite-state model
+exploration. A pure function emitted by Ansatz could, in principle, also
+serve a Recife process adapter, reducing handwritten model duplication.
+Typed Clojure might check the adapter and its nominal interfaces.
+
+That interaction is promising but is a *separate subsequent investigation*:
+Recife must still model nondeterminism, scheduling, transport failures,
+stuttering, and fairness, while any use of Ansatz-compiled functions still
+requires attention to codegen correspondence. Finite TLC exploration does
+not become an unbounded proof without an appropriate abstraction relation.
+See the existing R5.1 finite-exploration and abstraction section.
+
+* Implementation sequence: coordinated design, separate passes
+
+** Pass 0 -- feasibility and compatibility inventory
+
+- Pin candidate upstream versions and exact source revisions.
+- Test the compatible Clojure/JDK/toolchain matrix, including Gesso's existing
+  baseline and actual CI execution.
+- Compare dependency trees and isolate analysis/proof tools from downstream
+  runtime dependencies where practical.
+- Select one *real* original Gesso operation family and source locations.
+- Write explicit failure tests and evidence-acceptance expectations before
+  claiming success.
+
+** Pass 1 -- Typed Clojure, small and independently useful
+
+- Configure dev-only checking and a deterministic CI gate.
+- Annotate a handful of adjacent critical namespaces, preferably semantic
+  identities plus the raw/admitted boundary.
+- Show negative compile/type-check tests for wrong-category substitutions.
+- Identify checker limitations, =Any= escapes, untyped interop and maintenance
+  overhead; record coverage rather than treating "check command exited 0" as
+  a blanket assurance claim.
+- Keep this pass independently mergeable even if Ansatz proves unsuitable.
+
+** Pass 2 -- Ansatz proof pilot, small and separately testable
+
+- Isolate the proof tool in an optional assurance/build environment.
+- Derive an Ansatz statement from an original admitted Gesso Claim transition;
+  initially allow a narrow, auditable translation fragment.
+- Prove one nonvacuous preservation theorem.
+- Add deliberate failures: an invalid transition, omitted original
+  obligation, wrong semantic identity, unsupported translation, a =sorry=
+  dependency and a trusted-foreign dependency.
+- Record the exact statement, kernel check outcome, full axiom/non-safe
+  closure, translation limitations and open physical assumptions.
+- Where practical, independently replay the selected proof export in Lean
+  under the same enumerated assumptions.
+
+** Pass 3 -- shared derivation and correspondence
+
+- Introduce a single Gesso-owned semantic-type/operation representation that
+  projects into both checking systems without duplicate author specifications.
+- Ensure versioned evidence ties the typed and proved derivatives to the same
+  original source and admission generation.
+- Add checks that a missing source requirement or drifted translation prevents
+  assurance promotion even if both tools report success.
+- Only then consider whether Ansatz displaces existing specialized Gesso
+  checking code, or whether Recife can reuse the same compiled pure
+  transition.
+
+** Success criteria for the combined pilot
+
+1. The downstream Gesso author writes only ordinary Clojure and normal Gesso
+   construction/declarations.
+2. Typed Clojure demonstrably rejects at least the selected category and
+   admission mistakes in checked implementation code.
+3. Ansatz strictly kernel-checks a proof about the original, nonvacuous
+   semantic obligation; the proof's permitted assumptions are enumerated.
+4. A changed or omitted original requirement cannot masquerade as a checked
+   result because the translators and obligation coverage are accountable.
+5. Runtime/XTDB correspondence and any remaining host premises are visible,
+   not silently marked discharged.
+6. A failed tool run, unsupported feature, timeout, unsafe axiom, or missing
+   evidence cannot turn into an affirmative proof claim.
+7. Packaging and CI costs are acceptable, and normal application consumption
+   does not unexpectedly require the checkers at runtime.
+
+* Explicit non-goals and unresolved questions
+
+- No automatic proof of arbitrary Clojure, arbitrary XTDB queries, or every
+  browser behavior from a few typed functions.
+- No new requirement that downstream authors write Typed Clojure, Lean,
+  Ansatz, Recife, TLA+, Quint, or solver scripts.
+- No claim that two independent Malli schema conversions are semantically
+  equivalent without a verified or audited correspondence.
+- No unqualified claim that an Ansatz theorem about an abstract transition
+  establishes the behavior of the generated JVM function or installed XTDB
+  transaction.
+- No assumption that exhaustive finite exploration over one bounded domain
+  proves an unbounded invariant or liveness property.
+- No immediate replacement of Gesso's existing proof kernel or preflight
+  machinery without preservation of its original obligations.
+
+Open engineering questions include:
+
+- Which Gesso internal namespaces are tractable for Typed Clojure without
+  excessive =Any= or checker-specific rewriting?
+- Can the checker run without upgrading Gesso's baseline, or is a planned
+  upgrade appropriate?
+- What is the smallest faithfully translatable Gesso expression grammar for
+  Ansatz, including guards, old/new state and outcome cases?
+- Can the translation expose every original obligation and reject unsupported
+  atoms instead of approximating them?
+- How will proof dependencies be inspected, permitted and propagated?
+- Can an Ansatz theorem and a Gesso proof fact share a narrowly specified,
+  independently validated issuer/checker interface?
+- Which aspects of the emitted runtime are compiled directly from proved
+  definitions, which are trusted foreign calls, and which require separate
+  conformance evidence?
+- What are the actual build latency, memory, cache and version-pinning costs?
+- Does the integration reduce custom Gesso proof-checking implementation
+  enough to justify its dependency and maintenance costs?
+
+* References and relationship to canonical R5.1
+
+Canonical Gessoplan requirements, unchanged by this note:
+
+- =src/01/01.05-machine-checked-semantics.org=: tool-neutral qualified proofs,
+  original semantic subjects, explicit proof and production boundaries.
+- =src/03/03.12-malli-value-schemas.org=: Malli owns shapes, not business
+  meaning, authority, provenance or legal transitions.
+- =src/10/10.04-proof-strategy-and-correspondence.org=: source-derived proof
+  subjects and two-way correspondence across semantics and actual execution.
+- =src/10/10.11-finite-exploration-and-abstraction.org=: exact finite coverage,
+  abstraction simulation, justified theorem transfer, and open assumptions.
+- =src/12/12.03-proof-kernel-and-host-context.org=: small source-bound
+  propositional checker and guarded external proof mechanisms.
+- =doc/gesso-r5.1-canonical-revision-charter.org=: timeless target, separate
+  implementation notes, no accidental narrowing to present code.
+
+Upstream materials inspected/discussed as of 2026-11-16:
+
+- Typed Clojure: https://github.com/typedclojure/typedclojure
+- Its zero-dependency example:
+  https://github.com/typedclojure/typedclojure/tree/main/example-projects/zero-deps
+- Its Malli type-provider example:
+  https://github.com/typedclojure/typedclojure/tree/main/example-projects/malli-type-providers
+- Ansatz: https://github.com/replikativ/ansatz
+- Ansatz proof kernel:
+  https://github.com/replikativ/ansatz/blob/main/src-java/ansatz/kernel/TypeChecker.java
+- Ansatz's Malli bridge:
+  https://github.com/replikativ/ansatz/blob/main/src/ansatz/malli.clj
+- Ansatz's proof-export closure:
+  https://github.com/replikativ/ansatz/blob/main/src/ansatz/export/writer.clj
+- Ansatz's known programming-model gaps:
+  https://github.com/replikativ/ansatz/blob/main/docs/PROGRAMMING_MODEL_GAPS.md
+- Recife: https://github.com/pfeodrippe/recife
+
+These URLs are investigation leads, not normative dependency commitments.
+Version pins, upstream semantics and integration API choices must be verified
+at implementation time.
+
+* Working conclusion
+
+Typed Clojure is a promising incremental check on *how Gesso's implementation
+uses semantic categories and interfaces*. Ansatz is a promising way to avoid
+building a general dependent-type theorem checker while proving *selected
+Gesso-derived mathematical properties*. They complement, rather than replace,
+Gesso's original-source semantics, runtime enforcement, specific admission
+judgments, and physical implementation-correspondence requirements.
+
+The recommended next action is one coordinated design issue with two small
+independently useful implementation passes, followed by evidence-based
+integration. Preserve the canonical plan unless the experiments expose a
+genuine defect or architectural requirement that the current plan cannot
+express.
