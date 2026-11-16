@@ -44,16 +44,16 @@ class PrettyHeaderTests(unittest.TestCase):
 
 
     def test_running_part_header_is_shared(self):
-        sidecar = r"\\input{script/pdf/running-part-header.tex}"
+        sidecar = r"\input{script/pdf/running-part-header.tex}"
         for profile in ("gothic", "botanical", "math", "geometric"):
             with self.subTest(profile=profile):
                 self.assertIn(sidecar, latex_header(profile))
         header_path = Path(__file__).resolve().parents[1] / "pdf" / "running-part-header.tex"
         header = header_path.read_text(encoding="utf-8")
-        self.assertIn(r"\\renewcommand{\\sectionmark}", header)
-        self.assertIn(r"\\leftmark", header)
-        self.assertIn(r"\\fancyhead[R]", header)
-        self.assertIn(r"\\geometry{includehead}", header)
+        self.assertIn(r"\renewcommand{\sectionmark}", header)
+        self.assertIn(r"\leftmark", header)
+        self.assertIn(r"\fancyhead[R]", header)
+        self.assertIn(r"\geometry{includehead}", header)
 
 
 if __name__ == "__main__":
