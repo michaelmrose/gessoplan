@@ -68,6 +68,7 @@ def latex_header(profile: str, seed: int | None = None) -> str:
         lines.append(r"\def\florilegiumseed{" + str(seed) + "}")
     lines.extend([
         package,
+        r"\input{script/pdf/running-part-header.tex}",
         r"\definecolor{ink}{HTML}{2456C4}",
         r"\definecolor{accent}{HTML}{B4662F}",
         r"\florilegiumhide[1]",

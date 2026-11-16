@@ -1,12 +1,13 @@
-# Florilegium PDF experiment on the pretty branch
+# Gessoplan PDF presentation tooling
 
-The original **bb gen** and the 192 canonical Org source sections remain
-unchanged. The optional `pretty` build modifies only presentation artifacts.
+The 192 canonical Org source sections remain unchanged. Both the standard
+`bb gen` build and the optional Florilegium `bb pretty` build include a
+shared presentation-only major-part running header.
 
 ## Commands
 
 ```sh
-bb gen                  # original, unmodified Org/PDF publication
+bb gen                  # standard Org/PDF publication, with major-part running headers
 bb pretty               # Gothic headpieces (default)
 bb pretty botanical     # richer botanical margins, visitors and shells
 bb pretty botanical 7   # same profile, deterministic document seed 7
@@ -27,7 +28,7 @@ The user's real `orgToPdf` is a Fish function in
 `~/.config/fish/functions/orgToPdf.fish`. It calls Pandoc directly with
 an existing `--include-in-header`, followed by `latexmk -lualatex`.
 
-The `pretty` branch contains `script/pretty/orgToPdf.fish`: the original
+The repository contains `script/pretty/orgToPdf.fish`: the original
 function with an **optional third argument**, `extra-header.tex`.
 It retains the original highlighting, fonts, geometry, Pandoc code-block
 pagination filter, LuaLaTeX command and PDF output logic; it only
@@ -50,6 +51,25 @@ newer than the last published v2.0.1 release). Alternatively supply
 Existing dependencies: Babashka, Fish, Pandoc, LuaLaTeX/latexmk,
 TeX Live's TikZ and the existing global Pandoc filter/support files.
 Fetching Florilegium additionally requires Git/network access once.
+
+### Running major-part headers
+
+Both PDF publication paths use `script/pdf/running-part-header.tex`.
+Pandoc converts each top-level `* Part ...` Org heading to a LaTeX
+`\\section`; `fancyhdr` captures the actual major-part title and prints
+it with the page number in a compact, right-aligned header. Subsection
+headings do not change it. Long titles truncate within the available width.
+
+`bb gen` now sources the repository-local `script/pretty/orgToPdf.fish`
+and passes the shared header as the optional extra Pandoc header. The
+`bb pretty` generator injects an `\\input` of the same file into its
+existing Florilegium header. Neither path edits the assembled document,
+the individual Org sections, or the user's global Fish function.
+
+The existing cover's `\\thispagestyle{empty}` keeps the running header
+off the first page. `\\geometry{includehead}` reserves space for the
+header within Gessoplan's comparatively narrow ordinary top margin; page
+breaks may consequently differ slightly from older publications.
 
 ### Profiles and seeds
 

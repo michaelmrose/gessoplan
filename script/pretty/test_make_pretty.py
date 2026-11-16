@@ -1,5 +1,6 @@
 """Small regression checks for presentation options; no TeX required."""
 import argparse
+from pathlib import Path
 import unittest
 
 from make_pretty import MAX_SEED, latex_header, parse_seed
@@ -40,6 +41,19 @@ class PrettyHeaderTests(unittest.TestCase):
             with self.subTest(value=value):
                 with self.assertRaises(argparse.ArgumentTypeError):
                     parse_seed(value)
+
+
+    def test_running_part_header_is_shared(self):
+        sidecar = r"\\input{script/pdf/running-part-header.tex}"
+        for profile in ("gothic", "botanical", "math", "geometric"):
+            with self.subTest(profile=profile):
+                self.assertIn(sidecar, latex_header(profile))
+        header_path = Path(__file__).resolve().parents[1] / "pdf" / "running-part-header.tex"
+        header = header_path.read_text(encoding="utf-8")
+        self.assertIn(r"\\renewcommand{\\sectionmark}", header)
+        self.assertIn(r"\\leftmark", header)
+        self.assertIn(r"\\fancyhead[R]", header)
+        self.assertIn(r"\\geometry{includehead}", header)
 
 
 if __name__ == "__main__":
